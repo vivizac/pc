@@ -364,6 +364,13 @@
     });
   }
 
+  async function postponeFirstClass(enrollmentId, newStartDate) {
+    return rpc('olli_schedule_postpone_first_class', contextPayload({
+      p_enrollment_id: enrollmentId,
+      p_new_start_date: newStartDate
+    }));
+  }
+
   async function resolveWaitlist(waitlistId, action, effectiveDate) {
     return executeScheduleAction('resolve_waitlist', {
       waitlist_id: waitlistId,
@@ -630,6 +637,7 @@
     loadAvailabilityHorizon,
     syncLegacyStudents,
     changeSchedule,
+    postponeFirstClass,
     resolveWaitlist,
     addMakeup,
     addWaitlist,

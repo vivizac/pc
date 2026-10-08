@@ -3124,6 +3124,8 @@
       }
     }
 
+    const firstClassPostponement = dialog.actionType === 'move' && source && !moveTargetChanged
+      && !hasAttendanceMemoWork && clean(dialog.effectiveDate) > clean(source.effective_from || '');
     const shouldRunScheduleAction = dialog.actionType !== 'move' || moveTargetChanged || !hasAttendanceMemoWork;
     const combined = await withSaving(async () => {
       let actionResult = null;
@@ -3132,9 +3134,11 @@
       const errors = [];
 
       if (shouldRunScheduleAction) {
-        actionResult = dialog.actionType === 'makeup'
-          ? await service.addMakeup(dialog.studentId, dialog.effectiveDate, dialog.targetTime, '', dialog.targetClassGroup)
-          : await service.changeSchedule({
+        actionResult = firstClassPostponement
+          ? await service.postponeFirstClass(source.id, dialog.effectiveDate)
+          : dialog.actionType === 'makeup'
+            ? await service.addMakeup(dialog.studentId, dialog.effectiveDate, dialog.targetTime, '', dialog.targetClassGroup)
+            : await service.changeSchedule({
             studentId: dialog.studentId,
             sourceEnrollmentId: dialog.actionType === 'move' ? dialog.sourceEnrollmentId : null,
             targetWeekday: dialog.targetWeekday,
@@ -3181,6 +3185,7 @@
 
     if (combined.actionResult) {
       if (dialog.actionType === 'makeup') notify(`${student.name} 학생의 보강을 등록했어요.`);
+      else if (combined.actionResult.result === 'start_date_updated') notify(`${student.name} 학생의 첫 수업일을 ${shortDate(dialog.effectiveDate)}로 변경했어요.`);
       else if (combined.actionResult.result === 'waitlisted') notify(`${student.name} 학생을 대기로 등록했어요.`);
       else if (dialog.actionType === 'move' && combined.actionResult.result === 'scheduled' && isReservedMoveDate(dialog.effectiveDate)) {
         notify(`${student.name} 학생의 수업 이동을 ${shortDate(dialog.effectiveDate)}부터 예약했어요.`);
