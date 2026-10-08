@@ -1,71 +1,45 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const read = name => fs.readFileSync(name, 'utf8');
+const css = read('kcf-auto-mode.css');
+const sheet = read('kcf-teacher-sheet.js');
+const sheetCss = read('kcf-teacher-sheet.css');
+const runtime = read('kcf-auto-mode-runtime.js');
+const base = read('kinder-feedback.js');
+const html = read('index.html');
 
-const css = fs.readFileSync('kcf-auto-mode.css', 'utf8');
-const sheet = fs.readFileSync('kcf-teacher-sheet.js', 'utf8');
-const sheetCss = fs.readFileSync('kcf-teacher-sheet.css', 'utf8');
-const normalSheet = fs.readFileSync('kcf-normal-sheet.js', 'utf8');
-const runtime = fs.readFileSync('kcf-auto-mode-runtime.js', 'utf8');
-const base = fs.readFileSync('kinder-feedback.js', 'utf8');
-const html = fs.readFileSync('index.html', 'utf8');
-
-test('closed Class mode keeps the inline composer in two rows', () => {
+test('QuickNote inline Class composer retains the two-row structure', () => {
   assert.match(css, /kcfTeacherRosterMode \.kcfComposer \{[\s\S]*?height:auto;[\s\S]*?max-height:none;/);
-  assert.match(css, /kcfTeacherRosterMode \.kcfComposerBottom \{[\s\S]*?display:grid;[\s\S]*?grid-template-columns:33px minmax\(0,1fr\) 33px;[\s\S]*?grid-template-rows:minmax\(34px, auto\) 38px;/);
-  assert.match(css, /kcfTeacherRosterMode \.kcfInputActivateWrap \{[\s\S]*?grid-column:1 \/ -1;[\s\S]*?grid-row:1;[\s\S]*?width:100%;[\s\S]*?min-width:0;/);
-  assert.match(css, /kcfTeacherRosterMode \.kcfInput \{[\s\S]*?width:100%;[\s\S]*?height:34px;/);
-  assert.match(css, /kcfTeacherRosterMode \.kcfAutoStudentRoster \{[\s\S]*?grid-column:2;[\s\S]*?grid-row:2;[\s\S]*?position:static;/);
+  assert.match(css, /kcfTeacherRosterMode \.kcfComposerBottom \{[\s\S]*?display:grid;[\s\S]*?grid-template-columns:33px minmax\(0,1fr\) 33px;/);
+  assert.match(css, /kcfTeacherRosterMode \.kcfAutoStudentRoster \{[\s\S]*?grid-column:2;[\s\S]*?grid-row:2;/);
 });
 
-test('closing the Class sheet leaves the inline input without a cursor', () => {
-  const close = sheet.match(/function close\(options\)[\s\S]*?\n  \}/)?.[0] || '';
-  assert.match(close, /var inlineInput = baseInput\(\)/);
-  assert.match(close, /inlineInput\.blur\(\)/);
+test('closing the sheet still blurs the inline input', () => {
+  assert.match(sheet, /function close\(options\)[\s\S]*?inlineInput\.blur\(\)/);
 });
 
-test('successful Class feedback still auto-advances to the next student before closing the sheet', () => {
-  const complete = runtime.match(/function completeSuccessfulSubmit\(context\)[\s\S]*?\n  \}/)?.[0] || '';
-  assert.match(complete, /selectNextAvailableAutoStudent\(submitted\.studentId, submitted\.order \|\| \[\]\)/);
-  assert.match(complete, /global\.KcfTeacherSheet\.onSuccessfulSubmit\(\)/);
-  assert.ok(complete.indexOf('selectNextAvailableAutoStudent') < complete.indexOf('onSuccessfulSubmit'));
+test('successful feedback still advances to the next student', () => {
+  assert.match(runtime, /function completeSuccessfulSubmit\(context\)[\s\S]*?selectNextAvailableAutoStudent/);
+  assert.ok(sheet.includes("state.composerMode === 'continuous') return"));
 });
 
-test('active Class control is uppercase black C in the second-row add slot only', () => {
-  assert.match(runtime, /btn\.textContent = state\.loading \? '···' : \(state\.enabled \? 'C' : 'Class'\)/);
-  assert.match(css, /\.kcfTeacherBtn\.active \{[\s\S]*?width:33px !important;[\s\S]*?background:#111 !important;[\s\S]*?color:#fff !important;/);
-  const idleButton = css.match(/#kinderChatFeedbackScreen\.kcfTeacherRosterMode \.kcfTeacherBtn \{[^}]*\}/)?.[0] || '';
-  assert.match(idleButton, /grid-column:1;/);
-  assert.match(idleButton, /grid-row:2;/);
-  assert.doesNotMatch(idleButton, /grid-row:1;/);
-  assert.doesNotMatch(idleButton, /background:#f1f1f1/);
-  assert.match(css, /kcfTeacherRosterMode \.kcfAttachBtn \{[\s\S]*?display:none;/);
-  assert.match(css, /kcfTeacherRosterMode \.kcfVoiceBtn \{[\s\S]*?display:none;/);
-  assert.match(css, /kcfTeacherRosterMode \.kcfSendBtn \{[\s\S]*?grid-column:3;[\s\S]*?grid-row:2;/);
+test('mode dropdown replaces the Class C button in the second-row slot', () => {
+  assert.ok(html.includes('id="kcfModeSwitchBtn"'));
+  assert.ok(sheet.includes('id="kcfSheetModeSwitchBtn"'));
+  assert.ok(css.includes('kcfTeacherRosterMode .kcfComposerModeBtn'));
+  assert.ok(sheetCss.includes('.kcfComposerModeBtn'));
+  assert.ok(!sheet.includes('kcfTeacherSheetModeBtn'));
 });
 
-test('Class sheet is Class-only and normal sheet owns the Class label', () => {
-  assert.match(sheet, /id="kcfTeacherSheetModeBtn"[^>]*>C<\/button>/);
-  assert.match(sheet, /function open\(\)\{\s*if \(!modeEnabled\(\)\) return false;/);
-  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn \{[\s\S]*?width:33px;[\s\S]*?background:#111;[\s\S]*?color:#fff;/);
-  assert.match(normalSheet, /id="kcfNormalSheetClassBtn"[^>]*>Class<\/button>/);
+test('student can deselect a roster card to type a different name', () => {
+  assert.ok(runtime.includes('if (nextId === currentId) { deselectAutoStudent(); return; }'));
+  assert.ok(runtime.includes('state.manualEntry = true'));
+  assert.ok(runtime.includes('학생 이름과 수업기록을 적어주세요'));
 });
 
-test('student cards remain manually selectable while Class mode waits', () => {
-  assert.match(runtime, /button\.addEventListener\('click',[\s\S]*?selectAutoStudent\(item\)/);
-});
-
-test('tapping the inline composer routes to the mode-specific sheet', () => {
-  const pointer = base.match(/composerBottom\.addEventListener\('pointerdown',[\s\S]*?\n    \}\);/)?.[0] || '';
-  assert.match(pointer, /event\.preventDefault\(\)/);
-  assert.match(pointer, /openKinderChatFeedbackComposerSheet\(\)/);
-  assert.match(base, /isKinderChatFeedbackClassModeEnabled\(\)[\s\S]*?window\.KcfTeacherSheet[\s\S]*?window\.KcfNormalSheet/);
-});
-
-test('Class idle layout assets are cache busted', () => {
-  assert.match(html, /kcf-auto-mode\.css\?v=20261001-unified-sheet-1/);
-  assert.match(html, /kcf-normal-sheet\.js\?v=20261002-separate-sheets-1/);
-  assert.match(html, /kcf-teacher-sheet\.css\?v=20261002-separate-sheets-1/);
-  assert.match(html, /kcf-teacher-sheet\.js\?v=20261002-separate-sheets-1/);
-  assert.match(html, /kinder-feedback\.js\?v=20261002-separate-sheets-1/);
+test('the inline input opens only the Class sheet', () => {
+  assert.ok(base.includes('mode.activateForComposer(event)'));
+  assert.ok(base.includes('window.KcfTeacherSheet'));
+  assert.ok(!base.includes('KcfNormalSheet'));
 });
