@@ -12,8 +12,6 @@ body.kcfTeacherSheetOpen {
 body.kcfTeacherSheetOpen #kcfPersistentTopLayer,
 body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfInner,
 body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
-  visibility:hidden !important;
-  opacity:0 !important;
   pointer-events:none !important;
 }
 
@@ -30,7 +28,7 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   justify-content:center;
   visibility:hidden;
   pointer-events:none;
-  background:#fff;
+  background:rgba(0,0,0,.14);
 }
 
 .kcfTeacherSheetOverlay.show {

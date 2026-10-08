@@ -10,8 +10,6 @@ body.kcfNormalSheetOpen {
 body.kcfNormalSheetOpen #kcfPersistentTopLayer,
 body.kcfNormalSheetOpen #kinderChatFeedbackScreen .kcfInner,
 body.kcfNormalSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
-  visibility:hidden !important;
-  opacity:0 !important;
   pointer-events:none !important;
 }
 
@@ -28,7 +26,7 @@ body.kcfNormalSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   justify-content:center;
   visibility:hidden;
   pointer-events:none;
-  background:#fff;
+  background:rgba(0,0,0,.14);
 }
 
 .kcfNormalSheetOverlay.show {
