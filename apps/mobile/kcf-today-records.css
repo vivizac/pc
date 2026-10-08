@@ -1,10 +1,10 @@
 /* QuickNote 연속기록의 전용 목록. 대화 DOM/서버 저장 코드는 그대로 둔다. */
-#kinderChatFeedbackScreen .kcfTodayRecordsView{display:none;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:112px 18px 176px;background:#fff;position:relative;z-index:1;box-sizing:border-box;}
+#kinderChatFeedbackScreen .kcfTodayRecordsView{display:none;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:calc(var(--vivizac-note-header-h, 66px) + max(18px, calc(env(safe-area-inset-top) + 6px)) + 6px) 18px 176px;background:#fff;position:relative;z-index:1;box-sizing:border-box;}
 #kinderChatFeedbackScreen .kcfTodayRecordsView[hidden]{display:none!important;}
 body.kcfContinuousMode #kinderChatFeedbackScreen .kcfChatArea{display:none;}
 body.kcfContinuousMode #kinderChatFeedbackScreen .kcfTodayRecordsView:not([hidden]){display:block;}
 /* Match observation roster title: 18px outer padding + 2px header inset + 10px title inset = 30px. */
-.kcfTodayRecordsHead{display:flex;flex-direction:column;gap:5px;padding:0 2px 15px 12px;border-bottom:1px solid #e9ebee;}
+.kcfTodayRecordsHead{display:flex;flex-direction:column;gap:5px;padding:2px 2px 15px 12px;border-bottom:1px solid #e9ebee;}
 .kcfTodayRecordsTitle{font-size:calc(20px * var(--olli-text-scale));font-weight:600;color:#1b1c20;letter-spacing:-.035em;}
 .kcfTodayRecordsSummary{font-size:calc(12px * var(--olli-text-scale));font-weight:400;color:#858992;line-height:1.5;}
 .kcfTodayRecordsItems{display:flex;flex-direction:column;gap:0;}
