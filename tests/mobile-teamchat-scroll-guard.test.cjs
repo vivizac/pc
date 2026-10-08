@@ -12,7 +12,7 @@ const html=fs.readFileSync(path.join(root,'apps/mobile/index.html'),'utf8');
 
 test('Team Chat blocks vertical composer drags from escaping into iOS page scrolling',()=>{
   const start=js.indexOf("if (input) {",js.indexOf("function init(){"));
-  const end=js.indexOf("\n    if (mentionTriggerButton)",start);
+  const end=js.indexOf("\n    bindOlliTalkComposerActivationControl(composerActivateButton, 'input');",start);
   assert.ok(start>=0 && end>start);
   const body=js.slice(start,end);
 
@@ -64,6 +64,9 @@ test('Team Chat keeps textarea free of activation hacks and delegates first touc
   assert.match(html,/id="olliTalkComposerActivateBtn"/);
   assert.match(css,/\.olliTalkComposerActivateBtn\{[\s\S]*position:absolute;[\s\S]*inset:0;[\s\S]*z-index:4/);
   assert.match(css,/\.olliTalkKeyboardOpen \.olliTalkComposerActivateBtn\{[\s\S]*visibility:hidden;[\s\S]*pointer-events:none/);
+  assert.match(js,/bindOlliTalkComposerActivationControl\(composerActivateButton, 'input'\)/);
+  assert.match(js,/bindOlliTalkComposerActivationControl\(mentionTriggerButton, 'mention'\)/);
+  assert.doesNotMatch(js,/composerActivateButton\.addEventListener\('pointerdown'/);
   assert.match(html,/olli-talk-beta\.js\?v=20261008-composer-pointer-1/);
   assert.match(html,/olli-talk-beta\.css\?v=20261008-flip-motion-1/);
 });

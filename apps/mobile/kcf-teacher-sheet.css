@@ -29,11 +29,13 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   visibility:hidden;
   pointer-events:none;
   background:rgba(0,0,0,.14);
+  transition:visibility 0s linear .24s;
 }
 
 .kcfTeacherSheetOverlay.show {
   visibility:visible;
   pointer-events:auto;
+  transition-delay:0s;
 }
 
 .kcfTeacherSheet {
@@ -45,8 +47,15 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   display:flex;
   flex-direction:column;
   background:#fff;
-  border-radius:0;
+  border-radius:28px 28px 0 0;
   overflow:hidden;
+  transform:translateY(100%);
+  transition:transform .24s cubic-bezier(.22,.61,.36,1);
+  will-change:transform;
+}
+
+.kcfTeacherSheetOverlay.show .kcfTeacherSheet {
+  transform:translateY(0);
 }
 
 
