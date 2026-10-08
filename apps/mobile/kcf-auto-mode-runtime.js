@@ -966,7 +966,7 @@
   function setEditUi(active) {
     var screen = document.getElementById('kinderChatFeedbackScreen');
     var sendBtn = document.getElementById('kcfSendBtn');
-    var autoBtn = getTeacherButton();
+    var autoBtn = document.getElementById('kcfModeSwitchBtn');
     if (screen) screen.classList.toggle('kcfRecordEditMode', !!active);
     if (sendBtn) {
       sendBtn.classList.toggle('kcfRecordEditSaveMode', !!active);
