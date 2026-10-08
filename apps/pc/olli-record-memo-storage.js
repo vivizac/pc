@@ -83,6 +83,7 @@ function openStudentModal() {
 }
 function closeStudentModal() {
   hideModalOnly('studentModal');
+  window.__olliPendingTrialRegistration = null;
 }
 async function confirmStudent() {
   const name = document.getElementById('studentNameInput').value.trim();
@@ -135,6 +136,10 @@ async function confirmStudent() {
     }
   }
 
+  const trialRegistration = window.__olliPendingTrialRegistration;
+  if (trialRegistration && (trialRegistration.name !== name || trialRegistration.division !== type)) {
+    alert('체험수업과 동일한 학생 이름과 학부로 등록해 주세요.'); return;
+  }
   const newStudent = {
     id: uid(),
     type,
@@ -161,6 +166,14 @@ async function confirmStudent() {
 
   try {
     const savedStudent = await ensureStudentSavedToSupabase(newStudent);
+    if (trialRegistration) {
+      try {
+        if (!window.OlliTimetableService?.linkTrialFeedback) throw new Error('체험 피드백 연결 모듈을 찾지 못했습니다.');
+        await window.OlliTimetableService.linkTrialFeedback(trialRegistration.trialSessionId, savedStudent.id);
+      } catch (error) {
+        alert('학생 등록은 완료되었지만 체험 피드백 연결에 실패했습니다. 체험 피드백 원본은 보존됩니다.\\n\\n' + (error?.message || error));
+      }
+    }
     closeStudentModal();
     await loadRecords('');
     showPushToast(`${savedStudent.name} 학생이 저장되었습니다.`);

@@ -371,6 +371,12 @@
     }));
   }
 
+  async function linkTrialFeedback(trialSessionId, studentId) {
+    return rpc('olli_trial_feedback_link_student', contextPayload({
+      p_trial_session_id: trialSessionId, p_student_id: studentId
+    }));
+  }
+
   async function resolveWaitlist(waitlistId, action, effectiveDate) {
     return executeScheduleAction('resolve_waitlist', {
       waitlist_id: waitlistId,
@@ -638,6 +644,7 @@
     syncLegacyStudents,
     changeSchedule,
     postponeFirstClass,
+    linkTrialFeedback,
     resolveWaitlist,
     addMakeup,
     addWaitlist,

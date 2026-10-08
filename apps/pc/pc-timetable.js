@@ -2043,6 +2043,28 @@
     openOverlay();
   }
 
+  function openTrialRegularRegistration() {
+    const current = state.dialog;
+    if (!current || current.kind !== 'makeup') return;
+    const item = oneTimeSessions().find(row => clean(row.id) === clean(current.makeupId));
+    if (!item || clean(item.session_type) !== 'trial' || clean(item.student_id)) return;
+    const division = clean(item.division || item.guest_division);
+    const name = clean(item.guest_name || item.student_name);
+    if (!name || !['kinder','elementary'].includes(division)) {
+      alert('체험 학생 이름과 학부를 확인해 주세요.'); return;
+    }
+    if (typeof window.openStudentModal !== 'function') {
+      alert('학생추가 화면을 열 수 없습니다.'); return;
+    }
+    closeDialog();
+    window.currentRecordView = division;
+    window.currentObservationView = division;
+    window.openStudentModal();
+    const input = document.getElementById('studentNameInput');
+    if (input) input.value = name;
+    window.__olliPendingTrialRegistration = {trialSessionId:clean(item.id),name,division};
+  }
+
   function openPickupAdd(dataset) {
     const date = clean(dataset.date);
     state.dialog = {
@@ -2473,7 +2495,7 @@
     const scheduleChangeHtml = `<div class="olliTtField"><div class="olliTtFieldHead"><span>${typeLabel} 날짜</span><small>날짜·시간·반을 각각 또는 함께 변경할 수 있습니다.</small></div><input type="date" class="olliTtDateInput" data-tt-managed-date min="${todayKey()}" value="${esc(targetDate)}"></div>`
       + `<div class="olliTtField"><div class="olliTtFieldHead"><span>${typeLabel} 시간</span></div><div class="olliTtChoiceGrid times">${timeHtml}</div></div>`
       + groupHtml;
-    const actionsHtml = `<div class="olliTtDialogActions olliTtMakeupManageActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary secondary" data-tt-change-makeup-schedule>일정 변경</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>${typeLabel} 취소</button></div>`;
+    const actionsHtml = `<div class="olliTtDialogActions olliTtMakeupManageActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button>${trial && !item.student_id ? '<button type="button" class="olliTtDialogPrimary" data-tt-register-trial>정규등록</button>' : ''}<button type="button" class="olliTtDialogPrimary secondary" data-tt-change-makeup-schedule>일정 변경</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>${typeLabel} 취소</button></div>`;
     return dialogHead(trial ? '★' : '✓', `${displayName} ${typeLabel}`, `${koreanDate(date)} ${DAYS[date.getDay() - 1]}요일 · ${scheduleSlotLabel(division, item.time_slot, item.class_group, date.getDay())}`)
       + '<div class="olliTtDialogBody">'
       + scheduleChangeHtml
@@ -2957,6 +2979,8 @@
     if (changeWaitScheduleButton) changeWaitScheduleButton.addEventListener('click', changeWaitSchedule);
     const changeMakeupScheduleButton = dialog.querySelector('[data-tt-change-makeup-schedule]');
     if (changeMakeupScheduleButton) changeMakeupScheduleButton.addEventListener('click', changeMakeupSessionSchedule);
+    const registerTrial = dialog.querySelector('[data-tt-register-trial]');
+    if (registerTrial) registerTrial.addEventListener('click', openTrialRegularRegistration);
     const cancelMakeup = dialog.querySelector('[data-tt-cancel-makeup]');
     if (cancelMakeup) cancelMakeup.addEventListener('click', cancelMakeupSession);
     dialog.querySelectorAll('[data-tt-history-refresh]').forEach((button) => button.addEventListener('click', loadHistoryIntoDialog));
