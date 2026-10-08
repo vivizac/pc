@@ -23,18 +23,18 @@ test('QuickNote normal and Class sheets keep the page visible under a subtle dim
   assert.match(teacherOpen,/pointer-events:none !important/);
   assert.doesNotMatch(teacherOpen,/visibility:hidden|opacity:0/);
 
-  assert.match(normal,/\.kcfNormalSheet\s*\{[\s\S]*border-radius:28px 28px 0 0;[\s\S]*transform:translateY\(100%\);[\s\S]*transition:transform \.24s cubic-bezier\(\.22,\.61,\.36,1\)/);
+  assert.match(normal,/\.kcfNormalSheet\s*\{[\s\S]*border-radius:28px 28px 0 0;[\s\S]*transform:translateY\(100%\);[\s\S]*transition:transform \.32s cubic-bezier\(\.22,\.61,\.36,1\)/);
   assert.match(normal,/\.kcfNormalSheetOverlay\.show \.kcfNormalSheet\s*\{[\s\S]*transform:translateY\(0\)/);
   assert.match(normal,/\.kcfNormalSheetOverlay:not\(\.show\) \.kcfNormalSheet\s*\{\s*transition:none/);
   assert.match(normal,/\.kcfNormalSheetOverlay\.show:not\(\.entrance-complete\) \.kcfNormalSheetInput\s*\{\s*caret-color:transparent/);
   assert.doesNotMatch(normal,/transition:visibility 0s linear \.24s/);
-  assert.match(html,/kcf-normal-sheet\.css\?v=20261008-instant-close-1/);
-  assert.match(teacher,/\.kcfTeacherSheet\s*\{[\s\S]*border-radius:28px 28px 0 0;[\s\S]*transform:translateY\(100%\);[\s\S]*transition:transform \.24s cubic-bezier\(\.22,\.61,\.36,1\)/);
+  assert.match(html,/kcf-normal-sheet\.css\?v=20261008-keyboard-pace-1/);
+  assert.match(teacher,/\.kcfTeacherSheet\s*\{[\s\S]*border-radius:28px 28px 0 0;[\s\S]*transform:translateY\(100%\);[\s\S]*transition:transform \.32s cubic-bezier\(\.22,\.61,\.36,1\)/);
   assert.match(teacher,/\.kcfTeacherSheetOverlay\.show \.kcfTeacherSheet\s*\{[\s\S]*transform:translateY\(0\)/);
   assert.match(teacher,/\.kcfTeacherSheetOverlay:not\(\.show\) \.kcfTeacherSheet\s*\{\s*transition:none/);
   assert.match(teacher,/\.kcfTeacherSheetOverlay\.show:not\(\.entrance-complete\) \.kcfTeacherSheetInput\s*\{\s*caret-color:transparent/);
   assert.doesNotMatch(teacher,/transition:visibility 0s linear \.24s/);
-  assert.match(html,/kcf-teacher-sheet\.css\?v=20261008-instant-close-1/);
+  assert.match(html,/kcf-teacher-sheet\.css\?v=20261008-keyboard-pace-1/);
 });
 
 test('QuickNote retains native focus while delaying caret until slide-in ends',()=>{
@@ -44,7 +44,8 @@ test('QuickNote retains native focus while delaying caret until slide-in ends',(
     assert.match(js,/root\.classList\.remove\('show', 'entrance-complete'\)/);
     assert.match(js,/keyboard\.activate\(event, \{/);
     assert.match(js,/caretRevealTimer:0/);
+    assert.match(js,/\}, 420\);/);
   }
-  assert.match(html,/kcf-normal-sheet\.js\?v=20261008-caret-reveal-1/);
-  assert.match(html,/kcf-teacher-sheet\.js\?v=20261008-caret-reveal-1/);
+  assert.match(html,/kcf-normal-sheet\.js\?v=20261008-keyboard-pace-1/);
+  assert.match(html,/kcf-teacher-sheet\.js\?v=20261008-keyboard-pace-1/);
 });
