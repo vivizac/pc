@@ -1584,8 +1584,8 @@ function setObservationMemoEditorMode() {
     studentListBtn.style.pointerEvents = 'auto';
   }
   if (analysisBtn) {
-    analysisBtn.hidden = false;
-    analysisBtn.style.display = 'inline-flex';
+    analysisBtn.hidden = currentMemoType !== 'elementary';
+    analysisBtn.style.display = currentMemoType === 'elementary' ? 'inline-flex' : 'none';
     analysisBtn.style.visibility = 'visible';
     analysisBtn.style.opacity = '1';
     analysisBtn.style.pointerEvents = 'auto';
