@@ -143,6 +143,74 @@
   const OLLI_TALK_KEYBOARD_MOTION_SETTLE_MS = 320;
   let olliTalkKeyboardMotionTimer = null;
   let olliTalkComposerCollapsePending = false;
+  let olliTalkComposerExpandPending = false;
+  let olliTalkKeyboardClosedViewportHeight = 0;
+  let olliTalkKeyboardOpenedViewportHeight = 0;
+  let olliTalkComposerShapeAnimation = null;
+
+  function getOlliTalkKeyboardViewportHeight(){
+    return Math.max(1, Number(window.visualViewport?.height || window.innerHeight || 1));
+  }
+
+  // The keyboard drives the position; only the composer shape changes here.
+  // Animate explicit pixel heights because iOS Safari cannot interpolate height:auto.
+  function setOlliTalkComposerExpanded(expanded){
+    const screen = getScreen();
+    if (!screen || screen.classList.contains('olliTalkKeyboardOpen') === expanded) return;
+    const composer = screen.querySelector('.olliTalkBetaComposer');
+    const fromHeight = composer?.getBoundingClientRect().height;
+    if (olliTalkComposerShapeAnimation) {
+      olliTalkComposerShapeAnimation.cancel();
+      olliTalkComposerShapeAnimation = null;
+    }
+    screen.classList.toggle('olliTalkKeyboardOpen', expanded);
+    if (!composer || !composer.isConnected || prefersReducedOlliTalkMotion()) return;
+    const toHeight = composer.getBoundingClientRect().height;
+    if (!Number.isFinite(fromHeight) || !Number.isFinite(toHeight) || Math.abs(toHeight - fromHeight) < 1) return;
+
+    composer.style.overflow = 'hidden';
+    const animation = composer.animate([
+      { height:`${fromHeight}px`, minHeight:'0px', maxHeight:`${fromHeight}px` },
+      { height:`${toHeight}px`, minHeight:'0px', maxHeight:`${toHeight}px` }
+    ], { duration:190, easing:'cubic-bezier(.2,.65,.2,1)' });
+    olliTalkComposerShapeAnimation = animation;
+    const finish = () => {
+      if (olliTalkComposerShapeAnimation !== animation) return;
+      olliTalkComposerShapeAnimation = null;
+      composer.style.removeProperty('overflow');
+      scheduleOlliTalkChatToComposer();
+    };
+    animation.addEventListener('finish', finish, { once:true });
+    animation.addEventListener('cancel', finish, { once:true });
+  }
+
+  function syncOlliTalkComposerShapeWithKeyboard(){
+    const screen = getScreen();
+    if (!screen || !isOlliTalkBetaVisible() || screen.classList.contains('kcfVoiceCaptureMode')) return;
+    const viewportHeight = getOlliTalkKeyboardViewportHeight();
+    if (isOlliTalkComposerActive()) {
+      olliTalkKeyboardOpenedViewportHeight = Math.min(
+        olliTalkKeyboardOpenedViewportHeight || viewportHeight, viewportHeight
+      );
+      if (olliTalkComposerExpandPending) {
+        // Begin the one-to-two-row morph after about 15% of the keyboard rise.
+        const expectedTravel = Math.max(240, Math.min(400, olliTalkKeyboardClosedViewportHeight * .43));
+        if (olliTalkKeyboardClosedViewportHeight - viewportHeight >= expectedTravel * .15) {
+          olliTalkComposerExpandPending = false;
+          setOlliTalkComposerExpanded(true);
+        }
+      }
+    } else if (olliTalkComposerCollapsePending) {
+      const keyboardTravel = Math.max(0,
+        olliTalkKeyboardClosedViewportHeight - olliTalkKeyboardOpenedViewportHeight);
+      // Keep two rows for the first half of the descent, then shrink in motion.
+      if (keyboardTravel > 40 &&
+          viewportHeight - olliTalkKeyboardOpenedViewportHeight >= keyboardTravel * .5) {
+        olliTalkComposerCollapsePending = false;
+        setOlliTalkComposerExpanded(false);
+      }
+    }
+  }
 
   function beginOlliTalkKeyboardMotion(){
     const screen = getScreen();
@@ -152,12 +220,17 @@
     olliTalkKeyboardMotionTimer = setTimeout(() => {
       olliTalkKeyboardMotionTimer = null;
       screen.classList.remove('olliTalkKeyboardMotion');
-      // Keep the two-row composer intact as the keyboard moves down; collapse
-      // only after the visualViewport has stopped resizing.
+      // Fallback for devices that do not emit intermediate visualViewport frames.
+      if (olliTalkComposerExpandPending && isOlliTalkComposerActive()) {
+        const openingFrame = captureOlliTalkKeyboardVisualFrame();
+        olliTalkComposerExpandPending = false;
+        setOlliTalkComposerExpanded(true);
+        preserveOlliTalkKeyboardVisualFrame(openingFrame);
+      }
       if (olliTalkComposerCollapsePending && !isOlliTalkComposerActive()) {
         const closingFrame = captureOlliTalkKeyboardVisualFrame();
         olliTalkComposerCollapsePending = false;
-        screen.classList.remove('olliTalkKeyboardOpen');
+        setOlliTalkComposerExpanded(false);
         syncOlliTalkChatToComposer();
         if (olliTalkKeyboardClosingReturnLatest) restoreOlliTalkKeyboardCloseLatest();
         preserveOlliTalkKeyboardVisualFrame(closingFrame);
@@ -465,11 +538,12 @@
     const inputFocused = isOlliTalkComposerActive();
 
     syncOlliTalkComposerViewport();
+    syncOlliTalkComposerShapeWithKeyboard();
     if (inputFocused) {
       olliTalkComposerCollapsePending = false;
-      screen.classList.add('olliTalkKeyboardOpen');
+      if (!olliTalkComposerExpandPending) setOlliTalkComposerExpanded(true);
     } else if (!olliTalkComposerCollapsePending) {
-      screen.classList.remove('olliTalkKeyboardOpen');
+      setOlliTalkComposerExpanded(false);
     }
     if (!inputFocused) hideOlliTalkMentionMenu();
     syncOlliTalkChatToComposer();
@@ -8634,6 +8708,12 @@
     const input = document.getElementById('olliTalkBetaInput');
     if (input) input.blur();
     olliTalkComposerCollapsePending = false;
+    olliTalkComposerExpandPending = false;
+    olliTalkKeyboardClosedViewportHeight = 0;
+    olliTalkKeyboardOpenedViewportHeight = 0;
+    if (olliTalkComposerShapeAnimation) olliTalkComposerShapeAnimation.cancel();
+    olliTalkComposerShapeAnimation = null;
+    talkScreen?.querySelector('.olliTalkBetaComposer')?.style.removeProperty('overflow');
     talkScreen?.classList.remove('olliTalkKeyboardOpen');
     olliTalkKeyboardClosingReturnLatest = false;
     olliTalkKeyboardUserNavigatedChat = false;
@@ -9034,11 +9114,17 @@
         olliTalkKeyboardClosingReturnLatest = false;
         olliTalkKeyboardUserNavigatedChat = false;
         olliTalkKeyboardFollowLatest = !chatArea || isOlliTalkChatNearBottom(chatArea,120);
+        const alreadyExpanded = !!getScreen()?.classList.contains('olliTalkKeyboardOpen');
+        olliTalkComposerCollapsePending = false;
+        olliTalkComposerExpandPending = !alreadyExpanded;
+        olliTalkKeyboardClosedViewportHeight = getOlliTalkKeyboardViewportHeight();
+        olliTalkKeyboardOpenedViewportHeight = olliTalkKeyboardClosedViewportHeight;
         beginOlliTalkKeyboardMotion();
         // focus/resize/scroll 모두 같은 RAF 업데이트 경로를 사용합니다.
         scheduleOlliTalkKeyboardViewportUpdate({fullSync:true});
       }, true);
       input.addEventListener('blur', () => {
+        olliTalkComposerExpandPending = false;
         olliTalkComposerCollapsePending = !!getScreen()?.classList.contains('olliTalkKeyboardOpen');
         olliTalkKeyboardClosingReturnLatest = olliTalkKeyboardFollowLatest
           && !olliTalkKeyboardUserNavigatedChat && !olliTalkChatGestureActive;
