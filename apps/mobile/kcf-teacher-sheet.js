@@ -1,6 +1,4 @@
-/* Phone-only QuickNote Class-mode composer sheet.
- * Normal mode uses KcfNormalSheet and never enters this sheet.
- */
+/* Phone-only QuickNote single composer: dialogue / continuous record. */
 (function initKcfTeacherSheet(global) {
   'use strict';
 
@@ -12,7 +10,8 @@
     warningObserver:null,
     viewportFrame:0,
     caretRevealTimer:0,
-    suppressBlurSync:false
+    suppressBlurSync:false,
+    composerMode:'dialogue'
   };
 
   function baseInput(){ return document.getElementById('kcfInput'); }
@@ -151,6 +150,59 @@
     }, 420);
   }
 
+  function syncModeUi(){
+    var continuous = state.composerMode === 'continuous';
+    document.body.classList.toggle('kcfContinuousMode', continuous);
+    ['kcfModeSwitchBtn','kcfSheetModeSwitchBtn'].forEach(function(id){
+      var btn = document.getElementById(id);
+      if (!btn) return;
+      var label = btn.querySelector('.kcfComposerModeLabel');
+      if (label) label.textContent = continuous ? '연속기록' : '대화';
+      btn.setAttribute('aria-label', continuous ? '연속기록 모드 선택' : '대화 모드 선택');
+    });
+  }
+  function closeModeMenus(){
+    document.querySelectorAll('.kcfComposerModeMenu').forEach(function(menu){ menu.remove(); });
+    document.querySelectorAll('.kcfComposerModeBtn[aria-expanded]').forEach(function(btn){ btn.setAttribute('aria-expanded','false'); });
+  }
+  function setComposerMode(mode){
+    state.composerMode = mode === 'continuous' ? 'continuous' : 'dialogue';
+    closeModeMenus();
+    syncModeUi();
+  }
+  function attachModeSelector(btn){
+    if (!btn || btn.__kcfModeBound) return;
+    btn.__kcfModeBound = true;
+    btn.addEventListener('pointerdown',function(e){ if(e.cancelable)e.preventDefault(); });
+    btn.addEventListener('click',function(e){
+      e.preventDefault(); e.stopPropagation();
+      var wasOpen = btn.getAttribute('aria-expanded') === 'true';
+      closeModeMenus();
+      if(wasOpen)return;
+      var menu = document.createElement('div');
+      menu.className = 'kcfComposerModeMenu';
+      menu.setAttribute('role','menu');
+      [['dialogue','대화'],['continuous','연속기록']].forEach(function(mode){
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'kcfComposerModeOption';
+        item.textContent = mode[1];
+        item.setAttribute('role','menuitemradio');
+        item.setAttribute('aria-checked',String(mode[0] === state.composerMode));
+        item.addEventListener('pointerdown',function(event){ if(event.cancelable)event.preventDefault(); });
+        item.addEventListener('click',function(event){
+          event.preventDefault();event.stopPropagation();setComposerMode(mode[0]);
+        });
+        menu.appendChild(item);
+      });
+      btn.parentNode.appendChild(menu);
+      btn.setAttribute('aria-expanded','true');
+    });
+  }
+  document.addEventListener('click',function(e){
+    if(!e.target || !e.target.closest || !e.target.closest('.kcfComposerModeMenu, .kcfComposerModeBtn'))closeModeMenus();
+  });
+
   function ensureSheet(){
     var existing = overlay();
     if (existing) return existing;
@@ -165,7 +217,7 @@
       '    <textarea id="kcfTeacherSheetInput" class="kcfTeacherSheetInput" aria-label="Class 수업기록"></textarea>',
       '    <div id="kcfTeacherSheetWarning" class="kcfTeacherSheetWarning" aria-live="polite"></div>',
       '    <div class="kcfTeacherSheetBottom">',
-      '      <button id="kcfTeacherSheetModeBtn" class="kcfTeacherSheetModeBtn" type="button" aria-label="Class 모드 닫기" aria-pressed="true">C</button>',
+      '      <button id="kcfSheetModeSwitchBtn" class="kcfComposerModeBtn" type="button" aria-label="퀵노트 작성 모드 선택" aria-haspopup="true" aria-expanded="false"><span class="kcfComposerModeLabel">대화</span><span aria-hidden="true" class="kcfModeChevron">⌄</span></button>',
       '      <div id="kcfTeacherSheetRosterHost" class="kcfTeacherSheetRosterHost"></div>',
       '      <button id="kcfTeacherSheetSendBtn" class="kcfTeacherSheetSendBtn" type="button" aria-label="피드백 전송">',
       '        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>',
@@ -211,20 +263,7 @@
       input.addEventListener('focus', scheduleViewportSync);
     }
 
-    var modeBtn = document.getElementById('kcfTeacherSheetModeBtn');
-    if (modeBtn) {
-      modeBtn.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
-      modeBtn.addEventListener('click', async function(event){
-        event.preventDefault();
-        syncToBase();
-        if (typeof global.toggleKinderChatFeedbackTeacherMode === 'function') {
-          await global.toggleKinderChatFeedbackTeacherMode(event);
-        }
-        if (!modeEnabled() && global.KcfNormalSheet && typeof global.KcfNormalSheet.open === 'function') {
-          global.KcfNormalSheet.open(event);
-        }
-      });
-    }
+    attachModeSelector(document.getElementById('kcfSheetModeSwitchBtn'));
 
     var send = sendButton();
     if (send) {
@@ -246,7 +285,7 @@
             var sourceWarning = document.getElementById('kcfInputWarning');
             var hasWarning = !!(sourceWarning && sourceWarning.classList.contains('show') && String(sourceWarning.textContent || '').trim());
             var accepted = !!(source && !String(source.value || '').trim() && !hasWarning);
-            if (accepted) close({ sync:false });
+            if (accepted && state.composerMode !== 'continuous') close({ sync:false });
           }
         } finally {
           state.submitting = false;
@@ -333,6 +372,8 @@
 
   function init(){
     ensureSheet();
+    attachModeSelector(document.getElementById('kcfModeSwitchBtn'));
+    syncModeUi();
     if (global.visualViewport) {
       global.visualViewport.addEventListener('resize', scheduleViewportSync);
     }
@@ -344,7 +385,7 @@
   }
 
   function onSuccessfulSubmit(){
-    if (!state.open) return;
+    if (!state.open || state.composerMode === 'continuous') return;
     close({ sync:false });
   }
 
@@ -355,7 +396,9 @@
     syncFromBase:syncFromBase,
     syncToBase:syncToBase,
     focus:focusEditor,
-    onSuccessfulSubmit:onSuccessfulSubmit
+    onSuccessfulSubmit:onSuccessfulSubmit,
+    getMode:function(){ return state.composerMode; },
+    setMode:setComposerMode
   };
   global.KcfTeacherSheet = api;
 

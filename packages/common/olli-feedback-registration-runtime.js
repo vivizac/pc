@@ -495,6 +495,11 @@
     }
 
     if (!selectedStudent) {
+      if (window.KcfTeacherSheet && typeof window.KcfTeacherSheet.getMode === 'function' &&
+          window.KcfTeacherSheet.getMode() === 'continuous') {
+        setKinderChatFeedbackWarning('학생 이름을 먼저 적고 수업기록을 입력해 주세요.');
+        return;
+      }
       if (typeof addKinderChatMessage === 'function') {
         addKinderChatMessage('user', text);
         addKinderChatMessage('bot', '아직 이 문장은 실행 가능한 명령으로 연결되지 않았어요.');

@@ -932,7 +932,7 @@
 <textarea class="kcfInput" id="kcfInput" placeholder="수업기록을 적어주세요" readonly rows="1"></textarea>
 <button aria-label="퀵노트 입력 활성화" class="kcfInputActivateBtn" id="kcfInputActivateBtn" type="button"></button>
 </div>
-<button aria-label="Class 모드 열기" aria-pressed="false" class="kcfToolBtn kcfTeacherBtn" id="kcfTeacherBtn" onclick="toggleKinderChatFeedbackTeacherMode(event)" title="Class 모드 열기" type="button">Class</button>
+<button aria-label="퀵노트 작성 모드 선택" aria-haspopup="true" aria-expanded="false" class="kcfComposerModeBtn" id="kcfModeSwitchBtn" type="button"><span class="kcfComposerModeLabel">대화</span><span aria-hidden="true" class="kcfModeChevron">⌄</span></button>
 <button aria-label="음성 입력" class="kcfVoiceBtn" id="kcfVoiceBtn" title="음성 입력" type="button">
 <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
 <rect x="8" y="3" width="8" height="13" rx="4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></rect>
@@ -1163,7 +1163,7 @@
 </div>
 </div>
 <script src="olli-feedback-photo-storage-common.js"></script>
-<script src="kinder-feedback.js?v=20261008-keyboard-standard-1"></script>
+<script src="kinder-feedback.js?v=20261008-continuous-1"></script>
 <script src="olli-talk-material-orders-mobile.js?v=20261002-material-badge-until-ordered-1"></script>
 <script src="olli-talk-attachment-cache-phone.js?v=20260929-link-preview-local-first-1"></script>
 <script src="olli-talk-image-thumbnail-phone.js?v=20260924-client-thumbnail-1"></script>
@@ -1174,7 +1174,7 @@
 <script src="olli-talk-push.js?v=20261006-foreground-sound-1"></script>
 <script src="kcf-voice-text-normalizer.js?v=20260918-time-normalize-1"></script>
 <script src="kcf-voice-transcription.js?v=20261002-sheet-controls-1"></script>
-<script src="olli-feedback-registration-runtime.js?v=20261002-ai-error-boundary-1"></script>
+<script src="olli-feedback-registration-runtime.js?v=20261008-continuous-1"></script>
 <link rel="stylesheet" href="olli-record-search-controls.css?v=20260927-guide-names-2">
 <script src="olli-storage-core.js?v=20260924-consult-summary-local-first-1"></script>
 <link rel="stylesheet" href="olli-observation-responsive.css">
@@ -1183,12 +1183,10 @@
 <script src="olli-feedback-registration-phone-adapter.js?v=20261002-auto-save-actions-1"></script>
 <link rel="stylesheet" href="kcf-roster-filter.css">
 <link rel="stylesheet" href="kcf-feedback-status.css">
-<link rel="stylesheet" href="kcf-auto-mode.css?v=20261001-unified-sheet-1">
-<link rel="stylesheet" href="kcf-normal-sheet.css?v=20261008-keyboard-pace-1">
-<script src="kcf-normal-sheet.js?v=20261008-keyboard-pace-1"></script>
-<link rel="stylesheet" href="kcf-teacher-sheet.css?v=20261008-keyboard-pace-1">
-<script src="kcf-teacher-sheet.js?v=20261008-keyboard-pace-1"></script>
-<script src="kcf-auto-mode-runtime.js?v=20261001-class-active-c-1"></script>
+<link rel="stylesheet" href="kcf-auto-mode.css?v=20261008-continuous-1">
+<link rel="stylesheet" href="kcf-teacher-sheet.css?v=20261008-continuous-1">
+<script src="kcf-teacher-sheet.js?v=20261008-continuous-1"></script>
+<script src="kcf-auto-mode-runtime.js?v=20261008-continuous-1"></script>
 <link rel="stylesheet" href="olli-record-roster-sort.css?v=20261008-guide-color-1">
 
 <script src="olli-account-soft-delete-phone.js"></script>

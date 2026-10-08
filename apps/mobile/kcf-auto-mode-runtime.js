@@ -4,6 +4,7 @@
 
   var state = global.__kcfTeacherModeState || global.__kcfAutoModeState || {
     enabled: false,
+    manualEntry: false,
     loading: false,
     queue: [],
     index: -1,
@@ -28,6 +29,7 @@
   if (!['loading', 'ready', 'empty', 'error'].includes(state.rosterStatus)) state.rosterStatus = 'loading';
   state.rosterDateKey = clean(state.rosterDateKey);
   state.selectedStudentId = clean(state.selectedStudentId);
+  state.manualEntry = state.manualEntry === true;
   global.__kcfTeacherModeState = state;
   global.__kcfAutoModeState = state; // legacy alias for older sessions
   var rosterLoadPromise = null;
@@ -486,7 +488,7 @@
         global.__kcfSelectedStudentId = '';
       }
       renderAutoRoster();
-      if (!clean(state.selectedStudentId || global.__kcfSelectedStudentId)) {
+      if (!state.manualEntry && !clean(state.selectedStudentId || global.__kcfSelectedStudentId)) {
         selectFirstAvailableAutoStudent();
       }
       if (global.KcfTeacherSheet && typeof global.KcfTeacherSheet.syncFromBase === 'function') {
@@ -536,26 +538,8 @@
     }
   }
 
-  function getTeacherButton() {
-    return document.getElementById('kcfTeacherBtn') || document.getElementById('kcfAutoBtn');
-  }
-
   function getAutoRoster() {
     return document.getElementById('kcfAutoStudentRoster');
-  }
-
-  function preserveInputFocusOnAutoPointerDown(event) {
-    var input = document.getElementById('kcfInput');
-    if (!input || document.activeElement !== input) return;
-    if (event) event.preventDefault();
-  }
-
-  function bindAutoFocusPreservation() {
-    var btn = getTeacherButton();
-    if (btn && !btn.__kcfAutoFocusPreserveBound) {
-      btn.__kcfAutoFocusPreserveBound = true;
-      btn.addEventListener('pointerdown', preserveInputFocusOnAutoPointerDown);
-    }
   }
 
   function ensureAutoRoster() {
@@ -570,12 +554,7 @@
     var scroller = document.createElement('div');
     scroller.className = 'kcfAutoStudentRosterScroller';
     roster.appendChild(scroller);
-    var autoBtn = getTeacherButton();
-    if (autoBtn && autoBtn.parentNode === bottom) {
-      bottom.insertBefore(roster, autoBtn.nextSibling);
-    } else {
-      bottom.appendChild(roster);
-    }
+    bottom.appendChild(roster);
     return roster;
   }
 
@@ -728,6 +707,23 @@
     selectFirstAvailableAutoStudent();
   }
 
+  function deselectAutoStudent() {
+    if (state.editing) return;
+    saveCurrentAutoDraft();
+    state.manualEntry = true;
+    state.selectedStudentId = '';
+    global.__kcfSelectedStudentId = '';
+    var input = document.getElementById('kcfInput');
+    if (input) {
+      input.value = '';
+      input.placeholder = '학생 이름과 수업기록을 적어주세요';
+    }
+    renderAutoRoster();
+    if (global.KcfTeacherSheet && typeof global.KcfTeacherSheet.syncFromBase === 'function') {
+      global.KcfTeacherSheet.syncFromBase({ focus:true });
+    }
+  }
+
   function selectAutoStudent(item) {
     if (!item || state.editing) return;
     var input = document.getElementById('kcfInput');
@@ -735,7 +731,9 @@
     var keepInputFocus = document.activeElement === input;
     var nextId = clean(item.studentId);
     var currentId = clean(state.selectedStudentId || global.__kcfSelectedStudentId);
-    if (currentId && currentId !== nextId) saveCurrentAutoDraft();
+    if (nextId === currentId) { deselectAutoStudent(); return; }
+    if (currentId) saveCurrentAutoDraft();
+    state.manualEntry = false;
     state.selectedStudentId = nextId;
     global.__kcfSelectedStudentId = nextId;
     input.value = readAutoDraft(nextId);
@@ -793,18 +791,8 @@
   }
 
   function syncAutoButton() {
-    var btn = getTeacherButton();
     var screen = document.getElementById('kinderChatFeedbackScreen');
     var roster = ensureAutoRoster();
-    bindAutoFocusPreservation();
-    if (btn) {
-      btn.classList.toggle('active', state.enabled);
-      btn.classList.toggle('loading', state.loading);
-      btn.textContent = state.loading ? '···' : (state.enabled ? 'C' : 'Class');
-      btn.setAttribute('aria-pressed', state.enabled ? 'true' : 'false');
-      btn.setAttribute('aria-label', state.enabled ? 'Class 모드 닫기' : 'Class 모드 열기');
-      btn.title = state.enabled ? 'Class 모드 닫기' : 'Class 모드 열기';
-    }
     if (screen) {
       screen.classList.toggle('kcfTeacherRosterMode', state.enabled);
       screen.classList.toggle('kcfAutoRosterMode', state.enabled); // legacy CSS compatibility
@@ -812,7 +800,7 @@
     if (roster) roster.hidden = !state.enabled;
     var input = document.getElementById('kcfInput');
     if (input && !state.editing) {
-      input.placeholder = '수업기록을 적어주세요';
+      input.placeholder = state.manualEntry ? '학생 이름과 수업기록을 적어주세요' : '수업기록을 적어주세요';
     }
     if (state.enabled) renderAutoRoster();
   }
@@ -826,38 +814,30 @@
     if (typeof global.updateKinderChatFeedbackKeyboardOffset === 'function') global.updateKinderChatFeedbackKeyboardOffset();
   }
 
-  function disableTeacherRoster() {
-    saveCurrentAutoDraft();
-    if (global.KcfTeacherSheet && typeof global.KcfTeacherSheet.syncToBase === 'function') {
-      global.KcfTeacherSheet.syncToBase();
-    }
-    state.enabled = false;
-    state.index = -1;
-    state.selectedStudentId = '';
-    global.__kcfSelectedStudentId = '';
-    if (global.KcfTeacherSheet && typeof global.KcfTeacherSheet.close === 'function') {
-      global.KcfTeacherSheet.close({ sync:false });
-    }
-    syncAutoButton();
-  }
-
-  function activateTeacherRoster(teacherPrefill) {
-    if (state.rosterStatus !== 'ready' || !state.queue.length) return false;
+  function activateTeacherRoster(teacherPrefill, event) {
+    if (state.editing) return false;
     if (typeof global.clearKinderChatFeedbackManualSelection === 'function') {
       global.clearKinderChatFeedbackManualSelection();
     }
 
     state.enabled = true;
+    state.manualEntry = false;
     state.selectedStudentId = '';
     global.__kcfSelectedStudentId = '';
     syncAutoButton();
-
+    // Focus immediately in the initiating touch gesture; load schedule asynchronously.
     if (global.KcfTeacherSheet && typeof global.KcfTeacherSheet.open === 'function') {
-      global.KcfTeacherSheet.open();
+      global.KcfTeacherSheet.open(event);
     }
-
     renderAutoRoster();
-    selectFirstAvailableAutoStudent();
+    if (state.rosterStatus === 'ready' && state.queue.length) {
+      selectFirstAvailableAutoStudent();
+    } else {
+      state.manualEntry = true;
+      var inlineInput = document.getElementById('kcfInput');
+      if (inlineInput) inlineInput.placeholder = '학생 이름과 수업기록을 적어주세요';
+      preloadTodayScheduleQueue({ force:state.rosterStatus === 'error' });
+    }
 
     var input = document.getElementById('kcfInput');
     if (input && teacherPrefill.trim()) {
@@ -873,53 +853,6 @@
     }
     return true;
   }
-
-  global.toggleKinderChatFeedbackTeacherMode = async function(event) {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    if (state.editing) return;
-    if (state.enabled) {
-      disableTeacherRoster();
-      return;
-    }
-    if (state.loading) return;
-
-    var inputBeforeTeacher = document.getElementById('kcfInput');
-    var teacherPrefill = inputBeforeTeacher ? String(inputBeforeTeacher.value || '') : '';
-    var today = todayKey();
-    var cacheCurrent = state.rosterDateKey === today;
-
-    if (cacheCurrent && state.rosterStatus === 'ready' && state.queue.length) {
-      activateTeacherRoster(teacherPrefill);
-      return;
-    }
-    if (cacheCurrent && state.rosterStatus === 'empty') {
-      showTeacherRosterEmptyNotice();
-      return;
-    }
-
-    state.loading = true;
-    syncAutoButton();
-    try {
-      var queue = await preloadTodayScheduleQueue({
-        force: !cacheCurrent || state.rosterStatus === 'error'
-      });
-      if (!Array.isArray(queue)) {
-        showTeacherRosterErrorNotice();
-        return;
-      }
-      if (state.rosterStatus === 'empty' || !state.queue.length) {
-        showTeacherRosterEmptyNotice();
-        return;
-      }
-      activateTeacherRoster(teacherPrefill);
-    } finally {
-      state.loading = false;
-      syncAutoButton();
-    }
-  };
 
   function filterFeedbackItems(list) {
     return Array.isArray(list)
@@ -1302,7 +1235,7 @@
   }
 
   function disableForManualSelection() {
-    if (state.enabled) disableTeacherRoster();
+    if (state.enabled) deselectAutoStudent();
   }
 
   function getSelection() {
@@ -1337,9 +1270,6 @@
 
     if (canRestoreTeacher) {
       renderAutoRoster();
-      if (global.KcfTeacherSheet && typeof global.KcfTeacherSheet.open === 'function') {
-        global.KcfTeacherSheet.open();
-      }
     } else if (state.enabled) {
       state.enabled = false;
       state.selectedStudentId = '';
@@ -1379,11 +1309,14 @@
     onFeedbackRequestStarted: onFeedbackRequestStarted,
     onFeedbackRequestResult: onFeedbackRequestResult,
     onPageOpened: onPageOpened,
+    activateForComposer: function(event){
+      if (!state.enabled) return activateTeacherRoster('', event);
+      return true;
+    },
     preloadRoster: preloadTodayScheduleQueue,
     getRosterStatus: function() { return state.rosterStatus; }
   };
   global.KcfAutoMode = global.KcfTeacherMode; // legacy alias
-  global.toggleKinderChatFeedbackAutoMode = global.toggleKinderChatFeedbackTeacherMode; // legacy alias
 
   bindAutoDraftPersistence();
   bindTeacherRosterRefreshEvents();

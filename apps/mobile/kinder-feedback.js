@@ -472,21 +472,12 @@ function autoResizeKinderChatFeedbackInput(input) {
   input.style.overflowY = 'hidden';
 }
 window.autoResizeKinderChatFeedbackInput = autoResizeKinderChatFeedbackInput;
-function isKinderChatFeedbackClassModeEnabled() {
-  const mode = getKinderChatFeedbackTeacherMode();
-  try { return !!(mode && typeof mode.isEnabled === 'function' && mode.isEnabled()); }
-  catch(e) { return false; }
-}
-function getKinderChatFeedbackComposerSheetForMode() {
-  return isKinderChatFeedbackClassModeEnabled()
-    ? window.KcfTeacherSheet
-    : window.KcfNormalSheet;
-}
 function openKinderChatFeedbackComposerSheet(event) {
-  const sheet = getKinderChatFeedbackComposerSheetForMode();
+  const mode = getKinderChatFeedbackTeacherMode();
+  if (mode && typeof mode.activateForComposer === 'function') mode.activateForComposer(event);
+  const sheet = window.KcfTeacherSheet;
   if (!sheet || typeof sheet.open !== 'function') return false;
-  if (typeof sheet.isOpen === 'function' && sheet.isOpen()) return true;
-  return sheet.open(event) !== false;
+  return typeof sheet.isOpen === 'function' && sheet.isOpen() ? true : sheet.open(event) !== false;
 }
 function focusKinderChatFeedbackInput() {
   openKinderChatFeedbackComposerSheet();

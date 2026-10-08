@@ -1,54 +1,10 @@
-/* Phone-only KCF Teacher mode and submitted-record edit UI. */
-#kinderChatFeedbackScreen .kcfTeacherBtn {
-  display:inline-flex !important;
-  visibility:visible !important;
-  opacity:1 !important;
-  flex:0 0 auto !important;
-  width:auto !important;
-  min-width:52px !important;
-  height:33px !important;
-  padding:0 10px !important;
-  border:none !important;
-  border-radius:999px !important;
-  background:#f1f1f1 !important;
-  color:rgba(17,17,17,.50) !important;
-  font-size:calc(11px * var(--olli-text-scale)) !important;
-  font-weight:650 !important;
-  line-height:1 !important;
-  letter-spacing:.01em;
-  white-space:nowrap;
-  align-items:center !important;
-  justify-content:center !important;
-  position:relative;
-  z-index:4;
-  transition:background .16s ease,color .16s ease,width .16s ease,min-width .16s ease,padding .16s ease;
-}
-#kinderChatFeedbackScreen .kcfTeacherBtn.active {
-  width:33px !important;
-  min-width:33px !important;
-  max-width:33px !important;
-  height:33px !important;
-  padding:0 !important;
-  border-radius:50% !important;
-  background:#111 !important;
-  color:#fff !important;
-}
-#kinderChatFeedbackScreen .kcfTeacherBtn.loading {
-  width:33px !important;
-  min-width:33px !important;
-  padding:0 !important;
-  color:#777 !important;
-}
-#kinderChatFeedbackScreen .kcfTeacherBtn:disabled {
-  opacity:.42 !important;
-}
-
+/* Shared QuickNote Class roster (conversation and continuous record). */
 /* Teacher 학생 선택 줄: T와 전송은 고정하고 이름 캡슐만 그 아래 레이어에서 가로 스크롤한다. */
 #kinderChatFeedbackScreen .kcfComposerBottom {
   position:relative;
   isolation:isolate;
 }
-#kinderChatFeedbackScreen .kcfTeacherBtn,
+#kinderChatFeedbackScreen .kcfComposerModeBtn,
 #kinderChatFeedbackScreen .kcfSendBtn {
   position:relative;
   z-index:4;
