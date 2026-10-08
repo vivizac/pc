@@ -99,13 +99,28 @@ test('normal send uses the existing normal feedback submit source without Teache
   assert.match(click, /var accepted = !!\(source && !String\(source\.value \|\| ''\)\.trim\(\) && !hasWarning\)/);
 });
 
-test('normal and Class sheets have independent viewport and page-lock state', () => {
-  assert.match(normalJs, /--kcf-normal-vv-top/);
+test('normal and Class sheets keep a fixed top origin while resizing only to visualViewport height', () => {
+  assert.match(normalJs, /--kcf-normal-vv-height/);
+  assert.match(teacherJs, /--kcf-teacher-vv-height/);
+  assert.doesNotMatch(normalJs, /visualViewport\.addEventListener\('scroll'/);
+  assert.doesNotMatch(teacherJs, /visualViewport\.addEventListener\('scroll'/);
+  assert.doesNotMatch(normalJs, /--kcf-normal-vv-top|--kcf-normal-vv-left/);
+  assert.doesNotMatch(teacherJs, /--kcf-teacher-vv-top|--kcf-teacher-vv-left/);
+  assert.match(normalCss, /\.kcfNormalSheetOverlay \{[\s\S]*?left:0;[\s\S]*?top:0;/);
+  assert.match(teacherCss, /\.kcfTeacherSheetOverlay \{[\s\S]*?left:0;[\s\S]*?top:0;/);
   assert.match(normalCss, /body\.kcfNormalSheetOpen/);
-  assert.match(teacherJs, /--kcf-teacher-vv-top/);
   assert.match(teacherCss, /body\.kcfTeacherSheetOpen/);
-  assert.doesNotMatch(normalJs, /kcfTeacherSheetOpen/);
-  assert.doesNotMatch(teacherJs, /kcfNormalSheetOpen/);
+});
+
+test('QuickNote sheets do not animate a transformed container while focusing the textarea', () => {
+  assert.doesNotMatch(normalCss, /translateY\(100%\)|transition:transform/);
+  assert.doesNotMatch(teacherCss, /translateY\(100%\)|transition:transform/);
+  assert.doesNotMatch(normalCss, /\.kcfNormalSheetOverlay\.show \.kcfNormalSheet \{[\s\S]*?transform:/);
+  assert.doesNotMatch(teacherCss, /\.kcfTeacherSheetOverlay\.show \.kcfTeacherSheet \{[\s\S]*?transform:/);
+  assert.match(html, /kcf-normal-sheet\.css\?v=20261008-caret-stable-1/);
+  assert.match(html, /kcf-normal-sheet\.js\?v=20261008-caret-stable-1/);
+  assert.match(html, /kcf-teacher-sheet\.css\?v=20261008-caret-stable-1/);
+  assert.match(html, /kcf-teacher-sheet\.js\?v=20261008-caret-stable-1/);
 });
 
 test('Teacher successful submit still auto-advances Class roster before closing Class sheet', () => {

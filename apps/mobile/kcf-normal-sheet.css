@@ -18,8 +18,8 @@ body.kcfNormalSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
 .kcfNormalSheetOverlay {
   position:fixed;
   -webkit-tap-highlight-color:transparent;
-  left:var(--kcf-normal-vv-left, 0px);
-  top:var(--kcf-normal-vv-top, 0px);
+  left:0;
+  top:0;
   width:var(--kcf-normal-vv-width, 100vw);
   height:var(--kcf-normal-vv-height, 100vh);
   z-index:9890;
@@ -47,12 +47,6 @@ body.kcfNormalSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   background:#fff;
   border-radius:0;
   overflow:hidden;
-  transform:translateY(100%);
-  transition:transform .24s cubic-bezier(.22,.61,.36,1);
-}
-
-.kcfNormalSheetOverlay.show .kcfNormalSheet {
-  transform:translateY(0);
 }
 
 .kcfNormalSheetBody {

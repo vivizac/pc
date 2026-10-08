@@ -58,8 +58,8 @@ test('shared keyboard activation script loads before every consumer',()=>{
     'kinder-feedback.js?v=20261008-keyboard-standard-1',
     'olli-talk-beta.js?v=20261008-native-motion-1',
     'olli-record-search-controls.js?v=20261008-keyboard-standard-1',
-    'kcf-normal-sheet.js?v=20261008-keyboard-standard-1',
-    'kcf-teacher-sheet.js?v=20261008-keyboard-standard-1'
+    'kcf-normal-sheet.js?v=20261008-caret-stable-1',
+    'kcf-teacher-sheet.js?v=20261008-caret-stable-1'
   ]){
     const index=html.indexOf(token);
     assert.ok(index>coreIndex, token+' must load after keyboard core');

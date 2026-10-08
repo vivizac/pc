@@ -33,10 +33,6 @@
     var viewport = global.visualViewport;
     var width = viewport ? Number(viewport.width || global.innerWidth || 0) : Math.max(global.innerWidth || 0, document.documentElement.clientWidth || 0);
     var height = viewport ? Number(viewport.height || global.innerHeight || 0) : Math.max(global.innerHeight || 0, document.documentElement.clientHeight || 0);
-    var left = viewport ? Number(viewport.offsetLeft || 0) : 0;
-    var top = viewport ? Number(viewport.offsetTop || 0) : 0;
-    root.style.setProperty('--kcf-teacher-vv-left', Math.round(left) + 'px');
-    root.style.setProperty('--kcf-teacher-vv-top', Math.round(top) + 'px');
     root.style.setProperty('--kcf-teacher-vv-width', Math.max(1, Math.round(width)) + 'px');
     root.style.setProperty('--kcf-teacher-vv-height', Math.max(1, Math.round(height)) + 'px');
   }
@@ -308,7 +304,6 @@
     ensureSheet();
     if (global.visualViewport) {
       global.visualViewport.addEventListener('resize', scheduleViewportSync);
-      global.visualViewport.addEventListener('scroll', scheduleViewportSync);
     }
     global.addEventListener('resize', scheduleViewportSync);
     if (!global.__kcfTeacherSheetTouchLockBound) {
