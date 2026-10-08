@@ -200,7 +200,7 @@ function syncKinderChatFeedbackManualSelectionUi(){
     ? teacherMode.getSelection()
     : null;
   if (autoSelection?.studentId) return;
-  input.placeholder = selected ? `${selected.studentName} 수업기록을 적어주세요` : '수업기록을 적어주세요';
+  input.placeholder = '수업 기록을 적어주세요';
 }
 function setKinderChatFeedbackManualSelection(student){
   kcfManualSelectedStudentId = String(student?.id || '').trim();

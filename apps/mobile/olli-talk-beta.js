@@ -142,6 +142,7 @@
   const OLLI_TALK_COMPOSER_MESSAGE_GAP = 10;
   const OLLI_TALK_KEYBOARD_MOTION_SETTLE_MS = 320;
   let olliTalkKeyboardMotionTimer = null;
+  let olliTalkComposerCollapsePending = false;
 
   function beginOlliTalkKeyboardMotion(){
     const screen = getScreen();
@@ -151,8 +152,17 @@
     olliTalkKeyboardMotionTimer = setTimeout(() => {
       olliTalkKeyboardMotionTimer = null;
       screen.classList.remove('olliTalkKeyboardMotion');
-      // One final bottom reconciliation after iOS visualViewport finishes closing.
-      if (olliTalkKeyboardClosingReturnLatest) {
+      // Keep the two-row composer intact as the keyboard moves down; collapse
+      // only after the visualViewport has stopped resizing.
+      if (olliTalkComposerCollapsePending && !isOlliTalkComposerActive()) {
+        const closingFrame = captureOlliTalkKeyboardVisualFrame();
+        olliTalkComposerCollapsePending = false;
+        screen.classList.remove('olliTalkKeyboardOpen');
+        syncOlliTalkChatToComposer();
+        if (olliTalkKeyboardClosingReturnLatest) restoreOlliTalkKeyboardCloseLatest();
+        preserveOlliTalkKeyboardVisualFrame(closingFrame);
+        olliTalkKeyboardClosingReturnLatest = false;
+      } else if (olliTalkKeyboardClosingReturnLatest) {
         const closingFrame = captureOlliTalkKeyboardVisualFrame();
         restoreOlliTalkKeyboardCloseLatest();
         preserveOlliTalkKeyboardVisualFrame(closingFrame);
@@ -170,7 +180,7 @@
   const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 32;
   // iOS keyboard opening: lag the same composer + message pair just slightly.
   // Closing keeps the original response speed.
-  const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 44;
+  const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 41;
   let olliTalkKeyboardVisualRaf = 0;
   let olliTalkKeyboardViewportRaf = 0;
   let olliTalkKeyboardVisualLastTs = 0;
@@ -455,7 +465,12 @@
     const inputFocused = isOlliTalkComposerActive();
 
     syncOlliTalkComposerViewport();
-    screen.classList.toggle('olliTalkKeyboardOpen', inputFocused);
+    if (inputFocused) {
+      olliTalkComposerCollapsePending = false;
+      screen.classList.add('olliTalkKeyboardOpen');
+    } else if (!olliTalkComposerCollapsePending) {
+      screen.classList.remove('olliTalkKeyboardOpen');
+    }
     if (!inputFocused) hideOlliTalkMentionMenu();
     syncOlliTalkChatToComposer();
     updateOlliTalkBetaComposerState();
@@ -8618,6 +8633,8 @@
 
     const input = document.getElementById('olliTalkBetaInput');
     if (input) input.blur();
+    olliTalkComposerCollapsePending = false;
+    talkScreen?.classList.remove('olliTalkKeyboardOpen');
     olliTalkKeyboardClosingReturnLatest = false;
     olliTalkKeyboardUserNavigatedChat = false;
     if (olliTalkKeyboardMotionTimer) clearTimeout(olliTalkKeyboardMotionTimer);
@@ -9022,6 +9039,7 @@
         scheduleOlliTalkKeyboardViewportUpdate({fullSync:true});
       }, true);
       input.addEventListener('blur', () => {
+        olliTalkComposerCollapsePending = !!getScreen()?.classList.contains('olliTalkKeyboardOpen');
         olliTalkKeyboardClosingReturnLatest = olliTalkKeyboardFollowLatest
           && !olliTalkKeyboardUserNavigatedChat && !olliTalkChatGestureActive;
         olliTalkKeyboardFollowLatest = false;

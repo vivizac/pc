@@ -732,7 +732,7 @@
     var input = document.getElementById('kcfInput');
     if (input) {
       input.value = '';
-      input.placeholder = '학생 이름과 수업기록을 적어주세요';
+      input.placeholder = '수업 기록을 적어주세요';
     }
     renderAutoRoster();
     if (global.KcfTeacherSheet && typeof global.KcfTeacherSheet.syncFromBase === 'function') {
@@ -753,7 +753,7 @@
     state.selectedStudentId = nextId;
     global.__kcfSelectedStudentId = nextId;
     input.value = readAutoDraft(nextId);
-    input.placeholder = '수업기록을 적어주세요';
+    input.placeholder = '수업 기록을 적어주세요';
     if (typeof global.clearKinderChatFeedbackPhoto === 'function') global.clearKinderChatFeedbackPhoto();
     if (typeof global.clearKinderChatFeedbackKeyword === 'function') global.clearKinderChatFeedbackKeyword();
     if (typeof global.setKinderChatFeedbackWarning === 'function') global.setKinderChatFeedbackWarning('');
@@ -774,11 +774,8 @@
     var hasAssignedStudents = state.queue.length > 0;
     // Only the confirmed empty schedule receives the guide. Loading, errors, and
     // an already-completed class must never be reported as "no students".
-    var noStudents = state.enabled && state.rosterStatus === 'empty' && !hasAssignedStudents;
     var sheetRoster = document.getElementById('kcfTeacherSheetRosterHost');
-    var sheetGuide = document.getElementById('kcfTeacherSheetEmptyRosterGuide');
     if (sheetRoster) sheetRoster.hidden = !state.enabled || !hasAssignedStudents;
-    if (sheetGuide) sheetGuide.hidden = !noStudents;
     roster.hidden = !state.enabled || !hasAssignedStudents;
 
     var remaining = state.queue
@@ -826,7 +823,7 @@
     if (roster) roster.hidden = !state.enabled || !state.queue.length;
     var input = document.getElementById('kcfInput');
     if (input && !state.editing) {
-      input.placeholder = state.manualEntry ? '학생 이름과 수업기록을 적어주세요' : '수업기록을 적어주세요';
+      input.placeholder = state.manualEntry ? '수업 기록을 적어주세요' : '수업 기록을 적어주세요';
     }
     if (state.enabled) renderAutoRoster();
   }
@@ -861,7 +858,7 @@
     } else {
       state.manualEntry = true;
       var inlineInput = document.getElementById('kcfInput');
-      if (inlineInput) inlineInput.placeholder = '학생 이름과 수업기록을 적어주세요';
+      if (inlineInput) inlineInput.placeholder = '수업 기록을 적어주세요';
       preloadTodayScheduleQueue({ force:state.rosterStatus === 'error' });
     }
 

@@ -840,9 +840,12 @@
   background:transparent;
   color:#111;
   font-family:inherit;
-  font-size:max(16px, calc(16px * var(--olli-text-scale))) !important;
+  font-size:calc(14.5px * var(--olli-text-scale, 1)) !important;
   -webkit-text-size-adjust:100%;
   line-height:1.35;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
   padding:5px 2px 3px;
   -webkit-tap-highlight-color:transparent;
   -webkit-appearance:none;
@@ -858,7 +861,7 @@
   min-height:34px;
   max-height:34px;
 }
-#kinderChatFeedbackScreen .kcfInput::placeholder { color:#b8b8b8; }
+#kinderChatFeedbackScreen .kcfInput::placeholder { color:#b8b8b8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 #kinderChatFeedbackScreen .kcfInputActivateBtn {
   position:absolute;
   inset:0;
@@ -937,7 +940,7 @@
   touch-action:manipulation;
 }
 
-#kinderChatFeedbackScreen .kcfAttachBtn {
+:is(#kinderChatFeedbackScreen, #kcfTeacherSheetOverlay) .kcfAttachBtn {
   width:33px;
   height:33px;
   min-width:33px;
@@ -955,7 +958,7 @@
   flex:0 0 33px;
   -webkit-tap-highlight-color:transparent;
 }
-#kinderChatFeedbackScreen .kcfAttachBtn svg {
+:is(#kinderChatFeedbackScreen, #kcfTeacherSheetOverlay) .kcfAttachBtn svg {
   width:24px;
   height:24px;
   stroke:currentColor;
