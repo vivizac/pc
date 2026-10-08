@@ -47,7 +47,7 @@ test('closing never overrides manual gesture, another focused editor or hidden p
 test('blur remembers whether following latest before it clears the active follow flag',()=>{
   const handler=snippet("      input.addEventListener('blur', () => {","      input.addEventListener('click', renderOlliTalkMentionMenu);");
   function simulate(latest,manual,gesture){
-    const listeners={};const input={addEventListener:(type,fn)=>listeners[type]=fn};
+    const input={addEventListener:(type,fn)=>{input[type]=fn;}};
     const get=new Function('input','latest','manual','gesture', [
       'let olliTalkKeyboardFollowLatest=latest;',
       'let olliTalkKeyboardClosingReturnLatest=false;',
@@ -57,7 +57,7 @@ test('blur remembers whether following latest before it clears the active follow
       'const beginOlliTalkKeyboardMotion=()=>{motion++;};',
       'const scheduleOlliTalkKeyboardViewportUpdate=(options)=>{if(options.fullSync)updates++;};',
       handler,
-      'listeners.blur();',
+      'input.blur();',
       'return {pending:olliTalkKeyboardClosingReturnLatest,follow:olliTalkKeyboardFollowLatest,motion,updates};'
     ].join('\n'));
     return get(input,latest,manual,gesture);
