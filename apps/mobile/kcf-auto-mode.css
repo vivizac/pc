@@ -97,7 +97,7 @@
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfComposerBottom {
   display:grid;
-  grid-template-columns:33px minmax(0,1fr) 33px;
+  grid-template-columns:90px minmax(0,1fr) 33px;
   grid-template-rows:minmax(34px, auto) 38px;
   align-items:center;
   column-gap:8px;
