@@ -1013,6 +1013,8 @@ function serializeKinderChatFeedbackLiveItem(item){
     studentName:String(item.studentName || ''),
     studentDivision:item.studentDivision === 'kinder' ? 'kinder' : 'elementary',
     studentId:String(item.studentId || ''),
+    trialSessionId:String(item.trialSessionId || ''),
+    rosterSelectionId:String(item.rosterSelectionId || ''),
     feedbackType:String(item.feedbackType || 'class'),
     label:String(item.label || '피드백'),
     sourcePage:String(item.sourcePage || 'kinderChatFeedback'),
@@ -1750,7 +1752,7 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
       if (successTeacherMode && typeof successTeacherMode.onFeedbackRequestResult === 'function') {
         successTeacherMode.onFeedbackRequestResult({
           id:item.id,
-          studentId:item.studentId,
+          studentId:item.studentId || item.rosterSelectionId,
           studentName:item.studentName,
           studentDivision:item.studentDivision,
           status:item.suspiciousSegments.length ? 'review' : 'done'
