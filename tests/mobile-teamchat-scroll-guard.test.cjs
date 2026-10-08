@@ -12,7 +12,7 @@ const html=fs.readFileSync(path.join(root,'apps/mobile/index.html'),'utf8');
 
 test('Team Chat blocks vertical composer drags from escaping into iOS page scrolling',()=>{
   const start=js.indexOf("if (input) {",js.indexOf("function init(){"));
-  const end=js.indexOf("\n    if (mentionTriggerButton)",start);
+  const end=js.indexOf("\n    bindOlliTalkComposerActivationControl(composerActivateButton, 'input');",start);
   assert.ok(start>=0 && end>start);
   const body=js.slice(start,end);
 
