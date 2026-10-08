@@ -46,5 +46,5 @@ test('the source still uses a single FLIP controller without duplicating scrolli
   assert.match(source,/olliTalkMessagesVisualOffsetY \+= \(0 - olliTalkMessagesVisualOffsetY\) \* follow;/);
   assert.match(source,/if \(prefersReducedOlliTalkMotion\(\)\) \{[\s\S]*?olliTalkKeyboardVisualLastTs = 0;/);
   assert.match(source,/\/\/ The latest-message anchor alone owns scrollTop\./);
-  assert.match(html,/olli-talk-beta\.js\?v=20261008-keyboard-follow-44ms-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261008-keyboard-close-return-1/);
 });
