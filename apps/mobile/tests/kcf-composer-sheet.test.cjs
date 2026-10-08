@@ -10,7 +10,7 @@ const css = read('kcf-teacher-sheet.css');
 const reg = read('../../packages/common/olli-feedback-registration-runtime.js');
 
 test('QuickNote uses a single Class sheet and fully removes normal-mode assets', () => {
-  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261008-roster-above-controls-1'));
+  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261008-original-editor-1'));
   assert.ok(!html.includes('kcf-normal-sheet'));
   assert.ok(!fs.existsSync('kcf-normal-sheet.js'));
   assert.ok(!fs.existsSync('kcf-normal-sheet.css'));

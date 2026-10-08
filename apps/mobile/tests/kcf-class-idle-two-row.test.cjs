@@ -9,11 +9,12 @@ const runtime = read('kcf-auto-mode-runtime.js');
 const base = read('kinder-feedback.js');
 const html = read('index.html');
 
-test('QuickNote inline Class composer retains the two-row structure', () => {
-  assert.match(css, /kcfTeacherRosterMode \.kcfComposer \{[\s\S]*?height:auto;[\s\S]*?max-height:none;/);
-  assert.match(css, /kcfTeacherRosterMode \.kcfComposerBottom \{[\s\S]*?display:grid;[\s\S]*?grid-template-columns:33px minmax\(0,1fr\) 88px 33px 33px;/);
-  assert.match(css, /kcfTeacherRosterMode \.kcfAutoStudentRoster \{[\s\S]*?grid-column:1 \/ -1;[\s\S]*?grid-row:2;/);
-  assert.match(css, /grid-template-rows:minmax\(34px, auto\) auto 38px;/);
+test('QuickNote idle keeps the ORIGINAL one-line 47px composer, with roster outside', () => {
+  assert.doesNotMatch(css, /kcfTeacherRosterMode \.kcfComposer \{/);
+  assert.doesNotMatch(css, /kcfTeacherRosterMode \.kcfComposerBottom \{/);
+  assert.doesNotMatch(css, /grid-template-rows:minmax\(34px, auto\) auto 38px;/);
+  assert.match(runtime, /wrap\.insertBefore\(roster, composer\)/);
+  assert.match(css, /\.kcfAutoStudentRoster \{[\s\S]*?height:36px;[\s\S]*?margin:0 0 6px;/);
 });
 
 test('closing the sheet still blurs the inline input', () => {
@@ -25,12 +26,15 @@ test('successful feedback still advances to the next student', () => {
   assert.ok(sheet.includes("state.composerMode === 'continuous') return"));
 });
 
-test('mode dropdown replaces the Class C button in the second-row slot', () => {
+test('mode dropdown takes only the former Class button position', () => {
   assert.ok(html.includes('id="kcfModeSwitchBtn"'));
   assert.ok(sheet.includes("kcfTeacherSheetModeHost"));
   assert.ok(sheet.includes("mountSheetControls()"));
   assert.ok(!sheet.includes('id="kcfSheetModeSwitchBtn"'));
-  assert.ok(css.includes('kcfTeacherRosterMode .kcfComposerModeBtn'));
+  assert.ok(!css.includes('kcfTeacherRosterMode .kcfComposerModeBtn'));
+  assert.ok(!sheet.includes('id="kcfTeacherSheetModeBtn"'));
+  assert.ok(sheet.includes('id="kcfTeacherSheetCloseBtn"'));
+  assert.match(sheetCss, /\.kcfTeacherSheetBottom \{[\s\S]*?display:flex;/);
   assert.ok(sheetCss.includes('.kcfComposerModeBtn'));
   assert.ok(!sheet.includes('kcfTeacherSheetModeBtn'));
 });
