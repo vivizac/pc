@@ -55,7 +55,7 @@ test('Team Chat keeps the chat scroller independent and reserves composer space 
 
 test('Team Chat keeps textarea free of activation hacks and delegates first touch to a button',()=>{
   const start=js.indexOf("if (input) {",js.indexOf("function init(){"));
-  const end=js.indexOf("\n    if (composerActivateButton)",start);
+  const end=js.indexOf("\n    bindOlliTalkComposerActivationControl(composerActivateButton, 'input');",start);
   assert.ok(start>=0 && end>start);
   const body=js.slice(start,end);
   assert.doesNotMatch(body,/input\.addEventListener\('pointerdown'/);
@@ -67,7 +67,7 @@ test('Team Chat keeps textarea free of activation hacks and delegates first touc
   assert.match(js,/bindOlliTalkComposerActivationControl\(composerActivateButton, 'input'\)/);
   assert.match(js,/bindOlliTalkComposerActivationControl\(mentionTriggerButton, 'mention'\)/);
   assert.doesNotMatch(js,/composerActivateButton\.addEventListener\('pointerdown'/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261008-composer-pointer-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261008-scroll-authority-1/);
   assert.match(html,/olli-talk-beta\.css\?v=20261008-flip-motion-1/);
 });
 
@@ -77,14 +77,14 @@ test('Team Chat keyboard focus does not duplicate chat anchoring across focus an
   assert.ok(focusStart>=0 && focusEnd>focusStart);
   const focusBody=js.slice(focusStart,focusEnd);
   assert.match(focusBody,/isOlliTalkChatNearBottom\(chatArea,120\)/);
-  assert.doesNotMatch(focusBody,/scheduleOlliTalkLatestMessageAnchor/);
+  assert.doesNotMatch(focusBody,/scheduleOlliTalkKeyboardViewportUpdate/);
 
   const viewportStart=js.indexOf('function bindViewport(){');
   const viewportEnd=js.indexOf('\n  const OLLI_TALK_INPUT_PLACEHOLDER',viewportStart);
   assert.ok(viewportStart>=0 && viewportEnd>viewportStart);
   const viewportBody=js.slice(viewportStart,viewportEnd);
   assert.match(viewportBody,/visualViewport\.addEventListener\('resize',[\s\S]*scheduleOlliTalkLatestMessageAnchor/);
-  assert.match(viewportBody,/visualViewport\.addEventListener\('scroll',[\s\S]*syncOlliTalkComposerViewport\(\)/);
+  assert.match(viewportBody,/visualViewport\.addEventListener\('scroll',[\s\S]*scheduleOlliTalkKeyboardViewportUpdate/);
   const scrollHandler=viewportBody.slice(viewportBody.indexOf("visualViewport.addEventListener('scroll'"));
   assert.doesNotMatch(scrollHandler,/syncViewport\(\)/);
   assert.doesNotMatch(scrollHandler,/scheduleOlliTalkLatestMessageAnchor\(\)/);
@@ -111,4 +111,36 @@ test('Team Chat coalesces keyboard events into one continuous RAF motion control
   assert.doesNotMatch(js,/\.animate\(\s*\[/);
   assert.doesNotMatch(js,/VisualAnimation\?\.cancel|KeyboardVisualAnimations\(\)/);
   assert.match(js,/stopOlliTalkKeyboardVisualController\(\)/);
+});
+
+test('Team Chat uses only one message position owner per keyboard frame',()=>{
+  const start=js.indexOf('function flushOlliTalkKeyboardViewportUpdate(){');
+  const end=js.indexOf('\n  function scheduleOlliTalkKeyboardViewportUpdate',start);
+  assert.ok(start>=0 && end>start);
+  const body=js.slice(start,end);
+  assert.match(body,/let anchoredLatest = false/);
+  assert.match(body,/anchoredLatest = scheduleOlliTalkLatestMessageAnchor\(\)/);
+  assert.match(body,/messages: !isOlliTalkPendingReasonInputActive\(\) && !anchoredLatest/);
+});
+
+test('Team Chat measures actual composer height excluding temporary visual motion',()=>{
+  const start=js.indexOf('function getOlliTalkComposerLayoutGeometry(){');
+  const end=js.indexOf('\n  function syncOlliTalkChatToComposer()',start);
+  assert.ok(start>=0 && end>start);
+  const block=js.slice(start,end);
+  assert.match(block,/querySelector\('\.olliTalkBetaComposer'\)\?\.getBoundingClientRect\(\)\.height/);
+  assert.match(block,/composerRect\.bottom - olliTalkComposerVisualOffsetY/);
+  assert.match(block,/reserve: bottomGap \+ composerHeight \+ OLLI_TALK_COMPOSER_MESSAGE_GAP/);
+  assert.match(js,/screen\.style\.getPropertyValue\('--olli-talk-chat-reserve'\) !== nextReserve/);
+  assert.match(js,/const layoutMessageBottom = messageRect\.bottom - olliTalkMessagesVisualOffsetY/);
+});
+
+test('Server message rendering restores scroll synchronously rather than in a later keyboard frame',()=>{
+  const start=js.indexOf('function renderOlliTalkServerMessages(payload,options={}){');
+  const end=js.indexOf('\n  function getOlliTalkSearchRows()',start);
+  assert.ok(start>=0 && end>start);
+  const body=js.slice(start,end);
+  assert.match(body,/if\(scrollMode==='preserve-prepend'\)[\s\S]*chatArea\.scrollTop=previousScrollTop\+addedHeight/);
+  assert.match(body,/chatArea\.scrollTop=previousScrollTop/);
+  assert.doesNotMatch(body,/requestAnimationFrame\(\(\) => \{\s*if \(!chatArea\.isConnected\) return;/);
 });
