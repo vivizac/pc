@@ -41,3 +41,19 @@ test('Team Chat inactive input and mention button use the shared mobile keyboard
   assert.doesNotMatch(js,/mentionTriggerButton\.addEventListener\('pointerdown'/);
   assert.match(js,/async function openOlliTalkMentionPicker\(event\)[\s\S]*runOlliTalkComposerControl\(event, \{ mention:true \}\)/);
 });
+
+test('Team Chat shared activation captures motion positions before keyboard focus',()=>{
+  const start=js.indexOf('async function runOlliTalkComposerControl(event, options = {}){');
+  const end=js.indexOf('\n  function runOlliTalkComposerActivation',start);
+  assert.ok(start>=0 && end>start);
+  const body=js.slice(start,end);
+  const before=body.indexOf('const activationMotionFrame = captureOlliTalkKeyboardVisualFrame();');
+  const focus=body.indexOf('const activated = activateOlliTalkComposerInput(event);');
+  const animate=body.indexOf('preserveOlliTalkKeyboardVisualFrame(activationMotionFrame);',focus);
+  const waiting=body.indexOf('await loadOlliTalkMembers();');
+  assert.ok(before>=0 && before<focus);
+  assert.ok(animate>focus && waiting>animate);
+  assert.match(body,/if \(useMention && olliTalkMentionModeActive\)[\s\S]*preserveOlliTalkKeyboardVisualFrame\(activationMotionFrame\)/);
+  assert.match(js,/bindOlliTalkComposerActivationControl\(composerActivateButton, 'input'\)/);
+  assert.match(js,/bindOlliTalkComposerActivationControl\(mentionTriggerButton, 'mention'\)/);
+});
