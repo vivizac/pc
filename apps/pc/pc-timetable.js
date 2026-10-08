@@ -2904,6 +2904,13 @@
       state.dialog.absenceSelected = !state.dialog.absenceSelected;
       absenceToggle.classList.toggle('active', state.dialog.absenceSelected);
       absenceToggle.setAttribute('aria-pressed', state.dialog.absenceSelected ? 'true' : 'false');
+      const saveButton = dialog.querySelector('[data-tt-save-move]');
+      if (saveButton) {
+        const absenceChanged = Boolean(state.dialog.absenceSelected) !== Boolean(state.dialog.originalAbsenceSelected);
+        saveButton.textContent = absenceChanged
+          ? (state.dialog.absenceSelected ? '결석 저장' : '결석 취소')
+          : (isReservedMoveDate(clean(state.dialog.effectiveDate) || todayKey()) ? '예약 이동' : '지금 바로 이동');
+      }
     });
     const saveMoveButton = dialog.querySelector('[data-tt-save-move]');
     if (saveMoveButton) saveMoveButton.addEventListener('click', saveMove);
