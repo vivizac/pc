@@ -296,7 +296,7 @@
         : '공제 없음 · 공제 전 급여와 실지급액이 같습니다.')
       + '</div>'
       + '<div class="olliPayrollActionRow">'
-      + '<button class="olliPayrollPreviewButton" type="button" data-payroll-preview>명세서 미리보기</button>'
+      + '<button class="olliPayrollPreviewButton" type="button" data-payroll-preview>명세서 확인</button>'
       + '<button class="olliPayrollSaveButton" type="button" data-payroll-save'+disabledAttr+'>'+(finalized?'확정됨':'저장')+'</button>'
       + '</div>'
       + '</section>';
@@ -1051,7 +1051,7 @@
     const teacherId=String(card.dataset.teacherId || '').trim();
     if(!teacherId) return false;
     const previewButton=card.querySelector('[data-payroll-preview]');
-    const original=previewButton?.textContent || '명세서 미리보기';
+    const original=previewButton?.textContent || '명세서 확인';
 
     if(previewButton){
       previewButton.disabled=true;
@@ -1141,7 +1141,7 @@
         if(type==='regular' && status==='absent'){
           return '<span class="olliPayrollStatementDate absent" aria-label="'+dayNumber+'일 결근일">'+dayNumber+'</span>';
         }
-        return '<span class="olliPayrollStatementDate">'+dayNumber+'</span>';
+        return '<span class="olliPayrollStatementDate" aria-label="'+dayNumber+'일 출근일">'+dayNumber+'</span>';
       }).join('');
       return '<div class="olliPayrollStatementWorkRow">'
         + '<strong>'+day.label+'요일</strong>'
@@ -1176,11 +1176,11 @@
 
     closePayrollStatement();
     const overlay=document.createElement('div');
-    overlay.className='olliPayrollStatementOverlay'+(preview?' is-preview':'');
-    overlay.innerHTML='<section class="olliPayrollStatementPanel" role="dialog" aria-modal="true" aria-label="'+esc((preview?'미리보기 · ':'')+payLabel+' 지급 급여명세서')+'">'
+    overlay.className='olliPayrollStatementOverlay';
+    overlay.innerHTML='<section class="olliPayrollStatementPanel" role="dialog" aria-modal="true" aria-label="'+esc(payLabel+' 지급 급여명세서')+'">'
       + '<div class="olliPayrollStatementHead">'
-      + '<div><div class="olliPayrollStatementTitle">'+(preview?'<span class="olliPayrollStatementPreviewBadge">미리보기</span>':'')+esc(payLabel)+' 지급 급여명세서</div>'
-      + '<div class="olliPayrollStatementSub">'+esc(teacherName)+(periodStart&&periodEnd?' · 계산기간 '+esc(periodStart+'~'+periodEnd):'')+(preview?' · 실제 선생님에게 전송되지 않음':'')+'</div></div>'
+      + '<div><div class="olliPayrollStatementTitle">' +esc(payLabel)+' 지급 급여명세서</div>'
+      + '<div class="olliPayrollStatementSub">'+esc(teacherName)+(periodStart&&periodEnd?' · 계산기간 '+esc(periodStart+'~'+periodEnd):'')+'</div></div>'
       + '<button type="button" class="olliPayrollStatementClose" aria-label="닫기">×</button></div>'
       + '<div class="olliPayrollStatementScroll">'
       + '<div class="olliPayrollStatementSection"><h3>정기근무</h3>'
