@@ -29,7 +29,9 @@ test('inline input opens the Class sheet synchronously on a user gesture', () =>
 test('Class controls are replaced with dialogue and continuous-record selection', () => {
   assert.ok(html.includes('id="kcfModeSwitchBtn"'));
   assert.ok(!html.includes('id="kcfTeacherBtn"'));
-  assert.ok(sheet.includes('id="kcfSheetModeSwitchBtn"'));
+  assert.ok(sheet.includes('id="kcfTeacherSheetModeHost"'));
+  assert.ok(sheet.includes("mountSheetControls()"));
+  assert.ok(!sheet.includes('id="kcfSheetModeSwitchBtn"'));
   assert.ok(sheet.includes("['dialogue','대화']"));
   assert.ok(sheet.includes("['continuous','연속기록']"));
   assert.ok(css.includes('.kcfComposerModeMenu'));
