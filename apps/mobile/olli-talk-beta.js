@@ -7877,12 +7877,49 @@
     });
   }
 
-  function runOlliTalkComposerActivation(event, mode){
-    if (mode === 'mention') return openOlliTalkMentionPicker(event);
-    const input = activateOlliTalkComposerInput(event);
+  async function runOlliTalkComposerControl(event, options = {}){
+    const useMention = options.mention === true;
+    const input = getOlliTalkBetaInput();
     if (!input) return false;
+
+    if (useMention && olliTalkMentionModeActive) {
+      window.OlliMobileKeyboardActivation?.stopEvent(event);
+      clearOlliTalkMentionDraft();
+      olliTalkMentionModeActive = false;
+      hideOlliTalkMentionMenu();
+      resizeInput();
+      updateOlliTalkBetaComposerState();
+      input.blur();
+      syncViewport();
+      return false;
+    }
+
+    if (useMention) {
+      olliTalkMentionModeActive = true;
+
+      const caret = Number.isFinite(input.selectionStart) ? input.selectionStart : input.value.length;
+      const activeQuery = currentMentionQuery();
+      if (!activeQuery) {
+        const before = input.value.slice(0, caret);
+        const insertion = before && !/\s$/.test(before) ? ' @' : '@';
+        input.setRangeText(insertion, caret, caret, 'end');
+      }
+    }
+
+    const activated = activateOlliTalkComposerInput(event);
+    if (!activated) return false;
+
     renderOlliTalkMentionMenu();
+    if (!olliTalkMembers.length) {
+      await loadOlliTalkMembers();
+      renderOlliTalkMentionMenu();
+    }
+    syncViewport();
     return true;
+  }
+
+  function runOlliTalkComposerActivation(event, mode){
+    return runOlliTalkComposerControl(event, { mention:mode === 'mention' });
   }
 
   function bindOlliTalkComposerActivationControl(target, mode){
@@ -7907,40 +7944,7 @@
   }
 
   async function openOlliTalkMentionPicker(event){
-    const input = getOlliTalkBetaInput();
-    if (!input) return false;
-
-    if (olliTalkMentionModeActive) {
-      window.OlliMobileKeyboardActivation?.stopEvent(event);
-      clearOlliTalkMentionDraft();
-      olliTalkMentionModeActive = false;
-      hideOlliTalkMentionMenu();
-      resizeInput();
-      updateOlliTalkBetaComposerState();
-      input.blur();
-      syncViewport();
-      return false;
-    }
-
-    olliTalkMentionModeActive = true;
-
-    const caret = Number.isFinite(input.selectionStart) ? input.selectionStart : input.value.length;
-    const activeQuery = currentMentionQuery();
-    if (!activeQuery) {
-      const before = input.value.slice(0, caret);
-      const insertion = before && !/\s$/.test(before) ? ' @' : '@';
-      input.setRangeText(insertion, caret, caret, 'end');
-    }
-
-    activateOlliTalkComposerInput(event);
-
-    renderOlliTalkMentionMenu();
-    if (!olliTalkMembers.length) {
-      await loadOlliTalkMembers();
-      renderOlliTalkMentionMenu();
-    }
-    syncViewport();
-    return true;
+    return runOlliTalkComposerControl(event, { mention:true });
   }
 
   function escapeRegExp(value){
