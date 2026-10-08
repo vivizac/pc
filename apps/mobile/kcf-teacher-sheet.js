@@ -272,15 +272,16 @@
     root.className = 'kcfTeacherSheetOverlay';
     root.setAttribute('aria-hidden', 'true');
     root.innerHTML = [
-      '<section class="kcfTeacherSheet" role="dialog" aria-modal="true" aria-label="Class 수업기록 입력">',
+      '<section class="kcfTeacherSheet" role="dialog" aria-modal="true" aria-label="퀵노트 수업기록 입력">',
       '  <div class="kcfTeacherSheetBody">',
-      '    <textarea id="kcfTeacherSheetInput" class="kcfTeacherSheetInput" aria-label="Class 수업기록"></textarea>',
+      '    <textarea id="kcfTeacherSheetInput" class="kcfTeacherSheetInput" aria-label="퀵노트 수업기록"></textarea>',
+      '    <button id="kcfTeacherSheetCloseBtn" class="kcfTeacherSheetCloseBtn" type="button" aria-label="입력창 닫기" title="입력창 닫기">×</button>',
       '    <div id="kcfTeacherSheetWarning" class="kcfTeacherSheetWarning" aria-live="polite"></div>',
       '    <div id="kcfTeacherSheetPhotoHost" class="kcfTeacherSheetPhotoHost"></div>',
       '    <div id="kcfTeacherSheetRosterHost" class="kcfTeacherSheetRosterHost" hidden></div>',
       '    <div class="kcfTeacherSheetBottom">',
       '      <div id="kcfTeacherSheetAttachHost" class="kcfTeacherSheetControlHost"></div>',
-      '      <div id="kcfTeacherSheetEmptyRosterGuide" class="kcfTeacherSheetEmptyRosterGuide" aria-live="polite" hidden>오늘 수업 기록 학생이 없습니다.</div>',
+      '      <div class="kcfTeacherSheetSpacer"><span id="kcfTeacherSheetEmptyRosterGuide" class="kcfTeacherSheetEmptyRosterGuide" aria-live="polite" hidden>오늘 수업 기록 학생이 없습니다.</span></div>',
       '      <div id="kcfTeacherSheetModeHost" class="kcfTeacherSheetControlHost"></div>',
       '      <div id="kcfTeacherSheetVoiceHost" class="kcfTeacherSheetControlHost"></div>',
       '      <button id="kcfTeacherSheetSendBtn" class="kcfTeacherSheetSendBtn" type="button" aria-label="피드백 전송">',
@@ -325,6 +326,16 @@
         scheduleViewportSync();
       });
       input.addEventListener('focus', scheduleViewportSync);
+    }
+
+    var closeBtn = document.getElementById('kcfTeacherSheetCloseBtn');
+    if (closeBtn) {
+      closeBtn.addEventListener('pointerdown',function(event){ if(event.cancelable) event.preventDefault(); });
+      closeBtn.addEventListener('click',function(event){
+        event.preventDefault();
+        syncToBase();
+        close({ sync:false });
+      });
     }
 
     var send = sendButton();

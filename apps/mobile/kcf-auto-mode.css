@@ -1,5 +1,5 @@
 /* Shared QuickNote Class roster (conversation and continuous record). */
-/* Teacher 학생 선택 줄: T와 전송은 고정하고 이름 캡슐만 그 아래 레이어에서 가로 스크롤한다. */
+/* Student chips live ABOVE the original single-line QuickNote composer. */
 #kinderChatFeedbackScreen .kcfComposerBottom {
   position:relative;
   isolation:isolate;
@@ -13,20 +13,16 @@
   display:none;
 }
 #kinderChatFeedbackScreen .kcfAutoStudentRoster {
-  position:absolute;
-  left:0;
-  right:0;
-  top:50%;
-  transform:translateY(-50%);
+  position:relative;
   width:100%;
   min-width:0;
-  margin:0;
-  /* T(33px) 뒤 6px, 전송(33px) 앞 8px만 비워 이름카드가 버튼에 자연스럽게 붙는다. */
-  padding:0 41px 0 39px;
+  height:36px;
+  margin:0 0 6px;
+  padding:0;
   overflow:hidden;
   box-sizing:border-box;
-  z-index:1;
-  pointer-events:none;
+  z-index:2;
+  pointer-events:auto;
 }
 #kinderChatFeedbackScreen .kcfAutoStudentRosterScroller {
   width:100%;
@@ -89,76 +85,8 @@
   padding:6px 2px 7px;
 }
 
-/* Class 모드 대기 상태: 학생 캡슐을 입력/버튼과 독립된 한 줄 위에 둔다. */
-#kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfComposer {
-  height:auto;
-  max-height:none;
-  justify-content:flex-start;
-}
-#kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfComposerBottom {
-  display:grid;
-  grid-template-columns:33px minmax(0,1fr) 88px 33px 33px;
-  grid-template-rows:minmax(34px, auto) auto 38px;
-  align-items:center;
-  column-gap:4px;
-  row-gap:4px;
-}
-#kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfInputActivateWrap {
-  grid-column:1 / -1;
-  grid-row:1;
-  width:100%;
-  min-width:0;
-}
-#kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfInput {
-  width:100%;
-  height:34px;
-  min-height:34px;
-  max-height:34px;
-}
-#kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfStudentManageWrap {
-  grid-column:1;
-  grid-row:3;
-  width:0;
-  height:0;
-  min-width:0;
-  overflow:visible;
-}
-#kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfAttachBtn {
-  grid-column:1;
-  grid-row:3;
-  display:inline-flex;
-  justify-self:center;
-  margin:0;
-}
-#kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfAutoStudentRoster {
-  position:static;
-  grid-column:1 / -1;
-  grid-row:2;
-  width:100%;
-  min-width:0;
-  padding:0;
-  transform:none;
-  align-self:center;
-}
-#kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfComposerModeBtn {
-  grid-column:3;
-  grid-row:3;
-  justify-self:start;
-  margin-left:0;
-  margin-right:0;
-}
-#kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfVoiceBtn {
-  grid-column:4;
-  grid-row:3;
-  display:inline-flex;
-  justify-self:center;
-  margin:0;
-}
-#kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfSendBtn {
-  grid-column:5;
-  grid-row:3;
-  justify-self:end;
-}
+/* No Teacher layout override: the original idle QuickNote input remains a 47px single row.
+   The roster is a separate sibling above the composer, not a new input row. */
 
 /* 보관함 아이콘의 크기만 Teacher 전용 UI에서 유지한다. */
 #kinderChatFeedbackScreen .kcfComposerInboxBtn svg {

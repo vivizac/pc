@@ -560,8 +560,9 @@
   function ensureAutoRoster() {
     var existing = getAutoRoster();
     if (existing) return existing;
-    var bottom = document.querySelector('#kinderChatFeedbackScreen .kcfComposerBottom');
-    if (!bottom) return null;
+    var wrap = document.querySelector('#kinderChatFeedbackScreen .kcfComposerWrap');
+    var composer = wrap && wrap.querySelector('.kcfComposer');
+    if (!composer) return null;
     var roster = document.createElement('div');
     roster.id = 'kcfAutoStudentRoster';
     roster.className = 'kcfAutoStudentRoster';
@@ -569,7 +570,7 @@
     var scroller = document.createElement('div');
     scroller.className = 'kcfAutoStudentRosterScroller';
     roster.appendChild(scroller);
-    bottom.appendChild(roster);
+    wrap.insertBefore(roster, composer);
     return roster;
   }
 
