@@ -77,13 +77,13 @@ test('Team Chat keyboard focus does not duplicate chat anchoring across focus an
   assert.ok(focusStart>=0 && focusEnd>focusStart);
   const focusBody=js.slice(focusStart,focusEnd);
   assert.match(focusBody,/isOlliTalkChatNearBottom\(chatArea,120\)/);
-  assert.doesNotMatch(focusBody,/scheduleOlliTalkKeyboardViewportUpdate/);
+  assert.doesNotMatch(focusBody,/scheduleOlliTalkLatestMessageAnchor/);
 
   const viewportStart=js.indexOf('function bindViewport(){');
   const viewportEnd=js.indexOf('\n  const OLLI_TALK_INPUT_PLACEHOLDER',viewportStart);
   assert.ok(viewportStart>=0 && viewportEnd>viewportStart);
   const viewportBody=js.slice(viewportStart,viewportEnd);
-  assert.match(viewportBody,/visualViewport\.addEventListener\('resize',[\s\S]*scheduleOlliTalkLatestMessageAnchor/);
+  assert.match(viewportBody,/visualViewport\.addEventListener\('resize',[\s\S]*scheduleOlliTalkKeyboardViewportUpdate\(\{[\s\S]*anchorLatest:true/);
   assert.match(viewportBody,/visualViewport\.addEventListener\('scroll',[\s\S]*scheduleOlliTalkKeyboardViewportUpdate/);
   const scrollHandler=viewportBody.slice(viewportBody.indexOf("visualViewport.addEventListener('scroll'"));
   assert.doesNotMatch(scrollHandler,/syncViewport\(\)/);
@@ -119,7 +119,8 @@ test('Team Chat uses only one message position owner per keyboard frame',()=>{
   assert.ok(start>=0 && end>start);
   const body=js.slice(start,end);
   assert.match(body,/let anchoredLatest = false/);
-  assert.match(body,/anchoredLatest = scheduleOlliTalkLatestMessageAnchor\(\)/);
+  assert.match(body,/scheduleOlliTalkLatestMessageAnchor\(\)/);
+  assert.match(body,/Math\.abs\(chatArea\.scrollTop - beforeScrollTop\) > 0\.5/);
   assert.match(body,/messages: !isOlliTalkPendingReasonInputActive\(\) && !anchoredLatest/);
 });
 
