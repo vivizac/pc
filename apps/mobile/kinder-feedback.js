@@ -1348,16 +1348,27 @@ function createKinderChatFeedbackLiveMessage(options = {}) {
   const inboxBtn = createKinderChatFeedbackLiveActionButton('임시보관함', 'kcfLiveNormalAction kcfLiveInboxBtn');
   const copyBtn = createKinderChatFeedbackLiveActionButton('복사', 'kcfLiveNormalAction kcfLiveCopyBtn');
   const editBtn = createKinderChatFeedbackLiveActionButton('수정', 'kcfLiveNormalAction kcfLiveEditBtn');
+  const retryBtn = createKinderChatFeedbackLiveActionButton('저장 재시도', 'kcfLiveNormalAction kcfTrialRetryBtn');
   const cancelBtn = createKinderChatFeedbackLiveActionButton('취소', 'kcfLiveEditAction kcfLiveCancelBtn');
   const doneBtn = createKinderChatFeedbackLiveActionButton('완료', 'kcfLiveEditAction kcfLiveDoneBtn');
 
   inboxBtn.addEventListener('click', () => openKinderChatFeedbackInbox());
   copyBtn.addEventListener('click', () => copyKinderChatFeedbackLive(options.id, copyBtn));
   editBtn.addEventListener('click', () => editKinderChatFeedbackLive(options.id));
+  retryBtn.addEventListener('click', async () => {
+    retryBtn.disabled = true;
+    try {
+      if (await saveKinderChatFeedbackLive(options.id)) {
+        try { showPushToast('체험 피드백을 서버에 저장했어요.'); } catch (_) {}
+      }
+    } finally {
+      refreshKinderChatFeedbackLiveActions(getKinderChatFeedbackLiveItem(options.id));
+    }
+  });
   cancelBtn.addEventListener('click', () => cancelKinderChatFeedbackLiveEdit(options.id));
   doneBtn.addEventListener('click', () => confirmKinderChatFeedbackLiveEdit(options.id, doneBtn));
 
-  actions.append(inboxBtn, copyBtn, editBtn, cancelBtn, doneBtn);
+  actions.append(inboxBtn, copyBtn, editBtn, retryBtn, cancelBtn, doneBtn);
   row.append(studentTitle, bubble, editArea, actions);
   area.appendChild(row);
   requestAnimationFrame(() => { area.scrollTop = area.scrollHeight; });
@@ -1386,6 +1397,11 @@ function refreshKinderChatFeedbackLiveActions(item) {
   const inboxBtn = row.querySelector('.kcfLiveInboxBtn');
   const copyBtn = row.querySelector('.kcfLiveCopyBtn');
   const editBtn = row.querySelector('.kcfLiveEditBtn');
+  const retryBtn = row.querySelector('.kcfTrialRetryBtn');
+  if (retryBtn) {
+    retryBtn.style.display = item.trialSessionId && !item.saved ? '' : 'none';
+    retryBtn.disabled = !item.resultText || item.status === 'streaming';
+  }
   if (inboxBtn) inboxBtn.disabled = !item.resultText || item.status === 'streaming';
   if (copyBtn) copyBtn.disabled = !item.resultText || !!segments.length;
   if (editBtn) editBtn.disabled = !item.resultText || item.status === 'streaming';
@@ -1769,7 +1785,12 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
         liveUi.bubble.setAttribute('aria-busy', 'false');
       }
       syncKinderChatFeedbackLiveItemToInbox(item);
-      await saveKinderChatFeedbackLive(item.id, item.studentId);
+      const saved = await saveKinderChatFeedbackLive(item.id, item.studentId);
+      if (item.trialSessionId && saved !== true && successTeacherMode) {
+        successTeacherMode.onFeedbackRequestResult({
+          id:item.id, studentId:item.rosterSelectionId, status:'error'
+        });
+      }
       syncKinderChatFeedbackLiveItemToInbox(item);
       showKinderChatFeedbackLiveActions(item);
       if (liveUi.area) liveUi.area.scrollTop = liveUi.area.scrollHeight;
