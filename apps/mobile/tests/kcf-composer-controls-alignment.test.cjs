@@ -24,17 +24,17 @@ test('active sheet has the same five control slots, reusing existing DOM nodes',
   assert.match(sheet, /id="kcfTeacherSheetAttachHost"/);
   assert.match(sheet, /id="kcfTeacherSheetModeHost"/);
   assert.match(sheet, /id="kcfTeacherSheetRosterHost"/);
-  assert.match(sheet, /id="kcfTeacherSheetEmptyRosterGuide"/);
-  assert.match(sheet, /오늘 수업 기록 학생이 없습니다\./);
+  assert.doesNotMatch(sheet, /kcfTeacherSheetEmptyRosterGuide/);
+  assert.doesNotMatch(sheet, /오늘 수업 기록 학생이 없습니다\./);
   assert.match(sheetCss, /\.kcfTeacherSheetRosterHost\[hidden\]\{display:none;\}/);
   assert.match(sheet, /teacherMode\.refreshRoster\(\)/);
-  assert.match(sheetCss, /#kcfTeacherSheetEmptyRosterGuide\{color:/);
+  assert.doesNotMatch(sheetCss, /#kcfTeacherSheetEmptyRosterGuide/);
   assert.match(sheet, /id="kcfTeacherSheetVoiceHost"/);
   assert.match(sheet, /id="kcfTeacherSheetSendBtn"/);
   // + → roster → mode → microphone → send, also while active.
   assert.ok(sheet.indexOf('id="kcfTeacherSheetRosterHost"') < sheet.indexOf('class="kcfTeacherSheetBottom"'));
   assert.ok(sheet.indexOf('id="kcfTeacherSheetAttachHost"') < sheet.indexOf('id="kcfTeacherSheetModeHost"'));
-  assert.ok(sheet.indexOf('id="kcfTeacherSheetEmptyRosterGuide"') < sheet.indexOf('id="kcfTeacherSheetModeHost"'));
+  assert.ok(sheet.indexOf('class="kcfTeacherSheetSpacer"') < sheet.indexOf('id="kcfTeacherSheetModeHost"'));
   assert.ok(sheet.indexOf('id="kcfTeacherSheetModeHost"') < sheet.indexOf('id="kcfTeacherSheetVoiceHost"'));
   assert.ok(sheet.indexOf('id="kcfTeacherSheetVoiceHost"') < sheet.indexOf('id="kcfTeacherSheetSendBtn"'));
   assert.match(sheetCss, /\.kcfTeacherSheetBottom \{[\s\S]*?display:flex;/);
@@ -60,22 +60,24 @@ test('the active microphone reuses the existing voice recorder after returning t
   assert.match(sheetCss, /\.kcfTeacherSheetPhotoHost \.kcfPhotoPreview\.show\{display:flex;\}/);
 });
 
-test('empty student guide never replaces or moves the four permanent actions',()=>{
+test('empty student state keeps all four original buttons aligned, with no extra guide',()=>{
   const bottomStart=sheet.indexOf("'    <div class=\"kcfTeacherSheetBottom\">'");
   const bottomEnd=sheet.indexOf("'    </div>'",bottomStart);
   assert.ok(bottomStart>0&&bottomEnd>bottomStart);
   const bottomMarkup=sheet.slice(bottomStart,bottomEnd);
-  const order=['kcfTeacherSheetAttachHost','kcfTeacherSheetEmptyRosterGuide','kcfTeacherSheetModeHost','kcfTeacherSheetVoiceHost','kcfTeacherSheetSendBtn'];
+  const order=['kcfTeacherSheetAttachHost','kcfTeacherSheetModeHost','kcfTeacherSheetVoiceHost','kcfTeacherSheetSendBtn'];
   const offsets=order.map(id=>bottomMarkup.indexOf('id="'+id+'"'));
   assert.ok(offsets.every(n=>n>=0));
   assert.ok(offsets.every((value,i)=>i===0||offsets[i-1]<value));
   assert.match(sheetCss, /\.kcfTeacherSheetBottom \{[\s\S]*?display:flex;/);
   assert.match(sheetCss, /\.kcfTeacherSheetSpacer\{flex:1 1 auto;min-width:0;\}/);
-  assert.match(sheetCss, /#kcfTeacherSheetModeHost\{flex:0 0 auto;margin-left:8px;margin-right:12px;\}/);
-  assert.match(sheetCss, /#kcfTeacherSheetVoiceHost\{flex:0 0 33px;margin-right:12px;\}/);
+  assert.match(sheetCss, /#kcfTeacherSheetModeHost\{flex:0 0 auto;\}/);
+  assert.match(sheetCss, /#kcfTeacherSheetVoiceHost\{flex:0 0 33px;\}/);
+  assert.match(sheetCss, /#kcfTeacherSheetAttachHost \.kcfAttachBtn svg\{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1\.7;/);
   assert.match(sheetCss, /\.kcfTeacherSheetSendBtn\{flex:0 0 33px;\}/);
   assert.doesNotMatch(sheetCss, /grid-template-rows:40px;/);
-  assert.ok(sheetCss.includes('#kcfTeacherSheetEmptyRosterGuide[hidden]{display:none;}'));
+  assert.doesNotMatch(sheetCss, /kcfTeacherSheetEmptyRosterGuide/);
+  assert.doesNotMatch(bottomMarkup, /오늘 수업 기록 학생이 없습니다/);
   assert.doesNotMatch(bottomMarkup, /kcfTeacherSheet(?:Attach|Mode|Voice)Host[^>]*hidden/);
   assert.match(sheet, /\['kcfAttachBtn','kcfTeacherSheetAttachHost'\]/);
   assert.match(sheet, /\['kcfModeSwitchBtn','kcfTeacherSheetModeHost'\]/);
@@ -156,52 +158,38 @@ test('the very same button nodes move to the sheet and return home; microphone s
   assert.equal(composer.children.map(c=>c.id).join(','),'kcfAttachBtn,kcfModeSwitchBtn,kcfVoiceBtn');
 });
 
-test('no-students guide reacts only to a confirmed empty roster, not loading, error, or finished entries',()=>{
+test('empty roster has no inline guide, while existing student cards and completed status still render',()=>{
   const runtime=fs.readFileSync('kcf-auto-mode-runtime.js','utf8');
   const start=runtime.indexOf('function renderAutoRoster() {');
   const end=runtime.indexOf('function syncAutoButton()',start);
-  assert.ok(start>0&&end>start);
-  const guide={hidden:true};
+  assert.ok(start>=0&&end>start);
   const sheetHost={hidden:true};
   const roster={hidden:true,querySelector(){return scroller;}};
-  const scroller={children:[],_html:'',set innerHTML(value){this._html=value;this.children=[];},get innerHTML(){return this._html;},appendChild(child){this.children.push(child);}};
+  const scroller={children:[],set innerHTML(_){this.children=[];},appendChild(c){this.children.push(c);}};
   const state={enabled:true,queue:[],rosterStatus:'empty',completedIds:new Set(),selectedStudentId:''};
-  const doc={getElementById(id){return id==='kcfTeacherSheetRosterHost'?sheetHost:id==='kcfTeacherSheetEmptyRosterGuide'?guide:null;},createElement(tag){return {tagName:tag,dataset:{},attributes:{},setAttribute(n,v){this.attributes[n]=v;},addEventListener(){},textContent:'',className:''};}};
+  const document={getElementById(id){return id==='kcfTeacherSheetRosterHost'?sheetHost:null;},
+    createElement(){return {dataset:{},setAttribute(){},addEventListener(){},textContent:''};}};
   const render=new Function('state','document','ensureAutoRoster','clean','global','selectAutoStudent',
-    runtime.slice(start,end)+'return renderAutoRoster;')(state,doc,()=>roster,v=>String(v||'').trim(),{__kcfSelectedStudentId:''},()=>{});
+    runtime.slice(start,end)+'return renderAutoRoster;')(state,document,()=>roster,v=>String(v||'').trim(),{__kcfSelectedStudentId:''},()=>{});
   render();
-  assert.equal(guide.hidden,false);
   assert.equal(sheetHost.hidden,true);
   assert.equal(roster.hidden,true);
   assert.equal(scroller.children.length,0);
-  state.rosterStatus='loading';
-  render();
-  assert.equal(guide.hidden,true);
-  state.rosterStatus='error';
-  render();
-  assert.equal(guide.hidden,true);
   state.rosterStatus='ready';
   state.queue=[{studentId:'s1',name:'서아',timeSlot:16}];
   render();
-  assert.equal(guide.hidden,true);
   assert.equal(sheetHost.hidden,false);
   assert.equal(roster.hidden,false);
   assert.equal(scroller.children[0].textContent,'서아');
   state.completedIds.add('s1');
   render();
-  assert.equal(guide.hidden,true);
   assert.equal(scroller.children[0].textContent,'오늘 학생 선택 완료');
-  state.rosterStatus='empty';
-  state.queue=[];
-  render();
-  assert.equal(guide.hidden,false);
   state.enabled=false;
   render();
-  assert.equal(guide.hidden,true);
   assert.equal(roster.hidden,true);
-  assert.match(runtime, /state\.rosterStatus = 'loading';\s*if \(state\.enabled\) renderAutoRoster\(\);/);
-  assert.match(runtime, /state\.rosterStatus = 'error';[\s\S]*?if \(state\.enabled\) renderAutoRoster\(\);/);
+  assert.doesNotMatch(runtime, /kcfTeacherSheetEmptyRosterGuide/);
 });
+
 test('mode selector uses a real vector chevron, not a text glyph',()=>{
   assert.match(html, /class="kcfModeChevron" viewBox="0 0 24 24"/);
   assert.match(html, /<path d="m6 9 6 6 6-6"\/>/);

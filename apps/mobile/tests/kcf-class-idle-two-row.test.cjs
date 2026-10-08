@@ -42,7 +42,8 @@ test('mode dropdown takes only the former Class button position', () => {
 test('student can deselect a roster card to type a different name', () => {
   assert.ok(runtime.includes('if (nextId === currentId) { deselectAutoStudent(); return; }'));
   assert.ok(runtime.includes('state.manualEntry = true'));
-  assert.ok(runtime.includes('학생 이름과 수업기록을 적어주세요'));
+  assert.ok(runtime.includes('수업기록을 적어주세요'));
+  assert.ok(!runtime.includes('학생 이름과 수업기록을 적어주세요'));
 });
 
 test('the inline input opens only the Class sheet', () => {
