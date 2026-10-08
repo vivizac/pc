@@ -322,7 +322,12 @@
       && olliTalkKeyboardFollowLatest
       && isOlliTalkComposerActive()
     ) {
-      anchoredLatest = scheduleOlliTalkLatestMessageAnchor();
+      const chatArea = document.getElementById('olliTalkBetaChatArea');
+      const beforeScrollTop = chatArea?.scrollTop;
+      scheduleOlliTalkLatestMessageAnchor();
+      // A successful anchor check is not necessarily a scroll change.
+      // Let CSS/layout movement animate when the scroll position did not move.
+      anchoredLatest = !!chatArea && Math.abs(chatArea.scrollTop - beforeScrollTop) > 0.5;
     }
 
     preserveOlliTalkKeyboardVisualFrame(motionFrame,{
