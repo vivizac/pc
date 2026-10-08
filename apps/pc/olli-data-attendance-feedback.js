@@ -1,6 +1,26 @@
+function normalizeAttendanceFeedbackDate(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  // 최근 한국어 날짜(2026. 9. 22.)도 모든 브라우저에서 동일하게 해석하도록 표준화합니다.
+  const dotted = raw.match(/^(\d{4})\s*\.\s*(\d{1,2})\s*\.\s*(\d{1,2})\.?$/);
+  if (dotted) {
+    const year = Number(dotted[1]);
+    const month = Number(dotted[2]);
+    const day = Number(dotted[3]);
+    const checked = new Date(Date.UTC(year, month - 1, day));
+    if (checked.getUTCFullYear() !== year || checked.getUTCMonth() !== month - 1 || checked.getUTCDate() !== day) return '';
+    return `${dotted[1]}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+  return Number.isFinite(Date.parse(raw)) ? raw : '';
+}
+
 function getAttendanceFeedbackRowDate(row) {
-  // 기존 피드백 가져오기는 과거 수업일을 date에 저장하므로 date를 최우선으로 사용합니다.
-  return row?.date || row?.created_at || row?.updated_at || '';
+  // 수업일을 우선하고, 형식이 잘못된 기록은 서버에 남아 있는 날짜로 복구해 표시합니다.
+  for (const candidate of [row?.date, row?.lesson_date, row?.created_at, row?.updated_at]) {
+    const normalized = normalizeAttendanceFeedbackDate(candidate);
+    if (normalized) return normalized;
+  }
+  return '';
 }
 
 function formatAttendanceFeedbackSheetDate(value) {

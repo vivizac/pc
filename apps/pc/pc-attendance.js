@@ -580,9 +580,19 @@ function recordModeTabsHtml() {
   }
 
   function getPcAttendanceRecordTimestamp(item) {
-    const raw = item?.createdAt || item?.row?.date || item?.row?.created_at || item?.row?.updated_at || '';
-    const time = new Date(raw).getTime();
-    return Number.isFinite(time) ? time : 0;
+    // 기존 캐시에 남아 있는 점·공백 날짜도 월별 보관함에서 다시 읽을 수 있게 합니다.
+    const candidates = [item?.createdAt, item?.row?.date, item?.row?.lesson_date, item?.row?.created_at, item?.row?.updated_at];
+    for (const value of candidates) {
+      const raw = String(value || '').trim();
+      if (!raw) continue;
+      const dotted = raw.match(/^(\d{4})\s*\.\s*(\d{1,2})\s*\.\s*(\d{1,2})\.?$/);
+      const normalized = dotted
+        ? `${dotted[1]}-${dotted[2].padStart(2, '0')}-${dotted[3].padStart(2, '0')}`
+        : raw;
+      const timestamp = Date.parse(normalized);
+      if (Number.isFinite(timestamp)) return timestamp;
+    }
+    return 0;
   }
 
   function renderUnifiedRecordCards(student, feedbacks, summaries) {
