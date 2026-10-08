@@ -281,7 +281,7 @@
       '    <div id="kcfTeacherSheetRosterHost" class="kcfTeacherSheetRosterHost" hidden></div>',
       '    <div class="kcfTeacherSheetBottom">',
       '      <div id="kcfTeacherSheetAttachHost" class="kcfTeacherSheetControlHost"></div>',
-      '      <div class="kcfTeacherSheetSpacer"><span id="kcfTeacherSheetEmptyRosterGuide" class="kcfTeacherSheetEmptyRosterGuide" aria-live="polite" hidden>오늘 수업 기록 학생이 없습니다.</span></div>',
+      '      <div class="kcfTeacherSheetSpacer"></div>',
       '      <div id="kcfTeacherSheetModeHost" class="kcfTeacherSheetControlHost"></div>',
       '      <div id="kcfTeacherSheetVoiceHost" class="kcfTeacherSheetControlHost"></div>',
       '      <button id="kcfTeacherSheetSendBtn" class="kcfTeacherSheetSendBtn" type="button" aria-label="피드백 전송">',
