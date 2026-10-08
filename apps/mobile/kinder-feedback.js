@@ -1458,7 +1458,9 @@ async function confirmKinderChatFeedbackLiveEdit(id, btn) {
       btn.textContent = '저장 중...';
     }
     try {
-      patchedSavedRow = await patchSavedTodayFeedbackItem(item, nextText);
+      patchedSavedRow = item.trialSessionId
+        ? await saveKcfTrialFeedbackOnServer(item, nextText, true)
+        : await patchSavedTodayFeedbackItem(item, nextText);
     } catch (err) {
       console.error('LIVE 저장 피드백 수정 오류:', err);
       if (btn) {
@@ -1497,10 +1499,59 @@ async function confirmKinderChatFeedbackLiveEdit(id, btn) {
   }
   return true;
 }
+async function saveKcfTrialFeedbackOnServer(item, content, update = false) {
+  const data = window.OlliAttendanceData;
+  const academyId = String(item?.academyId || data?.currentAcademyId?.() || '').trim();
+  const sessionToken = String(data?.currentSessionToken?.() || '').trim();
+  const trialId = String(item?.trialSessionId || '').trim();
+  if (!academyId || !sessionToken || !trialId || typeof window.supabase !== 'function') {
+    throw new Error('체험학생 피드백 저장을 위한 학원·세션 정보가 없습니다.');
+  }
+  const editing = update === true;
+  const resource = editing ? 'rpc/olli_trial_feedback_update' : 'rpc/olli_trial_feedback_save';
+  const payload = editing ? {
+    p_session_token:sessionToken, p_academy_id:academyId,
+    p_trial_feedback_id:String(item.savedRowId || '').trim(),
+    p_content:String(content || '')
+  } : {
+    p_session_token:sessionToken, p_academy_id:academyId,
+    p_trial_session_id:trialId, p_client_job_id:String(item.id || ''),
+    p_content:String(content || '')
+  };
+  const response = await window.supabase('POST', resource, payload);
+  const result = Array.isArray(response) && response.length === 1 ? response[0] : response;
+  if (!result || result.ok !== true || !result.id) {
+    throw new Error(String(result?.message || '체험학생 피드백을 저장하지 못했습니다.'));
+  }
+  return { id:String(result.id), content:String(content || ''), academy_id:academyId, trial_session_id:trialId };
+}
+
 async function saveKinderChatFeedbackLive(id, selectedStudentId = '') {
   const item = getKinderChatFeedbackLiveItem(id);
   if (!item || !String(item.resultText || '').trim() || item.status === 'streaming') return false;
   if (item.saved || item.reviewed) return true;
+
+  if (item.trialSessionId) {
+    try {
+      const savedRow = await saveKcfTrialFeedbackOnServer(item, item.resultText);
+      item.saved = true;
+      item.reviewed = true;
+      item.savedRowId = savedRow.id;
+      item.savedRow = savedRow;
+      item.savedSourceTable = 'olli_trial_feedbacks';
+      item.savedAcademyId = savedRow.academy_id;
+      item.savedAt = new Date().toISOString();
+      item.updatedAt = item.savedAt;
+      persistKinderChatFeedbackLiveSessionNow();
+      syncKinderChatFeedbackLiveItemToInbox(item);
+      refreshKinderChatFeedbackLiveActions(item);
+      return true;
+    } catch (error) {
+      console.warn('체험학생 피드백 서버 저장 실패:', error);
+      try { showPushToast('체험학생 피드백 저장에 실패했어요. 임시보관함에서 다시 확인해 주세요.'); } catch (_) {}
+      return false;
+    }
+  }
 
   let finalStudentId = String(selectedStudentId || item.studentId || item.savedStudentId || '').trim();
   if (!finalStudentId) {
@@ -1575,6 +1626,8 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
     studentName: normalizeTodayFeedbackStudentName(options.studentName || '') || '학생',
     studentDivision: options.studentDivision === 'kinder' ? 'kinder' : 'elementary',
     studentId: String(options.studentId || ''),
+    trialSessionId:String(options.trialSessionId || ''),
+    rosterSelectionId:String(options.rosterSelectionId || ''),
     feedbackType: options.feedbackType || 'class',
     label: options.label || '피드백',
     sourcePage: 'kinderChatFeedback',
@@ -1734,7 +1787,7 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
       if (failureTeacherMode && typeof failureTeacherMode.onFeedbackRequestResult === 'function') {
         failureTeacherMode.onFeedbackRequestResult({
           id:item.id,
-          studentId:item.studentId,
+          studentId:item.studentId || item.rosterSelectionId,
           studentName:item.studentName,
           studentDivision:item.studentDivision,
           status:'error',
