@@ -366,7 +366,7 @@
   function restoreOlliTalkKeyboardCloseLatest(){
     // Never alter the reader's scroll position if they were viewing older chat.
     if (!olliTalkKeyboardClosingReturnLatest || isOlliTalkComposerActive() || olliTalkChatGestureActive) return false;
-    if (!isOlliTalkBetaVisible()) return false;
+    if (isOlliTalkPendingReasonInputActive() || !isOlliTalkBetaVisible()) return false;
     const chatArea = document.getElementById('olliTalkBetaChatArea');
     if (!chatArea?.isConnected) return false;
     chatArea.scrollTop = chatArea.scrollHeight;
