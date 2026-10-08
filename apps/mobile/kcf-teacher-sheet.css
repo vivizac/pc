@@ -118,7 +118,7 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   height:40px;
   min-height:40px;
   display:grid;
-  grid-template-columns:33px 88px minmax(0,1fr) 33px 33px;
+  grid-template-columns:33px minmax(0,1fr) 88px 33px 33px;
   align-items:center;
   gap:4px;
   width:100%;

@@ -12,7 +12,7 @@ test('the original Plus and microphone remain present and visible in the idle to
   assert.match(html, /id="kcfAttachBtn"/);
   assert.match(html, /id="kcfVoiceBtn"/);
   assert.match(html, /id="kcfModeSwitchBtn"/);
-  assert.match(autoCss, /grid-template-columns:33px 88px minmax\(0,1fr\) 33px 33px;/);
+  assert.match(autoCss, /grid-template-columns:33px minmax\(0,1fr\) 88px 33px 33px;/);
   assert.match(autoCss, /\.kcfAttachBtn \{[\s\S]*?display:inline-flex;/);
   assert.match(autoCss, /\.kcfVoiceBtn \{[\s\S]*?display:inline-flex;/);
   assert.doesNotMatch(autoCss, /\.kcfVoiceBtn \{\s*display:none;/);
@@ -25,7 +25,15 @@ test('active sheet has the same five control slots, reusing existing DOM nodes',
   assert.match(sheet, /id="kcfTeacherSheetRosterHost"/);
   assert.match(sheet, /id="kcfTeacherSheetVoiceHost"/);
   assert.match(sheet, /id="kcfTeacherSheetSendBtn"/);
-  assert.match(sheetCss, /grid-template-columns:33px 88px minmax\(0,1fr\) 33px 33px;/);
+  // + → roster → mode → microphone → send, also while active.
+  assert.ok(sheet.indexOf('id="kcfTeacherSheetAttachHost"') < sheet.indexOf('id="kcfTeacherSheetRosterHost"'));
+  assert.ok(sheet.indexOf('id="kcfTeacherSheetRosterHost"') < sheet.indexOf('id="kcfTeacherSheetModeHost"'));
+  assert.ok(sheet.indexOf('id="kcfTeacherSheetModeHost"') < sheet.indexOf('id="kcfTeacherSheetVoiceHost"'));
+  assert.ok(sheet.indexOf('id="kcfTeacherSheetVoiceHost"') < sheet.indexOf('id="kcfTeacherSheetSendBtn"'));
+  assert.match(autoCss, /kcfTeacherRosterMode \.kcfAutoStudentRoster \{[\s\S]*?grid-column:2;/);
+  assert.match(autoCss, /kcfTeacherRosterMode \.kcfComposerModeBtn \{[\s\S]*?grid-column:3;/);
+
+  assert.match(sheetCss, /grid-template-columns:33px minmax\(0,1fr\) 88px 33px 33px;/);
   assert.match(sheet, /\['kcfAttachBtn','kcfTeacherSheetAttachHost'\]/);
   assert.match(sheet, /\['kcfModeSwitchBtn','kcfTeacherSheetModeHost'\]/);
   assert.match(sheet, /\['kcfVoiceBtn','kcfTeacherSheetVoiceHost'\]/);
