@@ -174,11 +174,32 @@
       { height:`${toHeight}px`, minHeight:'0px', maxHeight:`${toHeight}px` }
     ], { duration:190, easing:'cubic-bezier(.2,.65,.2,1)' });
     olliTalkComposerShapeAnimation = animation;
+
+    // Height changes independently of visualViewport resize. Keep the existing
+    // latest-message anchor in sync with the composer, without pulling readers
+    // away from older messages or taking over the chat scroll controller.
+    const followLatest = () => {
+      if (!expanded || !isOlliTalkBetaVisible() || !isOlliTalkComposerActive()
+          || !olliTalkKeyboardFollowLatest || olliTalkChatGestureActive
+          || isOlliTalkPendingReasonInputActive()) return;
+      scheduleOlliTalkLatestMessageAnchor();
+    };
+    let anchorRaf = 0;
+    const followComposerHeight = () => {
+      if (olliTalkComposerShapeAnimation !== animation) return;
+      syncOlliTalkChatToComposer();
+      followLatest();
+      anchorRaf = requestAnimationFrame(followComposerHeight);
+    };
+    if (expanded) anchorRaf = requestAnimationFrame(followComposerHeight);
+
     const finish = () => {
       if (olliTalkComposerShapeAnimation !== animation) return;
       olliTalkComposerShapeAnimation = null;
+      if (anchorRaf) cancelAnimationFrame(anchorRaf);
       composer.style.removeProperty('overflow');
-      scheduleOlliTalkChatToComposer();
+      syncOlliTalkChatToComposer();
+      followLatest();
     };
     animation.addEventListener('finish', finish, { once:true });
     animation.addEventListener('cancel', finish, { once:true });
