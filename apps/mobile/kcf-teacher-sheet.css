@@ -98,6 +98,10 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
 
 .kcfTeacherSheetInput::placeholder {
   color:#b8b8b8;
+  font-size:calc(14.5px * var(--olli-text-scale, 1));
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 /* Same close control as the original normal QuickNote editor. */
 .kcfTeacherSheetCloseBtn {
@@ -152,15 +156,15 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
 .kcfTeacherSheetControlHost{min-width:0;display:flex;align-items:center;justify-content:center;height:38px;}
 #kcfTeacherSheetAttachHost{flex:0 0 33px;}
 .kcfTeacherSheetSpacer{flex:1 1 auto;min-width:0;}
-#kcfTeacherSheetEmptyRosterGuide{color:#8e939c;font-size:calc(11px * var(--olli-text-scale));font-weight:400;line-height:1.3;overflow-wrap:break-word;word-break:keep-all;display:block;}
-#kcfTeacherSheetEmptyRosterGuide[hidden]{display:none;}
-@media (max-width:375px){#kcfTeacherSheetEmptyRosterGuide{font-size:calc(10px * var(--olli-text-scale));line-height:1.15;}}
-#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;}
+#kcfTeacherSheetModeHost{flex:0 0 auto;margin:0;}
 #kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:12px;}
 .kcfTeacherSheetSendBtn{flex:0 0 33px;}
 .kcfTeacherSheetControlHost .kcfAttachBtn,
 .kcfTeacherSheetControlHost .kcfVoiceBtn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 33px;width:33px;height:33px;min-width:33px;margin:0;padding:0;border:0;border-radius:50%;background:transparent;color:#111;cursor:pointer;}
 .kcfTeacherSheetControlHost .kcfAttachBtn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+/* Reuse the original photo button and the exact same plus glyph in the sheet. */
+#kcfTeacherSheetAttachHost #kcfAttachBtn{margin-left:-5px;margin-right:0;}
+#kcfTeacherSheetAttachHost #kcfAttachBtn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
 .kcfTeacherSheetControlHost .kcfVoiceBtn svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
 .kcfTeacherSheetControlHost .kcfVoiceBtn.active{background:#0A84FF;color:#fff;}
 .kcfTeacherSheetControlHost .kcfComposerModeBtn{margin:0;max-width:88px;white-space:nowrap;}
