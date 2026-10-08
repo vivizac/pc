@@ -18,7 +18,7 @@ test('Team Chat avatar check messages stay visual-only and reuse the real member
   assert.match(talk,/body:'아이콘 확인용 메시지입니다\.'/);
   assert.match(talk,/Promise\.allSettled\(\[memberLoadPromise,messageLoadPromise\]\)/);
   assert.match(talk,/group\.dataset\.olliAvatarPreview='1'/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261008-scroll-authority-1/);
+  assert.ok(html.includes('olli-talk-beta.js?v=20261008-scroll-authority-1'));
 });
 
 test('Team Chat member icon artwork fills its clipped avatar tile without resizing the tile',()=>{
