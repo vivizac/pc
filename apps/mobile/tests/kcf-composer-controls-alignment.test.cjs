@@ -134,6 +134,52 @@ test('the very same button nodes move to the sheet and return home; microphone s
   assert.equal(composer.children.map(c=>c.id).join(','),'kcfAttachBtn,kcfModeSwitchBtn,kcfVoiceBtn');
 });
 
+test('no-students guide reacts only to a confirmed empty roster, not loading, error, or finished entries',()=>{
+  const runtime=fs.readFileSync('kcf-auto-mode-runtime.js','utf8');
+  const start=runtime.indexOf('function renderAutoRoster() {');
+  const end=runtime.indexOf('function syncAutoButton()',start);
+  assert.ok(start>0&&end>start);
+  const guide={hidden:true};
+  const sheetHost={hidden:true};
+  const roster={hidden:true,querySelector(){return scroller;}};
+  const scroller={children:[],_html:'',set innerHTML(value){this._html=value;this.children=[];},get innerHTML(){return this._html;},appendChild(child){this.children.push(child);}};
+  const state={enabled:true,queue:[],rosterStatus:'empty',completedIds:new Set(),selectedStudentId:''};
+  const doc={getElementById(id){return id==='kcfTeacherSheetRosterHost'?sheetHost:id==='kcfTeacherSheetEmptyRosterGuide'?guide:null;},createElement(tag){return {tagName:tag,dataset:{},attributes:{},setAttribute(n,v){this.attributes[n]=v;},addEventListener(){},textContent:'',className:''};}};
+  const render=new Function('state','document','ensureAutoRoster','clean','global','selectAutoStudent',
+    runtime.slice(start,end)+'return renderAutoRoster;')(state,doc,()=>roster,v=>String(v||'').trim(),{__kcfSelectedStudentId:''},()=>{});
+  render();
+  assert.equal(guide.hidden,false);
+  assert.equal(sheetHost.hidden,true);
+  assert.equal(roster.hidden,true);
+  assert.equal(scroller.children.length,0);
+  state.rosterStatus='loading';
+  render();
+  assert.equal(guide.hidden,true);
+  state.rosterStatus='error';
+  render();
+  assert.equal(guide.hidden,true);
+  state.rosterStatus='ready';
+  state.queue=[{studentId:'s1',name:'서아',timeSlot:16}];
+  render();
+  assert.equal(guide.hidden,true);
+  assert.equal(sheetHost.hidden,false);
+  assert.equal(roster.hidden,false);
+  assert.equal(scroller.children[0].textContent,'서아');
+  state.completedIds.add('s1');
+  render();
+  assert.equal(guide.hidden,true);
+  assert.equal(scroller.children[0].textContent,'오늘 학생 선택 완료');
+  state.rosterStatus='empty';
+  state.queue=[];
+  render();
+  assert.equal(guide.hidden,false);
+  state.enabled=false;
+  render();
+  assert.equal(guide.hidden,true);
+  assert.equal(roster.hidden,true);
+  assert.match(runtime, /state\.rosterStatus = 'loading';\s*if \(state\.enabled\) renderAutoRoster\(\);/);
+  assert.match(runtime, /state\.rosterStatus = 'error';[\s\S]*?if \(state\.enabled\) renderAutoRoster\(\);/);
+});
 test('mode selector uses a real vector chevron, not a text glyph',()=>{
   assert.match(html, /class="kcfModeChevron" viewBox="0 0 24 24"/);
   assert.match(html, /<path d="m6 9 6 6 6-6"\/>/);
