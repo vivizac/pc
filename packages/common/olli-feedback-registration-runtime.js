@@ -105,6 +105,13 @@
       var autoSelection = window.KcfAutoMode && typeof window.KcfAutoMode.getSelection === 'function'
         ? window.KcfAutoMode.getSelection()
         : null;
+      if (autoSelection && autoSelection.trialSessionId) {
+        return {
+          id:'', name:String(autoSelection.studentName || '').trim(),
+          type:autoSelection.studentDivision === 'kinder' ? 'kinder' : 'elementary',
+          __olliTrialSessionId:String(autoSelection.trialSessionId)
+        };
+      }
       if (autoSelection && autoSelection.studentId) selectedId = String(autoSelection.studentId || '').trim();
     } catch (err) {}
     if (!selectedId) {
@@ -352,6 +359,8 @@
       userText: text,
       studentName: studentName,
       studentId: student.id || '',
+      trialSessionId: String(student.__olliTrialSessionId || ''),
+      rosterSelectionId: String(autoSubmitContext && autoSubmitContext.studentId || ''),
       studentDivision: studentType,
       feedbackType: 'class',
       label: getKcfStudentFeedbackLabel(student, 'class'),
