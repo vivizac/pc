@@ -60,6 +60,28 @@ test('the active microphone reuses the existing voice recorder after returning t
   assert.match(sheetCss, /\.kcfTeacherSheetPhotoHost \.kcfPhotoPreview\.show\{display:flex;\}/);
 });
 
+test('empty student guide never replaces or moves the four permanent actions',()=>{
+  const bottomStart=sheet.indexOf("'    <div class=\"kcfTeacherSheetBottom\">'");
+  const bottomEnd=sheet.indexOf("'    </div>'",bottomStart);
+  assert.ok(bottomStart>0&&bottomEnd>bottomStart);
+  const bottomMarkup=sheet.slice(bottomStart,bottomEnd);
+  const order=['kcfTeacherSheetAttachHost','kcfTeacherSheetEmptyRosterGuide','kcfTeacherSheetModeHost','kcfTeacherSheetVoiceHost','kcfTeacherSheetSendBtn'];
+  const offsets=order.map(id=>bottomMarkup.indexOf('id="'+id+'"'));
+  assert.ok(offsets.every(n=>n>=0));
+  assert.ok(offsets.every((value,i)=>i===0||offsets[i-1]<value));
+  assert.match(sheetCss, /grid-template-columns:33px minmax\(0,1fr\) 88px 33px 33px;/);
+  assert.match(sheetCss, /grid-template-rows:40px;/);
+  for(const [id,col] of [['kcfTeacherSheetAttachHost',1],['kcfTeacherSheetEmptyRosterGuide',2],['kcfTeacherSheetModeHost',3],['kcfTeacherSheetVoiceHost',4]]){
+    assert.ok(sheetCss.includes('#'+id+'{grid-column:'+col+';grid-row:1;}'));
+  }
+  assert.ok(sheetCss.includes('.kcfTeacherSheetSendBtn{grid-column:5;grid-row:1;}'));
+  assert.ok(sheetCss.includes('#kcfTeacherSheetEmptyRosterGuide[hidden]{display:none;}'));
+  assert.doesNotMatch(bottomMarkup, /kcfTeacherSheet(?:Attach|Mode|Voice)Host[^>]*hidden/);
+  assert.match(sheet, /\['kcfAttachBtn','kcfTeacherSheetAttachHost'\]/);
+  assert.match(sheet, /\['kcfModeSwitchBtn','kcfTeacherSheetModeHost'\]/);
+  assert.match(sheet, /\['kcfVoiceBtn','kcfTeacherSheetVoiceHost'\]/);
+});
+
 test('the very same button nodes move to the sheet and return home; microphone starts only once',()=>{
   const start=sheet.indexOf('function mountSheetControls(){');
   const end=sheet.indexOf('function finishSheetEntrance(){',start);
