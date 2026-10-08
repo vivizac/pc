@@ -159,6 +159,9 @@
   }
 
   const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 32;
+  // iOS keyboard opening: lag the same composer + message pair just slightly.
+  // Closing keeps the original response speed.
+  const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 44;
   let olliTalkKeyboardVisualRaf = 0;
   let olliTalkKeyboardViewportRaf = 0;
   let olliTalkKeyboardVisualLastTs = 0;
@@ -237,7 +240,10 @@
     const previous = olliTalkKeyboardVisualLastTs || timestamp;
     const dt = Math.max(1,Math.min(34,timestamp - previous));
     olliTalkKeyboardVisualLastTs = timestamp;
-    const follow = 1 - Math.exp(-dt / OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS);
+    const followTau = getScreen()?.classList.contains('olliTalkKeyboardOpen')
+      ? OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS
+      : OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS;
+    const follow = 1 - Math.exp(-dt / followTau);
 
     olliTalkComposerVisualOffsetY += (0 - olliTalkComposerVisualOffsetY) * follow;
     olliTalkMessagesVisualOffsetY += (0 - olliTalkMessagesVisualOffsetY) * follow;
