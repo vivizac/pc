@@ -11,7 +11,7 @@ const html = read('index.html');
 
 test('QuickNote inline Class composer retains the two-row structure', () => {
   assert.match(css, /kcfTeacherRosterMode \.kcfComposer \{[\s\S]*?height:auto;[\s\S]*?max-height:none;/);
-  assert.match(css, /kcfTeacherRosterMode \.kcfComposerBottom \{[\s\S]*?display:grid;[\s\S]*?grid-template-columns:33px minmax\(0,1fr\) 33px;/);
+  assert.match(css, /kcfTeacherRosterMode \.kcfComposerBottom \{[\s\S]*?display:grid;[\s\S]*?grid-template-columns:90px minmax\(0,1fr\) 33px;/);
   assert.match(css, /kcfTeacherRosterMode \.kcfAutoStudentRoster \{[\s\S]*?grid-column:2;[\s\S]*?grid-row:2;/);
 });
 
