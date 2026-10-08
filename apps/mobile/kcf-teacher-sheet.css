@@ -29,13 +29,11 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   visibility:hidden;
   pointer-events:none;
   background:rgba(0,0,0,.14);
-  transition:visibility 0s linear .24s;
 }
 
 .kcfTeacherSheetOverlay.show {
   visibility:visible;
   pointer-events:auto;
-  transition-delay:0s;
 }
 
 .kcfTeacherSheet {
@@ -56,6 +54,16 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
 
 .kcfTeacherSheetOverlay.show .kcfTeacherSheet {
   transform:translateY(0);
+}
+
+/* Closing is instant; only opening slides upward. */
+.kcfTeacherSheetOverlay:not(.show) .kcfTeacherSheet {
+  transition:none;
+}
+
+/* Keep native focus/keyboard on the user gesture; reveal the caret only after entrance ends. */
+.kcfTeacherSheetOverlay.show:not(.entrance-complete) .kcfTeacherSheetInput {
+  caret-color:transparent;
 }
 
 
