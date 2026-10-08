@@ -10,7 +10,7 @@ const css = read('kcf-teacher-sheet.css');
 const reg = read('../../packages/common/olli-feedback-registration-runtime.js');
 
 test('QuickNote uses a single Class sheet and fully removes normal-mode assets', () => {
-  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261008-continuous-1'));
+  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261008-roster-above-controls-1'));
   assert.ok(!html.includes('kcf-normal-sheet'));
   assert.ok(!fs.existsSync('kcf-normal-sheet.js'));
   assert.ok(!fs.existsSync('kcf-normal-sheet.css'));
@@ -29,7 +29,9 @@ test('inline input opens the Class sheet synchronously on a user gesture', () =>
 test('Class controls are replaced with dialogue and continuous-record selection', () => {
   assert.ok(html.includes('id="kcfModeSwitchBtn"'));
   assert.ok(!html.includes('id="kcfTeacherBtn"'));
-  assert.ok(sheet.includes('id="kcfSheetModeSwitchBtn"'));
+  assert.ok(sheet.includes('id="kcfTeacherSheetModeHost"'));
+  assert.ok(sheet.includes("mountSheetControls()"));
+  assert.ok(!sheet.includes('id="kcfSheetModeSwitchBtn"'));
   assert.ok(sheet.includes("['dialogue','대화']"));
   assert.ok(sheet.includes("['continuous','연속기록']"));
   assert.ok(css.includes('.kcfComposerModeMenu'));

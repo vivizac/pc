@@ -7,6 +7,7 @@
     submitting:false,
     rosterMarker:null,
     rosterNode:null,
+    portaledControls:[],
     warningObserver:null,
     viewportFrame:0,
     caretRevealTimer:0,
@@ -18,6 +19,7 @@
   function overlay(){ return document.getElementById('kcfTeacherSheetOverlay'); }
   function editor(){ return document.getElementById('kcfTeacherSheetInput'); }
   function rosterHost(){ return document.getElementById('kcfTeacherSheetRosterHost'); }
+  function sheetHost(id){ return document.getElementById(id); }
   function warning(){ return document.getElementById('kcfTeacherSheetWarning'); }
   function sendButton(){ return document.getElementById('kcfTeacherSheetSendBtn'); }
 
@@ -134,6 +136,59 @@
     state.rosterNode = null;
   }
 
+  // Move the existing buttons, not copies: click handlers and identity stay intact.
+  function mountSheetControls(){
+    if (state.portaledControls.length) return;
+    [
+      ['kcfAttachBtn','kcfTeacherSheetAttachHost'],
+      ['kcfModeSwitchBtn','kcfTeacherSheetModeHost'],
+      ['kcfVoiceBtn','kcfTeacherSheetVoiceHost'],
+      ['kcfPhotoPreview','kcfTeacherSheetPhotoHost']
+    ].forEach(function(pair){
+      var node = document.getElementById(pair[0]);
+      var host = sheetHost(pair[1]);
+      if (!node || !host || !node.parentNode) return;
+      var marker = document.createComment('kcf-sheet-control-home:' + pair[0]);
+      node.parentNode.insertBefore(marker,node);
+      state.portaledControls.push({ node:node,marker:marker });
+      host.appendChild(node);
+    });
+    var mic = document.getElementById('kcfVoiceBtn');
+    if (mic && !mic.__kcfTeacherVoiceBridgeBound) {
+      mic.__kcfTeacherVoiceBridgeBound = true;
+      mic.addEventListener('pointerdown', function(event){
+        if (state.open && event.cancelable) event.preventDefault();
+      });
+      mic.addEventListener('click', function(event){
+        if (!state.open) return;
+        // The original microphone targets the inline composer. Return it home
+        // before invoking the existing voice recorder so its capture UI is visible.
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        close({ sync:true });
+        var voice = global.KcfVoiceTranscription;
+        if (voice && typeof voice.toggle === 'function') voice.toggle(event);
+      }, true);
+    }
+    var photo = document.getElementById('kcfAttachBtn');
+    if (photo && !photo.__kcfTeacherPhotoPointerBound) {
+      photo.__kcfTeacherPhotoPointerBound = true;
+      photo.addEventListener('pointerdown', function(event){
+        if (state.open && event.cancelable) event.preventDefault();
+      });
+    }
+  }
+
+  function restoreSheetControls(){
+    for (var i=state.portaledControls.length-1;i>=0;i--) {
+      var entry=state.portaledControls[i];
+      if (!entry.marker.parentNode) continue;
+      entry.marker.parentNode.insertBefore(entry.node,entry.marker);
+      entry.marker.remove();
+    }
+    state.portaledControls=[];
+  }
+
   function finishSheetEntrance(){
     var root = overlay();
     if (state.open && root && root.classList.contains('show')) {
@@ -158,7 +213,7 @@
     if (continuous && typeof global.renderKinderChatFeedbackTodayRecords === 'function') {
       global.renderKinderChatFeedbackTodayRecords();
     }
-    ['kcfModeSwitchBtn','kcfSheetModeSwitchBtn'].forEach(function(id){
+    ['kcfModeSwitchBtn'].forEach(function(id){
       var btn = document.getElementById(id);
       if (!btn) return;
       var label = btn.querySelector('.kcfComposerModeLabel');
@@ -221,9 +276,13 @@
       '  <div class="kcfTeacherSheetBody">',
       '    <textarea id="kcfTeacherSheetInput" class="kcfTeacherSheetInput" aria-label="Class 수업기록"></textarea>',
       '    <div id="kcfTeacherSheetWarning" class="kcfTeacherSheetWarning" aria-live="polite"></div>',
+      '    <div id="kcfTeacherSheetPhotoHost" class="kcfTeacherSheetPhotoHost"></div>',
+      '    <div id="kcfTeacherSheetRosterHost" class="kcfTeacherSheetRosterHost" hidden></div>',
       '    <div class="kcfTeacherSheetBottom">',
-      '      <button id="kcfSheetModeSwitchBtn" class="kcfComposerModeBtn" type="button" aria-label="퀵노트 작성 모드 선택" aria-haspopup="true" aria-expanded="false"><span class="kcfComposerModeLabel">대화</span><span aria-hidden="true" class="kcfModeChevron">⌄</span></button>',
-      '      <div id="kcfTeacherSheetRosterHost" class="kcfTeacherSheetRosterHost"></div>',
+      '      <div id="kcfTeacherSheetAttachHost" class="kcfTeacherSheetControlHost"></div>',
+      '      <div id="kcfTeacherSheetEmptyRosterGuide" class="kcfTeacherSheetEmptyRosterGuide" aria-live="polite" hidden>오늘 수업 기록 학생이 없습니다.</div>',
+      '      <div id="kcfTeacherSheetModeHost" class="kcfTeacherSheetControlHost"></div>',
+      '      <div id="kcfTeacherSheetVoiceHost" class="kcfTeacherSheetControlHost"></div>',
       '      <button id="kcfTeacherSheetSendBtn" class="kcfTeacherSheetSendBtn" type="button" aria-label="피드백 전송">',
       '        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>',
       '      </button>',
@@ -267,8 +326,6 @@
       });
       input.addEventListener('focus', scheduleViewportSync);
     }
-
-    attachModeSelector(document.getElementById('kcfSheetModeSwitchBtn'));
 
     var send = sendButton();
     if (send) {
@@ -331,6 +388,9 @@
     document.documentElement.classList.add('kcfTeacherSheetOpen');
     document.body.classList.add('kcfTeacherSheetOpen');
     mountRoster();
+    mountSheetControls();
+    var teacherMode = global.KcfTeacherMode || global.KcfAutoMode;
+    if (teacherMode && typeof teacherMode.refreshRoster === 'function') teacherMode.refreshRoster();
     bindWarning();
     syncFromBase();
     syncViewport();
@@ -349,13 +409,14 @@
     if (!state.open) return;
     var shouldSync = opts.sync !== false;
     if (shouldSync) syncToBase();
+    // Mark closed before blur; otherwise the blur listener can recursively close.
+    state.open = false;
     var activeEditor = editor();
     if (activeEditor && document.activeElement === activeEditor) {
-      state.suppressBlurSync = !shouldSync;
+      state.suppressBlurSync = true;
       try { activeEditor.blur(); } catch (_) {}
       state.suppressBlurSync = false;
     }
-    state.open = false;
     if (state.caretRevealTimer) clearTimeout(state.caretRevealTimer);
     state.caretRevealTimer = 0;
     var root = overlay();
@@ -364,6 +425,7 @@
       root.setAttribute('aria-hidden', 'true');
     }
     restoreRoster();
+    restoreSheetControls();
     unbindWarning();
     document.documentElement.classList.remove('kcfTeacherSheetOpen');
     document.body.classList.remove('kcfTeacherSheetOpen');

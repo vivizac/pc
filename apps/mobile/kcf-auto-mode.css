@@ -89,7 +89,7 @@
   padding:6px 2px 7px;
 }
 
-/* Class 모드 대기 상태: 시트가 닫혀도 입력 1줄 + 학생/버튼 1줄의 2단 구조를 유지한다. */
+/* Class 모드 대기 상태: 학생 캡슐을 입력/버튼과 독립된 한 줄 위에 둔다. */
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfComposer {
   height:auto;
   max-height:none;
@@ -97,10 +97,10 @@
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfComposerBottom {
   display:grid;
-  grid-template-columns:90px minmax(0,1fr) 33px;
-  grid-template-rows:minmax(34px, auto) 38px;
+  grid-template-columns:33px minmax(0,1fr) 88px 33px 33px;
+  grid-template-rows:minmax(34px, auto) auto 38px;
   align-items:center;
-  column-gap:8px;
+  column-gap:4px;
   row-gap:4px;
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfInputActivateWrap {
@@ -117,18 +117,22 @@
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfStudentManageWrap {
   grid-column:1;
-  grid-row:2;
+  grid-row:3;
   width:0;
   height:0;
   min-width:0;
   overflow:visible;
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfAttachBtn {
-  display:none;
+  grid-column:1;
+  grid-row:3;
+  display:inline-flex;
+  justify-self:center;
+  margin:0;
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfAutoStudentRoster {
   position:static;
-  grid-column:2;
+  grid-column:1 / -1;
   grid-row:2;
   width:100%;
   min-width:0;
@@ -137,18 +141,22 @@
   align-self:center;
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfComposerModeBtn {
-  grid-column:1;
-  grid-row:2;
+  grid-column:3;
+  grid-row:3;
   justify-self:start;
   margin-left:0;
   margin-right:0;
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfVoiceBtn {
-  display:none;
+  grid-column:4;
+  grid-row:3;
+  display:inline-flex;
+  justify-self:center;
+  margin:0;
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfSendBtn {
-  grid-column:3;
-  grid-row:2;
+  grid-column:5;
+  grid-row:3;
   justify-self:end;
 }
 
