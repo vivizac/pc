@@ -46,7 +46,7 @@ body.kcfNormalSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   border-radius:28px 28px 0 0;
   overflow:hidden;
   transform:translateY(100%);
-  transition:transform .24s cubic-bezier(.22,.61,.36,1);
+  transition:transform .32s cubic-bezier(.22,.61,.36,1);
   will-change:transform;
 }
 

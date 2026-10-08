@@ -148,7 +148,7 @@
     state.caretRevealTimer = setTimeout(function(){
       state.caretRevealTimer = 0;
       finishSheetEntrance();
-    }, 320);
+    }, 420);
   }
 
   function ensureSheet(){
