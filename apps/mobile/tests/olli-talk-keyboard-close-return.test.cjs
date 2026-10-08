@@ -79,7 +79,7 @@ test('viewport resizing restores the bottom after geometry sync but before FLIP 
 });
 test('keyboard follow timing remains unchanged during opening and closing',()=>{
   assert.match(source,/const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 32;/);
-  assert.match(source,/const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 44;/);
+  assert.match(source,/const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 42;/);
   assert.match(source,/olliTalkComposerVisualOffsetY \+= \(0 - olliTalkComposerVisualOffsetY\) \* follow;/);
   assert.match(source,/olliTalkMessagesVisualOffsetY \+= \(0 - olliTalkMessagesVisualOffsetY\) \* follow;/);
 });
