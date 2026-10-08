@@ -312,19 +312,22 @@
 
     if (anchorPendingReason) scheduleOlliTalkPendingReasonAnchorAfterViewport();
 
-    let animateMessages = true;
-    if (isOlliTalkPendingReasonInputActive()) {
-      animateMessages = false;
-    } else if (
-      anchorLatest
+    // In one keyboard frame, either scroll to the latest message or animate
+    // its layout movement: never apply both competing corrections.
+    let anchoredLatest = false;
+    if (
+      !isOlliTalkPendingReasonInputActive()
+      && anchorLatest
       && !olliTalkChatGestureActive
       && olliTalkKeyboardFollowLatest
       && isOlliTalkComposerActive()
     ) {
-      scheduleOlliTalkLatestMessageAnchor();
+      anchoredLatest = scheduleOlliTalkLatestMessageAnchor();
     }
 
-    preserveOlliTalkKeyboardVisualFrame(motionFrame,{messages:animateMessages});
+    preserveOlliTalkKeyboardVisualFrame(motionFrame,{
+      messages: !isOlliTalkPendingReasonInputActive() && !anchoredLatest
+    });
   }
 
   function scheduleOlliTalkKeyboardViewportUpdate(options = {}){
@@ -361,10 +364,13 @@
     ) return null;
 
     const active = screen.classList.contains('olliTalkKeyboardOpen');
-    const composerHeight = active
-      ? OLLI_TALK_COMPOSER_ACTIVE_HEIGHT
-      : OLLI_TALK_COMPOSER_IDLE_HEIGHT;
-    const bottomGap = Math.max(0, Math.ceil(viewportRect.bottom - composerRect.bottom));
+    const renderedComposerHeight = composerWrap.querySelector('.olliTalkBetaComposer')?.getBoundingClientRect().height;
+    const composerHeight = Number.isFinite(renderedComposerHeight) && renderedComposerHeight > 0
+      ? renderedComposerHeight
+      : (active ? OLLI_TALK_COMPOSER_ACTIVE_HEIGHT : OLLI_TALK_COMPOSER_IDLE_HEIGHT);
+    // Exclude temporary animation translation from the layout measurement.
+    const layoutComposerBottom = composerRect.bottom - olliTalkComposerVisualOffsetY;
+    const bottomGap = Math.max(0, Math.ceil(viewportRect.bottom - layoutComposerBottom));
     const composerTop = viewportRect.bottom - bottomGap - composerHeight;
     return {
       composerTop,
@@ -387,7 +393,10 @@
     if (!isOlliTalkBetaVisible()) return;
     const geometry = getOlliTalkComposerLayoutGeometry();
     if (!geometry) return;
-    screen.style.setProperty('--olli-talk-chat-reserve', Math.max(0, Math.ceil(geometry.reserve)) + 'px');
+    const nextReserve = Math.max(0, Math.ceil(geometry.reserve)) + 'px';
+    if (screen.style.getPropertyValue('--olli-talk-chat-reserve') !== nextReserve) {
+      screen.style.setProperty('--olli-talk-chat-reserve', nextReserve);
+    }
   }
 
   function scheduleOlliTalkChatToComposer(){
@@ -7209,7 +7218,9 @@
     const visibleBottom = geometry
       ? Math.min(chatRect.bottom, geometry.composerTop - OLLI_TALK_COMPOSER_MESSAGE_GAP)
       : chatRect.bottom - OLLI_TALK_COMPOSER_MESSAGE_GAP;
-    const overflow = messageRect.bottom - visibleBottom;
+    // Compare layout positions, not last frame's message transform.
+    const layoutMessageBottom = messageRect.bottom - olliTalkMessagesVisualOffsetY;
+    const overflow = layoutMessageBottom - visibleBottom;
     if (overflow <= 0.5) return true;
 
     const maxScroll = Math.max(0, chatArea.scrollHeight - chatArea.clientHeight);
@@ -7437,15 +7448,14 @@
       if (shouldFollowBottom) {
         scheduleOlliTalkLatestMessageAnchor();
       } else {
-        requestAnimationFrame(() => {
-          if (!chatArea.isConnected) return;
-          if(scrollMode==='preserve-prepend'){
-            const addedHeight=Math.max(0,chatArea.scrollHeight-previousScrollHeight);
-            chatArea.scrollTop=previousScrollTop+addedHeight;
-            return;
-          }
-          chatArea.scrollTop = previousScrollTop;
-        });
+        // Restore the reading position in the same render transaction,
+        // before an asynchronous iOS keyboard viewport change can intervene.
+        if(scrollMode==='preserve-prepend'){
+          const addedHeight=Math.max(0,chatArea.scrollHeight-previousScrollHeight);
+          chatArea.scrollTop=previousScrollTop+addedHeight;
+        } else {
+          chatArea.scrollTop=previousScrollTop;
+        }
       }
     }
   }
