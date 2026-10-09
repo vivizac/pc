@@ -36,6 +36,19 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   pointer-events:auto;
 }
 
+/* Extend only the white sheet background below the keyboard-sized visual viewport.
+   The sheet, controls and keyboard-follow animation retain their original geometry. */
+.kcfTeacherSheetOverlay.show::after {
+  content:'';
+  position:absolute;
+  top:100%;
+  left:0;
+  width:100%;
+  height:100vh;
+  background:#fff;
+  pointer-events:none;
+}
+
 .kcfTeacherSheet {
   width:100%;
   -webkit-tap-highlight-color:transparent;
@@ -180,7 +193,7 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
 .kcfTeacherSheetBottom>.kcfComposerModeBtn{z-index:6;}
 body.kcfContinuousMode #kinderChatFeedbackScreen .kcfMsgRow:not(.kcfLiveResponseRow){display:none;}
 /* Text-only record mode: preserve the original QuickNote feedback typography,
-   two-line clamp and tap-to-expand styles from kinder-feedback.css. */
+   single-line clamp and tap-to-expand styles from kinder-feedback.css. */
 body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow{align-items:stretch;}
 body.kcfContinuousMode #kinderChatFeedbackScreen .kcfCenterIntro{display:none;}
 

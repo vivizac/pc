@@ -2004,6 +2004,10 @@ body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveStudentTitle {
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;
 }
+/* The footer record-edit action is exclusive to continuous-record mode. */
+body:not(.kcfContinuousMode) #kinderChatFeedbackScreen .kcfLiveActions .kcfLiveRecordEditBtn {
+  display:none;
+}
 #kinderChatFeedbackScreen .kcfLiveActions .kcfLiveRecordEditBtn svg {
   flex:0 0 17px;
   width:17px;
@@ -2096,7 +2100,7 @@ body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn svg 
   border:1px solid #e6e8eb;
   border-radius:999px;
   background:#fff;
-  color:#737373;
+  color:#0A84FF;
   font:inherit;
   font-size:calc(12px * var(--olli-text-scale, 1));
   font-weight:500;
