@@ -2081,22 +2081,36 @@ body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn svg 
   left:50%;
   transform:translateX(-50%);
   z-index:5;
-  width:max-content;
-  min-height:29px;
+  width:44px;
+  height:44px;
+  min-height:44px;
+  box-sizing:border-box;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  padding:0 12px;
+  padding:0;
   border:1px solid #e6e8eb;
-  border-radius:999px;
+  border-radius:50%;
   background:#fff;
   color:#0A84FF;
   font:inherit;
-  font-size:calc(12px * var(--olli-text-scale, 1));
-  font-weight:500;
-  white-space:nowrap;
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;
+}
+#kinderChatFeedbackScreen .kcfFeedbackCollectToggleIcon{
+  display:none;
+  width:24px;
+  height:24px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2.25;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  pointer-events:none;
+}
+#kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn[data-kcf-view="collect"] .kcfFeedbackCollectIcon,
+#kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn[data-kcf-view="all"] .kcfFeedbackFullIcon{
+  display:block;
 }
 #kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn[hidden],
 #kinderChatFeedbackScreen .kcfComposer.kcfVoiceCaptureMode > .kcfFeedbackCollectToggleBtn{

@@ -574,10 +574,11 @@ function syncPhoneKcfContinuousRecordUi(){
   if (toggle) {
     const collected = document.body.classList.contains('kcfFeedbackCollectView');
     toggle.hidden = !hasPhoneKcfGeneratedFeedback();
-    toggle.textContent = continuous
-      ? (folded ? '피드백 전체 보기' : '피드백 모아보기')
-      : (collected ? '피드백 전체 보기' : '피드백 모아보기');
-    toggle.setAttribute('aria-label', toggle.textContent);
+    const showAll = continuous ? folded : collected;
+    const label = showAll ? '피드백 전체 보기' : '피드백 모아보기';
+    toggle.dataset.kcfView = showAll ? 'all' : 'collect';
+    toggle.setAttribute('aria-label', label);
+    toggle.title = label;
     toggle.setAttribute('aria-pressed', String(continuous ? folded : collected));
   }
 }
