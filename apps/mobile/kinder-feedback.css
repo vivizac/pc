@@ -565,6 +565,11 @@
   border-radius:0;
   padding:2px 2px;
   line-height:1.58;
+  /* iOS text autosizing can enlarge lengthy AI feedback in landscape and
+     keep the enlargement after returning to portrait. Preserve authored
+     font-size (including --olli-text-scale) in both orientations. */
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
 }
 
 #kinderChatFeedbackScreen .kcfCommandConfirmActions {
