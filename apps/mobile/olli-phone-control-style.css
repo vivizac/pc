@@ -48,25 +48,12 @@
 #olliTalkBetaScreen .olliTalkHeaderTools,
 #observationRosterScreen .memoRosterSearchPill,
 #kinderChatFeedbackScreen .kcfComposer,
-#kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn,
 #olliTalkBetaScreen .olliTalkBetaComposer{
   border:.5px solid var(--olli-phone-glass-border) !important;
   background:var(--olli-phone-glass-bg) !important;
   box-shadow:var(--olli-phone-academy-button-shadow) !important;
   backdrop-filter:blur(2px) !important;
   -webkit-backdrop-filter:blur(2px) !important;
-}
-
-/* Use the same glass blur and translucent surface as the QuickNote composer.
-   This is explicit for the floating circle so future shared-style edits cannot remove it. */
-#kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn{
-  background:var(--olli-phone-glass-bg) !important;
-  backdrop-filter:blur(2px) !important;
-  -webkit-backdrop-filter:blur(2px) !important;
-  box-shadow:
-    inset 0 0 0 .75px rgba(255,255,255,.72),
-    0 2px 7px rgba(0,0,0,.08),
-    0 7px 28px rgba(0,0,0,.14) !important;
 }
 
 /* Standalone bottom buttons only.
