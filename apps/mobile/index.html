@@ -865,7 +865,7 @@
 <!-- 2026-04-30 patch v2: 선생님 비활성화 되돌아감 방지 + 그룹 SVG 데이터 URL # 보정 -->
 <link rel="stylesheet" href="olli-settings-teacher-management.css">
 <script src="olli-teacher-management-legacy-cleanup.js"></script>
-<link rel="stylesheet" href="kinder-feedback.css?v=20261009-toggle-canonical-glass-1">
+<link rel="stylesheet" href="kinder-feedback.css?v=20261009-toggle-visible-glass-1">
 <link rel="stylesheet" href="olli-talk-beta.css?v=20261009-delayed-touch-pan-guard-1">
 <link rel="stylesheet" href="olli-talk-material-orders-mobile.css?v=20260928-status-colors-5">
 <!-- PAGE: 유치부 대화형 1분 피드백 -->
@@ -907,7 +907,8 @@
 <button class="kcfKeywordBtn" data-kcf-keyword="friend" type="button">친구와 협력</button>
 <button class="kcfKeywordBtn" data-kcf-keyword="focus" type="button">집중</button>
 </div>
-<div class="kcfComposer">
+<!-- Keep the floating view toggle outside the blurred composer backdrop root. -->
+<div class="kcfComposerShell">
 <button type="button" class="kcfFeedbackCollectToggleBtn" id="kcfFeedbackCollectToggleBtn" onclick="togglePhoneKcfFeedbackCollectedView()" aria-label="피드백 모아보기" title="피드백 모아보기" aria-pressed="false" data-kcf-view="collect" hidden>
 <svg class="kcfFeedbackCollectToggleIcon kcfFeedbackCollectIcon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
 <path d="m3.5 7.5 2.5 2.5 3.5-4"></path><path d="M12.5 8h8"></path>
@@ -918,6 +919,7 @@
 <path d="M7.5 9h9"></path><path d="M7.5 13.5h7"></path>
 </svg>
 </button>
+<div class="kcfComposer">
 <div aria-live="polite" class="kcfPhotoPreview" id="kcfPhotoPreview"></div>
 <div aria-label="음성 입력 중" class="kcfVoiceCapture" id="kcfVoiceCapture" hidden>
 <button aria-label="음성 입력 취소" class="kcfVoiceCaptureCircle kcfVoiceCaptureClose" id="kcfVoiceCaptureClose" type="button">
@@ -955,6 +957,7 @@
 </div>
 <div aria-live="polite" class="kcfInputWarning" id="kcfInputWarning" role="status"></div>
 <input accept="image/*" class="kcfPhotoInputHidden" id="kcfPhotoInput" onchange="handleKinderChatFeedbackPhotoChange(event)" type="file"/>
+</div>
 </div>
 </div>
 </div>
