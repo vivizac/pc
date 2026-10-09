@@ -179,9 +179,9 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
 #kinderChatFeedbackScreen .kcfComposerBottom>.kcfComposerModeBtn{z-index:6;}
 .kcfTeacherSheetBottom>.kcfComposerModeBtn{z-index:6;}
 body.kcfContinuousMode #kinderChatFeedbackScreen .kcfMsgRow:not(.kcfLiveResponseRow){display:none;}
-body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow{align-items:stretch;padding:13px;border:1px solid #edf0f3;border-radius:15px;background:#fff;margin:8px 0;}
-body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveStudentTitle{margin:0 0 8px;font-size:14px;}
-body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveBubble{max-width:none;width:100%;border-radius:10px;background:#f6f7f9;color:#252525;box-sizing:border-box;}
+/* Text-only record mode: preserve the original QuickNote feedback typography,
+   two-line clamp and tap-to-expand styles from kinder-feedback.css. */
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow{align-items:stretch;}
 body.kcfContinuousMode #kinderChatFeedbackScreen .kcfCenterIntro{display:none;}
 
 .kcfTeacherSheetRosterHost {
