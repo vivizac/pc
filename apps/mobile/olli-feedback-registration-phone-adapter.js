@@ -513,13 +513,20 @@ function installPhoneKcfLiveTypingIndicator(bubble){
   if (String(bubble.textContent || '').trim() !== '…') return;
   bubble.innerHTML = '<span class="kcfLiveTypingIndicator" aria-hidden="true"><span class="kcfLiveTypingDot"></span><span class="kcfLiveTypingDot"></span><span class="kcfLiveTypingDot"></span></span>';
 }
-// Continuous recording is a text-only presentation of existing LIVE feedback.
+// Continuous recording and "피드백 모아보기" share the very same LIVE rows.
+function isPhoneKcfFeedbackCompact(){
+  return document.body.classList.contains('kcfContinuousMode')
+    || document.body.classList.contains('kcfFeedbackCollectView');
+}
+
 function syncPhoneKcfContinuousRecordUi(){
-  const recording = document.body.classList.contains('kcfContinuousMode');
+  const compact = isPhoneKcfFeedbackCompact();
   document.querySelectorAll('#kinderChatFeedbackScreen .kcfLiveResponseRow').forEach(function(row){
     const bubble = row.querySelector('.kcfLiveBubble');
     if (!bubble) return;
-    const canExpand = recording && !row.classList.contains('kcfLiveResponseError');
+    if (!compact) row.classList.remove('kcfContinuousFeedbackExpanded');
+    const canExpand = compact && !row.classList.contains('kcfLiveResponseError')
+      && bubble.getAttribute('aria-busy') !== 'true';
     if (canExpand) {
       const expanded = row.classList.contains('kcfContinuousFeedbackExpanded');
       bubble.setAttribute('role', 'button');
@@ -532,9 +539,57 @@ function syncPhoneKcfContinuousRecordUi(){
       bubble.removeAttribute('aria-expanded');
       bubble.removeAttribute('aria-label');
     }
+    const collectBtn = row.querySelector('.kcfLiveInboxBtn');
+    if (collectBtn) collectBtn.textContent = compact ? '대화로 돌아가기' : '피드백 모아보기';
   });
 }
+
+function ensurePhoneKcfFeedbackCollectBack(){
+  const screen = document.getElementById('kinderChatFeedbackScreen');
+  if (!screen) return;
+  if (screen.querySelector('.kcfFeedbackCollectBackBtn')) return;
+  const back = document.createElement('button');
+  back.type = 'button';
+  back.className = 'kcfFeedbackCollectBackBtn';
+  back.textContent = '대화로 돌아가기';
+  back.setAttribute('aria-label', '피드백 모아보기 닫고 대화로 돌아가기');
+  back.addEventListener('click', togglePhoneKcfFeedbackCollectedView);
+  (screen.querySelector('.kcfInner') || screen).appendChild(back);
+}
+function togglePhoneKcfFeedbackCollectedView(){
+  if (document.body.classList.contains('kcfContinuousMode')) return;
+  const area = document.getElementById('kcfChatArea');
+  if (!area) return;
+  ensurePhoneKcfFeedbackCollectBack();
+  document.body.classList.add('kcfFeedbackCollectReady');
+  // Measure source rows before changing layout, so they collapse in place
+  // instead of disappearing and jumping the scroll container.
+  area.querySelectorAll('.kcfMsgRow:not(.kcfLiveResponseRow)').forEach(function(row){
+    if (!document.body.classList.contains('kcfFeedbackCollectView')) {
+      row.style.setProperty('--kcf-collect-source-height', Math.ceil(row.getBoundingClientRect().height + 2) + 'px');
+    }
+  });
+  const feedbackHeights = Array.from(area.querySelectorAll('.kcfLiveResponseRow .kcfLiveBubble'))
+    .map(function(node){ return { node:node, height:node.getBoundingClientRect().height }; });
+  void area.offsetHeight;
+  document.body.classList.toggle('kcfFeedbackCollectView');
+  syncPhoneKcfContinuousRecordUi();
+  if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    requestAnimationFrame(function(){
+      feedbackHeights.forEach(function(entry){
+        if (!entry.node.isConnected || typeof entry.node.animate !== 'function') return;
+        const targetHeight = entry.node.getBoundingClientRect().height;
+        if (Math.abs(entry.height - targetHeight) < 2) return;
+        entry.node.animate(
+          [{ height:entry.height + 'px', overflow:'hidden' }, { height:targetHeight + 'px', overflow:'hidden' }],
+          { duration:240, easing:'cubic-bezier(.22,.61,.36,1)' }
+        );
+      });
+    });
+  }
+}
 window.syncPhoneKcfContinuousRecordUi = syncPhoneKcfContinuousRecordUi;
+window.togglePhoneKcfFeedbackCollectedView = togglePhoneKcfFeedbackCollectedView;
 
 function decoratePhoneKcfLiveMessage(ui){
   const row = ui && ui.row;
@@ -545,6 +600,46 @@ function decoratePhoneKcfLiveMessage(ui){
     const studentTitle = row.querySelector('.kcfLiveStudentTitle');
     const bubble = row.querySelector('.kcfLiveBubble');
     if (studentTitle) {
+      const studentName = studentTitle.textContent.trim();
+      const left = document.createElement('span');
+      left.className = 'kcfLiveTitleLeft';
+      const headerCopy = document.createElement('button');
+      headerCopy.type = 'button';
+      headerCopy.className = 'kcfLiveHeaderCopyBtn';
+      headerCopy.title = '피드백 복사';
+      headerCopy.setAttribute('aria-label', studentName + ' 피드백 복사');
+      headerCopy.innerHTML = typeof window.getKinderChatFeedbackInboxCopyIconSvg === 'function'
+        ? window.getKinderChatFeedbackInboxCopyIconSvg()
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.2" y="8.2" width="10.3" height="10.3" rx="2"></rect><path d="M15.8 8.2V6.7A2.2 2.2 0 0 0 13.6 4.5H6.7A2.2 2.2 0 0 0 4.5 6.7v6.9a2.2 2.2 0 0 0 2.2 2.2h1.5"></path></svg>';
+      headerCopy.addEventListener('click', function(event){
+        event.preventDefault();
+        event.stopPropagation();
+        if (headerCopy.disabled) return;
+        const jobId = String(row.dataset.kcfLiveFeedbackId || '');
+        if (jobId && typeof window.copyKinderChatFeedbackLive === 'function') {
+          window.copyKinderChatFeedbackLive(jobId, headerCopy);
+        }
+      });
+      const name = document.createElement('span');
+      name.className = 'kcfLiveStudentNameText';
+      name.textContent = studentName;
+      left.append(headerCopy, name);
+      studentTitle.replaceChildren(left);
+      const refreshHeaderCopy = function(){
+        const originalCopy = row.querySelector('.kcfLiveCopyBtn');
+        headerCopy.disabled = bubble?.getAttribute('aria-busy') === 'true'
+          || !!originalCopy?.disabled || row.classList.contains('kcfLiveResponseError');
+      };
+      refreshHeaderCopy();
+      if (typeof MutationObserver === 'function' && bubble) {
+        const observer = new MutationObserver(function(){
+          refreshHeaderCopy();
+          syncPhoneKcfContinuousRecordUi();
+        });
+        observer.observe(bubble, { attributes:true, attributeFilter:['aria-busy'] });
+        const copyAction = row.querySelector('.kcfLiveCopyBtn');
+        if (copyAction) observer.observe(copyAction, { attributes:true, attributeFilter:['disabled'] });
+      }
       const editSource = document.createElement('button');
       editSource.type = 'button';
       editSource.className = 'kcfLiveRecordEditBtn';
@@ -571,7 +666,7 @@ function decoratePhoneKcfLiveMessage(ui){
     }
     if (bubble) {
       const togglePreview = function(){
-        if (!document.body.classList.contains('kcfContinuousMode')
+        if (!isPhoneKcfFeedbackCompact()
             || row.classList.contains('kcfLiveResponseError')
             || bubble.getAttribute('aria-busy') === 'true') return;
         row.classList.toggle('kcfContinuousFeedbackExpanded');
@@ -580,7 +675,7 @@ function decoratePhoneKcfLiveMessage(ui){
       bubble.addEventListener('click', togglePreview);
       bubble.addEventListener('keydown', function(event){
         if (event.key !== 'Enter' && event.key !== ' ') return;
-        if (!document.body.classList.contains('kcfContinuousMode')) return;
+        if (!isPhoneKcfFeedbackCompact()) return;
         event.preventDefault();
         togglePreview();
       });
@@ -588,12 +683,20 @@ function decoratePhoneKcfLiveMessage(ui){
   }
   syncPhoneKcfContinuousRecordUi();
 
-  const inboxBtn = row.querySelector('.kcfLiveInboxBtn');
-  if (inboxBtn) {
-    inboxBtn.classList.add('kcfLivePhoneTextActionBtn');
-    inboxBtn.textContent = '임시보관함';
-    inboxBtn.setAttribute('aria-label', '임시보관함 열기');
-    inboxBtn.title = '임시보관함';
+  const originalInboxBtn = row.querySelector('.kcfLiveInboxBtn');
+  if (originalInboxBtn) {
+    // Replace the old inbox click binding; the normal chat stays in the same DOM.
+    const collectBtn = originalInboxBtn.cloneNode(true);
+    collectBtn.classList.add('kcfLivePhoneTextActionBtn');
+    collectBtn.textContent = '피드백 모아보기';
+    collectBtn.setAttribute('aria-label', '피드백 모아보기');
+    collectBtn.title = '피드백 모아보기';
+    originalInboxBtn.replaceWith(collectBtn);
+    collectBtn.addEventListener('click', function(event){
+      event.preventDefault();
+      event.stopPropagation();
+      togglePhoneKcfFeedbackCollectedView();
+    });
   }
 
   const copyBtn = row.querySelector('.kcfLiveCopyBtn');
@@ -631,10 +734,11 @@ function decoratePhoneKcfLiveMessage(ui){
       openPhoneKcfLiveEditSheet(row.dataset.kcfLiveFeedbackId || '');
     });
   }
+  syncPhoneKcfContinuousRecordUi();
   return ui;
 }
 
-/* LIVE feedback actions use text-only temporary-inbox, copy, and edit controls on Phone. */
+/* LIVE feedback actions reuse the same buttons in conversation and compact view. */
 (function installPhoneKinderChatLiveActions(){
   const originalCreateLiveMessage = window.createKinderChatFeedbackLiveMessage;
   if (typeof originalCreateLiveMessage === 'function' && !originalCreateLiveMessage.__olliPhoneTextActions) {

@@ -224,6 +224,7 @@
   function syncModeUi(){
     var continuous = state.composerMode === 'continuous';
     document.body.classList.toggle('kcfContinuousMode', continuous);
+    if (continuous) document.body.classList.remove('kcfFeedbackCollectView');
     if (typeof global.syncPhoneKcfContinuousRecordUi === 'function') {
       global.syncPhoneKcfContinuousRecordUi();
     }

@@ -1939,17 +1939,33 @@ width:100%;
 }
 
 
-/* Continuous QuickNote: plain-text feedback with no extra cards. */
-#kinderChatFeedbackScreen .kcfLiveRecordEditBtn {
+/* Shared compact presentation: continuous recording or animated collect view. */
+#kinderChatFeedbackScreen .kcfLiveRecordEditBtn,
+#kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn {
   display:none;
 }
 body.kcfContinuousMode #kinderChatFeedbackScreen .kcfMsgRow.user[data-kcf-live-user-for] {
   display:none;
 }
-body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow {
-  margin-bottom:22px;
+body.kcfFeedbackCollectReady #kinderChatFeedbackScreen .kcfMsgRow:not(.kcfLiveResponseRow){
+  max-height:var(--kcf-collect-source-height, 900px);
+  overflow:hidden;
+  transition:max-height .28s cubic-bezier(.22,.61,.36,1), opacity .2s ease, margin .28s ease;
 }
-body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveStudentTitle {
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfMsgRow:not(.kcfLiveResponseRow){
+  max-height:0;
+  opacity:0;
+  margin:0;
+  padding:0;
+  pointer-events:none;
+}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow,
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveResponseRow {
+  margin:0 0 22px;
+  align-items:stretch;
+}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveStudentTitle,
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveStudentTitle {
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -1958,7 +1974,8 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveStudentTitle {
   box-sizing:border-box;
   margin:0 0 5px;
 }
-body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveRecordEditBtn {
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveRecordEditBtn,
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveRecordEditBtn {
   display:inline-flex;
   flex:0 0 auto;
   min-height:32px;
@@ -1977,7 +1994,8 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveRecordEditBtn {
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;
 }
-body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveRecordEditBtn svg {
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveRecordEditBtn svg,
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveRecordEditBtn svg {
   flex:0 0 19px;
   width:19px;
   height:19px;
@@ -1987,7 +2005,8 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveRecordEditBtn svg {
   stroke-linecap:round;
   stroke-linejoin:round;
 }
-body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveBubble {
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveBubble,
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveBubble {
   display:-webkit-box;
   -webkit-box-orient:vertical;
   -webkit-line-clamp:2;
@@ -1998,14 +2017,78 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveBub
   cursor:pointer;
 }
 body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow.kcfContinuousFeedbackExpanded .kcfLiveBubble,
-body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow.kcfLiveResponseError .kcfLiveBubble {
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveResponseRow.kcfContinuousFeedbackExpanded .kcfLiveBubble,
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow.kcfLiveResponseError .kcfLiveBubble,
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveResponseRow.kcfLiveResponseError .kcfLiveBubble {
   display:block;
   -webkit-line-clamp:unset;
   overflow:visible;
 }
-body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveActions {
+/* In compact view, show the original LIVE Copy/Edit actions only after expansion. */
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveActions,
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveActions {
   display:none;
 }
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow.kcfContinuousFeedbackExpanded.kcfLiveResponseDone .kcfLiveActions,
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveResponseRow.kcfContinuousFeedbackExpanded.kcfLiveResponseDone .kcfLiveActions {
+  display:flex;
+}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveInboxBtn,
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveInboxBtn {
+  display:none;
+}
+#kinderChatFeedbackScreen .kcfLiveTitleLeft{
+  display:inline-flex;
+  align-items:center;
+  min-width:0;
+  gap:7px;
+}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn,
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn {
+  display:inline-flex;
+  width:27px;
+  height:27px;
+  flex:0 0 27px;
+  justify-content:center;
+  align-items:center;
+  padding:0;
+  background:#fff;
+  color:#8e8e93;
+  border:1px solid #d9dde3;
+  border-radius:50%;
+  box-sizing:border-box;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn svg,
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn svg {
+  width:16px;
+  height:16px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.85;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+#kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn:disabled{opacity:.38;cursor:default;}
+#kinderChatFeedbackScreen .kcfFeedbackCollectBackBtn{
+  display:none;
+  position:fixed;
+  top:calc(var(--olli-phone-guide-top, 64px) + 57px);
+  right:var(--olli-phone-guide-x,16px);
+  z-index:12;
+  border:0;
+  background:#fff;
+  color:#777;
+  padding:6px 4px;
+  font:inherit;
+  font-size:calc(12px * var(--olli-text-scale, 1));
+  cursor:pointer;
+}
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfFeedbackCollectBackBtn{
+  display:inline-flex;
+}
+/* Preserve original font sizes and the unboxed LIVE message styling. */
 
 /* KCF LIVE response actions */
 #kinderChatFeedbackScreen .kcfMsgRow.user .kcfLiveUserStudentName {
