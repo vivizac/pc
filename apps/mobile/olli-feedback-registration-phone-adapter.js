@@ -586,6 +586,7 @@ function syncPhoneKcfContinuousRecordUi(){
 // Keep only the temporary inline properties we touch; the saved text and
 // the normal/continuous feedback layout remain owned by their existing code.
 const phoneKcfCollectMotion = new WeakMap();
+let phoneKcfCollectSourceRestoreTimer = 0;
 const phoneKcfCollectMotionProps = ['height', 'display', 'overflow', '-webkit-line-clamp'];
 function restorePhoneKcfCollectMotionStyle(entry){
   phoneKcfCollectMotionProps.forEach(function(prop){
@@ -601,14 +602,21 @@ function togglePhoneKcfFeedbackCollectedView(){
   const area = document.getElementById('kcfChatArea');
   if (!area) return;
   const continuous = document.body.classList.contains('kcfContinuousMode');
+  const restoringSourceRows = !continuous && document.body.classList.contains('kcfFeedbackCollectView');
+  if (phoneKcfCollectSourceRestoreTimer) {
+    clearTimeout(phoneKcfCollectSourceRestoreTimer);
+    phoneKcfCollectSourceRestoreTimer = 0;
+  }
   if (!continuous) document.body.classList.add('kcfFeedbackCollectReady');
-  // Measure source rows before changing layout, so they collapse in place
-  // instead of disappearing and jumping the scroll container.
-  area.querySelectorAll('.kcfMsgRow:not(.kcfLiveResponseRow)').forEach(function(row){
-    if (!document.body.classList.contains('kcfFeedbackCollectView')) {
-      row.style.setProperty('--kcf-collect-source-height', Math.ceil(row.getBoundingClientRect().height + 2) + 'px');
-    }
-  });
+  // Use actual content height even when returning from the collapsed (0px)
+  // state. A stored zero max-height otherwise keeps teacher records invisible.
+  if (!continuous) {
+    area.querySelectorAll('.kcfMsgRow:not(.kcfLiveResponseRow)').forEach(function(row){
+      const previous = parseFloat(row.style.getPropertyValue('--kcf-collect-source-height')) || 0;
+      const fullHeight = Math.max(row.scrollHeight, row.getBoundingClientRect().height, previous);
+      if (fullHeight > 0) row.style.setProperty('--kcf-collect-source-height', Math.ceil(fullHeight + 2) + 'px');
+    });
+  }
 
   const reduceMotion = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const motion = Array.from(area.querySelectorAll('.kcfLiveResponseRow:not(.editing):not(.kcfLiveResponseError) .kcfLiveBubble'))
@@ -648,6 +656,20 @@ function togglePhoneKcfFeedbackCollectedView(){
     });
   } else {
     document.body.classList.toggle('kcfFeedbackCollectView');
+    if (restoringSourceRows) {
+      // Release the temporary height cap after the original 280ms expansion.
+      // Without this, a stale measurement can conceal the original teacher bubble.
+      const finishRestore = function(){
+        phoneKcfCollectSourceRestoreTimer = 0;
+        if (document.body.classList.contains('kcfFeedbackCollectView')) return;
+        document.body.classList.remove('kcfFeedbackCollectReady');
+        area.querySelectorAll('.kcfMsgRow:not(.kcfLiveResponseRow)').forEach(function(row){
+          row.style.removeProperty('--kcf-collect-source-height');
+        });
+      };
+      if (reduceMotion) finishRestore();
+      else phoneKcfCollectSourceRestoreTimer = setTimeout(finishRestore, 300);
+    }
   }
   syncPhoneKcfContinuousRecordUi();
 
