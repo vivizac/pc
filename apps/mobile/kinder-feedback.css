@@ -2104,7 +2104,8 @@ body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn svg 
   -webkit-tap-highlight-color:transparent;
 }
 #kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn[hidden],
-body.kcfContinuousMode #kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn{
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn,
+#kinderChatFeedbackScreen .kcfComposer.kcfVoiceCaptureMode > .kcfFeedbackCollectToggleBtn{
   display:none !important;
 }
 /* Preserve original font sizes and the unboxed LIVE message styling. */
