@@ -99,6 +99,17 @@
     };
   }
 
+  // A first-line name that is not in the academy roster should never be
+  // reported as an unrecognized Team Chat command.
+  function getKcfUnregisteredInlineStudentName(text){
+    var lines = String(text || '').trim().split(/\r?\n/);
+    if (lines.length < 2) return '';
+    var name = String(lines[0] || '').trim().replace(/\s*학생$/, '').trim();
+    if (!/^[가-힣]{2,6}$/.test(name)) return '';
+    if (/^(?:오늘|어제|내일|수업|기록|활동|관찰|내용|학생|아이|재료|처음|마지막)$/.test(name)) return '';
+    return name;
+  }
+
   function getKcfSelectedStudent(){
     var selectedId = '';
     try {
@@ -505,6 +516,20 @@
     }
 
     if (!selectedStudent) {
+      if (window.__olliCommandsMovedToTalk === true) {
+        var unregisteredName = getKcfUnregisteredInlineStudentName(text);
+        var message = unregisteredName
+          ? unregisteredName + ' 학생이 등록된 학생 목록에 없어요. 이름을 확인하거나 학생을 먼저 등록해 주세요. 작성한 수업기록은 입력창에 그대로 남아 있어요.'
+          : '수업기록을 연결할 학생을 찾지 못했어요. 등록된 학생을 선택하거나 이름을 확인해 주세요. 작성한 수업기록은 입력창에 그대로 남아 있어요.';
+        if (window.KcfTeacherSheet && typeof window.KcfTeacherSheet.getMode === 'function' &&
+            window.KcfTeacherSheet.getMode() === 'continuous') {
+          setKinderChatFeedbackWarning(message);
+        } else if (typeof addKinderChatMessage === 'function') {
+          addKinderChatMessage('bot', message);
+        }
+        // No student was resolved: leave the unsent class record editable.
+        return;
+      }
       if (window.KcfTeacherSheet && typeof window.KcfTeacherSheet.getMode === 'function' &&
           window.KcfTeacherSheet.getMode() === 'continuous') {
         setKinderChatFeedbackWarning('학생 이름을 먼저 적고 수업기록을 입력해 주세요.');
