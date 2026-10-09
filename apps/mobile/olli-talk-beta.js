@@ -175,13 +175,16 @@
     ], { duration:190, easing:'cubic-bezier(.2,.65,.2,1)' });
     olliTalkComposerShapeAnimation = animation;
 
-    // The final two-row height is already reserved when the input focuses.
-    // During the 47→79px morph, refresh layout only; keyboard resize owns
-    // message anchoring, so the morph cannot pull messages up a second time.
+    // The keyboard and the 47→79px composer morph share one viewport/scroll
+    // transaction. Do not write scrollTop from this animation's own RAF:
+    // the shared FLIP frame must see each height change and anchor together.
     let shapeFrame = 0;
     const followComposerHeight = () => {
       if (olliTalkComposerShapeAnimation !== animation) return;
-      scheduleOlliTalkKeyboardViewportUpdate({composerSync:true});
+      scheduleOlliTalkKeyboardViewportUpdate({
+        composerSync:true,
+        anchorLatest:expanded
+      });
       shapeFrame = requestAnimationFrame(followComposerHeight);
     };
     if (expanded) shapeFrame = requestAnimationFrame(followComposerHeight);
@@ -191,7 +194,11 @@
       olliTalkComposerShapeAnimation = null;
       if (shapeFrame) cancelAnimationFrame(shapeFrame);
       composer.style.removeProperty('overflow');
-      scheduleOlliTalkKeyboardViewportUpdate({composerSync:true});
+      // One final measurement via the same controller, not a second scroll.
+      scheduleOlliTalkKeyboardViewportUpdate({
+        composerSync:true,
+        anchorLatest:expanded
+      });
     };
     animation.addEventListener('finish', finish, { once:true });
     animation.addEventListener('cancel', finish, { once:true });
@@ -265,7 +272,7 @@
 
   const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 32;
   // The composer and messages use one opening response so their motions agree.
-  const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 36;
+  const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 30;
   let olliTalkKeyboardVisualRaf = 0;
   let olliTalkKeyboardViewportRaf = 0;
   let olliTalkKeyboardVisualLastTs = 0;
@@ -504,14 +511,9 @@
 
     const active = screen.classList.contains('olliTalkKeyboardOpen');
     const renderedComposerHeight = composerWrap.querySelector('.olliTalkBetaComposer')?.getBoundingClientRect().height;
-    const measuredHeight = Number.isFinite(renderedComposerHeight) && renderedComposerHeight > 0
+    const composerHeight = Number.isFinite(renderedComposerHeight) && renderedComposerHeight > 0
       ? renderedComposerHeight
       : (active ? OLLI_TALK_COMPOSER_ACTIVE_HEIGHT : OLLI_TALK_COMPOSER_IDLE_HEIGHT);
-    // Reserve the final two-row height from focus, before the shape animation.
-    // Keep the true height if a mention menu or multiline input is taller.
-    const composerHeight = isOlliTalkComposerActive()
-      ? Math.max(OLLI_TALK_COMPOSER_ACTIVE_HEIGHT, measuredHeight)
-      : measuredHeight;
     // Exclude temporary animation translation from the layout measurement.
     const layoutComposerBottom = composerRect.bottom - olliTalkComposerVisualOffsetY;
     const bottomGap = Math.max(0, Math.ceil(viewportRect.bottom - layoutComposerBottom));
