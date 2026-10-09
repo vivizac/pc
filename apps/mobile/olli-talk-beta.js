@@ -175,31 +175,30 @@
     ], { duration:190, easing:'cubic-bezier(.2,.65,.2,1)' });
     olliTalkComposerShapeAnimation = animation;
 
-    // Height changes independently of visualViewport resize. Keep the existing
-    // latest-message anchor in sync with the composer, without pulling readers
-    // away from older messages or taking over the chat scroll controller.
-    const followLatest = () => {
-      if (!expanded || !isOlliTalkBetaVisible() || !isOlliTalkComposerActive()
-          || !olliTalkKeyboardFollowLatest || olliTalkChatGestureActive
-          || isOlliTalkPendingReasonInputActive()) return;
-      scheduleOlliTalkLatestMessageAnchor();
-    };
-    let anchorRaf = 0;
+    // The keyboard and the 47→79px composer morph share one viewport/scroll
+    // transaction. Do not write scrollTop from this animation's own RAF:
+    // the shared FLIP frame must see each height change and anchor together.
+    let shapeFrame = 0;
     const followComposerHeight = () => {
       if (olliTalkComposerShapeAnimation !== animation) return;
-      syncOlliTalkChatToComposer();
-      followLatest();
-      anchorRaf = requestAnimationFrame(followComposerHeight);
+      scheduleOlliTalkKeyboardViewportUpdate({
+        composerSync:true,
+        anchorLatest:expanded
+      });
+      shapeFrame = requestAnimationFrame(followComposerHeight);
     };
-    if (expanded) anchorRaf = requestAnimationFrame(followComposerHeight);
+    if (expanded) shapeFrame = requestAnimationFrame(followComposerHeight);
 
     const finish = () => {
       if (olliTalkComposerShapeAnimation !== animation) return;
       olliTalkComposerShapeAnimation = null;
-      if (anchorRaf) cancelAnimationFrame(anchorRaf);
+      if (shapeFrame) cancelAnimationFrame(shapeFrame);
       composer.style.removeProperty('overflow');
-      syncOlliTalkChatToComposer();
-      followLatest();
+      // One final measurement via the same controller, not a second scroll.
+      scheduleOlliTalkKeyboardViewportUpdate({
+        composerSync:true,
+        anchorLatest:expanded
+      });
     };
     animation.addEventListener('finish', finish, { once:true });
     animation.addEventListener('cancel', finish, { once:true });
@@ -272,10 +271,8 @@
   }
 
   const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 32;
-  // Keep the existing composer speed; let rising messages follow a touch faster.
-  // Closing keeps the original response speed for both.
-  const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 41;
-  const OLLI_TALK_MESSAGE_OPEN_FOLLOW_TAU_MS = 36;
+  // The composer and messages use one opening response so their motions agree.
+  const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 36;
   let olliTalkKeyboardVisualRaf = 0;
   let olliTalkKeyboardViewportRaf = 0;
   let olliTalkKeyboardVisualLastTs = 0;
@@ -355,15 +352,12 @@
     const dt = Math.max(1,Math.min(34,timestamp - previous));
     olliTalkKeyboardVisualLastTs = timestamp;
     const opening = !!getScreen()?.classList.contains('olliTalkKeyboardOpen');
-    const composerTau = opening
+    const followTau = opening
       ? OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS
       : OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS;
-    const messageTau = opening
-      ? OLLI_TALK_MESSAGE_OPEN_FOLLOW_TAU_MS
-      : OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS;
-
-    olliTalkComposerVisualOffsetY += (0 - olliTalkComposerVisualOffsetY) * (1 - Math.exp(-dt / composerTau));
-    olliTalkMessagesVisualOffsetY += (0 - olliTalkMessagesVisualOffsetY) * (1 - Math.exp(-dt / messageTau));
+    const follow = 1 - Math.exp(-dt / followTau);
+    olliTalkComposerVisualOffsetY += (0 - olliTalkComposerVisualOffsetY) * follow;
+    olliTalkMessagesVisualOffsetY += (0 - olliTalkMessagesVisualOffsetY) * follow;
 
     if (Math.abs(olliTalkComposerVisualOffsetY) < 0.18) olliTalkComposerVisualOffsetY = 0;
     if (Math.abs(olliTalkMessagesVisualOffsetY) < 0.18) olliTalkMessagesVisualOffsetY = 0;
@@ -431,7 +425,12 @@
     const motionFrame = captureOlliTalkKeyboardVisualFrame();
 
     if (fullSync) syncViewport();
-    else if (composerSync) syncOlliTalkComposerViewport();
+    else if (composerSync) {
+      syncOlliTalkComposerViewport();
+      // During the 190ms shape morph the extra height needs its own reserve,
+      // even if visualViewport does not emit another resize event.
+      syncOlliTalkChatToComposer();
+    }
 
     // Focus opening anchors messages above the composer; blur must reverse it.
     // Run after layout reserve updates, before the shared FLIP capture is painted.
