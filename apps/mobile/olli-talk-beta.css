@@ -588,6 +588,19 @@
   padding:7px 11px;
 }
 
+/* Block native pan at touch-start, including delayed drags on the textarea.
+   Do not prevent touchstart: tapping, cursor placement and text selection
+   must keep working. The message scroller is a separate element. */
+#olliTalkBetaScreen.olliTalkKeyboardOpen:not(.kcfVoiceCaptureMode):not(.olliTalkReasonInputActive) .olliTalkBetaComposer,
+#olliTalkBetaScreen.olliTalkKeyboardOpen:not(.kcfVoiceCaptureMode):not(.olliTalkReasonInputActive) .olliTalkBetaInput{
+  touch-action:none;
+  overscroll-behavior-y:contain;
+}
+/* Mention suggestions have their own scroll container, so preserve their pan. */
+#olliTalkBetaScreen .olliTalkMentionMenu:not([hidden]){
+  touch-action:pan-y;
+}
+
 #olliTalkBetaScreen .olliTalkBetaComposer.kcfVoiceCaptureMode,
 #olliTalkBetaScreen.olliTalkKeyboardOpen .olliTalkBetaComposer.kcfVoiceCaptureMode{
   display:flex;
