@@ -550,7 +550,7 @@ function decoratePhoneKcfLiveMessage(ui){
       editSource.className = 'kcfLiveRecordEditBtn';
       editSource.setAttribute('aria-label', studentTitle.textContent.trim() + ' 수업기록 수정하기');
       editSource.title = '수업기록 수정';
-      editSource.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4L16.5 3.5Z"></path></svg>';
+      editSource.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4L16.5 3.5Z"></path></svg><span>수업기록 수정</span>';
       editSource.addEventListener('click', function(event){
         event.preventDefault();
         event.stopPropagation();

@@ -1960,20 +1960,25 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveStudentTitle {
 }
 body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveRecordEditBtn {
   display:inline-flex;
-  flex:0 0 32px;
-  width:32px;
-  height:32px;
+  flex:0 0 auto;
+  min-height:32px;
   align-items:center;
   justify-content:center;
+  gap:5px;
   border:0;
-  padding:4px;
+  padding:4px 2px;
   border-radius:999px;
   background:transparent;
   color:#737373;
+  font:inherit;
+  font-size:calc(12px * var(--olli-text-scale, 1));
+  font-weight:450;
+  white-space:nowrap;
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;
 }
 body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveRecordEditBtn svg {
+  flex:0 0 19px;
   width:19px;
   height:19px;
   fill:none;
