@@ -576,7 +576,7 @@ function syncPhoneKcfContinuousRecordUi(){
     toggle.hidden = !hasPhoneKcfGeneratedFeedback();
     toggle.textContent = continuous
       ? (folded ? '피드백 전체 보기' : '피드백 모아보기')
-      : (collected ? '대화로 돌아가기' : '피드백 모아보기');
+      : (collected ? '피드백 전체 보기' : '피드백 모아보기');
     toggle.setAttribute('aria-label', toggle.textContent);
     toggle.setAttribute('aria-pressed', String(continuous ? folded : collected));
   }
