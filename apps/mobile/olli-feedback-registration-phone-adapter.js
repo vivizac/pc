@@ -595,8 +595,7 @@ function togglePhoneKcfFeedbackCollectedView(){
       row.style.setProperty('--kcf-collect-source-height', Math.ceil(row.getBoundingClientRect().height + 2) + 'px');
     }
   });
-  const feedbackHeights = Array.from(area.querySelectorAll('.kcfLiveResponseRow .kcfLiveBubble'))
-    .map(function(node){ return { node:node, height:node.getBoundingClientRect().height }; });
+  // Flush the source-row measurements so the existing message-list transition remains intact.
   void area.offsetHeight;
   if (continuous) {
     const folded = document.body.classList.toggle('kcfContinuousFeedbackFolded');
@@ -607,20 +606,9 @@ function togglePhoneKcfFeedbackCollectedView(){
   } else {
     document.body.classList.toggle('kcfFeedbackCollectView');
   }
+  // The one-line clamp already sets the final feedback height in one layout pass.
+  // Do not animate the bubble height again: that produced a second collapse.
   syncPhoneKcfContinuousRecordUi();
-  if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-    requestAnimationFrame(function(){
-      feedbackHeights.forEach(function(entry){
-        if (!entry.node.isConnected || typeof entry.node.animate !== 'function') return;
-        const targetHeight = entry.node.getBoundingClientRect().height;
-        if (Math.abs(entry.height - targetHeight) < 2) return;
-        entry.node.animate(
-          [{ height:entry.height + 'px', overflow:'hidden' }, { height:targetHeight + 'px', overflow:'hidden' }],
-          { duration:240, easing:'cubic-bezier(.22,.61,.36,1)' }
-        );
-      });
-    });
-  }
 }
 window.syncPhoneKcfContinuousRecordUi = syncPhoneKcfContinuousRecordUi;
 window.togglePhoneKcfFeedbackCollectedView = togglePhoneKcfFeedbackCollectedView;
