@@ -753,8 +753,10 @@ function decoratePhoneKcfLiveMessage(ui){
       const name = document.createElement('span');
       name.className = 'kcfLiveStudentNameText';
       name.textContent = studentName;
-      left.append(headerCopy, name);
-      studentTitle.replaceChildren(left);
+      // Keep the student's name at the left and put the existing copy action
+      // at the far right of the same header row in collected/compact view.
+      left.append(name);
+      studentTitle.replaceChildren(left, headerCopy);
       const refreshHeaderCopy = function(){
         const originalCopy = row.querySelector('.kcfLiveCopyBtn');
         headerCopy.disabled = bubble?.getAttribute('aria-busy') === 'true'

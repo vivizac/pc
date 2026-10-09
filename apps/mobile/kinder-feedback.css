@@ -2071,6 +2071,7 @@ body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn {
   border:1px solid #d9dde3;
   border-radius:50%;
   box-sizing:border-box;
+  margin-left:auto;
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;
 }
@@ -2100,7 +2101,7 @@ body.kcfTeacherSheetOpen #kcfTeacherSheetOverlay .kcfAttachBtn svg {
    affecting composer sizing or the message-list scroll container. */
 #kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn{
   position:absolute;
-  bottom:calc(100% + 11px);
+  bottom:calc(100% + 17px);
   left:50%;
   transform:translateX(-50%);
   z-index:5;
