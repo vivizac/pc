@@ -2021,7 +2021,7 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveBub
 body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveBubble {
   display:-webkit-box;
   -webkit-box-orient:vertical;
-  -webkit-line-clamp:2;
+  -webkit-line-clamp:1;
   width:100%;
   box-sizing:border-box;
   overflow:hidden;
