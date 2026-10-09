@@ -1906,7 +1906,7 @@ function renderPhoneRecordAttendanceLeadIcon(student, requestedKind) {
   const baseTitle = getRecordAttendanceStatusTitle(status, student);
   const title = missingEnrollment ? `${baseTitle} · 등록일 미입력` : baseTitle;
   let html = `<span class="recordAttendanceLeadBtn ${escapeHtml(stateClass)}" role="button" tabindex="0" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}" onclick="toggleRecordTodayAttendance(event,'${escapeTemplateLiteral(student?.id || '')}')" onkeydown="handleRecordAttendanceLeadKeydown(event,'${escapeTemplateLiteral(student?.id || '')}')">
-    <svg class="recordAttendanceLeadSvg" xmlns="http://www.w3.org/2000/svg" width="36" height="35" viewBox="0 0 36 35" aria-hidden="true">
+    <svg class="recordAttendanceLeadSvg" xmlns="http://www.w3.org/2000/svg" width="36" height="35" viewBox="9 0 36 35" aria-hidden="true">
       <polygon class="recordAttendanceLeadFill" points="20.5,5.5 31,11.7 31,23.8 20.5,30.5 10,23.8 10,11.7" fill="transparent" stroke="#8f8f8f" stroke-width="1.8" stroke-linejoin="round"/>
       <path class="recordAttendanceLeadLine" d="M10 11.7 L20.5 17.8 L31 11.7" fill="none" stroke="#8f8f8f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
       <path class="recordAttendanceLeadLine" d="M20.5 17.8 L20.5 30.5" fill="none" stroke="#8f8f8f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>

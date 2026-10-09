@@ -3372,7 +3372,7 @@ width: auto ;
 #recordRoomScreen .kinderRowInner {
   width: 100%;
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-columns: 27px minmax(0, 1fr);
   column-gap: 10px;
   align-items: center;
 }
@@ -3399,7 +3399,7 @@ width: auto ;
 #recordRoomScreen .elementaryRowInner {
   width: 100%;
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-columns: 27px minmax(0, 1fr);
   column-gap: 10px;
   align-items: center;
 }
@@ -5865,11 +5865,6 @@ body.olli-login-open {
   height:3px;
   border-radius:999px;
   background:#111;
-}
-
-#recordRoomScreen .elementaryRowInner {
-  grid-template-columns:36px minmax(0, 1fr);
-  column-gap:10px;
 }
 
 #recordRoomScreen .elementaryStudentRow .elementaryGroupIcon {

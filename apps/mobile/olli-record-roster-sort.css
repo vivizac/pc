@@ -79,7 +79,7 @@
   border-width: 2px;
 }
 
-/* 2026-09-10: 출석부 정렬/시간 구분은 선 없이 텍스트만 표시하고 출석 아이콘 시작선보다 3px 오른쪽에 둔다. */
+/* 출석부 시간 구분은 초등부/유치부 제목과 실제 SVG 윤곽의 왼쪽 시작선에 맞춘다. */
 #recordRoomScreen .recordSortSectionDivider,
 #recordRoomScreen .recordTodaySessionDivider {
   display: flex !important;
@@ -89,7 +89,7 @@
   box-sizing: border-box !important;
   gap: 0 !important;
   margin: 13px 0 8px !important;
-  padding: 0 10px 0 13px !important;
+  padding: 0 10px;
   color: #8f8f8f !important;
   font-size: calc(12px * var(--olli-text-scale)) !important;
   font-weight: 700 !important;
