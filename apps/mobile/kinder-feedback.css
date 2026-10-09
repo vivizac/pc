@@ -503,7 +503,7 @@
   padding:140px 16px calc(
     var(--olli-phone-bottom-control-height, 47px)
     + var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom)))
-    + 28px
+    + 38px
   );
   position:relative;
   z-index:1;
@@ -2044,10 +2044,6 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow.kcfContinuo
 body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveResponseRow.kcfContinuousFeedbackExpanded.kcfLiveResponseDone .kcfLiveActions {
   display:flex;
 }
-body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveInboxBtn,
-body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveInboxBtn {
-  display:none;
-}
 #kinderChatFeedbackScreen .kcfLiveTitleLeft{
   display:inline-flex;
   align-items:center;
@@ -2082,22 +2078,34 @@ body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn svg 
   stroke-linejoin:round;
 }
 #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn:disabled{opacity:.38;cursor:default;}
-#kinderChatFeedbackScreen .kcfFeedbackCollectBackBtn{
-  display:none;
-  position:fixed;
-  top:calc(var(--olli-phone-guide-top, 64px) + 57px);
-  right:var(--olli-phone-guide-x,16px);
-  z-index:12;
-  border:0;
+/* One centered toggle floats above the fixed QuickNote input without
+   affecting composer sizing or the message-list scroll container. */
+#kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn{
+  position:absolute;
+  bottom:calc(100% + 11px);
+  left:50%;
+  transform:translateX(-50%);
+  z-index:5;
+  width:max-content;
+  min-height:29px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 12px;
+  border:1px solid #e6e8eb;
+  border-radius:999px;
   background:#fff;
-  color:#777;
-  padding:6px 4px;
+  color:#737373;
   font:inherit;
   font-size:calc(12px * var(--olli-text-scale, 1));
+  font-weight:500;
+  white-space:nowrap;
   cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
 }
-body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfFeedbackCollectBackBtn{
-  display:inline-flex;
+#kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn[hidden],
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn{
+  display:none !important;
 }
 /* Preserve original font sizes and the unboxed LIVE message styling. */
 
@@ -2187,9 +2195,6 @@ body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfFeedbackCollectBackBtn
   font-size:calc(11.5px * var(--olli-text-scale));
   font-weight:600;
   white-space:nowrap;
-}
-#kinderChatFeedbackScreen .kcfLiveInboxBtn {
-  margin-right:0;
 }
 #kinderChatFeedbackScreen .kcfLiveActionBtn.kcfLivePhoneTextActionBtn:active:not(:disabled) {
   background:transparent;

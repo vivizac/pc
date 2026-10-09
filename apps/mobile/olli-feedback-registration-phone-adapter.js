@@ -539,28 +539,23 @@ function syncPhoneKcfContinuousRecordUi(){
       bubble.removeAttribute('aria-expanded');
       bubble.removeAttribute('aria-label');
     }
-    const collectBtn = row.querySelector('.kcfLiveInboxBtn');
-    if (collectBtn) collectBtn.textContent = compact ? '대화로 돌아가기' : '피드백 모아보기';
   });
+  // One composer-level control replaces the repeated per-feedback controls.
+  const toggle = document.getElementById('kcfFeedbackCollectToggleBtn');
+  if (toggle) {
+    const continuous = document.body.classList.contains('kcfContinuousMode');
+    const collected = document.body.classList.contains('kcfFeedbackCollectView');
+    toggle.hidden = continuous || !document.querySelector('#kcfChatArea .kcfLiveResponseRow');
+    toggle.textContent = collected ? '대화로 돌아가기' : '피드백 모아보기';
+    toggle.setAttribute('aria-label', toggle.textContent);
+    toggle.setAttribute('aria-pressed', String(collected));
+  }
 }
 
-function ensurePhoneKcfFeedbackCollectBack(){
-  const screen = document.getElementById('kinderChatFeedbackScreen');
-  if (!screen) return;
-  if (screen.querySelector('.kcfFeedbackCollectBackBtn')) return;
-  const back = document.createElement('button');
-  back.type = 'button';
-  back.className = 'kcfFeedbackCollectBackBtn';
-  back.textContent = '대화로 돌아가기';
-  back.setAttribute('aria-label', '피드백 모아보기 닫고 대화로 돌아가기');
-  back.addEventListener('click', togglePhoneKcfFeedbackCollectedView);
-  (screen.querySelector('.kcfInner') || screen).appendChild(back);
-}
 function togglePhoneKcfFeedbackCollectedView(){
   if (document.body.classList.contains('kcfContinuousMode')) return;
   const area = document.getElementById('kcfChatArea');
   if (!area) return;
-  ensurePhoneKcfFeedbackCollectBack();
   document.body.classList.add('kcfFeedbackCollectReady');
   // Measure source rows before changing layout, so they collapse in place
   // instead of disappearing and jumping the scroll container.
@@ -683,21 +678,9 @@ function decoratePhoneKcfLiveMessage(ui){
   }
   syncPhoneKcfContinuousRecordUi();
 
-  const originalInboxBtn = row.querySelector('.kcfLiveInboxBtn');
-  if (originalInboxBtn) {
-    // Replace the old inbox click binding; the normal chat stays in the same DOM.
-    const collectBtn = originalInboxBtn.cloneNode(true);
-    collectBtn.classList.add('kcfLivePhoneTextActionBtn');
-    collectBtn.textContent = '피드백 모아보기';
-    collectBtn.setAttribute('aria-label', '피드백 모아보기');
-    collectBtn.title = '피드백 모아보기';
-    originalInboxBtn.replaceWith(collectBtn);
-    collectBtn.addEventListener('click', function(event){
-      event.preventDefault();
-      event.stopPropagation();
-      togglePhoneKcfFeedbackCollectedView();
-    });
-  }
+  // The composer owns the only "피드백 모아보기" control.
+  // Remove the original inbox action instead of cloning a new row-level one.
+  row.querySelector('.kcfLiveInboxBtn')?.remove();
 
   const copyBtn = row.querySelector('.kcfLiveCopyBtn');
   if (copyBtn) {

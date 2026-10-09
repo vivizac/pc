@@ -865,7 +865,7 @@
 <!-- 2026-04-30 patch v2: 선생님 비활성화 되돌아감 방지 + 그룹 SVG 데이터 URL # 보정 -->
 <link rel="stylesheet" href="olli-settings-teacher-management.css">
 <script src="olli-teacher-management-legacy-cleanup.js"></script>
-<link rel="stylesheet" href="kinder-feedback.css?v=20261009-bottom-gap-1">
+<link rel="stylesheet" href="kinder-feedback.css?v=20261009-single-collect-toggle-1">
 <link rel="stylesheet" href="olli-talk-beta.css?v=20261009-delayed-touch-pan-guard-1">
 <link rel="stylesheet" href="olli-talk-material-orders-mobile.css?v=20260928-status-colors-5">
 <!-- PAGE: 유치부 대화형 1분 피드백 -->
@@ -907,6 +907,7 @@
 <button class="kcfKeywordBtn" data-kcf-keyword="friend" type="button">친구와 협력</button>
 <button class="kcfKeywordBtn" data-kcf-keyword="focus" type="button">집중</button>
 </div>
+<button type="button" class="kcfFeedbackCollectToggleBtn" id="kcfFeedbackCollectToggleBtn" onclick="togglePhoneKcfFeedbackCollectedView()" aria-label="피드백 모아보기" aria-pressed="false" hidden>피드백 모아보기</button>
 <div class="kcfComposer">
 <div aria-live="polite" class="kcfPhotoPreview" id="kcfPhotoPreview"></div>
 <div aria-label="음성 입력 중" class="kcfVoiceCapture" id="kcfVoiceCapture" hidden>
@@ -1180,7 +1181,7 @@
 <link rel="stylesheet" href="olli-observation-responsive.css">
 <script src="olli-memo-ipad-runtime.js"></script>
 <script src="olli-page-scroll-reset.js?v=20260918-teacher-sheet-cleanup-1"></script>
-<script src="olli-feedback-registration-phone-adapter.js?v=20261009-feedback-collect-view-1"></script>
+<script src="olli-feedback-registration-phone-adapter.js?v=20261009-single-collect-toggle-1"></script>
 <link rel="stylesheet" href="kcf-roster-filter.css">
 <link rel="stylesheet" href="kcf-feedback-status.css">
 <link rel="stylesheet" href="kcf-auto-mode.css?v=20261008-original-one-row-1">
