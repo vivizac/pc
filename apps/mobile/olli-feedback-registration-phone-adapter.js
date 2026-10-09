@@ -593,6 +593,8 @@ function restorePhoneKcfCollectMotionStyle(entry){
     if (old.value) entry.node.style.setProperty(prop, old.value, old.priority);
     else entry.node.style.removeProperty(prop);
   });
+  entry.node.classList.remove('kcfFoldSoftFade');
+  entry.node.style.removeProperty('--kcf-fold-first-line-height');
 }
 
 function togglePhoneKcfFeedbackCollectedView(){
@@ -662,6 +664,11 @@ function togglePhoneKcfFeedbackCollectedView(){
     node.style.setProperty('display', 'block');
     node.style.setProperty('-webkit-line-clamp', 'unset');
     node.style.setProperty('overflow', 'hidden');
+    if (entry.fromHeight > targetHeight) {
+      // Fade just the lines below the one-line target as height shrinks.
+      node.style.setProperty('--kcf-fold-first-line-height', targetHeight + 'px');
+      node.classList.add('kcfFoldSoftFade');
+    }
     const animation = node.animate(
       [{ height:entry.fromHeight + 'px' }, { height:targetHeight + 'px' }],
       { duration:240, easing:'cubic-bezier(.22,.61,.36,1)', fill:'forwards' }

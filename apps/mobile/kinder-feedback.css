@@ -2030,6 +2030,18 @@ body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveResponseRow.kcfLiv
   -webkit-line-clamp:unset;
   overflow:visible;
 }
+/* While collapsing, soften only the disappearing lower lines; the first line
+   stays fully visible, and the 1-line clamp remains the final layout. */
+#kinderChatFeedbackScreen .kcfLiveBubble.kcfFoldSoftFade {
+  -webkit-mask-image:linear-gradient(to bottom,
+    #000 0,
+    #000 max(var(--kcf-fold-first-line-height, 24px), calc(100% - 30px)),
+    transparent 100%);
+  mask-image:linear-gradient(to bottom,
+    #000 0,
+    #000 max(var(--kcf-fold-first-line-height, 24px), calc(100% - 30px)),
+    transparent 100%);
+}
 /* In compact view, show the original LIVE Copy/Edit actions only after expansion. */
 body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveActions,
 body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveActions {
@@ -2080,6 +2092,10 @@ body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn.kcfL
   border-color:#0A84FF;
 }
 #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn:disabled{opacity:.38;cursor:default;}
+/* The + icon is portaled here only while the QuickNote input sheet is open. */
+body.kcfTeacherSheetOpen #kcfTeacherSheetOverlay .kcfAttachBtn svg {
+  stroke:#000;
+}
 /* One centered toggle floats above the fixed QuickNote input without
    affecting composer sizing or the message-list scroll container. */
 #kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn{
@@ -2099,7 +2115,7 @@ body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn.kcfL
   border:1px solid #e6e8eb;
   border-radius:50%;
   background:#fff;
-  color:#0A84FF;
+  color:#000;
   font:inherit;
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;

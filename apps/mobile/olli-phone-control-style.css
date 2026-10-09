@@ -57,6 +57,14 @@
   -webkit-backdrop-filter:blur(2px) !important;
 }
 
+/* Slightly deeper shadow for the floating feedback-view circle only. */
+#kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn{
+  box-shadow:
+    inset 0 0 0 .75px rgba(255,255,255,.72),
+    0 1px 3px rgba(0,0,0,.09),
+    0 5px 17px rgba(0,0,0,.15) !important;
+}
+
 /* Standalone bottom buttons only.
  * Buttons that live inside another glass shell/composer are intentionally excluded. */
 #observationRosterScreen .memoRosterUtilityBar .memoRosterUtilityBtn,
