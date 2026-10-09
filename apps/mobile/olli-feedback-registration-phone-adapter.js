@@ -583,6 +583,18 @@ function syncPhoneKcfContinuousRecordUi(){
   }
 }
 
+// Keep only the temporary inline properties we touch; the saved text and
+// the normal/continuous feedback layout remain owned by their existing code.
+const phoneKcfCollectMotion = new WeakMap();
+const phoneKcfCollectMotionProps = ['height', 'display', 'overflow', '-webkit-line-clamp'];
+function restorePhoneKcfCollectMotionStyle(entry){
+  phoneKcfCollectMotionProps.forEach(function(prop){
+    const old = entry.original[prop];
+    if (old.value) entry.node.style.setProperty(prop, old.value, old.priority);
+    else entry.node.style.removeProperty(prop);
+  });
+}
+
 function togglePhoneKcfFeedbackCollectedView(){
   const area = document.getElementById('kcfChatArea');
   if (!area) return;
@@ -595,7 +607,36 @@ function togglePhoneKcfFeedbackCollectedView(){
       row.style.setProperty('--kcf-collect-source-height', Math.ceil(row.getBoundingClientRect().height + 2) + 'px');
     }
   });
-  // Flush the source-row measurements so the existing message-list transition remains intact.
+
+  const reduceMotion = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const motion = Array.from(area.querySelectorAll('.kcfLiveResponseRow:not(.editing):not(.kcfLiveResponseError) .kcfLiveBubble'))
+    .filter(function(node){ return node.isConnected && node.getAttribute('aria-busy') !== 'true' && typeof node.animate === 'function'; })
+    .map(function(node){
+      // Capture the currently painted height even during a rapid second tap.
+      const fromHeight = node.getBoundingClientRect().height;
+      const previous = phoneKcfCollectMotion.get(node);
+      if (previous) {
+        phoneKcfCollectMotion.delete(node);
+        previous.animation.cancel();
+        restorePhoneKcfCollectMotionStyle(previous);
+      }
+      const original = {};
+      phoneKcfCollectMotionProps.forEach(function(prop){
+        original[prop] = {
+          value:node.style.getPropertyValue(prop),
+          priority:node.style.getPropertyPriority(prop)
+        };
+      });
+      const entry = { node:node, fromHeight:fromHeight, original:original };
+      if (!reduceMotion && fromHeight > 0) {
+        // Freeze the old visible layout before the CSS line-clamp changes.
+        node.style.setProperty('height', fromHeight + 'px');
+        node.style.setProperty('display', 'block');
+        node.style.setProperty('-webkit-line-clamp', 'unset');
+        node.style.setProperty('overflow', 'hidden');
+      }
+      return entry;
+    });
   void area.offsetHeight;
   if (continuous) {
     const folded = document.body.classList.toggle('kcfContinuousFeedbackFolded');
@@ -606,9 +647,34 @@ function togglePhoneKcfFeedbackCollectedView(){
   } else {
     document.body.classList.toggle('kcfFeedbackCollectView');
   }
-  // The one-line clamp already sets the final feedback height in one layout pass.
-  // Do not animate the bubble height again: that produced a second collapse.
   syncPhoneKcfContinuousRecordUi();
+
+  if (reduceMotion) return;
+  motion.forEach(function(entry){
+    const node = entry.node;
+    if (!node.isConnected || entry.fromHeight <= 0) return;
+    // Read the exact final one-line/full-text height in the same JS turn;
+    // the browser has not painted an intermediate, already-clamped frame.
+    restorePhoneKcfCollectMotionStyle(entry);
+    const targetHeight = node.getBoundingClientRect().height;
+    if (Math.abs(entry.fromHeight - targetHeight) < 2) return;
+    node.style.setProperty('height', entry.fromHeight + 'px');
+    node.style.setProperty('display', 'block');
+    node.style.setProperty('-webkit-line-clamp', 'unset');
+    node.style.setProperty('overflow', 'hidden');
+    const animation = node.animate(
+      [{ height:entry.fromHeight + 'px' }, { height:targetHeight + 'px' }],
+      { duration:240, easing:'cubic-bezier(.22,.61,.36,1)', fill:'forwards' }
+    );
+    entry.animation = animation;
+    phoneKcfCollectMotion.set(node, entry);
+    animation.addEventListener('finish', function(){
+      if (phoneKcfCollectMotion.get(node) !== entry) return;
+      phoneKcfCollectMotion.delete(node);
+      animation.cancel();
+      restorePhoneKcfCollectMotionStyle(entry);
+    }, { once:true });
+  });
 }
 window.syncPhoneKcfContinuousRecordUi = syncPhoneKcfContinuousRecordUi;
 window.togglePhoneKcfFeedbackCollectedView = togglePhoneKcfFeedbackCollectedView;
