@@ -555,10 +555,17 @@ function decoratePhoneKcfLiveMessage(ui){
         event.preventDefault();
         event.stopPropagation();
         const jobId = String(row.dataset.kcfLiveFeedbackId || '');
-        if (!jobId || typeof window.editKinderChatLiveRecord !== 'function') return;
+        if (!jobId) return;
         const sourceRow = Array.from(document.querySelectorAll('#kcfChatArea .kcfMsgRow.user[data-kcf-live-user-for]'))
           .find(function(node){ return node.dataset.kcfLiveUserFor === jobId; }) || null;
-        window.editKinderChatLiveRecord(jobId, sourceRow);
+        // Reuse the normal dialogue-mode "수정하기" button, which opens the
+        // existing source-record editor with the original text prefilled.
+        const originalEditButton = sourceRow?.querySelector(':scope > .kcfRecordEditBtn');
+        if (originalEditButton) originalEditButton.click();
+        else if (typeof window.editKinderChatLiveRecord === 'function') {
+          // Restored/live rows can briefly exist before their edit button mounts.
+          window.editKinderChatLiveRecord(jobId, sourceRow);
+        }
       });
       studentTitle.appendChild(editSource);
     }
