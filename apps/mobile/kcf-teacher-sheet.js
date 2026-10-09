@@ -136,12 +136,27 @@
     state.rosterNode = null;
   }
 
-  // Move the existing buttons, not copies: click handlers and identity stay intact.
+  // Move the existing + and mic buttons, not copies. The mode control only
+  // exists while the active sheet is open; the idle composer has no such node.
   function mountSheetControls(){
     if (state.portaledControls.length) return;
+    var modeHost = sheetHost('kcfTeacherSheetModeHost');
+    if (modeHost && !document.getElementById('kcfModeSwitchBtn')) {
+      var modeButton = document.createElement('button');
+      modeButton.id = 'kcfModeSwitchBtn';
+      modeButton.type = 'button';
+      modeButton.className = 'kcfComposerModeBtn';
+      modeButton.setAttribute('aria-label', '퀵노트 작성 모드 선택');
+      modeButton.setAttribute('aria-haspopup', 'true');
+      modeButton.setAttribute('aria-expanded', 'false');
+      modeButton.innerHTML = '<span class="kcfComposerModeLabel">대화</span>'
+        + '<svg class="kcfModeChevron" viewBox="0 0 24 24" aria-hidden="true">'
+        + '<path d="m6 9 6 6 6-6"></path></svg>';
+      modeHost.appendChild(modeButton);
+      attachModeSelector(modeButton);
+    }
     [
       ['kcfAttachBtn','kcfTeacherSheetAttachHost'],
-      ['kcfModeSwitchBtn','kcfTeacherSheetModeHost'],
       ['kcfVoiceBtn','kcfTeacherSheetVoiceHost'],
       ['kcfPhotoPreview','kcfTeacherSheetPhotoHost']
     ].forEach(function(pair){
@@ -153,6 +168,7 @@
       state.portaledControls.push({ node:node,marker:marker });
       host.appendChild(node);
     });
+    syncModeUi();
     var mic = document.getElementById('kcfVoiceBtn');
     if (mic && !mic.__kcfTeacherVoiceBridgeBound) {
       mic.__kcfTeacherVoiceBridgeBound = true;
@@ -437,6 +453,8 @@
     }
     restoreRoster();
     restoreSheetControls();
+    closeModeMenus();
+    document.getElementById('kcfModeSwitchBtn')?.remove();
     unbindWarning();
     document.documentElement.classList.remove('kcfTeacherSheetOpen');
     document.body.classList.remove('kcfTeacherSheetOpen');
@@ -450,7 +468,6 @@
 
   function init(){
     ensureSheet();
-    attachModeSelector(document.getElementById('kcfModeSwitchBtn'));
     syncModeUi();
     if (global.visualViewport) {
       global.visualViewport.addEventListener('resize', scheduleViewportSync);
