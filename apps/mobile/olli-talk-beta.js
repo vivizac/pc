@@ -8977,6 +8977,7 @@
     const archiveFileInput = document.getElementById('olliTalkArchiveFileInput');
     const composerFileAddButton = document.getElementById('olliTalkFileAddBtn');
     const composerFileInput = document.getElementById('olliTalkComposerFileInput');
+    const keyboardTouchGuard = document.getElementById('olliTalkBetaComposerTouchGuard');
     const photoViewerBackButton = document.getElementById('olliTalkPhotoViewerBackBtn');
     const photoViewerArchiveButton = document.getElementById('olliTalkPhotoViewerArchiveBtn');
     const photoViewerSaveButton = document.getElementById('olliTalkPhotoViewerSaveBtn');
@@ -9104,6 +9105,14 @@
           loadOlderOlliTalkMessages().catch(error=>console.warn('올리톡 이전 대화 로드 실패:',error));
         });
       },{passive:true});
+    }
+
+    // iOS/WKWebView fallback: a drag starting on the transparent gap behind
+    // the active composer must not reach the page or the chat's scroll area.
+    if (keyboardTouchGuard) {
+      keyboardTouchGuard.addEventListener('touchmove', event => {
+        if (event.cancelable) event.preventDefault();
+      }, { passive:false });
     }
 
     if (input) {

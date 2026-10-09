@@ -537,6 +537,23 @@
   bottom:4px;
   padding-bottom:0;
 }
+/* Only cover the blank space around/below the raised composer. The actual
+   composer is the following sibling and remains on top and fully interactive. */
+#olliTalkBetaScreen .olliTalkBetaComposerTouchGuard{
+  display:none;
+  position:absolute;
+  top:0;
+  bottom:-4px;
+  left:calc(0px - var(--olli-phone-guide-x,16px));
+  right:calc(0px - var(--olli-phone-guide-x,16px));
+  background:transparent;
+  pointer-events:auto;
+  touch-action:none;
+  overscroll-behavior:none;
+}
+#olliTalkBetaScreen.olliTalkKeyboardOpen:not(.kcfVoiceCaptureMode):not(.olliTalkReasonInputActive) .olliTalkBetaComposerTouchGuard{
+  display:block;
+}
 #olliTalkBetaScreen.olliTalkReasonInputActive .olliTalkBetaComposerWrap{
   opacity:0;
   visibility:hidden;
