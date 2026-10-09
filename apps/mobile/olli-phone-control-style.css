@@ -48,6 +48,7 @@
 #olliTalkBetaScreen .olliTalkHeaderTools,
 #observationRosterScreen .memoRosterSearchPill,
 #kinderChatFeedbackScreen .kcfComposer,
+#kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn,
 #olliTalkBetaScreen .olliTalkBetaComposer{
   border:.5px solid var(--olli-phone-glass-border) !important;
   background:var(--olli-phone-glass-bg) !important;
