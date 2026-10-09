@@ -498,7 +498,13 @@
   -webkit-overflow-scrolling:touch;
   overscroll-behavior-y:contain;
   touch-action:pan-y;
-  padding:140px 16px 176px;
+  /* Keep the last feedback close to the fixed composer, with a little
+     more breathing room than Team Chat. Account for each phone's safe area. */
+  padding:140px 16px calc(
+    var(--olli-phone-bottom-control-height, 47px)
+    + var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom)))
+    + 28px
+  );
   position:relative;
   z-index:1;
   background:#fff;
