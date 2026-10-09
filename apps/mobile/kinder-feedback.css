@@ -112,7 +112,7 @@
   width:min(160px, calc(100vw - 144px));
   min-width:152px;
   height:48px;
-  padding:3px;
+  padding:3px 3.5px;
   box-sizing:border-box;
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -145,8 +145,8 @@
   -webkit-tap-highlight-color:transparent;
 }
 .olliWorkTab.active{
-  background:#0A84FF;
-  color:#fff;
+  background:rgba(232,232,232,.96);
+  color:#111;
   font-weight:450;
 }
 .olliWorkTabWithBadge{
