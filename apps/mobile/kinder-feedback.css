@@ -2072,6 +2072,13 @@ body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn svg 
   stroke-linecap:round;
   stroke-linejoin:round;
 }
+/* Only the header copy button for a successfully copied feedback stays blue. */
+body.kcfContinuousMode.kcfContinuousFeedbackFolded #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn.kcfLiveHeaderCopied,
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn.kcfLiveHeaderCopied {
+  background:#0A84FF;
+  color:#fff;
+  border-color:#0A84FF;
+}
 #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn:disabled{opacity:.38;cursor:default;}
 /* One centered toggle floats above the fixed QuickNote input without
    affecting composer sizing or the message-list scroll container. */

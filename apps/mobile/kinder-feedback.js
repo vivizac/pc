@@ -1424,8 +1424,7 @@ async function copyKinderChatFeedbackLive(id, btn) {
     try { showPushToast('확인이 필요한 문자가 있어요. 수정 후 복사해 주세요.'); } catch(e) {}
     return false;
   }
-  await copyKinderChatSourceCardText(btn, item.resultText);
-  return true;
+  return !!(await copyKinderChatSourceCardText(btn, item.resultText));
 }
 function editKinderChatFeedbackLive(id) {
   const item = getKinderChatFeedbackLiveItem(id);
@@ -1835,7 +1834,7 @@ async function copyKinderChatSourceCardText(btn, text) {
   const copyText = String(text || '').trim();
   if (!copyText) {
     showPushToast('복사할 내용이 없어요.');
-    return;
+    return false;
   }
 
   const oldHtml = btn ? btn.innerHTML : '';
@@ -1860,9 +1859,8 @@ async function copyKinderChatSourceCardText(btn, text) {
       document.body.appendChild(temp);
       temp.focus();
       temp.select();
-      document.execCommand('copy');
+      copied = !!document.execCommand('copy');
       document.body.removeChild(temp);
-      copied = true;
     } catch(e) {
       copied = false;
     }
@@ -1873,6 +1871,7 @@ async function copyKinderChatSourceCardText(btn, text) {
   } else {
     showPushToast('복사에 실패했어요.');
   }
+  return copied;
 }
 
 function addKinderChatDocumentMessage(title, subtitle, bodyText = '', variant = '', photoMeta = null) {

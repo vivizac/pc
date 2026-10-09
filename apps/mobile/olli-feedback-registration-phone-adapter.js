@@ -708,13 +708,17 @@ function decoratePhoneKcfLiveMessage(ui){
       headerCopy.innerHTML = typeof window.getKinderChatFeedbackInboxCopyIconSvg === 'function'
         ? window.getKinderChatFeedbackInboxCopyIconSvg()
         : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.2" y="8.2" width="10.3" height="10.3" rx="2"></rect><path d="M15.8 8.2V6.7A2.2 2.2 0 0 0 13.6 4.5H6.7A2.2 2.2 0 0 0 4.5 6.7v6.9a2.2 2.2 0 0 0 2.2 2.2h1.5"></path></svg>';
-      headerCopy.addEventListener('click', function(event){
+      headerCopy.addEventListener('click', async function(event){
         event.preventDefault();
         event.stopPropagation();
         if (headerCopy.disabled) return;
         const jobId = String(row.dataset.kcfLiveFeedbackId || '');
         if (jobId && typeof window.copyKinderChatFeedbackLive === 'function') {
-          window.copyKinderChatFeedbackLive(jobId, headerCopy);
+          const copied = await window.copyKinderChatFeedbackLive(jobId, headerCopy);
+          if (copied && headerCopy.isConnected) {
+            headerCopy.classList.add('kcfLiveHeaderCopied');
+            headerCopy.setAttribute('aria-label', studentName + ' 피드백 복사 완료');
+          }
         }
       });
       const name = document.createElement('span');
