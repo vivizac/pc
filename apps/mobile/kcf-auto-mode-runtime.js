@@ -563,6 +563,10 @@
     var wrap = document.querySelector('#kinderChatFeedbackScreen .kcfComposerWrap');
     var composer = wrap && wrap.querySelector('.kcfComposer');
     if (!composer) return null;
+    // The floating feedback toggle owns a shell around the composer.
+    // insertBefore needs a direct child of wrap, not the nested composer.
+    var composerAnchor = composer.closest('.kcfComposerShell') || composer;
+    if (composerAnchor.parentNode !== wrap) return null;
     var roster = document.createElement('div');
     roster.id = 'kcfAutoStudentRoster';
     roster.className = 'kcfAutoStudentRoster';
@@ -570,7 +574,7 @@
     var scroller = document.createElement('div');
     scroller.className = 'kcfAutoStudentRosterScroller';
     roster.appendChild(scroller);
-    wrap.insertBefore(roster, composer);
+    wrap.insertBefore(roster, composerAnchor);
     return roster;
   }
 

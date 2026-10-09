@@ -66,3 +66,13 @@ test('record presentation removes conversational rows but retains the result car
   assert.ok(css.includes('.kcfMsgRow:not(.kcfLiveResponseRow){display:none;}'));
   assert.ok(css.includes('.kcfLiveResponseRow{align-items:stretch'));
 });
+
+
+test('QuickNote roster insertion uses the composer shell as its direct-child anchor', () => {
+  assert.ok(html.includes('class="kcfComposerShell"'));
+  assert.ok(runtime.includes("composer.closest('.kcfComposerShell') || composer"));
+  assert.ok(runtime.includes('composerAnchor.parentNode !== wrap'));
+  assert.ok(runtime.includes('wrap.insertBefore(roster, composerAnchor);'));
+  assert.ok(!runtime.includes('wrap.insertBefore(roster, composer);'));
+  assert.ok(sheet.indexOf('teacherMode.refreshRoster()') < sheet.indexOf('keyboard.activate(event, {'));
+});

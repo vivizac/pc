@@ -10,15 +10,14 @@ const talk=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'utf8
 const html=fs.readFileSync(path.join(root,'apps/mobile/index.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.css'),'utf8');
 
-test('Team Chat avatar check messages stay visual-only and reuse the real member renderer',()=>{
-  assert.match(talk,/const OLLI_TALK_AVATAR_PREVIEW_ENABLED = true/);
-  assert.match(talk,/function renderOlliTalkAvatarPreviewMessages\(\)/);
-  assert.match(talk,/createOlliTalkMessageGroupElement\(item,OLLI_TALK_AVATAR_PREVIEW_MEMBER_ID\)/);
-  assert.match(talk,/appendOlliTalkMessageToGroup\(group,item,OLLI_TALK_AVATAR_PREVIEW_MEMBER_ID\)/);
-  assert.match(talk,/body:'아이콘 확인용 메시지입니다\.'/);
-  assert.match(talk,/Promise\.allSettled\(\[memberLoadPromise,messageLoadPromise\]\)/);
-  assert.match(talk,/group\.dataset\.olliAvatarPreview='1'/);
-  assert.ok(html.includes('olli-talk-beta.js?v=20261008-scroll-authority-1'));
+test('Team Chat has no temporary avatar check messages',()=>{
+  assert.doesNotMatch(talk,/OLLI_TALK_AVATAR_PREVIEW_/);
+  assert.doesNotMatch(talk,/renderOlliTalkAvatarPreviewMessages/);
+  assert.doesNotMatch(talk,/아이콘 확인용 메시지입니다/);
+  assert.doesNotMatch(talk,/Promise\.allSettled\(\[memberLoadPromise,messageLoadPromise\]\)/);
+  assert.match(talk,/loadOlliTalkMembers\(\)/);
+  assert.match(talk,/loadOlliTalkBetaMessages\(\{/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261010-remove-avatar-preview-1/);
 });
 
 test('Team Chat member icon artwork fills its clipped avatar tile without resizing the tile',()=>{
