@@ -145,7 +145,7 @@
   -webkit-tap-highlight-color:transparent;
 }
 .olliWorkTab.active{
-  background:rgba(232,232,232,.96);
+  background:rgba(242,242,242,.96);
   color:#111;
   font-weight:450;
 }
