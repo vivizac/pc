@@ -39,7 +39,7 @@
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
   margin-right:0;
-  padding:calc(var(--vivizac-note-header-h) + max(18px, calc(env(safe-area-inset-top) + 6px)) + 6px) 16px 94px;
+  padding:calc(var(--vivizac-note-header-h) + max(18px, calc(env(safe-area-inset-top) + 6px)) + 6px) 20px 94px;
   background:transparent;
   display:flex;
   flex-direction:column;
