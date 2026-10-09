@@ -91,7 +91,10 @@
 }
 
 #observationRosterScreen .memoBodyRosterRow {
-  min-height:50px;
+  height:53px;
+  min-height:53px;
+  max-height:53px;
+  box-sizing:border-box;
   display:flex;
   align-items:center;
   gap:6px;
@@ -106,7 +109,8 @@
 #observationRosterScreen .memoBodyRosterStudentBtn {
   min-width:0;
   flex:1;
-  min-height:50px;
+  height:100%;
+  min-height:0;
   display:flex;
   align-items:center;
   padding:0;
