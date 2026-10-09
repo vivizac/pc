@@ -539,7 +539,9 @@
 
 #observationRosterScreen .observationRosterTopFadeLayer {
   top:0;
-  height:calc(max(116px, calc(env(safe-area-inset-top) + 102px)));
+  /* Finish before the first '학생 목록' row:
+     scroll top padding = header + safe/top gap + 6px. */
+  height:calc(var(--vivizac-note-header-h, 66px) + max(18px, calc(env(safe-area-inset-top) + 6px)) - 10px);
   background:linear-gradient(
     to bottom,
     rgba(var(--vivizac-edge-fade-rgb),1) 0%,
@@ -553,7 +555,8 @@
 
 #observationRosterScreen .observationRosterBottomFadeLayer {
   bottom:0;
-  height:104px;
+  /* Stop at the top edge of the fixed search/sort controls. */
+  height:calc(var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom))) + var(--olli-phone-bottom-control-height, 47px));
   background:linear-gradient(
     to top,
     rgba(var(--vivizac-edge-fade-rgb),1) 0%,
