@@ -1939,6 +1939,69 @@ width:100%;
 }
 
 
+/* Continuous QuickNote: plain-text feedback with no extra cards. */
+#kinderChatFeedbackScreen .kcfLiveRecordEditBtn {
+  display:none;
+}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfMsgRow.user[data-kcf-live-user-for] {
+  display:none;
+}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow {
+  margin-bottom:22px;
+}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveStudentTitle {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  width:100%;
+  box-sizing:border-box;
+  margin:0 0 5px;
+}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveRecordEditBtn {
+  display:inline-flex;
+  flex:0 0 32px;
+  width:32px;
+  height:32px;
+  align-items:center;
+  justify-content:center;
+  border:0;
+  padding:4px;
+  border-radius:999px;
+  background:transparent;
+  color:#737373;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveRecordEditBtn svg {
+  width:19px;
+  height:19px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveBubble {
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  width:100%;
+  box-sizing:border-box;
+  overflow:hidden;
+  white-space:pre-wrap;
+  cursor:pointer;
+}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow.kcfContinuousFeedbackExpanded .kcfLiveBubble,
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow.kcfLiveResponseError .kcfLiveBubble {
+  display:block;
+  -webkit-line-clamp:unset;
+  overflow:visible;
+}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveActions {
+  display:none;
+}
+
 /* KCF LIVE response actions */
 #kinderChatFeedbackScreen .kcfMsgRow.user .kcfLiveUserStudentName {
   display:block;

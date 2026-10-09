@@ -513,9 +513,73 @@ function installPhoneKcfLiveTypingIndicator(bubble){
   if (String(bubble.textContent || '').trim() !== '…') return;
   bubble.innerHTML = '<span class="kcfLiveTypingIndicator" aria-hidden="true"><span class="kcfLiveTypingDot"></span><span class="kcfLiveTypingDot"></span><span class="kcfLiveTypingDot"></span></span>';
 }
+// Continuous recording is a text-only presentation of existing LIVE feedback.
+function syncPhoneKcfContinuousRecordUi(){
+  const recording = document.body.classList.contains('kcfContinuousMode');
+  document.querySelectorAll('#kinderChatFeedbackScreen .kcfLiveResponseRow').forEach(function(row){
+    const bubble = row.querySelector('.kcfLiveBubble');
+    if (!bubble) return;
+    const canExpand = recording && !row.classList.contains('kcfLiveResponseError');
+    if (canExpand) {
+      const expanded = row.classList.contains('kcfContinuousFeedbackExpanded');
+      bubble.setAttribute('role', 'button');
+      bubble.tabIndex = 0;
+      bubble.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      bubble.setAttribute('aria-label', expanded ? '피드백 접기' : '피드백 전체 보기');
+    } else {
+      bubble.removeAttribute('role');
+      bubble.removeAttribute('tabindex');
+      bubble.removeAttribute('aria-expanded');
+      bubble.removeAttribute('aria-label');
+    }
+  });
+}
+window.syncPhoneKcfContinuousRecordUi = syncPhoneKcfContinuousRecordUi;
+
 function decoratePhoneKcfLiveMessage(ui){
   const row = ui && ui.row;
   if (!row || !row.querySelector) return ui;
+
+  if (!row.__olliContinuousRecordBound) {
+    row.__olliContinuousRecordBound = true;
+    const studentTitle = row.querySelector('.kcfLiveStudentTitle');
+    const bubble = row.querySelector('.kcfLiveBubble');
+    if (studentTitle) {
+      const editSource = document.createElement('button');
+      editSource.type = 'button';
+      editSource.className = 'kcfLiveRecordEditBtn';
+      editSource.setAttribute('aria-label', studentTitle.textContent.trim() + ' 수업기록 수정하기');
+      editSource.title = '수업기록 수정';
+      editSource.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4L16.5 3.5Z"></path></svg>';
+      editSource.addEventListener('click', function(event){
+        event.preventDefault();
+        event.stopPropagation();
+        const jobId = String(row.dataset.kcfLiveFeedbackId || '');
+        if (!jobId || typeof window.editKinderChatLiveRecord !== 'function') return;
+        const sourceRow = Array.from(document.querySelectorAll('#kcfChatArea .kcfMsgRow.user[data-kcf-live-user-for]'))
+          .find(function(node){ return node.dataset.kcfLiveUserFor === jobId; }) || null;
+        window.editKinderChatLiveRecord(jobId, sourceRow);
+      });
+      studentTitle.appendChild(editSource);
+    }
+    if (bubble) {
+      const togglePreview = function(){
+        if (!document.body.classList.contains('kcfContinuousMode')
+            || row.classList.contains('kcfLiveResponseError')
+            || bubble.getAttribute('aria-busy') === 'true') return;
+        row.classList.toggle('kcfContinuousFeedbackExpanded');
+        syncPhoneKcfContinuousRecordUi();
+      };
+      bubble.addEventListener('click', togglePreview);
+      bubble.addEventListener('keydown', function(event){
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        if (!document.body.classList.contains('kcfContinuousMode')) return;
+        event.preventDefault();
+        togglePreview();
+      });
+    }
+  }
+  syncPhoneKcfContinuousRecordUi();
 
   const inboxBtn = row.querySelector('.kcfLiveInboxBtn');
   if (inboxBtn) {
