@@ -272,7 +272,7 @@
 
   const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 32;
   // The composer and messages use one opening response so their motions agree.
-  const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 30;
+  const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 36;
   let olliTalkKeyboardVisualRaf = 0;
   let olliTalkKeyboardViewportRaf = 0;
   let olliTalkKeyboardVisualLastTs = 0;
