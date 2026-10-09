@@ -1951,7 +1951,6 @@ width:100%;
 
 
 /* Shared compact presentation: continuous recording or animated collect view. */
-#kinderChatFeedbackScreen .kcfLiveRecordEditBtn,
 #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn {
   display:none;
 }
@@ -1985,36 +1984,38 @@ body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveStudentTitle {
   box-sizing:border-box;
   margin:0 0 5px;
 }
-body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveRecordEditBtn,
-body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveRecordEditBtn {
+#kinderChatFeedbackScreen .kcfLiveActions .kcfLiveRecordEditBtn {
   display:inline-flex;
   flex:0 0 auto;
-  min-height:32px;
   align-items:center;
   justify-content:center;
   gap:5px;
+  margin-left:auto;
+  min-height:calc(28px * var(--olli-text-scale, 1));
   border:0;
-  padding:4px 2px;
-  border-radius:999px;
+  padding:0;
+  border-radius:0;
   background:transparent;
-  color:#737373;
+  color:#8e8e93;
   font:inherit;
-  font-size:calc(12px * var(--olli-text-scale, 1));
-  font-weight:450;
+  font-size:calc(11.5px * var(--olli-text-scale, 1));
+  font-weight:600;
   white-space:nowrap;
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;
 }
-body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveRecordEditBtn svg,
-body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveRecordEditBtn svg {
-  flex:0 0 19px;
-  width:19px;
-  height:19px;
+#kinderChatFeedbackScreen .kcfLiveActions .kcfLiveRecordEditBtn svg {
+  flex:0 0 17px;
+  width:17px;
+  height:17px;
   fill:none;
   stroke:currentColor;
   stroke-width:1.7;
   stroke-linecap:round;
   stroke-linejoin:round;
+}
+#kinderChatFeedbackScreen .kcfLiveActions .kcfLiveHiddenCopyAction {
+  display:none !important;
 }
 body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveBubble,
 body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveBubble {
@@ -2104,7 +2105,6 @@ body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn svg 
   -webkit-tap-highlight-color:transparent;
 }
 #kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn[hidden],
-body.kcfContinuousMode #kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn,
 #kinderChatFeedbackScreen .kcfComposer.kcfVoiceCaptureMode > .kcfFeedbackCollectToggleBtn{
   display:none !important;
 }

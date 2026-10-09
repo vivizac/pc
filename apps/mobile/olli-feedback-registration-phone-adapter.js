@@ -520,11 +520,23 @@ function isPhoneKcfFeedbackCompact(){
 }
 
 function syncPhoneKcfContinuousRecordUi(){
+  const continuous = document.body.classList.contains('kcfContinuousMode');
+  const folded = document.body.classList.contains('kcfContinuousFeedbackFolded');
   const compact = isPhoneKcfFeedbackCompact();
   document.querySelectorAll('#kinderChatFeedbackScreen .kcfLiveResponseRow').forEach(function(row){
     const bubble = row.querySelector('.kcfLiveBubble');
     if (!bubble) return;
-    if (!compact) row.classList.remove('kcfContinuousFeedbackExpanded');
+    if (continuous) {
+      // First display in record mode is expanded. A row arriving after
+      // the global fold/expand toggle inherits its current state.
+      if (row.dataset.kcfContinuousReady !== '1') {
+        row.dataset.kcfContinuousReady = '1';
+        row.classList.toggle('kcfContinuousFeedbackExpanded', !folded);
+      }
+    } else {
+      delete row.dataset.kcfContinuousReady;
+      if (!compact) row.classList.remove('kcfContinuousFeedbackExpanded');
+    }
     const canExpand = compact && !row.classList.contains('kcfLiveResponseError')
       && bubble.getAttribute('aria-busy') !== 'true';
     if (canExpand) {
@@ -543,20 +555,21 @@ function syncPhoneKcfContinuousRecordUi(){
   // One composer-level control replaces the repeated per-feedback controls.
   const toggle = document.getElementById('kcfFeedbackCollectToggleBtn');
   if (toggle) {
-    const continuous = document.body.classList.contains('kcfContinuousMode');
     const collected = document.body.classList.contains('kcfFeedbackCollectView');
-    toggle.hidden = continuous || !document.querySelector('#kcfChatArea .kcfLiveResponseRow');
-    toggle.textContent = collected ? '대화로 돌아가기' : '피드백 모아보기';
+    toggle.hidden = !document.querySelector('#kcfChatArea .kcfLiveResponseRow');
+    toggle.textContent = continuous
+      ? (folded ? '피드백 전체 보기' : '피드백 모아보기')
+      : (collected ? '대화로 돌아가기' : '피드백 모아보기');
     toggle.setAttribute('aria-label', toggle.textContent);
-    toggle.setAttribute('aria-pressed', String(collected));
+    toggle.setAttribute('aria-pressed', String(continuous ? folded : collected));
   }
 }
 
 function togglePhoneKcfFeedbackCollectedView(){
-  if (document.body.classList.contains('kcfContinuousMode')) return;
   const area = document.getElementById('kcfChatArea');
   if (!area) return;
-  document.body.classList.add('kcfFeedbackCollectReady');
+  const continuous = document.body.classList.contains('kcfContinuousMode');
+  if (!continuous) document.body.classList.add('kcfFeedbackCollectReady');
   // Measure source rows before changing layout, so they collapse in place
   // instead of disappearing and jumping the scroll container.
   area.querySelectorAll('.kcfMsgRow:not(.kcfLiveResponseRow)').forEach(function(row){
@@ -567,7 +580,15 @@ function togglePhoneKcfFeedbackCollectedView(){
   const feedbackHeights = Array.from(area.querySelectorAll('.kcfLiveResponseRow .kcfLiveBubble'))
     .map(function(node){ return { node:node, height:node.getBoundingClientRect().height }; });
   void area.offsetHeight;
-  document.body.classList.toggle('kcfFeedbackCollectView');
+  if (continuous) {
+    const folded = document.body.classList.toggle('kcfContinuousFeedbackFolded');
+    area.querySelectorAll('.kcfLiveResponseRow').forEach(function(row){
+      row.dataset.kcfContinuousReady = '1';
+      row.classList.toggle('kcfContinuousFeedbackExpanded', !folded);
+    });
+  } else {
+    document.body.classList.toggle('kcfFeedbackCollectView');
+  }
   syncPhoneKcfContinuousRecordUi();
   if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
     requestAnimationFrame(function(){
@@ -657,7 +678,9 @@ function decoratePhoneKcfLiveMessage(ui){
           window.editKinderChatLiveRecord(jobId, sourceRow);
         }
       });
-      studentTitle.appendChild(editSource);
+      // Source-record edit lives in the feedback footer at the right,
+      // and still calls the existing record edit flow.
+      row.querySelector('.kcfLiveActions')?.appendChild(editSource);
     }
     if (bubble) {
       const togglePreview = function(){
@@ -684,10 +707,40 @@ function decoratePhoneKcfLiveMessage(ui){
 
   const copyBtn = row.querySelector('.kcfLiveCopyBtn');
   if (copyBtn) {
-    copyBtn.classList.add('kcfLivePhoneTextActionBtn');
-    copyBtn.textContent = '복사';
-    copyBtn.setAttribute('aria-label', '피드백 본문 복사');
-    copyBtn.title = '복사';
+    // Keep the original copy action for the student-name icon and
+    // its safety/disabled state. It no longer occupies a footer slot.
+    copyBtn.classList.add('kcfLiveHiddenCopyAction');
+    const actions = row.querySelector('.kcfLiveActions');
+    if (actions && !actions.querySelector('.kcfLiveSaveBtn')) {
+      const saveBtn = document.createElement('button');
+      saveBtn.type = 'button';
+      saveBtn.className = 'kcfLiveActionBtn kcfLiveNormalAction kcfLivePhoneTextActionBtn kcfLiveSaveBtn';
+      saveBtn.textContent = '저장';
+      saveBtn.setAttribute('aria-label', '피드백 저장');
+      saveBtn.addEventListener('click', async function(event){
+        event.preventDefault();
+        event.stopPropagation();
+        if (saveBtn.disabled) return;
+        const jobId = String(row.dataset.kcfLiveFeedbackId || '');
+        if (!jobId || typeof window.saveKinderChatFeedbackLive !== 'function') return;
+        saveBtn.disabled = true;
+        try {
+          const item = typeof window.getKinderChatFeedbackLiveItem === 'function'
+            ? window.getKinderChatFeedbackLiveItem(jobId) : null;
+          if (item?.saved || item?.reviewed) {
+            try { showPushToast('이미 저장된 피드백이에요.'); } catch (_) {}
+            return;
+          }
+          const success = await window.saveKinderChatFeedbackLive(jobId);
+          if (success === true) {
+            try { showPushToast('피드백을 저장했어요.'); } catch (_) {}
+          }
+        } finally {
+          saveBtn.disabled = false;
+        }
+      });
+      actions.insertBefore(saveBtn, copyBtn);
+    }
   }
 
   const bubble = row.querySelector('.kcfLiveBubble');
