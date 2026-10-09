@@ -519,6 +519,23 @@ function isPhoneKcfFeedbackCompact(){
     || document.body.classList.contains('kcfFeedbackCollectView');
 }
 
+// Show the composer toggle only after at least one AI feedback is complete.
+// Pending placeholders, interrupted requests and error rows do not qualify.
+function hasPhoneKcfGeneratedFeedback(){
+  const area = document.getElementById('kcfChatArea');
+  if (!area) return false;
+  return Array.from(area.querySelectorAll('.kcfLiveResponseRow')).some(function(row){
+    if (row.classList.contains('kcfLiveResponseError')) return false;
+    const bubble = row.querySelector('.kcfLiveBubble');
+    if (!bubble || bubble.getAttribute('aria-busy') !== 'false') return false;
+    const item = typeof window.getKinderChatFeedbackLiveItem === 'function'
+      ? window.getKinderChatFeedbackLiveItem(row.dataset.kcfLiveFeedbackId || '')
+      : null;
+    return !!String(item?.resultText || '').trim()
+      && !['streaming','error','interrupted','discarded'].includes(item?.status);
+  });
+}
+
 function syncPhoneKcfContinuousRecordUi(){
   const continuous = document.body.classList.contains('kcfContinuousMode');
   const folded = document.body.classList.contains('kcfContinuousFeedbackFolded');
@@ -556,7 +573,7 @@ function syncPhoneKcfContinuousRecordUi(){
   const toggle = document.getElementById('kcfFeedbackCollectToggleBtn');
   if (toggle) {
     const collected = document.body.classList.contains('kcfFeedbackCollectView');
-    toggle.hidden = !document.querySelector('#kcfChatArea .kcfLiveResponseRow');
+    toggle.hidden = !hasPhoneKcfGeneratedFeedback();
     toggle.textContent = continuous
       ? (folded ? '피드백 전체 보기' : '피드백 모아보기')
       : (collected ? '대화로 돌아가기' : '피드백 모아보기');
@@ -606,6 +623,15 @@ function togglePhoneKcfFeedbackCollectedView(){
 }
 window.syncPhoneKcfContinuousRecordUi = syncPhoneKcfContinuousRecordUi;
 window.togglePhoneKcfFeedbackCollectedView = togglePhoneKcfFeedbackCollectedView;
+
+// In addition to the per-response completion observer, track removed rows
+// so the button hides if the last feedback disappears (e.g. scope reset).
+(function watchPhoneKcfFeedbackRows(){
+  const area = document.getElementById('kcfChatArea');
+  if (!area || area.__kcfFeedbackCollectRowsObserved || typeof MutationObserver !== 'function') return;
+  area.__kcfFeedbackCollectRowsObserved = true;
+  new MutationObserver(syncPhoneKcfContinuousRecordUi).observe(area, { childList:true });
+})();
 
 function decoratePhoneKcfLiveMessage(ui){
   const row = ui && ui.row;
