@@ -26,7 +26,7 @@
   flex:1 1 auto;
   min-height:0;
   overflow:hidden;
-  padding:0 18px;
+  padding:0;
   color:#111;
   flex-direction:column;
 }
@@ -38,8 +38,8 @@
   overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
-  margin-right:-18px;
-  padding:calc(var(--vivizac-note-header-h) + max(18px, calc(env(safe-area-inset-top) + 6px)) + 6px) 18px 94px 0;
+  margin-right:0;
+  padding:calc(var(--vivizac-note-header-h) + max(18px, calc(env(safe-area-inset-top) + 6px)) + 6px) 0 94px;
   background:transparent;
   display:flex;
   flex-direction:column;
@@ -51,23 +51,21 @@
   align-items:baseline;
   justify-content:space-between;
   gap:12px;
-  margin:2px 2px 14px;
+  margin:2px 0 14px;
 }
 
-/* 부모/목록/하단도구의 폭은 건드리지 않고 제목 텍스트만 안쪽으로 10px 이동한다. */
+/* The title, sort value, and student names use the same 16px inset as the phone guide controls. */
 #observationRosterScreen .memoBodyRosterTitle {
   color:#111;
   font-size:calc(16px * var(--olli-text-scale));
   font-weight:500;
   letter-spacing:-0.03em;
-  transform:translateX(10px);
 }
 
 #observationRosterScreen .memoBodyRosterDay {
   color:#0A84FF;
   font-size:calc(13px * var(--olli-text-scale));
   font-weight:500;
-  transform:translateX(-10px);
 }
 
 #observationRosterScreen .memoBodyRosterSortPrefix {
@@ -98,7 +96,7 @@
   display:flex;
   align-items:center;
   gap:6px;
-  padding:0 3.5px 0 10.7px;
+  padding:0;
   background:#fff;
 }
 

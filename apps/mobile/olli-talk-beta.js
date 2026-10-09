@@ -271,8 +271,10 @@
   }
 
   const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 32;
-  // The composer and messages use one opening response so their motions agree.
-  const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 30;
+  // Start following in the first keyboard viewport frame, but ease the rest
+  // together so the composer and messages do not sprint past the keyboard.
+  const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 38;
+  const OLLI_TALK_KEYBOARD_OPEN_RETAIN_RATIO = 0.5;
   let olliTalkKeyboardVisualRaf = 0;
   let olliTalkKeyboardViewportRaf = 0;
   let olliTalkKeyboardVisualLastTs = 0;
@@ -282,6 +284,7 @@
   let olliTalkViewportNeedsComposerSync = false;
   let olliTalkViewportNeedsLatestAnchor = false;
   let olliTalkViewportNeedsPendingReasonAnchor = false;
+  let olliTalkKeyboardLastSyncedViewportHeight = 0;
 
   function prefersReducedOlliTalkMotion(){
     try { return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches; }
@@ -385,12 +388,17 @@
   function preserveOlliTalkKeyboardVisualFrame(frame, options = {}){
     if (!frame || prefersReducedOlliTalkMotion()) return;
     const animateMessages = options.messages !== false;
+    // On an actual opening viewport step, show half of the keyboard travel
+    // immediately. Keep the remaining half as a shared, smoothed FLIP offset.
+    // Shape-only frames and keyboard closing retain their existing behavior.
+    const retainedStep = options.keyboardOpeningStep === true
+      ? OLLI_TALK_KEYBOARD_OPEN_RETAIN_RATIO : 1;
 
     if (frame.composerWrap?.isConnected && Number.isFinite(frame.composerTop)) {
       const nextTop = frame.composerWrap.getBoundingClientRect().top;
       const deltaY = frame.composerTop - nextTop;
       if (Number.isFinite(deltaY) && Math.abs(deltaY) > 0.01) {
-        olliTalkComposerVisualOffsetY += deltaY;
+        olliTalkComposerVisualOffsetY += deltaY * retainedStep;
       }
     }
 
@@ -403,7 +411,7 @@
       const nextTop = frame.messageAnchor.getBoundingClientRect().top;
       const deltaY = frame.messageTop - nextTop;
       if (Number.isFinite(deltaY) && Math.abs(deltaY) > 0.01) {
-        olliTalkMessagesVisualOffsetY += deltaY;
+        olliTalkMessagesVisualOffsetY += deltaY * retainedStep;
       }
     }
 
@@ -417,6 +425,12 @@
     const composerSync = olliTalkViewportNeedsComposerSync;
     const anchorLatest = olliTalkViewportNeedsLatestAnchor;
     const anchorPendingReason = olliTalkViewportNeedsPendingReasonAnchor;
+    const viewportHeight = getOlliTalkKeyboardViewportHeight();
+    const keyboardOpeningStep = fullSync
+      && isOlliTalkComposerActive()
+      && !!getScreen()?.classList.contains('olliTalkKeyboardMotion')
+      && olliTalkKeyboardLastSyncedViewportHeight > viewportHeight + 0.5;
+    if (fullSync) olliTalkKeyboardLastSyncedViewportHeight = viewportHeight;
     olliTalkViewportNeedsFullSync = false;
     olliTalkViewportNeedsComposerSync = false;
     olliTalkViewportNeedsLatestAnchor = false;
@@ -455,7 +469,8 @@
     }
 
     preserveOlliTalkKeyboardVisualFrame(motionFrame,{
-      messages: !isOlliTalkPendingReasonInputActive() && !olliTalkChatGestureActive && !anchoredLatest
+      messages: !isOlliTalkPendingReasonInputActive() && !olliTalkChatGestureActive && !anchoredLatest,
+      keyboardOpeningStep
     });
     if (anchoredLatest && motionFrame.messageList?.isConnected && !prefersReducedOlliTalkMotion()) {
       // The message scroller and fixed composer remain separate elements.
@@ -9163,6 +9178,7 @@
         olliTalkComposerExpandPending = !alreadyExpanded;
         olliTalkKeyboardClosedViewportHeight = getOlliTalkKeyboardViewportHeight();
         olliTalkKeyboardOpenedViewportHeight = olliTalkKeyboardClosedViewportHeight;
+        olliTalkKeyboardLastSyncedViewportHeight = olliTalkKeyboardClosedViewportHeight;
         beginOlliTalkKeyboardMotion();
         // focus/resize/scroll 모두 같은 RAF 업데이트 경로를 사용합니다.
         scheduleOlliTalkKeyboardViewportUpdate({fullSync:true});
