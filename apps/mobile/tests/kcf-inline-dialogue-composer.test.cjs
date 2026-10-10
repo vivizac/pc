@@ -128,7 +128,15 @@ test('continuous mode hides global collect/expand while dialogue keeps it', () =
   assert.match(baseCss, /body\.kcfContinuousMode #kinderChatFeedbackScreen \.kcfFeedbackCollectToggleBtn,/);
   assert.match(registration, /document\.body\.classList\.toggle\('kcfFeedbackCollectView'\)/);
   assert.ok(html.includes('olli-feedback-registration-phone-adapter.js?v=20261010-olli-integrated-1'));
-  assert.ok(html.includes('kinder-feedback.css?v=20261010-olli-integrated-1'));
+  assert.ok(html.includes('kinder-feedback.css?v=20261010-hide-active-collect-toggle-1'));
+});
+
+test('collect/expand controls hide only while the normal dialogue input is active', () => {
+  assert.match(sheet, /screen\.classList\.add\('kcfInlineDialogueActive'\)/);
+  assert.match(sheet, /screen\.classList\.remove\('kcfInlineDialogueActive'\)/);
+  assert.match(baseCss, /body:not\(\.kcfContinuousMode\) #kinderChatFeedbackScreen\.kcfInlineDialogueActive \.kcfFeedbackCollectToggleBtn,/);
+  assert.match(baseCss, /#kinderChatFeedbackScreen \.kcfFeedbackCollectToggleBtn\[hidden\],/);
+  assert.match(registration, /toggle\.hidden = continuous \|\| !hasPhoneKcfGeneratedFeedback\(\)/);
 });
 
 test('only successful dialogue feedback submission closes the inline input and keyboard', () => {
