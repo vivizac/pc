@@ -444,6 +444,7 @@
       var previous = inlineComposerAnimation;
       inlineComposerAnimation = null;
       previous.cancel();
+      composer?.style.removeProperty('overflow');
     }
     if (!composer || !composer.isConnected || typeof composer.animate !== 'function') return;
     try {
