@@ -334,20 +334,20 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfCenterIntro{display:none;}
   height:var(--kcf-inline-vv-height, 100vh);
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfChatArea {
-  padding-bottom:var(--kcf-inline-chat-reserve, 188px);
+  padding-bottom:var(--kcf-inline-chat-reserve, 204px);
   overflow-anchor:none;
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposer {
-  height:167px;
-  min-height:167px;
-  max-height:167px;
+  height:183px;
+  min-height:183px;
+  max-height:183px;
   justify-content:flex-end;
   padding:7px 9px 8px;
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerBottom {
   display:grid;
   grid-template-columns:33px minmax(0, 1fr) max-content 33px 33px;
-  grid-template-rows:112px 34px;
+  grid-template-rows:128px 34px;
   align-items:center;
   column-gap:4px;
   row-gap:4px;
@@ -360,14 +360,14 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfCenterIntro{display:none;}
   grid-column:1 / -1;
   grid-row:1;
   width:100%;
-  height:112px;
-  min-height:112px;
-  max-height:112px;
+  height:128px;
+  min-height:128px;
+  max-height:128px;
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfInput {
-  height:112px !important;
-  min-height:112px !important;
-  max-height:112px !important;
+  height:128px !important;
+  min-height:128px !important;
+  max-height:128px !important;
   white-space:pre-wrap;
   font-size:max(16px, calc(14.5px * var(--olli-text-scale, 1))) !important;
   overflow-x:hidden;
