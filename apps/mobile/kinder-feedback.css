@@ -705,6 +705,15 @@
   padding:4px 11px 3px;
   -webkit-tap-highlight-color:transparent;
 }
+/* Inactive 47px composer: equalize the outer edge clearance with the
+   send/plus buttons' ~7px top/bottom clearance. The expanding text field
+   lets the mode, microphone and send controls shift right together. */
+#kinderChatFeedbackScreen:not(.kcfInlineDialogueActive) .kcfComposer {
+  padding-right:7px;
+}
+#kinderChatFeedbackScreen:not(.kcfInlineDialogueActive) .kcfAttachBtn {
+  margin-left:-4px;
+}
 #kinderChatFeedbackScreen .kcfComposer:has(.kcfPhotoPreview.show) {
   height:auto;
   max-height:none;
@@ -2089,12 +2098,16 @@ body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn svg 
   stroke-linecap:round;
   stroke-linejoin:round;
 }
-/* Only the header copy button for a successfully copied feedback stays blue. */
+/* The copy button and student name share the successful-copy blue state. */
 body.kcfContinuousMode.kcfContinuousFeedbackFolded #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn.kcfLiveHeaderCopied,
 body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn.kcfLiveHeaderCopied {
   background:#0A84FF;
   color:#fff;
   border-color:#0A84FF;
+}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveTitleLeft:has(.kcfLiveHeaderCopyBtn.kcfLiveHeaderCopied) .kcfLiveStudentNameText,
+body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveTitleLeft:has(.kcfLiveHeaderCopyBtn.kcfLiveHeaderCopied) .kcfLiveStudentNameText {
+  color:#0A84FF;
 }
 #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn:disabled{opacity:.38;cursor:default;}
 /* The + icon is portaled here only while the QuickNote input sheet is open. */
