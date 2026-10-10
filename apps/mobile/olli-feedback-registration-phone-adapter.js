@@ -618,16 +618,14 @@ function togglePhoneKcfFeedbackCollectedView(){
     clearTimeout(phoneKcfCollectSourceRestoreTimer);
     phoneKcfCollectSourceRestoreTimer = 0;
   }
-  if (!continuous) document.body.classList.add('kcfFeedbackCollectReady');
+  document.body.classList.add('kcfFeedbackCollectReady');
   // Use actual content height even when returning from the collapsed (0px)
   // state. A stored zero max-height otherwise keeps teacher records invisible.
-  if (!continuous) {
-    area.querySelectorAll('.kcfMsgRow:not(.kcfLiveResponseRow)').forEach(function(row){
-      const previous = parseFloat(row.style.getPropertyValue('--kcf-collect-source-height')) || 0;
-      const fullHeight = Math.max(row.scrollHeight, row.getBoundingClientRect().height, previous);
-      if (fullHeight > 0) row.style.setProperty('--kcf-collect-source-height', Math.ceil(fullHeight + 2) + 'px');
-    });
-  }
+  area.querySelectorAll('.kcfMsgRow:not(.kcfLiveResponseRow)').forEach(function(row){
+    const previous = parseFloat(row.style.getPropertyValue('--kcf-collect-source-height')) || 0;
+    const fullHeight = Math.max(row.scrollHeight, row.getBoundingClientRect().height, previous);
+    if (fullHeight > 0) row.style.setProperty('--kcf-collect-source-height', Math.ceil(fullHeight + 2) + 'px');
+  });
 
   const reduceMotion = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const motion = Array.from(area.querySelectorAll('.kcfLiveResponseRow:not(.editing):not(.kcfLiveResponseError) .kcfLiveBubble'))
@@ -659,22 +657,20 @@ function togglePhoneKcfFeedbackCollectedView(){
       return entry;
     });
   void area.offsetHeight;
-  {
-    document.body.classList.toggle('kcfFeedbackCollectView');
-    if (restoringSourceRows) {
-      // Release the temporary height cap after the original 280ms expansion.
-      // Without this, a stale measurement can conceal the original teacher bubble.
-      const finishRestore = function(){
-        phoneKcfCollectSourceRestoreTimer = 0;
-        if (document.body.classList.contains('kcfFeedbackCollectView')) return;
-        document.body.classList.remove('kcfFeedbackCollectReady');
-        area.querySelectorAll('.kcfMsgRow:not(.kcfLiveResponseRow)').forEach(function(row){
-          row.style.removeProperty('--kcf-collect-source-height');
-        });
-      };
-      if (reduceMotion) finishRestore();
-      else phoneKcfCollectSourceRestoreTimer = setTimeout(finishRestore, 300);
-    }
+  document.body.classList.toggle('kcfFeedbackCollectView');
+  if (restoringSourceRows) {
+    // Release the temporary height cap after the original 280ms expansion.
+    // Without this, a stale measurement can conceal the original teacher bubble.
+    const finishRestore = function(){
+      phoneKcfCollectSourceRestoreTimer = 0;
+      if (document.body.classList.contains('kcfFeedbackCollectView')) return;
+      document.body.classList.remove('kcfFeedbackCollectReady');
+      area.querySelectorAll('.kcfMsgRow:not(.kcfLiveResponseRow)').forEach(function(row){
+        row.style.removeProperty('--kcf-collect-source-height');
+      });
+    };
+    if (reduceMotion) finishRestore();
+    else phoneKcfCollectSourceRestoreTimer = setTimeout(finishRestore, 300);
   }
   syncPhoneKcfContinuousRecordUi();
 
