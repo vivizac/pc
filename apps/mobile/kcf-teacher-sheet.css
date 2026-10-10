@@ -323,6 +323,10 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfCenterIntro{display:none;}
 
 /* Dialogue reuses the original QuickNote bottom composer and its controls.
    Only the input layer follows the visual keyboard; the chat pane stays fixed. */
+/* Align the active QuickNote composer with TeamChat above the iOS keyboard assistant bar. */
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerWrap {
+  bottom:1px;
+}
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerLayer {
   inset:auto;
   left:var(--kcf-inline-vv-left, 0px);
