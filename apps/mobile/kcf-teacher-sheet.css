@@ -400,6 +400,11 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfCenterIntro{display:none;}
   height:34px;
   padding:1px 0;
 }
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerBottom > .kcfComposerModeMenu {
+  right:65px;
+  left:auto;
+  bottom:calc(34px + 6px);
+}
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerModeBtn {
   grid-column:3;
   grid-row:2;
