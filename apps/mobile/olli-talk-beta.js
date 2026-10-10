@@ -435,9 +435,8 @@
 
     if (anchorPendingReason) scheduleOlliTalkPendingReasonAnchorAfterViewport();
 
-    // Only the latest-message anchor owns chatArea.scrollTop. If it actually
-    // scrolled, do not apply a second independent message FLIP displacement.
-    let anchoredLatest = false;
+    // The latest-message anchor owns chatArea.scrollTop. Include its scroll
+    // correction in the same FLIP animation so the message eases into place.
     if (
       !isOlliTalkPendingReasonInputActive()
       && anchorLatest
@@ -445,22 +444,12 @@
       && olliTalkKeyboardFollowLatest
       && isOlliTalkComposerActive()
     ) {
-      const chatArea = document.getElementById('olliTalkBetaChatArea');
-      const beforeScrollTop = chatArea?.scrollTop;
       scheduleOlliTalkLatestMessageAnchor();
-      anchoredLatest = !!chatArea && Math.abs(chatArea.scrollTop - beforeScrollTop) > 0.5;
     }
 
     preserveOlliTalkKeyboardVisualFrame(motionFrame,{
-      messages: !isOlliTalkPendingReasonInputActive() && !olliTalkChatGestureActive && !anchoredLatest
+      messages: !isOlliTalkPendingReasonInputActive() && !olliTalkChatGestureActive
     });
-    if (anchoredLatest && motionFrame.messageList?.isConnected && !prefersReducedOlliTalkMotion()) {
-      // The message scroller and fixed composer remain separate elements.
-      // Paint one common easing offset so the anchored messages follow the
-      // composer without introducing their own extra movement correction.
-      olliTalkMessagesVisualOffsetY = olliTalkComposerVisualOffsetY;
-      applyOlliTalkKeyboardVisualOffsets();
-    }
   }
 
   function scheduleOlliTalkKeyboardViewportUpdate(options = {}){
