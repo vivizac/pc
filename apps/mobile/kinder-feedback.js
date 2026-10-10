@@ -473,11 +473,21 @@ function autoResizeKinderChatFeedbackInput(input) {
 }
 window.autoResizeKinderChatFeedbackInput = autoResizeKinderChatFeedbackInput;
 function openKinderChatFeedbackComposerSheet(event) {
-  const mode = getKinderChatFeedbackTeacherMode();
-  if (mode && typeof mode.activateForComposer === 'function') mode.activateForComposer(event);
   const sheet = window.KcfTeacherSheet;
   if (!sheet || typeof sheet.open !== 'function') return false;
-  return typeof sheet.isOpen === 'function' && sheet.isOpen() ? true : sheet.open(event) !== false;
+  if (typeof sheet.isOpen === 'function' && sheet.isOpen()) return true;
+  const mode = getKinderChatFeedbackTeacherMode();
+  // In dialogue mode, open the native keyboard in the user's tap BEFORE
+  // initializing/selecting students and redrawing the roster. Continuous
+  // recording retains its existing roster-first bottom-sheet workflow.
+  if (sheet.getMode?.() !== 'continuous') {
+    const opened = sheet.open(event);
+    if (opened === false) return false;
+    if (mode && typeof mode.activateForComposer === 'function') mode.activateForComposer(event);
+    return true;
+  }
+  if (mode && typeof mode.activateForComposer === 'function') mode.activateForComposer(event);
+  return sheet.open(event) !== false;
 }
 function focusKinderChatFeedbackInput() {
   openKinderChatFeedbackComposerSheet();
