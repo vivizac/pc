@@ -180,9 +180,7 @@ body.kcfContinuousMode .kcfTeacherSheetCloseBtn {
 .kcfTeacherSheetControlHost{min-width:0;display:flex;align-items:center;justify-content:center;height:38px;}
 #kcfTeacherSheetAttachHost{flex:0 0 33px;}
 .kcfTeacherSheetSpacer{flex:1 1 auto;min-width:0;}
-#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;position:relative;}
-/* Align the mode menu above its own toggle, not the left edge of the entire footer. */
-#kcfTeacherSheetModeHost > .kcfComposerModeMenu{left:50%;right:auto;transform:translateX(-50%);}
+#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;}
 #kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:12px;}
 .kcfTeacherSheetSendBtn{flex:0 0 33px;}
 .kcfTeacherSheetControlHost .kcfVoiceBtn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 33px;width:33px;height:33px;min-width:33px;margin:0;padding:0;border:0;border-radius:50%;background:transparent;color:#111;cursor:pointer;}
@@ -200,10 +198,6 @@ body.kcfContinuousMode .kcfTeacherSheetCloseBtn {
 
 .kcfTeacherSheetSendBtn,.kcfComposerModeBtn{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .kcfComposerModeBtn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:55px;height:33px;padding:0 9px;border:0;border-radius:11px;background:#fff;color:#535965;font:inherit;font-size:calc(13px * var(--olli-text-scale));font-weight:600;white-space:nowrap;position:relative;z-index:5;}
-.kcfModeChevron{flex:0 0 13px;width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;color:#777;}
-.kcfComposerModeMenu{position:absolute;bottom:calc(100% + 6px);left:0;z-index:100;display:flex;flex-direction:column;min-width:108px;padding:4px;border:1px solid #e9eaed;border-radius:12px;background:#fff;box-shadow:0 8px 26px rgba(0,0,0,.12);}
-.kcfComposerModeOption{width:100%;min-height:38px;border:0;padding:0 10px;text-align:left;border-radius:8px;background:transparent;color:#222;font:inherit;font-size:13px;}
-.kcfComposerModeOption[aria-checked="true"]{background:#f1f3f6;color:#1677ff;font-weight:650;}
 #kinderChatFeedbackScreen .kcfComposerBottom{position:relative;}
 #kinderChatFeedbackScreen .kcfComposerBottom>.kcfComposerModeBtn{z-index:6;}
 .kcfTeacherSheetBottom>.kcfComposerModeBtn{z-index:6;}
@@ -402,11 +396,6 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfCenterIntro{display:none;}
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerBottom > .kcfAutoStudentRoster .kcfAutoStudentRosterScroller {
   height:34px;
   padding:1px 0;
-}
-#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerBottom > .kcfComposerModeMenu {
-  right:65px;
-  left:auto;
-  bottom:calc(34px + 6px);
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerModeBtn {
   grid-column:3;

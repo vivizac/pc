@@ -173,13 +173,9 @@
       modeButton.id = 'kcfModeSwitchBtn';
       modeButton.type = 'button';
       modeButton.className = 'kcfComposerModeBtn';
-      modeButton.setAttribute('aria-label', '퀵노트 작성 모드 선택');
-      modeButton.setAttribute('aria-haspopup', 'true');
-      modeButton.setAttribute('aria-expanded', 'false');
-      modeButton.innerHTML = '<span class="kcfComposerModeLabel">대화</span>'
-        + '<svg class="kcfModeChevron" viewBox="0 0 24 24" aria-hidden="true">'
-        + '<path d="m6 9 6 6 6-6"></path></svg>';
-      attachModeSelector(modeButton);
+      modeButton.setAttribute('aria-label', '연속기록으로 전환');
+      modeButton.innerHTML = '<span class="kcfComposerModeLabel">대화</span>';
+      attachModeToggle(modeButton);
     }
     if (host.classList.contains('kcfComposerBottom')) {
       host.insertBefore(modeButton, document.getElementById('kcfVoiceBtn'));
@@ -292,17 +288,12 @@
       if (!btn) return;
       var label = btn.querySelector('.kcfComposerModeLabel');
       if (label) label.textContent = continuous ? '연속기록' : '대화';
-      btn.setAttribute('aria-label', continuous ? '연속기록 모드 선택' : '대화 모드 선택');
+      btn.setAttribute('aria-label', continuous ? '대화로 전환' : '연속기록으로 전환');
     });
-  }
-  function closeModeMenus(){
-    document.querySelectorAll('.kcfComposerModeMenu').forEach(function(menu){ menu.remove(); });
-    document.querySelectorAll('.kcfComposerModeBtn[aria-expanded]').forEach(function(btn){ btn.setAttribute('aria-expanded','false'); });
   }
   function setComposerMode(mode, event){
     var previous = state.composerMode;
     state.composerMode = mode === 'continuous' ? 'continuous' : 'dialogue';
-    closeModeMenus();
     syncModeUi();
     if (previous === state.composerMode) return;
     if (state.inlineOpen && state.composerMode === 'continuous') {
@@ -313,38 +304,16 @@
       openInline(event);
     }
   }
-  function attachModeSelector(btn){
+  function attachModeToggle(btn){
     if (!btn || btn.__kcfModeBound) return;
     btn.__kcfModeBound = true;
     btn.addEventListener('pointerdown',function(e){ if(e.cancelable)e.preventDefault(); });
-    btn.addEventListener('click',function(e){
-      e.preventDefault(); e.stopPropagation();
-      var wasOpen = btn.getAttribute('aria-expanded') === 'true';
-      closeModeMenus();
-      if(wasOpen)return;
-      var menu = document.createElement('div');
-      menu.className = 'kcfComposerModeMenu';
-      menu.setAttribute('role','menu');
-      [['dialogue','대화'],['continuous','연속기록']].forEach(function(mode){
-        var item = document.createElement('button');
-        item.type = 'button';
-        item.className = 'kcfComposerModeOption';
-        item.textContent = mode[1];
-        item.setAttribute('role','menuitemradio');
-        item.setAttribute('aria-checked',String(mode[0] === state.composerMode));
-        item.addEventListener('pointerdown',function(event){ if(event.cancelable)event.preventDefault(); });
-        item.addEventListener('click',function(event){
-          event.preventDefault();event.stopPropagation();setComposerMode(mode[0], event);
-        });
-        menu.appendChild(item);
-      });
-      btn.parentNode.appendChild(menu);
-      btn.setAttribute('aria-expanded','true');
+    btn.addEventListener('click',function(event){
+      event.preventDefault();
+      event.stopPropagation();
+      setComposerMode(state.composerMode === 'dialogue' ? 'continuous' : 'dialogue', event);
     });
   }
-  document.addEventListener('click',function(e){
-    if(!e.target || !e.target.closest || !e.target.closest('.kcfComposerModeMenu, .kcfComposerModeBtn'))closeModeMenus();
-  });
 
   function ensureSheet(){
     var existing = overlay();
@@ -501,7 +470,6 @@
       screen.style.removeProperty('--kcf-inline-chat-reserve');
     }
     restoreInlineRoster();
-    closeModeMenus();
     document.getElementById('kcfModeSwitchBtn')?.remove();
     if (input) {
       input.readOnly = true;
@@ -571,7 +539,6 @@
     }
     restoreRoster();
     restoreSheetControls();
-    closeModeMenus();
     document.getElementById('kcfModeSwitchBtn')?.remove();
     unbindWarning();
     document.documentElement.classList.remove('kcfTeacherSheetOpen');

@@ -49,18 +49,21 @@ test('keyboard follows only the inline composer; chat scroll changes only with n
 });
 
 test('modified QuickNote assets are cache-busted', () => {
-  for (const name of ['kinder-feedback.js', 'kcf-teacher-sheet.js', 'kcf-auto-mode-runtime.js']) {
+  for (const name of ['kinder-feedback.js', 'kcf-auto-mode-runtime.js']) {
     assert.ok(html.includes(name + '?v=20261010-inline-dialogue-1'), name);
   }
+  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261010-direct-mode-toggle-1'));
 });
 
-test('continuous mode control gap matches microphone-to-send and menu anchors above toggle', () => {
+test('mode button toggles immediately and shows the active mode label without a popup', () => {
+  assert.match(sheet, /setComposerMode\(state\.composerMode === 'dialogue' \? 'continuous' : 'dialogue', event\)/);
+  assert.match(sheet, /label\.textContent = continuous \? '연속기록' : '대화'/);
+  assert.match(sheet, /btn\.setAttribute\('aria-label', continuous \? '대화로 전환' : '연속기록으로 전환'\)/);
+  assert.doesNotMatch(sheet, /kcfComposerModeMenu|closeModeMenus|aria-haspopup|aria-expanded|kcfModeChevron/);
+  assert.doesNotMatch(css, /kcfModeChevron|kcfComposerModeMenu|kcfComposerModeOption/);
   const footer = css.split('.kcfTeacherSheetBottom {')[1]?.split('}')[0] || '';
   assert.ok(footer.includes('gap:4px;'));
-  assert.ok(css.includes('#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;position:relative;}'));
+  assert.ok(css.includes('#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;}'));
   assert.ok(css.includes('#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:12px;}'));
-  assert.ok(css.includes('#kcfTeacherSheetModeHost > .kcfComposerModeMenu{left:50%;right:auto;transform:translateX(-50%);}'));
-  assert.ok(css.includes('.kcfComposerModeMenu{position:absolute;bottom:calc(100% + 6px);left:0;'));
-  assert.ok(sheet.includes('btn.parentNode.appendChild(menu);'));
-  assert.ok(html.includes('kcf-teacher-sheet.css?v=20261010-mode-control-gap-1'));
+  assert.ok(html.includes('kcf-teacher-sheet.css?v=20261010-direct-mode-toggle-1'));
 });
