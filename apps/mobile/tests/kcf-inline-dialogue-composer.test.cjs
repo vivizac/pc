@@ -49,7 +49,18 @@ test('keyboard follows only the inline composer; chat scroll changes only with n
 });
 
 test('modified QuickNote assets are cache-busted', () => {
-  for (const name of ['kinder-feedback.js', 'kcf-teacher-sheet.js', 'kcf-teacher-sheet.css', 'kcf-auto-mode-runtime.js']) {
+  for (const name of ['kinder-feedback.js', 'kcf-teacher-sheet.js', 'kcf-auto-mode-runtime.js']) {
     assert.ok(html.includes(name + '?v=20261010-inline-dialogue-1'), name);
   }
+});
+
+test('continuous mode control gap matches microphone-to-send and menu anchors above toggle', () => {
+  const footer = css.split('.kcfTeacherSheetBottom {')[1]?.split('}')[0] || '';
+  assert.ok(footer.includes('gap:4px;'));
+  assert.ok(css.includes('#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;position:relative;}'));
+  assert.ok(css.includes('#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:12px;}'));
+  assert.ok(css.includes('#kcfTeacherSheetModeHost > .kcfComposerModeMenu{left:50%;right:auto;transform:translateX(-50%);}'));
+  assert.ok(css.includes('.kcfComposerModeMenu{position:absolute;bottom:calc(100% + 6px);left:0;'));
+  assert.ok(sheet.includes('btn.parentNode.appendChild(menu);'));
+  assert.ok(html.includes('kcf-teacher-sheet.css?v=20261010-mode-control-gap-1'));
 });
