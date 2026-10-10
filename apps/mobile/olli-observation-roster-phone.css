@@ -473,8 +473,8 @@
 
 /* 관찰내용 작성 화면 하단 버튼 */
 #studentMemoScreen[data-memo-body-view="editor"] #memoBottomAnalysisBtn {
-  width:47px;
-  min-width:47px;
+  width:44px;
+  min-width:44px;
   height:44px;
   min-height:44px;
   border-radius:999px;
@@ -870,8 +870,8 @@
   width:226px;
   min-width:226px;
   max-width:226px;
-  height:47px;
-  min-height:47px;
+  height:44px;
+  min-height:44px;
   padding:0 4px;
   margin:0;
   border:1px solid rgba(255,255,255,.96);
@@ -898,10 +898,10 @@
   width:auto;
   min-width:0;
   max-width:none;
-  height:53px;
-  min-height:53px;
-  max-height:53px;
-  padding:9px 11px 8px;
+  height:44px;
+  min-height:44px;
+  max-height:44px;
+  padding:4px 11px;
   transform:none;
   gap:0;
   box-sizing:border-box;
@@ -915,13 +915,13 @@
   right:auto;
   top:auto;
   bottom:auto;
-  width:47px;
-  min-width:47px;
-  max-width:47px;
-  height:47px;
-  min-height:47px;
-  max-height:47px;
-  flex:0 0 47px;
+  width:44px;
+  min-width:44px;
+  max-width:44px;
+  height:44px;
+  min-height:44px;
+  max-height:44px;
+  flex:0 0 44px;
   align-self:center;
   margin:0;
   padding:0;
