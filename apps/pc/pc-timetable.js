@@ -301,6 +301,7 @@
     if (activeClockPicker && activeClockPicker.input === input) return;
     closeClockPicker();
 
+    const isOptionalDropoffTime = input.matches('[data-tt-pickup-edit-dropoff-time]');
     const match = clean(input.value).match(/^(\d{2}):(\d{2})/);
     const draft = {
       hour: match ? match[1] : '',
@@ -317,11 +318,20 @@
       + '<div class="olliTtClockPickerColumn"><div class="olliTtClockPickerLabel">분</div><div class="olliTtClockPickerList" data-tt-clock-minute-list>'
       + clockOptionButtons('minute', 60, draft.minute)
       + '</div></div></div>'
-      + '<div class="olliTtClockPickerFooter"><button type="button" class="olliTtClockPickerDone" data-tt-clock-done disabled>완료</button></div>';
+      + '<div class="olliTtClockPickerFooter">'
+      + (isOptionalDropoffTime ? '<button type="button" class="olliTtClockPickerClear" data-tt-clock-clear>시간 없음</button>' : '')
+      + '<button type="button" class="olliTtClockPickerDone" data-tt-clock-done disabled>완료</button></div>';
     document.body.appendChild(popup);
     input.setAttribute('aria-expanded', 'true');
 
     const doneButton = popup.querySelector('[data-tt-clock-done]');
+    const clearButton = popup.querySelector('[data-tt-clock-clear]');
+    if (clearButton) clearButton.addEventListener('click', () => {
+      input.value = '';
+      onChange('');
+      closeClockPicker();
+      input.blur();
+    });
     const syncDraft = () => {
       popup.querySelectorAll('[data-tt-clock-hour]').forEach((button) => {
         const selected = button.dataset.ttClockHour === draft.hour;
@@ -2090,12 +2100,15 @@
     const initialPickupLabel = item.is_dropoff === true ? '' : clean(item.pickup_label);
     const initialPickupTime = item.is_dropoff === true ? '' : pickupTimeInputValue(item.pickup_time);
     const initialDropoffLabel = clean(item.dropoff_label) || (item.is_dropoff === true ? clean(item.pickup_label) : '');
+    const initialDropoffTime = pickupTimeInputValue(item.dropoff_time);
     state.dialog = {
       kind: 'pickupManage',
       pickupId: clean(pickupId),
       pickupLabel: initialPickupLabel,
       pickupTime: initialPickupTime,
       dropoffLabel: initialDropoffLabel,
+      dropoffTime: initialDropoffTime,
+      originalDropoffTime: initialDropoffTime,
       originalPickupLabel: initialPickupLabel,
       originalPickupTime: initialPickupTime,
       originalDropoffLabel: initialDropoffLabel,
@@ -2555,12 +2568,14 @@
     const arrivalLabel = clean(dialog && dialog.pickupLabel);
     const arrivalTime = clean(dialog && dialog.pickupTime);
     const dropoffLabel = clean(dialog && dialog.dropoffLabel);
+    const dropoffTime = clean(dialog && dialog.dropoffTime);
     return {
       arrivalChanged: Boolean(arrivalLabel && arrivalTime)
         && (arrivalLabel !== clean(dialog && dialog.originalPickupLabel)
           || arrivalTime !== clean(dialog && dialog.originalPickupTime)),
       dropoffChanged: Boolean(dropoffLabel)
-        && dropoffLabel !== clean(dialog && dialog.originalDropoffLabel)
+        && (dropoffLabel !== clean(dialog && dialog.originalDropoffLabel)
+          || dropoffTime !== clean(dialog && dialog.originalDropoffTime))
     };
   }
 
@@ -2604,7 +2619,7 @@
       + arrivalStatus
       + `<div class="olliTtPickupManageArrivalGrid${hasArrival ? ' hasArrival' : ''}">`
       + `<label><span>등원 장소</span><input type="text" maxlength="80" data-tt-pickup-arrival-label value="${esc(dialog.pickupLabel)}" placeholder="예: 리슈빌"></label>`
-      + `<label><span>등원 시간</span><input type="text" class="olliTtDateInput olliTtClockOnlyTime" data-tt-pickup-edit-time value="${esc(dialog.pickupTime)}" placeholder="시간 선택" readonly aria-label="등원 픽업 시간 선택"></label>`
+      + `<label><span>등원 시간</span><input type="text" class="olliTtDateInput olliTtClockOnlyTime" data-tt-pickup-edit-time value="${esc(dialog.pickupTime)}" placeholder="선택" readonly aria-label="등원 픽업 시간 선택"></label>`
       + arrivalDelete
       + `<button type="button" class="olliTtDialogPrimary olliTtPickupInlineAction" data-tt-save-arrival ${dirty.arrivalChanged ? '' : 'disabled'}>${arrivalActionLabel}</button>`
       + '</div></section>'
@@ -2612,6 +2627,7 @@
       + '<div class="olliTtPickupManageSectionHead"><strong>하원 설정</strong><span>등원 픽업과 별도로 하원 장소를 등록하거나 수정합니다.</span></div>'
       + '<div class="olliTtPickupManageDropoffGrid">'
       + `<label><span>하원 장소</span><input type="text" maxlength="80" data-tt-pickup-dropoff-label value="${esc(dialog.dropoffLabel)}" placeholder="예: 집 앞, 리슈빌 정문"></label>`
+      + `<label><span>하원 시간</span><input type="text" class="olliTtDateInput olliTtClockOnlyTime" data-tt-pickup-edit-dropoff-time value="${esc(dialog.dropoffTime || '')}" placeholder="선택" readonly aria-label="하원 시간 선택 (선택사항)"></label>`
       + dropoffDelete
       + `<button type="button" class="olliTtDialogPrimary olliTtPickupInlineAction" data-tt-register-dropoff ${dirty.dropoffChanged ? '' : 'disabled'}>${dropoffActionLabel}</button>`
       + '</div></section>'
@@ -2888,6 +2904,13 @@
     bindClockOnlyTimeInput(pickupEditTime, (value) => {
       if (state.dialog && state.dialog.kind === 'pickupManage') {
         state.dialog.pickupTime = value;
+        refreshPickupManageActionState(dialog);
+      }
+    });
+    const pickupManageDropoffTime = dialog.querySelector('[data-tt-pickup-edit-dropoff-time]');
+    bindClockOnlyTimeInput(pickupManageDropoffTime, (value) => {
+      if (state.dialog && state.dialog.kind === 'pickupManage') {
+        state.dialog.dropoffTime = value;
         refreshPickupManageActionState(dialog);
       }
     });
@@ -3533,10 +3556,12 @@ ${combined.memoError}`);
     const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
     if (!item) return;
     const root = document.getElementById('olliTtDialog');
-    const location = clean(root && root.querySelector('[data-tt-pickup-dropoff-label]')?.value || dialog.dropoffLabel);
+    const location = clean(root?.querySelector('[data-tt-pickup-dropoff-label]')?.value ?? dialog.dropoffLabel);
+    const time = clean(root?.querySelector('[data-tt-pickup-edit-dropoff-time]')?.value ?? dialog.dropoffTime);
     if (!location) { alert('하원 장소를 입력해 주세요.'); return; }
     dialog.dropoffLabel = location;
-    const result = await withSaving(() => service.registerPickupDropoff(dialog.pickupId, location));
+    dialog.dropoffTime = time;
+    const result = await withSaving(() => service.registerPickupDropoff(dialog.pickupId, location, time || null));
     if (result) notify(`${item.student_name} 학생의 하원 설정을 저장했어요.`);
   }
 
