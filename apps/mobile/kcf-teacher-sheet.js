@@ -13,6 +13,10 @@
     portaledControls:[],
     warningObserver:null,
     viewportFrame:0,
+    inlineControlsFrame:0,
+    inlineBlurTimer:0,
+    inlineBlurAt:0,
+    inlineClosedViewportHeight:0,
     caretRevealTimer:0,
     suppressBlurSync:false,
     composerMode:'dialogue'
@@ -25,6 +29,33 @@
   function sheetHost(id){ return document.getElementById(id); }
   function warning(){ return document.getElementById('kcfTeacherSheetWarning'); }
   function sendButton(){ return document.getElementById('kcfTeacherSheetSendBtn'); }
+
+  // Opt-in iPhone diagnostics. Geometry/focus only; never record lesson text or names.
+  function traceInlineFocus(stage){
+    if (global.__kcfQuickNoteFocusDebug !== true) return;
+    try {
+      var input = baseInput();
+      var rect = input?.getBoundingClientRect();
+      var viewport = global.visualViewport;
+      var records = global.__kcfQuickNoteFocusTrace || (global.__kcfQuickNoteFocusTrace = []);
+      records.push({
+        stage:stage, at:Math.round(global.performance?.now?.() || 0),
+        focused:document.activeElement === input, inlineOpen:state.inlineOpen,
+        top:rect ? Math.round(rect.top) : null,
+        left:rect ? Math.round(rect.left) : null,
+        height:rect ? Math.round(rect.height) : null,
+        viewportTop:Math.round(viewport?.offsetTop || 0),
+        viewportHeight:Math.round(viewport?.height || global.innerHeight || 0)
+      });
+      if (records.length > 40) records.splice(0, records.length - 40);
+    } catch (_) {}
+  }
+
+  function clearInlineBlurTimer(){
+    if (state.inlineBlurTimer) clearTimeout(state.inlineBlurTimer);
+    state.inlineBlurTimer = 0;
+    state.inlineBlurAt = 0;
+  }
 
   function modeEnabled(){
     var mode = global.KcfTeacherMode || global.KcfAutoMode;
@@ -57,6 +88,14 @@
       // move the message pane or scroll it on keyboard focus/resize.
       var covered = Math.max(0, (global.innerHeight || height) - top - height);
       screen.style.setProperty('--kcf-inline-chat-reserve', Math.ceil(covered + 204) + 'px');
+      // Like TeamChat, wait for the keyboard's viewport descent after blur.
+      // A transient focus loss while the keyboard is rising must not close it.
+      if (state.inlineBlurAt && document.activeElement !== baseInput()
+          && (global.performance?.now?.() || 0) - state.inlineBlurAt > 120
+          && height >= state.inlineClosedViewportHeight - 24) {
+        traceInlineFocus('keyboard-returned');
+        closeInline({ skipBlur:true });
+      }
     }
   }
 
@@ -482,52 +521,64 @@
     var screen = document.getElementById('kinderChatFeedbackScreen');
     var keyboard = global.OlliMobileKeyboardActivation;
     if (!input || !screen || !keyboard) return false;
+    clearInlineBlurTimer();
     if (!state.inlineOpen) {
-      // A canceled closing morph must not keep its height/overflow on the new editor.
+      // The final textarea geometry is established synchronously, but moving
+      // buttons and rebuilding the student roster waits until AFTER native focus.
       if (inlineComposerAnimation) {
         var previous = inlineComposerAnimation;
         inlineComposerAnimation = null;
         previous.cancel();
         screen.querySelector('.kcfComposer')?.style.removeProperty('overflow');
       }
+      state.inlineClosedViewportHeight = Number(global.visualViewport?.height || global.innerHeight || 0);
       state.inlineOpen = true;
       screen.classList.add('kcfInlineDialogueActive');
       input.readOnly = false;
       input.rows = 5;
-      placeModeButton(screen.querySelector('.kcfComposerBottom'));
-      mountInlineRoster();
-      var teacherMode = global.KcfTeacherMode || global.KcfAutoMode;
-      teacherMode?.refreshRoster?.();
       global.autoResizeKinderChatFeedbackInput?.(input);
-      // Replace any visualViewport measurements from the previous keyboard session
-      // before native focus, so Safari does not paint the caret at a stale offset.
       syncViewport();
-      // Flush the final grid/textarea geometry synchronously in this tap.
       input.getBoundingClientRect();
+      traceInlineFocus('before-focus');
       var activated = keyboard.activate(event, {
         input:input,
         selectionEnd:true,
         afterFocus:scheduleViewportSync
       });
+      traceInlineFocus('after-focus');
       if (!input.value) {
         try { input.setSelectionRange(0, 0); input.scrollTop = 0; } catch (_) {}
       }
-      // The 190ms open animation now paints only the glass background (CSS).
-      // Never animate the height of a parent of a focused iOS textarea.
+      state.inlineControlsFrame = requestAnimationFrame(function(){
+        state.inlineControlsFrame = 0;
+        if (!state.inlineOpen) return;
+        placeModeButton(screen.querySelector('.kcfComposerBottom'));
+        mountInlineRoster();
+        var teacherMode = global.KcfTeacherMode || global.KcfAutoMode;
+        teacherMode?.refreshRoster?.();
+        traceInlineFocus('controls-ready');
+      });
       return !!activated;
     }
-    return !!keyboard.activate(event, {
+    var refocused = keyboard.activate(event, {
       input:input,
       selectionEnd:true,
       afterFocus:scheduleViewportSync
     });
+    traceInlineFocus('refocus');
+    return !!refocused;
   }
 
   function closeInline(options){
     if (!state.inlineOpen) return;
     var opts = options || {};
     state.inlineOpen = false;
+    clearInlineBlurTimer();
+    if (state.inlineControlsFrame) cancelAnimationFrame(state.inlineControlsFrame);
+    state.inlineControlsFrame = 0;
     var input = baseInput();
+    // Native caret/keyboard must end before the textarea returns to 34px.
+    if (input && !opts.skipBlur && document.activeElement === input) input.blur();
     var screen = document.getElementById('kinderChatFeedbackScreen');
     var composer = screen?.querySelector('.kcfComposer');
     var fromHeight = composer?.getBoundingClientRect().height;
@@ -535,7 +586,6 @@
       screen.classList.remove('kcfInlineDialogueActive');
       screen.style.removeProperty('--kcf-inline-chat-reserve');
     }
-    // Do not reuse keyboard-shrunken viewport coordinates on the next open.
     var layer = document.getElementById('kcfComposerLayer');
     if (layer) {
       ['--kcf-inline-vv-left', '--kcf-inline-vv-top',
@@ -548,10 +598,10 @@
     if (input) {
       input.readOnly = true;
       input.rows = 1;
-      if (!opts.skipBlur && document.activeElement === input) input.blur();
       global.autoResizeKinderChatFeedbackInput?.(input);
     }
     animateInlineComposer(composer, fromHeight);
+    traceInlineFocus('closed');
   }
 
   function open(event){
@@ -640,8 +690,23 @@
     global.addEventListener('resize', scheduleViewportSync);
     var inline = baseInput();
     if (inline) {
+      inline.addEventListener('focus', function(){
+        clearInlineBlurTimer();
+        traceInlineFocus('focus-event');
+        scheduleViewportSync();
+      });
       inline.addEventListener('blur', function(){
-        if (state.inlineOpen) closeInline({ skipBlur:true });
+        if (!state.inlineOpen) return;
+        traceInlineFocus('blur-event');
+        clearInlineBlurTimer();
+        state.inlineBlurAt = global.performance?.now?.() || Date.now();
+        state.inlineBlurTimer = setTimeout(function(){
+          state.inlineBlurTimer = 0;
+          if (!state.inlineOpen || document.activeElement === inline) return;
+          traceInlineFocus('blur-fallback');
+          closeInline({ skipBlur:true });
+        }, 420);
+        scheduleViewportSync();
       });
     }
     var bottom = document.querySelector('#kinderChatFeedbackScreen .kcfComposerBottom');
