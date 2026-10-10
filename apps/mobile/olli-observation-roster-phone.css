@@ -493,10 +493,14 @@
   border-radius:50%;
 }
 
-#studentMemoScreen[data-memo-body-view="editor"] #memoBottomAnalysisBtn svg,
+#studentMemoScreen[data-memo-body-view="editor"] #memoBottomAnalysisBtn svg {
+  width:27px;
+  height:27px;
+}
 #studentMemoScreen[data-memo-body-view="editor"] #memoFeedbackBtn svg {
   width:27px;
   height:27px;
+  stroke-width:1.7;
 }
 
 /* 학생목록은 메모와 독립된 실제 pageScreen이다. 두 화면이 서로의 헤더/본문을 공유하지 않는다. */
