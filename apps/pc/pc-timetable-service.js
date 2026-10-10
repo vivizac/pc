@@ -601,6 +601,12 @@
     }));
   }
 
+  async function removePickupArrival(pickupId) {
+    return rpc('olli_schedule_remove_pickup_arrival', contextPayload({
+      p_pickup_id: pickupId
+    }));
+  }
+
   async function removePickupDropoff(pickupId) {
     return rpc('olli_schedule_remove_pickup_dropoff', contextPayload({
       p_pickup_id: pickupId
@@ -674,6 +680,7 @@
     savePickup,
     savePickupArrival,
     registerPickupDropoff,
+    removePickupArrival,
     removePickupDropoff,
     updatePickup,
     removePickup,
