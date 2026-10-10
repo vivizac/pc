@@ -281,7 +281,9 @@
     var wasContinuous = document.body.classList.contains('kcfContinuousMode');
     document.body.classList.toggle('kcfContinuousMode', continuous);
     if (continuous) document.body.classList.remove('kcfFeedbackCollectView');
-    if (!continuous || !wasContinuous) document.body.classList.remove('kcfContinuousFeedbackFolded');
+    // A newly entered continuous-record mode starts with every feedback collapsed.
+    if (continuous && !wasContinuous) document.body.classList.add('kcfContinuousFeedbackFolded');
+    else if (!continuous) document.body.classList.remove('kcfContinuousFeedbackFolded');
     if (typeof global.syncPhoneKcfContinuousRecordUi === 'function') {
       global.syncPhoneKcfContinuousRecordUi();
     }
@@ -570,6 +572,10 @@
     if (shouldSync) syncToBase();
     // Mark closed before blur; otherwise the blur listener can recursively close.
     state.open = false;
+    // Returning from the continuous-record sheet shows the summary as folded rows.
+    if (state.composerMode === 'continuous') {
+      global.foldPhoneKcfContinuousFeedback?.();
+    }
     var activeEditor = editor();
     if (activeEditor && document.activeElement === activeEditor) {
       state.suppressBlurSync = true;
@@ -624,8 +630,11 @@
   }
 
   function onSuccessfulSubmit(){
-    if (!state.open || state.composerMode === 'continuous') return;
-    close({ sync:false });
+    if (state.composerMode === 'continuous') return;
+    // Dialogue reuses the inline input, not the old bottom sheet.
+    // Blur after a successful request start so iOS closes the keyboard too.
+    if (state.inlineOpen) closeInline();
+    else if (state.open) close({ sync:false });
   }
 
   var api = {
