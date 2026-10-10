@@ -166,16 +166,17 @@ body.kcfContinuousMode .kcfTeacherSheetCloseBtn {
 
 .kcfTeacherSheetBottom {
   /* Match the active dialogue composer: same outer inset, bottom row, and controls. */
-  flex:0 0 56px;
-  height:56px;
-  min-height:56px;
+  --kcf-dialogue-matched-bottom:calc(var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom))) + 6px);
+  flex:0 0 calc(40px + var(--kcf-dialogue-matched-bottom));
+  height:calc(40px + var(--kcf-dialogue-matched-bottom));
+  min-height:calc(40px + var(--kcf-dialogue-matched-bottom));
   display:flex;
   align-items:center;
   gap:4px;
   width:100%;
   position:relative;
   margin:0;
-  padding:0 calc(var(--olli-phone-guide-x, 16px) + 10px) 16px;
+  padding:0 calc(var(--olli-phone-guide-x, 16px) + 10px) var(--kcf-dialogue-matched-bottom);
   box-sizing:border-box;
 }
 .kcfTeacherSheetControlHost{min-width:0;display:flex;align-items:center;justify-content:center;height:38px;}
