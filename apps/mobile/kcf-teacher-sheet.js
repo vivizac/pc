@@ -4,6 +4,9 @@
 
   var state = {
     open:false,
+    inlineOpen:false,
+    inlineRosterMarker:null,
+    inlineRosterNode:null,
     submitting:false,
     rosterMarker:null,
     rosterNode:null,
@@ -30,17 +33,35 @@
   }
 
   function syncViewport(){
-    var root = overlay();
-    if (!root || !state.open) return;
+    if (!state.open && !state.inlineOpen) return;
     var viewport = global.visualViewport;
     var width = viewport ? Number(viewport.width || global.innerWidth || 0) : Math.max(global.innerWidth || 0, document.documentElement.clientWidth || 0);
     var height = viewport ? Number(viewport.height || global.innerHeight || 0) : Math.max(global.innerHeight || 0, document.documentElement.clientHeight || 0);
-    root.style.setProperty('--kcf-teacher-vv-width', Math.max(1, Math.round(width)) + 'px');
-    root.style.setProperty('--kcf-teacher-vv-height', Math.max(1, Math.round(height)) + 'px');
+    if (state.open) {
+      var root = overlay();
+      if (!root) return;
+      root.style.setProperty('--kcf-teacher-vv-width', Math.max(1, Math.round(width)) + 'px');
+      root.style.setProperty('--kcf-teacher-vv-height', Math.max(1, Math.round(height)) + 'px');
+    }
+    if (state.inlineOpen) {
+      var layer = document.getElementById('kcfComposerLayer');
+      var screen = document.getElementById('kinderChatFeedbackScreen');
+      if (!layer || !screen) return;
+      var left = viewport ? Number(viewport.offsetLeft || 0) : 0;
+      var top = viewport ? Number(viewport.offsetTop || 0) : 0;
+      layer.style.setProperty('--kcf-inline-vv-left', Math.round(left) + 'px');
+      layer.style.setProperty('--kcf-inline-vv-top', Math.round(top) + 'px');
+      layer.style.setProperty('--kcf-inline-vv-width', Math.max(1, Math.round(width)) + 'px');
+      layer.style.setProperty('--kcf-inline-vv-height', Math.max(1, Math.round(height)) + 'px');
+      // Extra scrollable space is only used when a message arrives. Do not
+      // move the message pane or scroll it on keyboard focus/resize.
+      var covered = Math.max(0, (global.innerHeight || height) - top - height);
+      screen.style.setProperty('--kcf-inline-chat-reserve', Math.ceil(covered + 188) + 'px');
+    }
   }
 
   function scheduleViewportSync(){
-    if (!state.open || state.viewportFrame) return;
+    if ((!state.open && !state.inlineOpen) || state.viewportFrame) return;
     state.viewportFrame = requestAnimationFrame(function(){
       state.viewportFrame = 0;
       syncViewport();
@@ -103,6 +124,9 @@
     target.placeholder = '수업 기록을 적어주세요';
     syncWarning();
     if (opts.focus === true && state.open) focusEditor();
+    else if (opts.focus === true && state.inlineOpen) {
+      global.OlliMobileKeyboardActivation?.focus(source, { selectionEnd:true });
+    }
   }
 
   function focusEditor(){
@@ -136,13 +160,11 @@
     state.rosterNode = null;
   }
 
-  // Move the existing + and mic buttons, not copies. The mode control only
-  // exists while the active sheet is open; the idle composer has no such node.
-  function mountSheetControls(){
-    if (state.portaledControls.length) return;
-    var modeHost = sheetHost('kcfTeacherSheetModeHost');
-    if (modeHost && !document.getElementById('kcfModeSwitchBtn')) {
-      var modeButton = document.createElement('button');
+  function placeModeButton(host){
+    if (!host) return;
+    var modeButton = document.getElementById('kcfModeSwitchBtn');
+    if (!modeButton) {
+      modeButton = document.createElement('button');
       modeButton.id = 'kcfModeSwitchBtn';
       modeButton.type = 'button';
       modeButton.className = 'kcfComposerModeBtn';
@@ -152,9 +174,39 @@
       modeButton.innerHTML = '<span class="kcfComposerModeLabel">대화</span>'
         + '<svg class="kcfModeChevron" viewBox="0 0 24 24" aria-hidden="true">'
         + '<path d="m6 9 6 6 6-6"></path></svg>';
-      modeHost.appendChild(modeButton);
       attachModeSelector(modeButton);
     }
+    if (host.classList.contains('kcfComposerBottom')) {
+      host.insertBefore(modeButton, document.getElementById('kcfVoiceBtn'));
+    } else host.appendChild(modeButton);
+    syncModeUi();
+  }
+
+  function mountInlineRoster(){
+    var roster = document.getElementById('kcfAutoStudentRoster');
+    var bottom = document.querySelector('#kinderChatFeedbackScreen .kcfComposerBottom');
+    if (!roster || !bottom || roster.parentNode === bottom) return;
+    if (!state.inlineRosterMarker && roster.parentNode) {
+      state.inlineRosterMarker = document.createComment('kcf-inline-roster-home');
+      roster.parentNode.insertBefore(state.inlineRosterMarker, roster);
+    }
+    state.inlineRosterNode = roster;
+    bottom.insertBefore(roster, document.getElementById('kcfVoiceBtn'));
+  }
+
+  function restoreInlineRoster(){
+    if (state.inlineRosterNode && state.inlineRosterMarker?.parentNode) {
+      state.inlineRosterMarker.parentNode.insertBefore(state.inlineRosterNode, state.inlineRosterMarker);
+      state.inlineRosterMarker.remove();
+    }
+    state.inlineRosterMarker = null;
+    state.inlineRosterNode = null;
+  }
+
+  // Preserve the existing button nodes, handlers and recording workflow.
+  function mountSheetControls(){
+    if (state.portaledControls.length) return;
+    placeModeButton(sheetHost('kcfTeacherSheetModeHost'));
     [
       ['kcfAttachBtn','kcfTeacherSheetAttachHost'],
       ['kcfVoiceBtn','kcfTeacherSheetVoiceHost'],
@@ -242,10 +294,19 @@
     document.querySelectorAll('.kcfComposerModeMenu').forEach(function(menu){ menu.remove(); });
     document.querySelectorAll('.kcfComposerModeBtn[aria-expanded]').forEach(function(btn){ btn.setAttribute('aria-expanded','false'); });
   }
-  function setComposerMode(mode){
+  function setComposerMode(mode, event){
+    var previous = state.composerMode;
     state.composerMode = mode === 'continuous' ? 'continuous' : 'dialogue';
     closeModeMenus();
     syncModeUi();
+    if (previous === state.composerMode) return;
+    if (state.inlineOpen && state.composerMode === 'continuous') {
+      closeInline({ skipBlur:true });
+      open(event);
+    } else if (state.open && state.composerMode === 'dialogue') {
+      close({ sync:true });
+      openInline(event);
+    }
   }
   function attachModeSelector(btn){
     if (!btn || btn.__kcfModeBound) return;
@@ -268,7 +329,7 @@
         item.setAttribute('aria-checked',String(mode[0] === state.composerMode));
         item.addEventListener('pointerdown',function(event){ if(event.cancelable)event.preventDefault(); });
         item.addEventListener('click',function(event){
-          event.preventDefault();event.stopPropagation();setComposerMode(mode[0]);
+          event.preventDefault();event.stopPropagation();setComposerMode(mode[0], event);
         });
         menu.appendChild(item);
       });
@@ -399,8 +460,56 @@
     return root;
   }
 
+  function openInline(event){
+    if (state.open) close({ sync:true });
+    var input = baseInput();
+    var screen = document.getElementById('kinderChatFeedbackScreen');
+    var keyboard = global.OlliMobileKeyboardActivation;
+    if (!input || !screen || !keyboard) return false;
+    if (!state.inlineOpen) {
+      state.inlineOpen = true;
+      screen.classList.add('kcfInlineDialogueActive');
+      input.readOnly = false;
+      input.rows = 5;
+      placeModeButton(screen.querySelector('.kcfComposerBottom'));
+      mountInlineRoster();
+      var teacherMode = global.KcfTeacherMode || global.KcfAutoMode;
+      teacherMode?.refreshRoster?.();
+      global.autoResizeKinderChatFeedbackInput?.(input);
+      syncViewport();
+    }
+    return !!keyboard.activate(event, {
+      input:input,
+      selectionEnd:true,
+      afterFocus:scheduleViewportSync
+    });
+  }
+
+  function closeInline(options){
+    if (!state.inlineOpen) return;
+    var opts = options || {};
+    state.inlineOpen = false;
+    var input = baseInput();
+    var screen = document.getElementById('kinderChatFeedbackScreen');
+    if (screen) {
+      screen.classList.remove('kcfInlineDialogueActive');
+      screen.style.removeProperty('--kcf-inline-chat-reserve');
+    }
+    restoreInlineRoster();
+    closeModeMenus();
+    document.getElementById('kcfModeSwitchBtn')?.remove();
+    if (input) {
+      input.readOnly = true;
+      input.rows = 1;
+      if (!opts.skipBlur && document.activeElement === input) input.blur();
+      global.autoResizeKinderChatFeedbackInput?.(input);
+    }
+  }
+
   function open(event){
+    if (state.composerMode !== 'continuous') return openInline(event);
     if (!modeEnabled()) return false;
+    if (state.inlineOpen) closeInline({ skipBlur:true });
     try {
       if (typeof global.warmKinderChatFeedbackPromptCache === 'function') {
         global.warmKinderChatFeedbackPromptCache();
@@ -434,7 +543,10 @@
 
   function close(options){
     var opts = options || {};
-    if (!state.open) return;
+    if (!state.open) {
+      closeInline();
+      return;
+    }
     var shouldSync = opts.sync !== false;
     if (shouldSync) syncToBase();
     // Mark closed before blur; otherwise the blur listener can recursively close.
@@ -472,8 +584,21 @@
     syncModeUi();
     if (global.visualViewport) {
       global.visualViewport.addEventListener('resize', scheduleViewportSync);
+      global.visualViewport.addEventListener('scroll', scheduleViewportSync);
     }
     global.addEventListener('resize', scheduleViewportSync);
+    var inline = baseInput();
+    if (inline) {
+      inline.addEventListener('blur', function(){
+        if (state.inlineOpen) closeInline({ skipBlur:true });
+      });
+    }
+    var bottom = document.querySelector('#kinderChatFeedbackScreen .kcfComposerBottom');
+    if (bottom) bottom.addEventListener('pointerdown', function(event){
+      if (state.inlineOpen && event.target.closest('button, [role="button"]') && event.cancelable) {
+        event.preventDefault();
+      }
+    }, true);
     if (!global.__kcfTeacherSheetTouchLockBound) {
       global.__kcfTeacherSheetTouchLockBound = true;
       document.addEventListener('touchmove', preventTeacherBackgroundTouchMove, { capture:true, passive:false });
@@ -488,7 +613,10 @@
   var api = {
     open:open,
     close:close,
-    isOpen:function(){ return state.open; },
+    isOpen:function(){ return state.open || state.inlineOpen; },
+    isSheetOpen:function(){ return state.open; },
+    openInline:openInline,
+    closeInline:closeInline,
     syncFromBase:syncFromBase,
     syncToBase:syncToBase,
     focus:focusEditor,
