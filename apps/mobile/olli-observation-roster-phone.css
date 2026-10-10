@@ -473,8 +473,8 @@
 
 /* 관찰내용 작성 화면 하단 버튼 */
 #studentMemoScreen[data-memo-body-view="editor"] #memoBottomAnalysisBtn {
-  width:47px;
-  min-width:47px;
+  width:44px;
+  min-width:44px;
   height:44px;
   min-height:44px;
   border-radius:999px;
@@ -554,7 +554,7 @@
 #observationRosterScreen .observationRosterBottomFadeLayer {
   bottom:0;
   /* Stop at the top edge of the fixed search/sort controls. */
-  height:calc(var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom))) + var(--olli-phone-bottom-control-height, 47px));
+  height:calc(var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom))) + var(--olli-phone-bottom-control-height, 44px));
   background:linear-gradient(
     to top,
     rgba(var(--vivizac-edge-fade-rgb),1) 0%,
@@ -767,8 +767,8 @@
   right:var(--olli-phone-guide-x) !important;
   bottom:var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom))) !important;
   width:auto !important;
-  height:var(--olli-phone-bottom-control-height, 47px) !important;
-  min-height:var(--olli-phone-bottom-control-height, 47px) !important;
+  height:var(--olli-phone-bottom-control-height, 44px) !important;
+  min-height:var(--olli-phone-bottom-control-height, 44px) !important;
   padding:0 !important;
   z-index:120 !important;
   transform:translate3d(0, calc(-1 * var(--olli-observation-keyboard-offset, 0px)), 0) !important;
@@ -780,26 +780,26 @@
    키보드가 열린 동안에는 iPhone safe-area 하단 패딩을 제거해 검색창이 불필요하게 위로 뜨지 않도록 한다. */
 #observationRosterScreen.observation-keyboard-open .memoRosterUtilityBar {
   bottom:4px !important;
-  height:var(--olli-phone-bottom-control-height, 47px) !important;
-  min-height:var(--olli-phone-bottom-control-height, 47px) !important;
+  height:var(--olli-phone-bottom-control-height, 44px) !important;
+  min-height:var(--olli-phone-bottom-control-height, 44px) !important;
   padding-top:0 !important;
   padding-bottom:0 !important;
 }
 
 /* 하단 [검색][정렬] 도구 크기를 맞춘다. */
 #observationRosterScreen .memoRosterUtilityBar {
-  grid-template-columns:minmax(0, 1fr) 47px !important;
+  grid-template-columns:minmax(0, 1fr) 44px !important;
   column-gap:10px !important;
 }
 #observationRosterScreen .memoRosterUtilityBtn,
 #observationRosterScreen .memoRosterSearchPill,
 #observationRosterScreen .memoRosterSortWrap {
-  height:var(--olli-phone-bottom-control-height, 47px) !important;
-  min-height:var(--olli-phone-bottom-control-height, 47px) !important;
+  height:var(--olli-phone-bottom-control-height, 44px) !important;
+  min-height:var(--olli-phone-bottom-control-height, 44px) !important;
 }
 #observationRosterScreen .memoRosterUtilityBtn {
-  width:47px !important;
-  min-width:47px !important;
+  width:44px !important;
+  min-width:44px !important;
 }
 #observationRosterScreen .memoRosterSearchIcon {
   width:23px !important;
@@ -870,8 +870,8 @@
   width:226px;
   min-width:226px;
   max-width:226px;
-  height:47px;
-  min-height:47px;
+  height:44px;
+  min-height:44px;
   padding:0 4px;
   margin:0;
   border:1px solid rgba(255,255,255,.96);
@@ -915,13 +915,13 @@
   right:auto;
   top:auto;
   bottom:auto;
-  width:47px;
-  min-width:47px;
-  max-width:47px;
-  height:47px;
-  min-height:47px;
-  max-height:47px;
-  flex:0 0 47px;
+  width:44px;
+  min-width:44px;
+  max-width:44px;
+  height:44px;
+  min-height:44px;
+  max-height:44px;
+  flex:0 0 44px;
   align-self:center;
   margin:0;
   padding:0;

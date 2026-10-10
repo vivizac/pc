@@ -2763,7 +2763,7 @@ html {
 /* 2026-04-22 정리 수정: 중복 보정 제거 후 실제 구조 기준으로 재정렬 */
 :root {
   --olli-phone-control-size: 44px;
-  --olli-phone-bottom-control-height: 47px;
+  --olli-phone-bottom-control-height: 44px;
   --olli-phone-guide-x: max(16px, calc((100vw - 860px) / 2 + 16px));
   --olli-phone-guide-top: max(18px, calc(env(safe-area-inset-top) + 6px + var(--vivizac-vv-offset-top, 0px)));
   --olli-phone-guide-bottom: max(10px, env(safe-area-inset-bottom));
