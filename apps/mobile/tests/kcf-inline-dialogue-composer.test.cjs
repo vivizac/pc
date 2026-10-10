@@ -54,7 +54,7 @@ test('modified QuickNote assets are cache-busted', () => {
   for (const name of ['kinder-feedback.js', 'kcf-auto-mode-runtime.js']) {
     assert.ok(html.includes(name + '?v=20261010-inline-dialogue-1'), name);
   }
-  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261010-quicknote-focus-restore-1'));
+  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261010-stable-caret-keyboard-glass-1'));
 });
 
 test('mode button toggles immediately and shows the active mode label without a popup', () => {
@@ -70,21 +70,20 @@ test('mode button toggles immediately and shows the active mode label without a 
   assert.ok(footer.includes('gap:4px;'));
   assert.ok(css.includes('#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;}'));
   assert.ok(css.includes('#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:12px;}'));
-  assert.ok(html.includes('kcf-teacher-sheet.css?v=20261010-quicknote-focus-restore-1'));
+  assert.ok(html.includes('kcf-teacher-sheet.css?v=20261010-stable-caret-keyboard-glass-1'));
 });
 
-test('inline QuickNote height morph matches TeamChat easing without changing keyboard or message motion', () => {
-  assert.match(sheet, /function animateInlineComposer\(composer, fromHeight\)/);
-  assert.match(sheet, /duration:190, easing:'cubic-bezier\(\.2,\.65,\.2,1\)'/);
-  assert.match(sheet, /prefers-reduced-motion: reduce/);
-  assert.match(sheet, /previous\.cancel\(\)/);
-  assert.match(sheet, /animation\.addEventListener\('finish', finish/);
-  assert.match(sheet, /animation\.addEventListener\('cancel', finish/);
-  assert.match(sheet, /function openInline\(event\)[\s\S]*?keyboard\.activate\(event, \{[\s\S]*?animateInlineComposer\(composer, fromHeight\);/);
-  assert.match(sheet, /function closeInline\(options\)[\s\S]*?animateInlineComposer\(composer, fromHeight\);/);
+test('dialogue opens without animating the focused textarea ancestor', () => {
+  const opener = sheet.split('function openInline(event){')[1]?.split('function closeInline(options){')[0] || '';
+  const closer = sheet.split('function closeInline(options){')[1]?.split('function open(event){')[0] || '';
+  assert.doesNotMatch(opener, /animateInlineComposer\(composer, fromHeight\)/);
+  assert.match(closer, /animateInlineComposer\(composer, fromHeight\)/);
+  assert.match(opener, /previous\.cancel\(\)/);
+  assert.match(css, /animation:kcfInlineGlassExpand 190ms cubic-bezier\(\.2,\.65,\.2,1\) both/);
+  assert.match(css, /@keyframes kcfInlineGlassExpand/);
+  assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(sheet, /input\.rows = 5/);
   assert.match(sheet, /input\.rows = 1/);
-  assert.doesNotMatch(sheet.slice(sheet.indexOf('function animateInlineComposer'), sheet.indexOf('function openInline')), /scrollTop|\.kcfChatArea|transform/);
 });
 
 test('continuous footer matches original controls and plus has no focus chrome', () => {
@@ -101,22 +100,35 @@ test('continuous footer matches original controls and plus has no focus chrome',
   assert.match(plus, /filter:none;/);
 });
 
-test('active dialogue glass blur and insertion point match the placeholder line', () => {
+test('active dialogue glass is less transparent and caret stays in normal textarea geometry', () => {
   const active = css.split('#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposer {')[1]?.split('}')[0] || '';
-  assert.match(active, /background:rgba\(255,255,255,\.88\)/);
-  assert.match(active, /backdrop-filter:blur\(22px\)/);
+  assert.match(active, /background:transparent;/);
+  assert.match(active, /height:183px;/);
+  const glass = css.split('#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposer::before {')[1]?.split('}')[0] || '';
+  assert.match(glass, /background:rgba\(255,255,255,\.96\)/);
+  assert.match(glass, /backdrop-filter:blur\(22px\)/);
+  assert.match(glass, /pointer-events:none;/);
   const textarea = css.split('#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfInput {')[1]?.split('}')[0] || '';
   assert.match(textarea, /text-align:left;/);
   assert.match(textarea, /text-indent:0;/);
   assert.match(sheet, /input\.setSelectionRange\(0, 0\); input\.scrollTop = 0;/);
 });
 
-test('iOS inline keyboard focuses before control portaling and roster redraws', () => {
-  const block = sheet.split('function openInline(event){')[1]?.split('function closeInline(options){')[0] || '';
-  assert.ok(block.indexOf('keyboard.activate(event, {') < block.indexOf("placeModeButton(screen.querySelector('.kcfComposerBottom'))"));
-  assert.ok(block.indexOf('keyboard.activate(event, {') < block.indexOf('mountInlineRoster();'));
-  assert.ok(block.indexOf('keyboard.activate(event, {') < block.indexOf('teacherMode?.refreshRoster?.();'));
-  assert.match(block, /return !!activated;/);
+test('iOS input gets final grid and viewport geometry before native focus', () => {
+  const opener = sheet.split('function openInline(event){')[1]?.split('function closeInline(options){')[0] || '';
+  const iFocus = opener.indexOf('keyboard.activate(event, {');
+  for (const step of ["placeModeButton(screen.querySelector('.kcfComposerBottom'))",
+    'mountInlineRoster();', 'teacherMode?.refreshRoster?.();',
+    'global.autoResizeKinderChatFeedbackInput?.(input);',
+    'syncViewport();', 'input.getBoundingClientRect();']) {
+    assert.ok(opener.indexOf(step) >= 0 && opener.indexOf(step) < iFocus, step);
+  }
+  assert.match(opener, /return !!activated;/);
+  const closer = sheet.split('function closeInline(options){')[1]?.split('function open(event){')[0] || '';
+  for (const field of ['--kcf-inline-vv-left', '--kcf-inline-vv-top', '--kcf-inline-vv-width', '--kcf-inline-vv-height']) {
+    assert.ok(closer.includes(field), 'stale viewport cleared: ' + field);
+  }
+  assert.match(closer, /layer\.style\.removeProperty\(name\)/);
 });
 
 test('active mic/send controls match the idle layout and keyboard assistant inset', () => {
