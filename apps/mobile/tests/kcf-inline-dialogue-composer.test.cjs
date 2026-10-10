@@ -66,9 +66,9 @@ test('mode button toggles immediately and shows the active mode label without a 
   assert.doesNotMatch(css, /kcfComposerModeMenu|kcfComposerModeOption/);
   const footer = css.split('.kcfTeacherSheetBottom {')[1]?.split('}')[0] || '';
   assert.ok(footer.includes('gap:4px;'));
-  assert.ok(css.includes('#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;}'));
-  assert.ok(css.includes('#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:12px;}'));
-  assert.ok(html.includes('kcf-teacher-sheet.css?v=20261010-mode-chevron-1'));
+  assert.ok(css.includes('#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:0;}'));
+  assert.ok(css.includes('#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:0;}'));
+  assert.ok(html.includes('kcf-teacher-sheet.css?v=20261010-continuous-footer-align-1'));
 });
 
 test('inline QuickNote height morph matches TeamChat easing without changing keyboard or message motion', () => {
@@ -83,4 +83,27 @@ test('inline QuickNote height morph matches TeamChat easing without changing key
   assert.match(sheet, /input\.rows = 5/);
   assert.match(sheet, /input\.rows = 1/);
   assert.doesNotMatch(sheet.slice(sheet.indexOf('function animateInlineComposer'), sheet.indexOf('function openInline')), /scrollTop|\.kcfChatArea|transform/);
+});
+
+test('continuous-record mode button uses active dialogue footer position', () => {
+  const footer = css.split('.kcfTeacherSheetBottom {')[1]?.split('}')[0] || '';
+  assert.match(footer, /flex:0 0 56px;/);
+  assert.match(footer, /height:56px;/);
+  assert.match(footer, /padding:0 calc\(var\(--olli-phone-guide-x, 16px\) \+ 10px\) 16px;/);
+  assert.ok(css.includes('#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:0;}'));
+  assert.ok(css.includes('#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:0;}'));
+  assert.match(css, /#kinderChatFeedbackScreen\.kcfInlineDialogueActive \.kcfComposerBottom \{[^}]*column-gap:4px/);
+
+  // The two modes anchor the *right edge* of the same button identically.
+  // In dialogue: guide inset + 1px border + 9px padding + send/mic + gaps.
+  // In continuous: guide inset + 10px footer padding + send/mic + gaps.
+  for (const guideInset of [10, 16, 22, 28]) {
+    const dialogueRight = guideInset + 1 + 9 + 33 + 4 + 33 + 4;
+    const continuousRight = guideInset + 10 + 33 + 4 + 33 + 4;
+    assert.equal(continuousRight, dialogueRight);
+  }
+  // Both vertically center a 33px button at the same distance above the keyboard.
+  const dialogueBottom = 10 + 1 + 8 + (34 - 33) / 2;
+  const continuousBottom = 16 + (40 - 38) / 2 + (38 - 33) / 2;
+  assert.equal(continuousBottom, dialogueBottom);
 });
