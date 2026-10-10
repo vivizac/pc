@@ -482,6 +482,8 @@ global.olliTeamTalkSelectBackground=selectBackground;
 global.olliTeamTalkToggleBotNotifications=toggleBot;
 global.OlliTeamTalkSettings={
   state,
+  // Preserve callers of the former settings API without retaining an AI on/off switch.
+  isAiEnabled:function(){return true},
   avatarKey:function(){return state.avatarKey||''},
   platform:PLATFORM,
   load:loadRemote,
