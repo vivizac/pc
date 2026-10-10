@@ -9,6 +9,7 @@ const css = read('kcf-teacher-sheet.css');
 const input = read('kinder-feedback.js');
 const registration = read('olli-feedback-registration-phone-adapter.js');
 const baseCss = read('kinder-feedback.css');
+const teamChatCss = read('olli-talk-beta.css');
 const roster = read('kcf-auto-mode-runtime.js');
 const html = read('index.html');
 
@@ -181,7 +182,7 @@ test('continuous mode hides global collect/expand while dialogue keeps it', () =
   assert.match(baseCss, /body\.kcfContinuousMode #kinderChatFeedbackScreen \.kcfFeedbackCollectToggleBtn,/);
   assert.match(registration, /document\.body\.classList\.toggle\('kcfFeedbackCollectView'\)/);
   assert.ok(html.includes('olli-feedback-registration-phone-adapter.js?v=20261010-olli-integrated-1'));
-  assert.ok(html.includes('kinder-feedback.css?v=20261010-hide-active-collect-toggle-1'));
+  assert.ok(html.includes('kinder-feedback.css?v=20261011-copy-name-idle-spacing-1'));
 });
 
 test('collect/expand controls hide only while the normal dialogue input is active', () => {
@@ -197,4 +198,37 @@ test('only successful dialogue feedback submission closes the inline input and k
   assert.match(sheet, /if \(state\.inlineOpen\) closeInline\(\);/);
   assert.match(sheet, /else if \(state\.open\) close\(\{ sync:false \}\);/);
   assert.match(sheet, /function closeInline\(options\)[\s\S]*?document\.activeElement === input\) input\.blur\(\)/);
+});
+
+
+test('Team Chat title changes to blue without recoloring the header tools', () => {
+  const title = teamChatCss.split('#olliTalkBetaScreen .olliTalkBetaTitle{')[1]?.split('}')[0] || '';
+  assert.match(title, /color:#0A84FF;/);
+  assert.ok(html.includes('olli-talk-beta.css?v=20261011-blue-teamchat-title-1'));
+});
+
+test('successful feedback header copy blues the adjacent student name in both compact modes', () => {
+  assert.match(registration, /if \(copied && headerCopy\.isConnected\) \{\s*headerCopy\.classList\.add\('kcfLiveHeaderCopied'\)/);
+  assert.match(baseCss, /body\.kcfFeedbackCollectView #kinderChatFeedbackScreen \.kcfLiveTitleLeft:has\(\.kcfLiveHeaderCopyBtn\.kcfLiveHeaderCopied\) \.kcfLiveStudentNameText \{\s*color:#0A84FF;/);
+  assert.match(baseCss, /body\.kcfContinuousMode #kinderChatFeedbackScreen \.kcfLiveTitleLeft:has\(\.kcfLiveHeaderCopyBtn\.kcfLiveHeaderCopied\) \.kcfLiveStudentNameText,/);
+});
+
+test('inactive QuickNote composer uses equalized side insets without moving active controls', () => {
+  const inactive = baseCss.split('#kinderChatFeedbackScreen:not(.kcfInlineDialogueActive) .kcfComposer {')[1]?.split('}')[0] || '';
+  const plus = baseCss.split('#kinderChatFeedbackScreen:not(.kcfInlineDialogueActive) .kcfAttachBtn {')[1]?.split('}')[0] || '';
+  assert.match(inactive, /padding-right:7px;/);
+  assert.match(plus, /margin-left:-4px;/);
+  const composer = baseCss.split('#kinderChatFeedbackScreen .kcfComposer {')[1]?.split('}')[0] || '';
+  assert.match(composer, /height:var\(--olli-phone-bottom-control-height, 47px\)/);
+  assert.match(composer, /padding:4px 11px 3px;/);
+  const bottom = baseCss.split('#kinderChatFeedbackScreen .kcfComposerBottom {')[1]?.split('}')[0] || '';
+  assert.match(bottom, /display:flex;/);
+  assert.match(bottom, /align-items:center;/);
+  const input = baseCss.split('#kinderChatFeedbackScreen .kcfInputActivateWrap {')[1]?.split('}')[0] || '';
+  assert.match(input, /flex:1 1 auto;/);
+  const active = css.split('#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposer {')[1]?.split('}')[0] || '';
+  assert.match(active, /padding:7px 11px 5px;/);
+  const nominalOuterEdge = 0.5 + 7;
+  assert.equal(0.5 + 11 - 4, nominalOuterEdge);
+  assert.equal(nominalOuterEdge, (47 - 33) / 2 + 0.5);
 });
