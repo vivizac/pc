@@ -7,6 +7,8 @@ const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const sheet = read('kcf-teacher-sheet.js');
 const css = read('kcf-teacher-sheet.css');
 const input = read('kinder-feedback.js');
+const registration = read('olli-feedback-registration-phone-adapter.js');
+const baseCss = read('kinder-feedback.css');
 const roster = read('kcf-auto-mode-runtime.js');
 const html = read('index.html');
 
@@ -52,7 +54,7 @@ test('modified QuickNote assets are cache-busted', () => {
   for (const name of ['kinder-feedback.js', 'kcf-auto-mode-runtime.js']) {
     assert.ok(html.includes(name + '?v=20261010-inline-dialogue-1'), name);
   }
-  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261010-inline-composer-morph-1'));
+  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261010-continuous-folded-1'));
 });
 
 test('mode button toggles immediately and shows the active mode label without a popup', () => {
@@ -109,4 +111,31 @@ test('continuous-record mode button uses active dialogue footer position', () =>
     const continuousBottom = phoneGuideBottom + 6 + (40 - 38) / 2 + (38 - 33) / 2;
     assert.equal(continuousBottom, dialogueBottom);
   }
+});
+
+test('continuous feedback starts folded and returns from editor with all rows collapsed', () => {
+  assert.match(sheet, /if \(continuous && !wasContinuous\) document\.body\.classList\.add\('kcfContinuousFeedbackFolded'\)/);
+  assert.match(sheet, /if \(state\.composerMode === 'continuous'\) \{\s*global\.foldPhoneKcfContinuousFeedback\?\.\(\)/);
+  assert.match(registration, /function foldPhoneKcfContinuousFeedback\(\)/);
+  assert.match(registration, /row\.classList\.remove\('kcfContinuousFeedbackExpanded'\)/);
+  assert.match(registration, /row\.dataset\.kcfContinuousReady = '1'/);
+  assert.match(registration, /row\.classList\.toggle\('kcfContinuousFeedbackExpanded', !folded\)/);
+  assert.match(registration, /row\.classList\.toggle\('kcfContinuousFeedbackExpanded'\)/);
+  assert.match(baseCss, /body\.kcfContinuousMode #kinderChatFeedbackScreen \.kcfLiveResponseRow \.kcfLiveBubble,/);
+});
+
+test('continuous mode hides global collect/expand while dialogue keeps it', () => {
+  assert.match(registration, /toggle\.hidden = continuous \|\| !hasPhoneKcfGeneratedFeedback\(\)/);
+  assert.match(registration, /if \(continuous\) return; \/\/ No global collect\/expand button/);
+  assert.match(baseCss, /body\.kcfContinuousMode #kinderChatFeedbackScreen \.kcfFeedbackCollectToggleBtn,/);
+  assert.match(registration, /document\.body\.classList\.toggle\('kcfFeedbackCollectView'\)/);
+  assert.ok(html.includes('olli-feedback-registration-phone-adapter.js?v=20261010-continuous-folded-1'));
+  assert.ok(html.includes('kinder-feedback.css?v=20261010-continuous-folded-1'));
+});
+
+test('only successful dialogue feedback submission closes the inline input and keyboard', () => {
+  assert.match(sheet, /function onSuccessfulSubmit\(\)\{\s*if \(state\.composerMode === 'continuous'\) return;/);
+  assert.match(sheet, /if \(state\.inlineOpen\) closeInline\(\);/);
+  assert.match(sheet, /else if \(state\.open\) close\(\{ sync:false \}\);/);
+  assert.match(sheet, /function closeInline\(options\)[\s\S]*?document\.activeElement === input\) input\.blur\(\)/);
 });
