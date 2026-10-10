@@ -56,7 +56,7 @@
       // Extra scrollable space is only used when a message arrives. Do not
       // move the message pane or scroll it on keyboard focus/resize.
       var covered = Math.max(0, (global.innerHeight || height) - top - height);
-      screen.style.setProperty('--kcf-inline-chat-reserve', Math.ceil(covered + 188) + 'px');
+      screen.style.setProperty('--kcf-inline-chat-reserve', Math.ceil(covered + 204) + 'px');
     }
   }
 
