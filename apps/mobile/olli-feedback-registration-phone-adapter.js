@@ -544,8 +544,8 @@ function syncPhoneKcfContinuousRecordUi(){
     const bubble = row.querySelector('.kcfLiveBubble');
     if (!bubble) return;
     if (continuous) {
-      // First display in record mode is expanded. A row arriving after
-      // the global fold/expand toggle inherits its current state.
+      // First display in record mode is collapsed. Later rows inherit
+      // that initial state; individual feedback can still be expanded.
       if (row.dataset.kcfContinuousReady !== '1') {
         row.dataset.kcfContinuousReady = '1';
         row.classList.toggle('kcfContinuousFeedbackExpanded', !folded);
@@ -573,15 +573,25 @@ function syncPhoneKcfContinuousRecordUi(){
   const toggle = document.getElementById('kcfFeedbackCollectToggleBtn');
   if (toggle) {
     const collected = document.body.classList.contains('kcfFeedbackCollectView');
-    toggle.hidden = !hasPhoneKcfGeneratedFeedback();
-    const showAll = continuous ? folded : collected;
-    const label = showAll ? '피드백 전체 보기' : '피드백 모아보기';
-    toggle.dataset.kcfView = showAll ? 'all' : 'collect';
+    toggle.hidden = continuous || !hasPhoneKcfGeneratedFeedback();
+    const label = collected ? '피드백 전체 보기' : '피드백 모아보기';
+    toggle.dataset.kcfView = collected ? 'all' : 'collect';
     toggle.setAttribute('aria-label', label);
     toggle.title = label;
-    toggle.setAttribute('aria-pressed', String(continuous ? folded : collected));
+    toggle.setAttribute('aria-pressed', String(collected));
   }
 }
+
+function foldPhoneKcfContinuousFeedback(){
+  if (!document.body.classList.contains('kcfContinuousMode')) return;
+  document.body.classList.add('kcfContinuousFeedbackFolded');
+  document.querySelectorAll('#kinderChatFeedbackScreen .kcfLiveResponseRow').forEach(function(row){
+    row.classList.remove('kcfContinuousFeedbackExpanded');
+    row.dataset.kcfContinuousReady = '1';
+  });
+  syncPhoneKcfContinuousRecordUi();
+}
+window.foldPhoneKcfContinuousFeedback = foldPhoneKcfContinuousFeedback;
 
 // Keep only the temporary inline properties we touch; the saved text and
 // the normal/continuous feedback layout remain owned by their existing code.
@@ -602,7 +612,8 @@ function togglePhoneKcfFeedbackCollectedView(){
   const area = document.getElementById('kcfChatArea');
   if (!area) return;
   const continuous = document.body.classList.contains('kcfContinuousMode');
-  const restoringSourceRows = !continuous && document.body.classList.contains('kcfFeedbackCollectView');
+  if (continuous) return; // No global collect/expand button in continuous-record mode.
+  const restoringSourceRows = document.body.classList.contains('kcfFeedbackCollectView');
   if (phoneKcfCollectSourceRestoreTimer) {
     clearTimeout(phoneKcfCollectSourceRestoreTimer);
     phoneKcfCollectSourceRestoreTimer = 0;
@@ -648,13 +659,7 @@ function togglePhoneKcfFeedbackCollectedView(){
       return entry;
     });
   void area.offsetHeight;
-  if (continuous) {
-    const folded = document.body.classList.toggle('kcfContinuousFeedbackFolded');
-    area.querySelectorAll('.kcfLiveResponseRow').forEach(function(row){
-      row.dataset.kcfContinuousReady = '1';
-      row.classList.toggle('kcfContinuousFeedbackExpanded', !folded);
-    });
-  } else {
+  {
     document.body.classList.toggle('kcfFeedbackCollectView');
     if (restoringSourceRows) {
       // Release the temporary height cap after the original 280ms expansion.
