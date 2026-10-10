@@ -73,11 +73,11 @@ test('mode button toggles immediately and shows the active mode label without a 
 });
 
 test('QuickNote active mic and send align with idle right and bottom offsets', () => {
-  assert.match(baseCss, /#kinderChatFeedbackScreen \\.kcfComposer \\{[^}]*padding:4px 11px 3px;/);
-  assert.match(baseCss, /#kinderChatFeedbackScreen \\.kcfVoiceBtn \\{[^}]*margin-right:12px;/);
-  assert.match(css, /#kinderChatFeedbackScreen\\.kcfInlineDialogueActive \\.kcfComposer \\{[^}]*padding:7px 11px 5px;/);
-  assert.match(css, /grid-template-columns:33px minmax\\(0, 1fr\\) max-content 45px 33px;/);
-  assert.match(css, /#kinderChatFeedbackScreen\\.kcfInlineDialogueActive \\.kcfVoiceBtn \\{[^}]*margin:0;/);
+  assert.match(baseCss, /#kinderChatFeedbackScreen \.kcfComposer \{[^}]*padding:4px 11px 3px;/);
+  assert.match(baseCss, /#kinderChatFeedbackScreen \.kcfVoiceBtn \{[^}]*margin-right:12px;/);
+  assert.match(css, /#kinderChatFeedbackScreen\.kcfInlineDialogueActive \.kcfComposer \{[^}]*padding:7px 11px 5px;/);
+  assert.match(css, /grid-template-columns:33px minmax\(0, 1fr\) max-content 45px 33px;/);
+  assert.match(css, /#kinderChatFeedbackScreen\.kcfInlineDialogueActive \.kcfVoiceBtn \{[^}]*margin:0;/);
   const idleMicToSend = 4 + 12;
   const activeMicToSend = 4 + (45 - 33);
   assert.equal(idleMicToSend, activeMicToSend);
