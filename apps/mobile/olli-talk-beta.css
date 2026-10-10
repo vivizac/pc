@@ -534,7 +534,7 @@
   pointer-events:none;
 }
 #olliTalkBetaScreen.olliTalkKeyboardOpen .olliTalkBetaComposerWrap{
-  bottom:4px;
+  bottom:1px;
   padding-bottom:0;
 }
 /* Only cover the blank space around/below the raised composer. The actual
