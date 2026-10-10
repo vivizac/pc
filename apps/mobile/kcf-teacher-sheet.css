@@ -339,11 +339,12 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfCenterIntro{display:none;}
   min-height:183px;
   max-height:183px;
   justify-content:flex-end;
-  padding:7px 9px 8px;
+  padding:7px 11px 5px;
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerBottom {
   display:grid;
-  grid-template-columns:33px minmax(0, 1fr) max-content 33px 33px;
+  /* The microphone stays 33px wide; its 45px track preserves the idle 12px trailing margin. */
+  grid-template-columns:33px minmax(0, 1fr) max-content 45px 33px;
   grid-template-rows:128px 34px;
   align-items:center;
   column-gap:4px;
