@@ -52,7 +52,7 @@ test('modified QuickNote assets are cache-busted', () => {
   for (const name of ['kinder-feedback.js', 'kcf-auto-mode-runtime.js']) {
     assert.ok(html.includes(name + '?v=20261010-inline-dialogue-1'), name);
   }
-  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261010-mode-chevron-1'));
+  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261010-inline-composer-morph-1'));
 });
 
 test('mode button toggles immediately and shows the active mode label without a popup', () => {
@@ -69,4 +69,18 @@ test('mode button toggles immediately and shows the active mode label without a 
   assert.ok(css.includes('#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;}'));
   assert.ok(css.includes('#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:12px;}'));
   assert.ok(html.includes('kcf-teacher-sheet.css?v=20261010-mode-chevron-1'));
+});
+
+test('inline QuickNote height morph matches TeamChat easing without changing keyboard or message motion', () => {
+  assert.match(sheet, /function animateInlineComposer\(composer, fromHeight\)/);
+  assert.match(sheet, /duration:190, easing:'cubic-bezier\(\.2,\.65,\.2,1\)'/);
+  assert.match(sheet, /prefers-reduced-motion: reduce/);
+  assert.match(sheet, /previous\.cancel\(\)/);
+  assert.match(sheet, /animation\.addEventListener\('finish', finish/);
+  assert.match(sheet, /animation\.addEventListener\('cancel', finish/);
+  assert.match(sheet, /function openInline\(event\)[\s\S]*?animateInlineComposer\(composer, fromHeight\);[\s\S]*?keyboard\.activate/);
+  assert.match(sheet, /function closeInline\(options\)[\s\S]*?animateInlineComposer\(composer, fromHeight\);/);
+  assert.match(sheet, /input\.rows = 5/);
+  assert.match(sheet, /input\.rows = 1/);
+  assert.doesNotMatch(sheet.slice(sheet.indexOf('function animateInlineComposer'), sheet.indexOf('function openInline')), /scrollTop|\.kcfChatArea|transform/);
 });
