@@ -987,7 +987,7 @@
 .olliTtModeTab:hover { border-color:#c7def3; color:#0877df; background:#f7fbff; }
 .olliTtModeTab.active { border-color:#0A84FF; color:#0877df; background:#edf6ff; }
 .olliTtCurrentLessons { margin-top:12px; padding:13px; border:1px solid #e6eaee; border-radius:14px; background:#fafbfc; }
-#olliTtDialog.olliTtMoveDialog .olliTtChoice.active:is([data-tt-target-day],[data-tt-target-time],[data-tt-kinder-time-class]):not(.full) { border-color:#0A84FF; color:#0877df; background:#fff; }
+#olliTtDialog.olliTtMoveDialog .olliTtChoice.active:is([data-tt-target-day],[data-tt-target-time],[data-tt-kinder-time-class]) { border-color:#0A84FF !important; color:#0877df !important; background:#fff !important; }
 .olliTtCurrentLessonsHead { margin:0 2px 9px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .olliTtCurrentLessonsHead span { color:#343a43; font-size:calc(12px * var(--olli-text-scale)); font-weight:780; }
 .olliTtCurrentLessonsHead small { color:#9ba2ab; font-size:calc(9px * var(--olli-text-scale)); font-weight:600; }
