@@ -198,6 +198,7 @@ body.kcfContinuousMode .kcfTeacherSheetCloseBtn {
 
 .kcfTeacherSheetSendBtn,.kcfComposerModeBtn{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .kcfComposerModeBtn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:55px;height:33px;padding:0 9px;border:0;border-radius:11px;background:#fff;color:#535965;font:inherit;font-size:calc(13px * var(--olli-text-scale));font-weight:600;white-space:nowrap;position:relative;z-index:5;}
+.kcfModeChevron{flex:0 0 13px;width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;color:#777;}
 #kinderChatFeedbackScreen .kcfComposerBottom{position:relative;}
 #kinderChatFeedbackScreen .kcfComposerBottom>.kcfComposerModeBtn{z-index:6;}
 .kcfTeacherSheetBottom>.kcfComposerModeBtn{z-index:6;}
