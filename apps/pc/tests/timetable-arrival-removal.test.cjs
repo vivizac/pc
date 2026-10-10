@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const ui = fs.readFileSync('pc-timetable.js', 'utf8');
 const css = fs.readFileSync('pc-timetable.css', 'utf8');
 const service = fs.readFileSync('pc-timetable-service.js', 'utf8');
-const sql = fs.readFileSync('../../supabase/migrations/20261010120000_remove_pickup_arrival.sql', 'utf8');
+const sql = fs.readFileSync('../../supabase/migrations/20261010024659_remove_pickup_arrival.sql', 'utf8');
 
 test('move dialog retains white selected surfaces and dark active session', () => {
   assert.match(css, /\.olliTtEnrollmentChoice\.active \{ border-color: #0A84FF; color: #0877df; background: #fff; \}/);
