@@ -16,6 +16,7 @@ test('phone and PC TeamChat settings no longer offer an AI or rules toggle', () 
     assert.match(settings, /olliTeamTalkToggleBotNotifications/);
   }
   assert.doesNotMatch(phoneSettings, /aiEnabled|ai_enabled|p_ai_enabled|syncAssistantMode|olli-team-talk-ai-mode-changed/);
+  assert.match(phoneSettings, /isAiEnabled:function\(\)\{return true\}/);
   assert.match(phoneHtml, /olli-settings-team-talk-phone\.js\?v=20261010-no-ai-settings-toggle-1/);
 });
 
