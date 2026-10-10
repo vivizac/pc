@@ -594,10 +594,11 @@
     }));
   }
 
-  async function registerPickupDropoff(pickupId, dropoffLabel) {
-    return rpc('olli_schedule_register_pickup_dropoff', contextPayload({
+  async function registerPickupDropoff(pickupId, dropoffLabel, dropoffTime) {
+    return rpc('olli_schedule_register_pickup_dropoff_v2', contextPayload({
       p_pickup_id: pickupId,
-      p_dropoff_label: dropoffLabel
+      p_dropoff_label: dropoffLabel,
+      p_dropoff_time: dropoffTime || null
     }));
   }
 
