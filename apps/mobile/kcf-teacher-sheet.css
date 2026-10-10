@@ -358,9 +358,29 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
   max-height:183px;
   justify-content:flex-end;
   padding:7px 11px 5px;
-  background:rgba(255,255,255,.88);
+  /* The editor has its final geometry before focus; animate only the glass. */
+  background:transparent;
+  border-color:transparent;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposer::before {
+  content:'';
+  position:absolute;
+  inset:-1px;
+  border:1px solid rgba(255,255,255,.96);
+  border-radius:inherit;
+  box-sizing:border-box;
+  background:rgba(255,255,255,.96);
   backdrop-filter:blur(22px) saturate(1.08);
   -webkit-backdrop-filter:blur(22px) saturate(1.08);
+  pointer-events:none;
+  animation:kcfInlineGlassExpand 190ms cubic-bezier(.2,.65,.2,1) both;
+}
+@keyframes kcfInlineGlassExpand {
+  from { clip-path:inset(calc(100% - 47px) 0 0 0 round 24px); }
+  to { clip-path:inset(0 0 0 0 round 24px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposer::before { animation:none; }
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerBottom {
   display:grid;
