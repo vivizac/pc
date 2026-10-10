@@ -51,10 +51,9 @@ test('keyboard follows only the inline composer; chat scroll changes only with n
 });
 
 test('modified QuickNote assets are cache-busted', () => {
-  for (const name of ['kinder-feedback.js', 'kcf-auto-mode-runtime.js']) {
-    assert.ok(html.includes(name + '?v=20261010-inline-dialogue-1'), name);
-  }
-  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261010-stable-caret-keyboard-glass-1'));
+  assert.ok(html.includes('kinder-feedback.js?v=20261011-quicknote-keyboard-flow-1'));
+  assert.ok(html.includes('kcf-auto-mode-runtime.js?v=20261010-inline-dialogue-1'));
+  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261011-quicknote-keyboard-flow-1'));
 });
 
 test('mode button toggles immediately and shows the active mode label without a popup', () => {
@@ -114,21 +113,49 @@ test('active dialogue glass is less transparent and caret stays in normal textar
   assert.match(sheet, /input\.setSelectionRange\(0, 0\); input\.scrollTop = 0;/);
 });
 
-test('iOS input gets final grid and viewport geometry before native focus', () => {
+test('dialogue native keyboard focuses before control and student roster mutations', () => {
+  const wrapper = input.split('function openKinderChatFeedbackComposerSheet(event) {')[1]?.split('function focusKinderChatFeedbackInput() {')[0] || '';
+  assert.ok(wrapper.indexOf('const opened = sheet.open(event);') < wrapper.indexOf('mode.activateForComposer(event)'));
+  assert.ok(wrapper.includes("sheet.getMode?.() !== 'continuous'"));
   const opener = sheet.split('function openInline(event){')[1]?.split('function closeInline(options){')[0] || '';
-  const iFocus = opener.indexOf('keyboard.activate(event, {');
-  for (const step of ["placeModeButton(screen.querySelector('.kcfComposerBottom'))",
-    'mountInlineRoster();', 'teacherMode?.refreshRoster?.();',
-    'global.autoResizeKinderChatFeedbackInput?.(input);',
+  const focusAt = opener.indexOf('keyboard.activate(event, {');
+  for (const step of ['input.rows = 5;', 'global.autoResizeKinderChatFeedbackInput?.(input);',
     'syncViewport();', 'input.getBoundingClientRect();']) {
-    assert.ok(opener.indexOf(step) >= 0 && opener.indexOf(step) < iFocus, step);
+    assert.ok(opener.indexOf(step) >= 0 && opener.indexOf(step) < focusAt, step);
   }
+  const deferred = opener.indexOf('state.inlineControlsFrame = requestAnimationFrame(function()');
+  assert.ok(deferred > focusAt);
+  assert.ok(opener.indexOf("placeModeButton(screen.querySelector('.kcfComposerBottom'))") > deferred);
+  assert.ok(opener.indexOf('mountInlineRoster();') > deferred);
+  assert.ok(opener.indexOf('teacherMode?.refreshRoster?.();') > deferred);
   assert.match(opener, /return !!activated;/);
+});
+
+test('QuickNote blur is deferred to keyboard descent and canceled on restored focus', () => {
+  const init = sheet.split('function init(){')[1]?.split('function onSuccessfulSubmit(){')[0] || '';
+  assert.match(init, /inline.addEventListener\('focus', function\(\)\{\s*clearInlineBlurTimer\(\)/);
+  assert.match(init, /inline.addEventListener\('blur', function\(\)\{/);
+  assert.match(init, /state.inlineBlurTimer = setTimeout\(function\(\)\{/);
+  assert.match(init, /}, 420\);/);
+  assert.match(sheet, /height >= state.inlineClosedViewportHeight - 24/);
+  assert.match(sheet, /state.inlineBlurAt > 120/);
   const closer = sheet.split('function closeInline(options){')[1]?.split('function open(event){')[0] || '';
-  for (const field of ['--kcf-inline-vv-left', '--kcf-inline-vv-top', '--kcf-inline-vv-width', '--kcf-inline-vv-height']) {
-    assert.ok(closer.includes(field), 'stale viewport cleared: ' + field);
+  assert.match(closer, /clearInlineBlurTimer\(\)/);
+  for (const field of ['--kcf-inline-vv-left', '--kcf-inline-vv-top',
+    '--kcf-inline-vv-width', '--kcf-inline-vv-height']) {
+    assert.ok(closer.includes(field), 'stale viewport cleared: '+field);
   }
-  assert.match(closer, /layer\.style\.removeProperty\(name\)/);
+  assert.match(closer, /if \(state.inlineControlsFrame\) cancelAnimationFrame\(state.inlineControlsFrame\)/);
+  assert.match(closer, /layer.style.removeProperty\(name\)/);
+});
+
+test('opt-in iOS geometry trace has no user text or student identifiers', () => {
+  const tracer = sheet.split('function traceInlineFocus(stage){')[1]?.split('function clearInlineBlurTimer(){')[0] || '';
+  assert.match(tracer, /global.__kcfQuickNoteFocusDebug !== true/);
+  assert.match(tracer, /global.__kcfQuickNoteFocusTrace/);
+  for (const key of ['focused:', 'top:', 'left:', 'height:', 'viewportTop:', 'viewportHeight:']) assert.ok(tracer.includes(key));
+  assert.doesNotMatch(tracer, /input\.value|textContent|studentId|name:|sendBeacon|fetch\(/);
+  assert.match(tracer, /records.length > 40/);
 });
 
 test('active mic/send controls match the idle layout and keyboard assistant inset', () => {
