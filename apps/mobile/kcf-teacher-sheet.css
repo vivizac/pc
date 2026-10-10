@@ -53,7 +53,7 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   width:100%;
   -webkit-tap-highlight-color:transparent;
   max-width:860px;
-  height:calc(100% - var(--olli-phone-guide-top, 64px));
+  height:66.6667%;
   min-height:220px;
   display:flex;
   flex-direction:column;
@@ -63,6 +63,11 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   transform:translateY(100%);
   transition:transform .32s cubic-bezier(.22,.61,.36,1);
   will-change:transform;
+}
+
+/* Extend the continuous-record sheet to the top of the visible viewport. */
+body.kcfContinuousMode .kcfTeacherSheet {
+  height:100%;
 }
 
 .kcfTeacherSheetOverlay.show .kcfTeacherSheet {
@@ -87,6 +92,11 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   flex-direction:column;
   /* Original QuickNote normal sheet spacing. */
   padding:8px 16px 0;
+}
+/* Keep the editor/caret and placeholder at their previous absolute position
+   when only the continuous-record sheet background grows upward. */
+body.kcfContinuousMode .kcfTeacherSheetBody {
+  padding-top:calc(8px + var(--olli-phone-guide-top, 64px));
 }
 
 .kcfTeacherSheetInput {
@@ -135,6 +145,10 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   justify-content:center;
   -webkit-tap-highlight-color:transparent;
   touch-action:manipulation;
+}
+/* The close control stays aligned to its pre-extension screen position. */
+body.kcfContinuousMode .kcfTeacherSheetCloseBtn {
+  top:calc(20px + var(--olli-phone-guide-top, 64px));
 }
 
 .kcfTeacherSheetWarning {
