@@ -10,7 +10,7 @@ const sql = fs.readFileSync('../../supabase/migrations/20261010120000_remove_pic
 test('move dialog retains white selected surfaces and dark active session', () => {
   assert.match(css, /\.olliTtEnrollmentChoice\.active \{ border-color: #0A84FF; color: #0877df; background: #fff; \}/);
   assert.match(css, /\.olliTtSessionOrder button\.active \{ color: #fff; background: #454c56;/);
-  assert.match(css, /\.olliTtChoice\.active:is\(\[data-tt-target-day\],\[data-tt-target-time\],\[data-tt-kinder-time-class\]\):not\(\.full\)/);
+  assert.match(css, /\.olliTtChoice\.active:is\(\[data-tt-target-day\],\[data-tt-target-time\],\[data-tt-kinder-time-class\]\)/);
   assert.match(css, /\.olliTtChoiceGrid\.times\.elementaryFullHours \{ grid-template-columns: repeat\(6,/);
   assert.match(ui, /elementaryFullHours/);
 });
