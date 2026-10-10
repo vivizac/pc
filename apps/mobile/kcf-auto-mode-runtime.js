@@ -852,10 +852,8 @@
     state.selectedStudentId = '';
     global.__kcfSelectedStudentId = '';
     syncAutoButton();
-    // Focus immediately in the initiating touch gesture; load schedule asynchronously.
-    if (global.KcfTeacherSheet && typeof global.KcfTeacherSheet.open === 'function') {
-      global.KcfTeacherSheet.open(event);
-    }
+    // The original inline composer or the continuous sheet is opened by
+    // the caller in the same gesture, after the roster state is initialized.
     renderAutoRoster();
     if (state.rosterStatus === 'ready' && state.queue.length) {
       selectFirstAvailableAutoStudent();

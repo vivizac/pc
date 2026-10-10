@@ -323,3 +323,103 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfCenterIntro{display:none;}
 .kcfTeacherSheetSendBtn:disabled {
   background:#d8d8d8;
 }
+
+/* Dialogue reuses the original QuickNote bottom composer and its controls.
+   Only the input layer follows the visual keyboard; the chat pane stays fixed. */
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerLayer {
+  inset:auto;
+  left:var(--kcf-inline-vv-left, 0px);
+  top:var(--kcf-inline-vv-top, 0px);
+  width:var(--kcf-inline-vv-width, 100vw);
+  height:var(--kcf-inline-vv-height, 100vh);
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfChatArea {
+  padding-bottom:var(--kcf-inline-chat-reserve, 204px);
+  overflow-anchor:none;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposer {
+  height:183px;
+  min-height:183px;
+  max-height:183px;
+  justify-content:flex-end;
+  padding:7px 9px 8px;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerBottom {
+  display:grid;
+  grid-template-columns:33px minmax(0, 1fr) max-content 33px 33px;
+  grid-template-rows:128px 34px;
+  align-items:center;
+  column-gap:4px;
+  row-gap:4px;
+  padding:0;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfStudentManageWrap {
+  display:none;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfInputActivateWrap {
+  grid-column:1 / -1;
+  grid-row:1;
+  width:100%;
+  height:128px;
+  min-height:128px;
+  max-height:128px;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfInput {
+  height:128px !important;
+  min-height:128px !important;
+  max-height:128px !important;
+  white-space:pre-wrap;
+  font-size:max(16px, calc(14.5px * var(--olli-text-scale, 1))) !important;
+  overflow-x:hidden;
+  overflow-y:auto !important;
+  text-overflow:clip;
+  pointer-events:auto;
+  -webkit-user-select:text;
+  user-select:text;
+  -webkit-touch-callout:default;
+  padding:8px 4px;
+  box-sizing:border-box;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfInputActivateBtn {
+  display:none;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfAttachBtn {
+  grid-column:1;
+  grid-row:2;
+  margin:0;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerBottom > .kcfAutoStudentRoster {
+  grid-column:2;
+  grid-row:2;
+  width:100%;
+  min-width:0;
+  height:34px;
+  margin:0;
+  overflow:hidden;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerBottom > .kcfAutoStudentRoster .kcfAutoStudentRosterScroller {
+  height:34px;
+  padding:1px 0;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerBottom > .kcfComposerModeMenu {
+  right:65px;
+  left:auto;
+  bottom:calc(34px + 6px);
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerModeBtn {
+  grid-column:3;
+  grid-row:2;
+  margin:0;
+  min-width:55px;
+  max-width:88px;
+  padding:0 5px;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfVoiceBtn {
+  grid-column:4;
+  grid-row:2;
+  margin:0;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfSendBtn {
+  grid-column:5;
+  grid-row:2;
+}
