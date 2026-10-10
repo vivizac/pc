@@ -281,7 +281,9 @@
     var wasContinuous = document.body.classList.contains('kcfContinuousMode');
     document.body.classList.toggle('kcfContinuousMode', continuous);
     if (continuous) document.body.classList.remove('kcfFeedbackCollectView');
-    if (!continuous || !wasContinuous) document.body.classList.remove('kcfContinuousFeedbackFolded');
+    // A newly entered continuous-record mode starts with every feedback collapsed.
+    if (continuous && !wasContinuous) document.body.classList.add('kcfContinuousFeedbackFolded');
+    else if (!continuous) document.body.classList.remove('kcfContinuousFeedbackFolded');
     if (typeof global.syncPhoneKcfContinuousRecordUi === 'function') {
       global.syncPhoneKcfContinuousRecordUi();
     }
@@ -436,6 +438,44 @@
     return root;
   }
 
+  // Like TeamChat: the keyboard follows visualViewport, while only the
+  // composer height morphs (47px ↔ 183px) over 190ms.
+  var inlineComposerAnimation = null;
+  function animateInlineComposer(composer, fromHeight){
+    if (inlineComposerAnimation) {
+      var previous = inlineComposerAnimation;
+      inlineComposerAnimation = null;
+      previous.cancel();
+      composer?.style.removeProperty('overflow');
+    }
+    if (!composer || !composer.isConnected || typeof composer.animate !== 'function') return;
+    try {
+      if (global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    } catch (_) {}
+    var toHeight = composer.getBoundingClientRect().height;
+    if (!Number.isFinite(fromHeight) || !Number.isFinite(toHeight) || Math.abs(toHeight - fromHeight) < 1) return;
+
+    composer.style.overflow = 'hidden';
+    var animation;
+    try {
+      animation = composer.animate([
+        { height:fromHeight+'px', minHeight:'0px', maxHeight:fromHeight+'px' },
+        { height:toHeight+'px', minHeight:'0px', maxHeight:toHeight+'px' }
+      ], { duration:190, easing:'cubic-bezier(.2,.65,.2,1)' });
+    } catch (_) {
+      composer.style.removeProperty('overflow');
+      return;
+    }
+    inlineComposerAnimation = animation;
+    var finish = function(){
+      if (inlineComposerAnimation !== animation) return;
+      inlineComposerAnimation = null;
+      composer.style.removeProperty('overflow');
+    };
+    animation.addEventListener('finish', finish, { once:true });
+    animation.addEventListener('cancel', finish, { once:true });
+  }
+
   function openInline(event){
     if (state.open) close({ sync:true });
     var input = baseInput();
@@ -443,6 +483,8 @@
     var keyboard = global.OlliMobileKeyboardActivation;
     if (!input || !screen || !keyboard) return false;
     if (!state.inlineOpen) {
+      var composer = screen.querySelector('.kcfComposer');
+      var fromHeight = composer?.getBoundingClientRect().height;
       state.inlineOpen = true;
       screen.classList.add('kcfInlineDialogueActive');
       input.readOnly = false;
@@ -453,6 +495,7 @@
       teacherMode?.refreshRoster?.();
       global.autoResizeKinderChatFeedbackInput?.(input);
       syncViewport();
+      animateInlineComposer(composer, fromHeight);
     }
     return !!keyboard.activate(event, {
       input:input,
@@ -467,6 +510,8 @@
     state.inlineOpen = false;
     var input = baseInput();
     var screen = document.getElementById('kinderChatFeedbackScreen');
+    var composer = screen?.querySelector('.kcfComposer');
+    var fromHeight = composer?.getBoundingClientRect().height;
     if (screen) {
       screen.classList.remove('kcfInlineDialogueActive');
       screen.style.removeProperty('--kcf-inline-chat-reserve');
@@ -479,6 +524,7 @@
       if (!opts.skipBlur && document.activeElement === input) input.blur();
       global.autoResizeKinderChatFeedbackInput?.(input);
     }
+    animateInlineComposer(composer, fromHeight);
   }
 
   function open(event){
@@ -526,6 +572,10 @@
     if (shouldSync) syncToBase();
     // Mark closed before blur; otherwise the blur listener can recursively close.
     state.open = false;
+    // Returning from the continuous-record sheet shows the summary as folded rows.
+    if (state.composerMode === 'continuous') {
+      global.foldPhoneKcfContinuousFeedback?.();
+    }
     var activeEditor = editor();
     if (activeEditor && document.activeElement === activeEditor) {
       state.suppressBlurSync = true;
@@ -580,8 +630,11 @@
   }
 
   function onSuccessfulSubmit(){
-    if (!state.open || state.composerMode === 'continuous') return;
-    close({ sync:false });
+    if (state.composerMode === 'continuous') return;
+    // Dialogue reuses the inline input, not the old bottom sheet.
+    // Blur after a successful request start so iOS closes the keyboard too.
+    if (state.inlineOpen) closeInline();
+    else if (state.open) close({ sync:false });
   }
 
   var api = {
