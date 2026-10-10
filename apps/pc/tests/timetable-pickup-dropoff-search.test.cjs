@@ -167,10 +167,9 @@ test('pickup popup footer actions size to their text instead of filling the foot
   assert.match(css, /\.olliTtPickupAddBody > \.olliTtDialogActions button,[\s\S]*?\.olliTtPickupManageBody > \.olliTtDialogActions button \{[^}]*width:auto;[^}]*min-width:76px;[^}]*padding:0 18px;/);
 });
 
-test('arrival dropoff and schedule primary actions share one width and align to the right edge', () => {
-  assert.match(css, /\.olliTtPickupManageArrivalGrid \{[^}]*grid-template-columns:minmax\(0,1fr\) 150px 112px;/);
-  assert.match(css, /\.olliTtPickupManageDropoffGrid \{[^}]*grid-template-columns:minmax\(0,1fr\) 112px 112px;/);
-  assert.match(css, /\[data-tt-register-dropoff\] \{ grid-column:3; \}/);
-  assert.match(css, /\.olliTtPickupInlineAction, \.olliTtPickupManageFieldRow > button \{[^}]*width:112px;[^}]*justify-self:end;/);
+test('pickup manage keeps arrival and dropoff fields on one row with compact buttons', () => {
+  assert.match(css, /\.olliTtPickupManageArrivalGrid,[\s\S]*?\.olliTtPickupManageDropoffGrid \{[^}]*grid-template-columns:minmax\(0,1fr\) 80px 86px 86px;/);
+  assert.match(css, /\.olliTtPickupManageArrivalGrid > \[data-tt-save-arrival\],[\s\S]*?\.olliTtPickupManageDropoffGrid > \[data-tt-register-dropoff\] \{ grid-column:4; \}/);
+  assert.match(css, /\.olliTtPickupManageArrivalGrid > \.olliTtPickupInlineAction,[\s\S]*?width:100%;[^}]*white-space:nowrap;/);
   assert.match(css, /\.olliTtPickupManageSection\.effective \.olliTtPickupManageFieldRow \{[^}]*grid-template-columns:minmax\(0,1fr\) 112px;/);
 });
