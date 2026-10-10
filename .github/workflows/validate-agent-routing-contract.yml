@@ -1,0 +1,29 @@
+name: Validate Olli Agent routing contract
+
+on:
+  pull_request:
+    paths:
+      - 'packages/common/olli-agent-routing-common.js'
+      - 'packages/common/mobile-runtime-manifest.json'
+      - 'packages/common/pc-runtime-manifest.json'
+      - 'packages/common/source-manifest.json'
+      - 'apps/mobile/tests/olli-agent-routing-contract.test.cjs'
+      - 'apps/mobile/tests/olli-agent-routing-production-contract.test.cjs'
+      - '.github/workflows/validate-agent-routing-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check common routing syntax
+        run: node --check packages/common/olli-agent-routing-common.js
+      - name: Validate shared Agent routing contract
+        working-directory: apps/mobile
+        run: node --test tests/olli-agent-routing-contract.test.cjs tests/olli-agent-routing-production-contract.test.cjs
