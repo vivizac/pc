@@ -436,6 +436,43 @@
     return root;
   }
 
+  // Like TeamChat: the keyboard follows visualViewport, while only the
+  // composer height morphs (47px ↔ 183px) over 190ms.
+  var inlineComposerAnimation = null;
+  function animateInlineComposer(composer, fromHeight){
+    if (inlineComposerAnimation) {
+      var previous = inlineComposerAnimation;
+      inlineComposerAnimation = null;
+      previous.cancel();
+    }
+    if (!composer || !composer.isConnected || typeof composer.animate !== 'function') return;
+    try {
+      if (global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    } catch (_) {}
+    var toHeight = composer.getBoundingClientRect().height;
+    if (!Number.isFinite(fromHeight) || !Number.isFinite(toHeight) || Math.abs(toHeight - fromHeight) < 1) return;
+
+    composer.style.overflow = 'hidden';
+    var animation;
+    try {
+      animation = composer.animate([
+        { height:fromHeight+'px', minHeight:'0px', maxHeight:fromHeight+'px' },
+        { height:toHeight+'px', minHeight:'0px', maxHeight:toHeight+'px' }
+      ], { duration:190, easing:'cubic-bezier(.2,.65,.2,1)' });
+    } catch (_) {
+      composer.style.removeProperty('overflow');
+      return;
+    }
+    inlineComposerAnimation = animation;
+    var finish = function(){
+      if (inlineComposerAnimation !== animation) return;
+      inlineComposerAnimation = null;
+      composer.style.removeProperty('overflow');
+    };
+    animation.addEventListener('finish', finish, { once:true });
+    animation.addEventListener('cancel', finish, { once:true });
+  }
+
   function openInline(event){
     if (state.open) close({ sync:true });
     var input = baseInput();
@@ -443,6 +480,8 @@
     var keyboard = global.OlliMobileKeyboardActivation;
     if (!input || !screen || !keyboard) return false;
     if (!state.inlineOpen) {
+      var composer = screen.querySelector('.kcfComposer');
+      var fromHeight = composer?.getBoundingClientRect().height;
       state.inlineOpen = true;
       screen.classList.add('kcfInlineDialogueActive');
       input.readOnly = false;
@@ -453,6 +492,7 @@
       teacherMode?.refreshRoster?.();
       global.autoResizeKinderChatFeedbackInput?.(input);
       syncViewport();
+      animateInlineComposer(composer, fromHeight);
     }
     return !!keyboard.activate(event, {
       input:input,
@@ -467,6 +507,8 @@
     state.inlineOpen = false;
     var input = baseInput();
     var screen = document.getElementById('kinderChatFeedbackScreen');
+    var composer = screen?.querySelector('.kcfComposer');
+    var fromHeight = composer?.getBoundingClientRect().height;
     if (screen) {
       screen.classList.remove('kcfInlineDialogueActive');
       screen.style.removeProperty('--kcf-inline-chat-reserve');
@@ -479,6 +521,7 @@
       if (!opts.skipBlur && document.activeElement === input) input.blur();
       global.autoResizeKinderChatFeedbackInput?.(input);
     }
+    animateInlineComposer(composer, fromHeight);
   }
 
   function open(event){
