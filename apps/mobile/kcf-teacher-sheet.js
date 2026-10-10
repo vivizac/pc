@@ -489,6 +489,17 @@
       screen.classList.add('kcfInlineDialogueActive');
       input.readOnly = false;
       input.rows = 5;
+      // Focus while the original tap is still active, BEFORE moving controls
+      // or rebuilding the student roster. iOS can otherwise skip the keyboard.
+      var activated = keyboard.activate(event, {
+        input:input,
+        selectionEnd:true,
+        afterFocus:scheduleViewportSync
+      });
+      if (!input.value) {
+        // The empty editor's insertion point starts on the placeholder line.
+        try { input.setSelectionRange(0, 0); input.scrollTop = 0; } catch (_) {}
+      }
       placeModeButton(screen.querySelector('.kcfComposerBottom'));
       mountInlineRoster();
       var teacherMode = global.KcfTeacherMode || global.KcfAutoMode;
@@ -496,6 +507,7 @@
       global.autoResizeKinderChatFeedbackInput?.(input);
       syncViewport();
       animateInlineComposer(composer, fromHeight);
+      return !!activated;
     }
     return !!keyboard.activate(event, {
       input:input,
