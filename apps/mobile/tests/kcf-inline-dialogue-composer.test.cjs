@@ -87,9 +87,10 @@ test('inline QuickNote height morph matches TeamChat easing without changing key
 
 test('continuous-record mode button uses active dialogue footer position', () => {
   const footer = css.split('.kcfTeacherSheetBottom {')[1]?.split('}')[0] || '';
-  assert.match(footer, /flex:0 0 56px;/);
-  assert.match(footer, /height:56px;/);
-  assert.match(footer, /padding:0 calc\(var\(--olli-phone-guide-x, 16px\) \+ 10px\) 16px;/);
+  assert.ok(footer.includes('--kcf-dialogue-matched-bottom:calc(var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom))) + 6px);'));
+  assert.match(footer, /flex:0 0 calc\(40px \+ var\(--kcf-dialogue-matched-bottom\)\)/);
+  assert.match(footer, /height:calc\(40px \+ var\(--kcf-dialogue-matched-bottom\)\)/);
+  assert.ok(footer.includes('padding:0 calc(var(--olli-phone-guide-x, 16px) + 10px) var(--kcf-dialogue-matched-bottom);'));
   assert.ok(css.includes('#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:0;}'));
   assert.ok(css.includes('#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:0;}'));
   assert.match(css, /#kinderChatFeedbackScreen\.kcfInlineDialogueActive \.kcfComposerBottom \{[^}]*column-gap:4px/);
@@ -103,7 +104,9 @@ test('continuous-record mode button uses active dialogue footer position', () =>
     assert.equal(continuousRight, dialogueRight);
   }
   // Both vertically center a 33px button at the same distance above the keyboard.
-  const dialogueBottom = 10 + 1 + 8 + (34 - 33) / 2;
-  const continuousBottom = 16 + (40 - 38) / 2 + (38 - 33) / 2;
-  assert.equal(continuousBottom, dialogueBottom);
+  for (const phoneGuideBottom of [1, 10, 16, 34]) {
+    const dialogueBottom = phoneGuideBottom + 1 + 8 + (34 - 33) / 2;
+    const continuousBottom = phoneGuideBottom + 6 + (40 - 38) / 2 + (38 - 33) / 2;
+    assert.equal(continuousBottom, dialogueBottom);
+  }
 });
