@@ -174,7 +174,9 @@
       modeButton.type = 'button';
       modeButton.className = 'kcfComposerModeBtn';
       modeButton.setAttribute('aria-label', '연속기록으로 전환');
-      modeButton.innerHTML = '<span class="kcfComposerModeLabel">대화</span>';
+      modeButton.innerHTML = '<span class="kcfComposerModeLabel">대화</span>'
+        + '<svg class="kcfModeChevron" viewBox="0 0 24 24" aria-hidden="true">'
+        + '<path d="m6 9 6 6 6-6"></path></svg>';
       attachModeToggle(modeButton);
     }
     if (host.classList.contains('kcfComposerBottom')) {
