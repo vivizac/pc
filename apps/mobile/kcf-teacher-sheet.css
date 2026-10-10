@@ -180,7 +180,9 @@ body.kcfContinuousMode .kcfTeacherSheetCloseBtn {
 .kcfTeacherSheetControlHost{min-width:0;display:flex;align-items:center;justify-content:center;height:38px;}
 #kcfTeacherSheetAttachHost{flex:0 0 33px;}
 .kcfTeacherSheetSpacer{flex:1 1 auto;min-width:0;}
-#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:16px;}
+#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;position:relative;}
+/* Align the mode menu above its own toggle, not the left edge of the entire footer. */
+#kcfTeacherSheetModeHost > .kcfComposerModeMenu{left:50%;right:auto;transform:translateX(-50%);}
 #kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:12px;}
 .kcfTeacherSheetSendBtn{flex:0 0 33px;}
 .kcfTeacherSheetControlHost .kcfVoiceBtn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 33px;width:33px;height:33px;min-width:33px;margin:0;padding:0;border:0;border-radius:50%;background:transparent;color:#111;cursor:pointer;}
