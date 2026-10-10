@@ -165,23 +165,24 @@ body.kcfContinuousMode .kcfTeacherSheetCloseBtn {
 }
 
 .kcfTeacherSheetBottom {
-  flex:0 0 40px;
-  height:40px;
-  min-height:40px;
+  /* Match the active dialogue composer: same outer inset, bottom row, and controls. */
+  flex:0 0 56px;
+  height:56px;
+  min-height:56px;
   display:flex;
   align-items:center;
   gap:4px;
   width:100%;
   position:relative;
   margin:0;
-  padding:0 11px;
+  padding:0 calc(var(--olli-phone-guide-x, 16px) + 10px) 16px;
   box-sizing:border-box;
 }
 .kcfTeacherSheetControlHost{min-width:0;display:flex;align-items:center;justify-content:center;height:38px;}
 #kcfTeacherSheetAttachHost{flex:0 0 33px;}
 .kcfTeacherSheetSpacer{flex:1 1 auto;min-width:0;}
-#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;}
-#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:12px;}
+#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:0;}
+#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:0;}
 .kcfTeacherSheetSendBtn{flex:0 0 33px;}
 .kcfTeacherSheetControlHost .kcfVoiceBtn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 33px;width:33px;height:33px;min-width:33px;margin:0;padding:0;border:0;border-radius:50%;background:transparent;color:#111;cursor:pointer;}
 .kcfTeacherSheetControlHost .kcfVoiceBtn svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
