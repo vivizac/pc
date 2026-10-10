@@ -483,30 +483,37 @@
     var keyboard = global.OlliMobileKeyboardActivation;
     if (!input || !screen || !keyboard) return false;
     if (!state.inlineOpen) {
-      var composer = screen.querySelector('.kcfComposer');
-      var fromHeight = composer?.getBoundingClientRect().height;
+      // A canceled closing morph must not keep its height/overflow on the new editor.
+      if (inlineComposerAnimation) {
+        var previous = inlineComposerAnimation;
+        inlineComposerAnimation = null;
+        previous.cancel();
+        screen.querySelector('.kcfComposer')?.style.removeProperty('overflow');
+      }
       state.inlineOpen = true;
       screen.classList.add('kcfInlineDialogueActive');
       input.readOnly = false;
       input.rows = 5;
-      // Focus while the original tap is still active, BEFORE moving controls
-      // or rebuilding the student roster. iOS can otherwise skip the keyboard.
+      placeModeButton(screen.querySelector('.kcfComposerBottom'));
+      mountInlineRoster();
+      var teacherMode = global.KcfTeacherMode || global.KcfAutoMode;
+      teacherMode?.refreshRoster?.();
+      global.autoResizeKinderChatFeedbackInput?.(input);
+      // Replace any visualViewport measurements from the previous keyboard session
+      // before native focus, so Safari does not paint the caret at a stale offset.
+      syncViewport();
+      // Flush the final grid/textarea geometry synchronously in this tap.
+      input.getBoundingClientRect();
       var activated = keyboard.activate(event, {
         input:input,
         selectionEnd:true,
         afterFocus:scheduleViewportSync
       });
       if (!input.value) {
-        // The empty editor's insertion point starts on the placeholder line.
         try { input.setSelectionRange(0, 0); input.scrollTop = 0; } catch (_) {}
       }
-      placeModeButton(screen.querySelector('.kcfComposerBottom'));
-      mountInlineRoster();
-      var teacherMode = global.KcfTeacherMode || global.KcfAutoMode;
-      teacherMode?.refreshRoster?.();
-      global.autoResizeKinderChatFeedbackInput?.(input);
-      syncViewport();
-      animateInlineComposer(composer, fromHeight);
+      // The 190ms open animation now paints only the glass background (CSS).
+      // Never animate the height of a parent of a focused iOS textarea.
       return !!activated;
     }
     return !!keyboard.activate(event, {
@@ -527,6 +534,14 @@
     if (screen) {
       screen.classList.remove('kcfInlineDialogueActive');
       screen.style.removeProperty('--kcf-inline-chat-reserve');
+    }
+    // Do not reuse keyboard-shrunken viewport coordinates on the next open.
+    var layer = document.getElementById('kcfComposerLayer');
+    if (layer) {
+      ['--kcf-inline-vv-left', '--kcf-inline-vv-top',
+       '--kcf-inline-vv-width', '--kcf-inline-vv-height'].forEach(function(name){
+        layer.style.removeProperty(name);
+      });
     }
     restoreInlineRoster();
     document.getElementById('kcfModeSwitchBtn')?.remove();
