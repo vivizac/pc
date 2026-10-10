@@ -2147,6 +2147,7 @@ body.kcfTeacherSheetOpen #kcfTeacherSheetOverlay .kcfAttachBtn svg {
   display:block;
 }
 body.kcfContinuousMode #kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn,
+body:not(.kcfContinuousMode) #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfFeedbackCollectToggleBtn,
 #kinderChatFeedbackScreen .kcfFeedbackCollectToggleBtn[hidden],
 #kinderChatFeedbackScreen .kcfComposerShell:has(.kcfComposer.kcfVoiceCaptureMode) > .kcfFeedbackCollectToggleBtn{
   display:none;
