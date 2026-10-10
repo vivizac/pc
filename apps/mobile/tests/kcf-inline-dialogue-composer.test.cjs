@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const sheet = read('kcf-teacher-sheet.js');
 const css = read('kcf-teacher-sheet.css');
+const baseCss = read('kinder-feedback.css');
 const input = read('kinder-feedback.js');
 const roster = read('kcf-auto-mode-runtime.js');
 const html = read('index.html');
@@ -68,5 +69,19 @@ test('mode button toggles immediately and shows the active mode label without a 
   assert.ok(footer.includes('gap:4px;'));
   assert.ok(css.includes('#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;}'));
   assert.ok(css.includes('#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:12px;}'));
-  assert.ok(html.includes('kcf-teacher-sheet.css?v=20261010-mode-chevron-1'));
+  assert.ok(html.includes('kcf-teacher-sheet.css?v=20261010-align-active-buttons-1'));
+});
+
+test('QuickNote active mic and send align with idle right and bottom offsets', () => {
+  assert.match(baseCss, /#kinderChatFeedbackScreen \\.kcfComposer \\{[^}]*padding:4px 11px 3px;/);
+  assert.match(baseCss, /#kinderChatFeedbackScreen \\.kcfVoiceBtn \\{[^}]*margin-right:12px;/);
+  assert.match(css, /#kinderChatFeedbackScreen\\.kcfInlineDialogueActive \\.kcfComposer \\{[^}]*padding:7px 11px 5px;/);
+  assert.match(css, /grid-template-columns:33px minmax\\(0, 1fr\\) max-content 45px 33px;/);
+  assert.match(css, /#kinderChatFeedbackScreen\\.kcfInlineDialogueActive \\.kcfVoiceBtn \\{[^}]*margin:0;/);
+  const idleMicToSend = 4 + 12;
+  const activeMicToSend = 4 + (45 - 33);
+  assert.equal(idleMicToSend, activeMicToSend);
+  const idleBottomToCenter = 1 + 3 + (47 - 2 - 4 - 3 - 34) / 2 + 34 / 2;
+  const activeBottomToCenter = 1 + 5 + 34 / 2;
+  assert.equal(idleBottomToCenter, activeBottomToCenter);
 });
