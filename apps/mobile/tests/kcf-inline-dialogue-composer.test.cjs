@@ -55,11 +55,12 @@ test('modified QuickNote assets are cache-busted', () => {
 });
 
 test('continuous mode control gap matches microphone-to-send and menu anchors above toggle', () => {
-  assert.match(css, /\\.kcfTeacherSheetBottom \\{[^}]*gap:4px/);
-  assert.match(css, /#kcfTeacherSheetModeHost\\{[^}]*margin-right:12px;position:relative/);
-  assert.match(css, /#kcfTeacherSheetVoiceHost\\{[^}]*margin-right:12px/);
-  assert.match(css, /#kcfTeacherSheetModeHost > \\.kcfComposerModeMenu\\{left:50%;right:auto;transform:translateX\\(-50%\\)/);
-  assert.match(css, /\\.kcfComposerModeMenu\\{[^}]*bottom:calc\\(100% \\+ 6px\\)/);
-  assert.match(sheet, /btn\\.parentNode\\.appendChild\\(menu\\)/);
+  const footer = css.split('.kcfTeacherSheetBottom {')[1]?.split('}')[0] || '';
+  assert.ok(footer.includes('gap:4px;'));
+  assert.ok(css.includes('#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;position:relative;}'));
+  assert.ok(css.includes('#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:12px;}'));
+  assert.ok(css.includes('#kcfTeacherSheetModeHost > .kcfComposerModeMenu{left:50%;right:auto;transform:translateX(-50%);}'));
+  assert.ok(css.includes('.kcfComposerModeMenu{position:absolute;bottom:calc(100% + 6px);left:0;'));
+  assert.ok(sheet.includes('btn.parentNode.appendChild(menu);'));
   assert.ok(html.includes('kcf-teacher-sheet.css?v=20261010-mode-control-gap-1'));
 });
