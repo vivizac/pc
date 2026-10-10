@@ -465,7 +465,7 @@ function scheduleKinderChatFeedbackVivicotBubbleMidnightReset() {
 
 function autoResizeKinderChatFeedbackInput(input) {
   if (!input) return;
-  const height = document.getElementById('kinderChatFeedbackScreen')?.classList.contains('kcfInlineDialogueActive') ? 112 : 34;
+  const height = document.getElementById('kinderChatFeedbackScreen')?.classList.contains('kcfInlineDialogueActive') ? 128 : 34;
   input.style.height = `${height}px`;
   input.style.minHeight = `${height}px`;
   input.style.maxHeight = `${height}px`;
