@@ -165,26 +165,23 @@ body.kcfContinuousMode .kcfTeacherSheetCloseBtn {
 }
 
 .kcfTeacherSheetBottom {
-  /* Match the active dialogue composer: same outer inset, bottom row, and controls. */
-  /* Active dialogue now sits 1px above the keyboard: match its control center. */
-  --kcf-dialogue-matched-bottom:4px;
-  flex:0 0 calc(40px + var(--kcf-dialogue-matched-bottom));
-  height:calc(40px + var(--kcf-dialogue-matched-bottom));
-  min-height:calc(40px + var(--kcf-dialogue-matched-bottom));
+  flex:0 0 40px;
+  height:40px;
+  min-height:40px;
   display:flex;
   align-items:center;
   gap:4px;
   width:100%;
   position:relative;
   margin:0;
-  padding:0 calc(var(--olli-phone-guide-x, 16px) + 24px) var(--kcf-dialogue-matched-bottom) calc(var(--olli-phone-guide-x, 16px) + 12px);
+  padding:0 11px;
   box-sizing:border-box;
 }
 .kcfTeacherSheetControlHost{min-width:0;display:flex;align-items:center;justify-content:center;height:38px;}
 #kcfTeacherSheetAttachHost{flex:0 0 33px;}
 .kcfTeacherSheetSpacer{flex:1 1 auto;min-width:0;}
-#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:0;}
-#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:0;}
+#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;}
+#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:12px;}
 .kcfTeacherSheetSendBtn{flex:0 0 33px;}
 .kcfTeacherSheetControlHost .kcfVoiceBtn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 33px;width:33px;height:33px;min-width:33px;margin:0;padding:0;border:0;border-radius:50%;background:transparent;color:#111;cursor:pointer;}
 .kcfTeacherSheetControlHost .kcfVoiceBtn svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
@@ -324,6 +321,21 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfCenterIntro{display:none;}
   background:#d8d8d8;
 }
 
+/* Neutralize the focused/tapped photo-button chrome in the continuous sheet;
+   its original plus icon and click handler remain unchanged. */
+body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn {
+  border:0;
+  outline:0;
+  box-shadow:none;
+  filter:none;
+  -webkit-appearance:none;
+  appearance:none;
+  -webkit-tap-highlight-color:transparent;
+}
+body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
+  filter:none;
+}
+
 /* Dialogue reuses the original QuickNote bottom composer and its controls.
    Only the input layer follows the visual keyboard; the chat pane stays fixed. */
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerWrap {
@@ -346,6 +358,9 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfCenterIntro{display:none;}
   max-height:183px;
   justify-content:flex-end;
   padding:7px 11px 5px;
+  background:rgba(255,255,255,.88);
+  backdrop-filter:blur(22px) saturate(1.08);
+  -webkit-backdrop-filter:blur(22px) saturate(1.08);
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerBottom {
   display:grid;
@@ -383,6 +398,9 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfCenterIntro{display:none;}
   -webkit-touch-callout:default;
   padding:8px 4px;
   box-sizing:border-box;
+  text-align:left;
+  text-indent:0;
+  caret-color:#111;
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfInputActivateBtn {
   display:none;
