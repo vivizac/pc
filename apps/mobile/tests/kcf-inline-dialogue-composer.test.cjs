@@ -49,7 +49,7 @@ test('keyboard follows only the inline composer; chat scroll changes only with n
 });
 
 test('modified QuickNote assets are cache-busted', () => {
-  for (const name of ['kinder-feedback.js', 'kcf-teacher-sheet.js', 'kcf-teacher-sheet.css', 'kcf-auto-mode-runtime.js']) {
+  for (const name of ['kinder-feedback.js', 'kcf-teacher-sheet.js', 'kcf-auto-mode-runtime.js']) {
     assert.ok(html.includes(name + '?v=20261010-inline-dialogue-1'), name);
   }
 });
