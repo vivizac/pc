@@ -130,8 +130,13 @@
   }
 
   function focusEditor(){
-    var input = editor();
     var keyboard = global.OlliMobileKeyboardActivation;
+    if (state.inlineOpen && keyboard) {
+      var base = keyboard.focus(baseInput(), { selectionEnd:true });
+      scheduleViewportSync();
+      return !!base && document.activeElement === base;
+    }
+    var input = editor();
     if (!input || !state.open || !keyboard) return false;
     keyboard.focus(input, { selectionEnd:true });
     scheduleViewportSync();
