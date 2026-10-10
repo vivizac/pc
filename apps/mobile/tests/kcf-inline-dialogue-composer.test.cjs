@@ -23,10 +23,10 @@ test('inline editor starts five rows tall and keeps original draft, roster and b
   assert.match(sheet, /input\.rows = 5/);
   assert.match(sheet, /input\.readOnly = false/);
   assert.match(sheet, /input\.rows = 1/);
-  assert.match(input, /kcfInlineDialogueActive'\) \? 112 : 34/);
+  assert.match(input, /kcfInlineDialogueActive'\) \? 128 : 34/);
   assert.match(sheet, /bottom\.insertBefore\(roster, document\.getElementById\('kcfVoiceBtn'\)\)/);
   assert.match(sheet, /restoreInlineRoster\(\)/);
-  assert.match(css, /grid-template-rows:112px 34px/);
+  assert.match(css, /grid-template-rows:128px 34px/);
   for (const [selector, column] of [
     ['.kcfAttachBtn', 1],
     ['.kcfComposerBottom > .kcfAutoStudentRoster', 2],
