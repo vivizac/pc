@@ -54,7 +54,7 @@ test('modified QuickNote assets are cache-busted', () => {
   for (const name of ['kinder-feedback.js', 'kcf-auto-mode-runtime.js']) {
     assert.ok(html.includes(name + '?v=20261010-inline-dialogue-1'), name);
   }
-  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261010-olli-integrated-1'));
+  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261010-quicknote-focus-restore-1'));
 });
 
 test('mode button toggles immediately and shows the active mode label without a popup', () => {
@@ -68,9 +68,9 @@ test('mode button toggles immediately and shows the active mode label without a 
   assert.doesNotMatch(css, /kcfComposerModeMenu|kcfComposerModeOption/);
   const footer = css.split('.kcfTeacherSheetBottom {')[1]?.split('}')[0] || '';
   assert.ok(footer.includes('gap:4px;'));
-  assert.ok(css.includes('#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:0;}'));
-  assert.ok(css.includes('#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:0;}'));
-  assert.ok(html.includes('kcf-teacher-sheet.css?v=20261010-olli-integrated-1'));
+  assert.ok(css.includes('#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;}'));
+  assert.ok(css.includes('#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:12px;}'));
+  assert.ok(html.includes('kcf-teacher-sheet.css?v=20261010-quicknote-focus-restore-1'));
 });
 
 test('inline QuickNote height morph matches TeamChat easing without changing keyboard or message motion', () => {
@@ -80,29 +80,43 @@ test('inline QuickNote height morph matches TeamChat easing without changing key
   assert.match(sheet, /previous\.cancel\(\)/);
   assert.match(sheet, /animation\.addEventListener\('finish', finish/);
   assert.match(sheet, /animation\.addEventListener\('cancel', finish/);
-  assert.match(sheet, /function openInline\(event\)[\s\S]*?animateInlineComposer\(composer, fromHeight\);[\s\S]*?keyboard\.activate/);
+  assert.match(sheet, /function openInline\(event\)[\s\S]*?keyboard\.activate\(event, \{[\s\S]*?animateInlineComposer\(composer, fromHeight\);/);
   assert.match(sheet, /function closeInline\(options\)[\s\S]*?animateInlineComposer\(composer, fromHeight\);/);
   assert.match(sheet, /input\.rows = 5/);
   assert.match(sheet, /input\.rows = 1/);
   assert.doesNotMatch(sheet.slice(sheet.indexOf('function animateInlineComposer'), sheet.indexOf('function openInline')), /scrollTop|\.kcfChatArea|transform/);
 });
 
-test('continuous and active dialogue mode buttons share right/bottom alignment', () => {
+test('continuous footer matches original controls and plus has no focus chrome', () => {
   const footer = css.split('.kcfTeacherSheetBottom {')[1]?.split('}')[0] || '';
-  assert.ok(footer.includes('--kcf-dialogue-matched-bottom:4px;'));
-  assert.ok(footer.includes('height:calc(40px + var(--kcf-dialogue-matched-bottom));'));
-  assert.ok(footer.includes('padding:0 calc(var(--olli-phone-guide-x, 16px) + 24px) var(--kcf-dialogue-matched-bottom) calc(var(--olli-phone-guide-x, 16px) + 12px);'));
-  assert.ok(css.includes('#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:0;}'));
-  assert.ok(css.includes('#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:0;}'));
-  assert.match(css, /grid-template-columns:33px minmax\(0, 1fr\) max-content 45px 33px/);
-  for (const inset of [16, 20, 32]) {
-    const dialogueRight = inset + 1 + 11 + 33 + 4 + 45 + 4;
-    const continuousRight = inset + 24 + 33 + 4 + 33 + 4;
-    assert.equal(dialogueRight, continuousRight);
-  }
-  const dialogueBottom = 1 + 1 + 5 + (34 - 33) / 2;
-  const continuousBottom = 4 + (40 - 38) / 2 + (38 - 33) / 2;
-  assert.equal(dialogueBottom, continuousBottom);
+  assert.match(footer, /flex:0 0 40px;/);
+  assert.match(footer, /height:40px;/);
+  assert.match(footer, /padding:0 11px;/);
+  assert.doesNotMatch(footer, /--kcf-dialogue-matched-bottom/);
+  assert.ok(css.includes('#kcfTeacherSheetModeHost{flex:0 0 auto;margin-left:8px;margin-right:12px;}'));
+  assert.ok(css.includes('#kcfTeacherSheetVoiceHost{flex:0 0 33px;margin-right:12px;}'));
+  const plus = css.split('body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn {')[1]?.split('}')[0] || '';
+  assert.match(plus, /outline:0;/);
+  assert.match(plus, /box-shadow:none;/);
+  assert.match(plus, /filter:none;/);
+});
+
+test('active dialogue glass blur and insertion point match the placeholder line', () => {
+  const active = css.split('#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposer {')[1]?.split('}')[0] || '';
+  assert.match(active, /background:rgba\(255,255,255,\.88\)/);
+  assert.match(active, /backdrop-filter:blur\(22px\)/);
+  const textarea = css.split('#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfInput {')[1]?.split('}')[0] || '';
+  assert.match(textarea, /text-align:left;/);
+  assert.match(textarea, /text-indent:0;/);
+  assert.match(sheet, /input\.setSelectionRange\(0, 0\); input\.scrollTop = 0;/);
+});
+
+test('iOS inline keyboard focuses before control portaling and roster redraws', () => {
+  const block = sheet.split('function openInline(event){')[1]?.split('function closeInline(options){')[0] || '';
+  assert.ok(block.indexOf('keyboard.activate(event, {') < block.indexOf("placeModeButton(screen.querySelector('.kcfComposerBottom'))"));
+  assert.ok(block.indexOf('keyboard.activate(event, {') < block.indexOf('mountInlineRoster();'));
+  assert.ok(block.indexOf('keyboard.activate(event, {') < block.indexOf('teacherMode?.refreshRoster?.();'));
+  assert.match(block, /return !!activated;/);
 });
 
 test('active mic/send controls match the idle layout and keyboard assistant inset', () => {
