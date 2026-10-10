@@ -369,6 +369,7 @@ body.kcfContinuousMode #kinderChatFeedbackScreen .kcfCenterIntro{display:none;}
   min-height:112px !important;
   max-height:112px !important;
   white-space:pre-wrap;
+  font-size:max(16px, calc(14.5px * var(--olli-text-scale, 1))) !important;
   overflow-x:hidden;
   overflow-y:auto !important;
   text-overflow:clip;
