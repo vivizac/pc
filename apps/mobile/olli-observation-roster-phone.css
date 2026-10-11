@@ -88,22 +88,28 @@
   padding:0;
 }
 
-/* Search focus folds the existing student rows upward before they disappear.
-   Only the roster list animates; the keyboard/search controls stay unchanged. */
+/* Fold the list upward while each student row fades like QuickNote collect.
+   No blur or changes to the search/keyboard controls. */
 #observationRosterScreen .memoBodyRosterListSearchCollapsing {
   flex:0 0 auto;
   overflow:hidden;
   transform-origin:center top;
-  transition:height 260ms cubic-bezier(.22,.61,.36,1),
-             transform 260ms cubic-bezier(.22,.61,.36,1),
-             opacity 220ms ease;
+  transition:height 280ms cubic-bezier(.22,.61,.36,1),
+             transform 280ms cubic-bezier(.22,.61,.36,1);
+}
+#observationRosterScreen .memoBodyRosterListSearchCollapsing .memoBodyRosterRow {
+  opacity:1;
+  transition:opacity 200ms ease;
 }
 #observationRosterScreen .memoBodyRosterListSearchCollapsing.is-collapsed {
-  opacity:0;
   transform:translateY(-20px) scaleY(.94);
 }
+#observationRosterScreen .memoBodyRosterListSearchCollapsing.is-collapsed .memoBodyRosterRow {
+  opacity:0;
+}
 @media (prefers-reduced-motion:reduce) {
-  #observationRosterScreen .memoBodyRosterListSearchCollapsing {
+  #observationRosterScreen .memoBodyRosterListSearchCollapsing,
+  #observationRosterScreen .memoBodyRosterListSearchCollapsing .memoBodyRosterRow {
     transition:none;
   }
 }
