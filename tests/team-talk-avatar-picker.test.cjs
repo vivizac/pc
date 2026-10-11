@@ -22,6 +22,18 @@ const mobileHtml=read('apps/mobile/index.html');
 const pcHtml=read('apps/pc/index.html');
 const migration=read('supabase/migrations/20261008021500_team_talk_member_avatars.sql');
 
+test('avatar icons 06 and 09 refresh on mobile and PC without changing their keys',()=>{
+  assert.match(catalog,/key==='avatar-06'\|\|key==='avatar-09'/);
+  assert.match(catalog,/\?v=20261011-avatars-06-09/);
+  assert.match(mobileHtml,/olli-team-talk-avatar-catalog\.js\?v=20261011-avatars-06-09-1/);
+  assert.match(pcHtml,/olli-team-talk-avatar-catalog\.js\?v=20261011-avatars-06-09-1/);
+  for(const number of ['06','09']){
+    const image=fs.readFileSync(path.join(root,'packages/common/team-talk-avatars/avatar-'+number+'.webp'));
+    assert.equal(image.subarray(0,4).toString(),'RIFF');
+    assert.equal(image.subarray(8,12).toString(),'WEBP');
+  }
+});
+
 test('Team Chat exposes exactly 15 shared avatar assets to PC and mobile builds',()=>{
   assert.match(catalog,/Array\.from\(\{length:15\}/);
   assert.match(catalog,/team-talk-avatars\/.*\.webp/);

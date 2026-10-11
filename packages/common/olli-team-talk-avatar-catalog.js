@@ -24,7 +24,8 @@ function fallbackKey(seed){
 
 function src(value,seed){
   const key=normalizeKey(value)||fallbackKey(seed);
-  return 'team-talk-avatars/'+key+'.webp'+(key==='avatar-06'?'?v=20261010-mint-avatar-06':'');
+  const updated=(key==='avatar-06'||key==='avatar-09');
+  return 'team-talk-avatars/'+key+'.webp'+(updated?'?v=20261011-avatars-06-09':'');
 }
 
 global.OlliTeamTalkAvatars=Object.freeze({
