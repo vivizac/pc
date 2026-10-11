@@ -971,15 +971,28 @@
   flex:0 0 auto;
   margin:auto;
 }
-/* 고정 보관함/마이크/이전기록/설문 버튼의 단일 스타일 소유자. */
-#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoEditorVoiceBtn svg {
-  width:22px;
-  height:22px;
+/* Four utility icons share the archive's painted height and 1.61px stroke. */
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoRecordsBtn svg,
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoEditorVoiceBtn svg,
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #olliMemoVersionHistoryBtn svg,
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoBottomAnalysisBtn svg {
+  width:23px;
+  height:23px;
+  display:block;
+  flex:0 0 auto;
+  margin:auto;
+  transform:translateY(-0.5px);
   stroke:currentColor;
   fill:none;
-  stroke-width:1.9;
   stroke-linecap:round;
   stroke-linejoin:round;
+}
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoRecordsBtn svg *,
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoEditorVoiceBtn svg *,
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #olliMemoVersionHistoryBtn svg *,
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoBottomAnalysisBtn svg * {
+  vector-effect:non-scaling-stroke;
+  stroke-width:1.61px;
 }
 #studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoEditorVoiceBtn.active {
   background:#0A84FF;
@@ -990,32 +1003,6 @@
   opacity:.45;
 }
 
-#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoBottomAnalysisBtn svg,
-#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #olliMemoVersionHistoryBtn svg {
-  width:27px;
-  height:27px;
-}
-#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoRecordsBtn .memoRecordIcon {
-  width:23px;
-  height:23px;
-  display:block;
-  flex:0 0 auto;
-  margin:auto;
-  transform:translateY(-0.5px);
-}
-#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoBottomAnalysisBtn svg,
-#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #olliMemoVersionHistoryBtn svg {
-  stroke:currentColor;
-  fill:none;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-}
-#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoBottomAnalysisBtn svg,
-#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoBottomAnalysisBtn svg *,
-#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #olliMemoVersionHistoryBtn svg,
-#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #olliMemoVersionHistoryBtn svg * {
-  stroke-width:1.5;
-}
 #studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup > button:active {
   background:#eeeeee;
 }
