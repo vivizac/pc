@@ -17,7 +17,7 @@ const kcfJs = fs.readFileSync('kinder-feedback.js', 'utf8');
 test('QuickNote and Observation hamburgers open the shared Attendance drawer', () => {
   assert.match(html, /id="observationRosterRecordRoomBtn" onclick="openOlliMainSubpageDrawer\(event, 'observation'\)"/);
   assert.match(html, /class="kcfRoundBtn kcfRecordBtn" onclick="openOlliMainSubpageDrawer\(event, 'quicknote'\)"/);
-  assert.match(html, /src="olli-main-subpage-drawer\.js\?v=20261012-drawer-content-fade-1"/);
+  assert.match(html, /src="olli-main-subpage-drawer\.js\?v=20261012-drawer-visible-fade-2"/);
   assert.match(drawerJs, /async function prepareAttendanceState\(options = \{\}\)[\s\S]*openRecordAttendanceDashboard/);
   assert.match(drawerJs, /getOlliLastRecordDivisionView/);
 });
@@ -35,16 +35,16 @@ test('Main page still stops with the right quarter visible and tapping it restor
   assert.match(baseCss, /transform:translate3d\(75%,0,0\) !important;/);
   assert.match(baseCss, /width:25vw;/);
   assert.match(baseCss, /#recordRoomScreen\.olliMainDrawerSubpage\s*\{[^}]*clip-path:none;/);
-  assert.match(html, /olli-phone-base\.css\?v=20261012-drawer-content-fade-1/);
+  assert.match(html, /olli-phone-base\.css\?v=20261012-drawer-visible-fade-2/);
   assert.match(drawerJs, /hit\.addEventListener\('click', closeOlliMainSubpageDrawer\)/);
 });
 
-test('drawer loads local-first at slide start without hidden prewarming', () => {
+test('drawer renders locally on demand and establishes pale contents before motion', () => {
   const open = drawerJs.split('function openOlliMainSubpageDrawer(event, sourceKind){')[1]?.split('async function openOlliAttendancePage(event){')[0] || '';
   assert.doesNotMatch(drawerJs, /prewarmOlliMainDrawerAttendanceLocal|attendancePreparedKey|requiresInitialRoster/);
   assert.doesNotMatch(startup, /scheduleOlliMainDrawerAttendancePrewarm/);
   assert.doesNotMatch(auth, /scheduleOlliMainDrawerAttendancePrewarm/);
-  assert.match(open, /requestAnimationFrame[\s\S]*recordRoom.classList.add\('is-olli-main-drawer-rear-open'\)[\s\S]*refreshRecordRoomSubpage\(\)/);
+  assert.match(open, /requestAnimationFrame[\s\S]*refreshRecordRoomSubpage\(\)[\s\S]*getComputedStyle\(content\)\.opacity[\s\S]*requestAnimationFrame[\s\S]*recordRoom.classList.add\('is-olli-main-drawer-rear-open'\)/);
 });
 test('rear fades its contents over an opaque background and reverses on close', () => {
   assert.match(baseCss, /#recordRoomScreen\.olliMainDrawerSubpage\s*\{[^}]*background:#fff;[^}]*isolation:isolate;/);
@@ -54,6 +54,14 @@ test('rear fades its contents over an opaque background and reverses on close', 
   const fade = drawerJs.split('function beginDrawerReturnFade(recordRoom){')[1]?.split('function waitForTransition')[0] || '';
   assert.doesNotMatch(fade, /classList\.add\('vivizac-slide-under-fade'\)/);
   assert.match(fade, /classList\.add\('olliMainDrawerRearFading'\)/);
+});
+
+test('button rail shares the content fade, with reveal delay only on opening', () => {
+  // The scoped rail selector has two classes, outranking the later search
+  // stylesheet's one-class rail selector with transition:none.
+  assert.match(baseCss, /#recordRoomScreen\.olliMainDrawerSubpage > \.recordRoomScreenFloatingBar,[\s\S]*?transition:opacity 320ms ease-in-out;/);
+  assert.match(baseCss, /is-olli-main-drawer-rear-open > \* \{[^}]*transition-delay:80ms;/);
+  assert.match(baseCss, /is-olli-main-drawer-rear-returning > \*,[^}]*transition-duration:340ms;[^}]*transition-delay:0ms;/);
 });
 
 test('Remaining main page keeps the 3px highlight-safe fade with no blur', () => {

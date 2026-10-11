@@ -4206,16 +4206,24 @@ border-color: #F0F0F0;
   isolation:isolate;
 }
 #recordRoomScreen.olliMainDrawerSubpage > *,
+#recordRoomScreen.olliMainDrawerSubpage > .recordRoomScreenFloatingBar,
+#recordRoomScreen.olliMainDrawerRearFading > .recordRoomScreenFloatingBar,
 #recordRoomScreen.olliMainDrawerRearFading > * {
   opacity:.18;
-  transition:opacity 320ms cubic-bezier(.22,.61,.36,1);
+  /* Include the button rail explicitly so its later transition:none does not
+     cancel the same content fade used by the roster. */
+  transition:opacity 320ms ease-in-out;
 }
 #recordRoomScreen.olliMainDrawerSubpage.is-olli-main-drawer-rear-open > * {
   opacity:1;
+  /* Let the foreground uncover the pale page before it grows opaque. */
+  transition-delay:80ms;
 }
 #recordRoomScreen.olliMainDrawerSubpage.is-olli-main-drawer-rear-returning > *,
+#recordRoomScreen.olliMainDrawerRearFading > .recordRoomScreenFloatingBar,
 #recordRoomScreen.olliMainDrawerRearFading > * {
   transition-duration:340ms;
+  transition-delay:0ms;
 }
 #recordRoomScreen.olliMainDrawerRearFading {
   background:#fff;

@@ -126,7 +126,7 @@
   }
 
   function refreshRecordRoomSubpage(){
-    // Start the normal local-first roster load with the slide, without prewarm.
+    // Load only on demand; the first local render runs before motion starts.
     prepareAttendanceState().catch(() => {});
   }
 
@@ -610,16 +610,23 @@
     document.body.classList.add(DRAWER_OPEN_CLASS);
 
     recordRoom.classList.remove('vivizac-slide-under-fade', 'olliMainDrawerRearFading');
-    // Commit the pale content state before opening both pages in the next frame.
+    // Establish the pale rear page without starting motion in the same frame
+    // as the synchronous local roster render. No startup/idle prewarm is needed.
     void recordRoom.offsetWidth;
     void mainPage.offsetWidth;
     const openingState = drawerState;
     requestAnimationFrame(() => {
       if (drawerState !== openingState || navigationInFlight) return;
-      recordRoom.classList.add('is-olli-main-drawer-rear-open');
-      mainPage.classList.add(OPEN_CLASS);
-      companion?.classList.add(OPEN_CLASS);
       refreshRecordRoomSubpage();
+      Array.from(recordRoom.children).forEach((content) => {
+        void getComputedStyle(content).opacity;
+      });
+      requestAnimationFrame(() => {
+        if (drawerState !== openingState || navigationInFlight) return;
+        recordRoom.classList.add('is-olli-main-drawer-rear-open');
+        mainPage.classList.add(OPEN_CLASS);
+        companion?.classList.add(OPEN_CLASS);
+      });
     });
     return true;
   }
