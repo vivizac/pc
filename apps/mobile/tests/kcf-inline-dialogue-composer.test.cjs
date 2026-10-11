@@ -43,11 +43,12 @@ test('inline editor starts five rows tall and keeps original draft, roster and b
   }
 });
 
-test('keyboard follows only the inline composer; chat scroll changes only with new messages', () => {
+test('keyboard follows the composer and message viewport together in dialogue', () => {
   assert.match(css, /kcfInlineDialogueActive \.kcfComposerLayer \{[\s\S]*?--kcf-inline-vv-height/);
-  assert.match(css, /kcfInlineDialogueActive \.kcfChatArea \{\s*padding-bottom:var\(--kcf-inline-chat-reserve/);
-  assert.doesNotMatch(css, /kcfInlineDialogueActive \.kcfChatArea \{[^}]*transform:/);
-  assert.match(sheet, /Extra scrollable space is only used when a message arrives/);
+  assert.match(css, /kcfInlineDialogueActive \.kcfChatArea \{[\s\S]*?--kcf-inline-chat-keyboard-offset/);
+  assert.match(sheet, /screen\.style\.setProperty\('--kcf-inline-chat-keyboard-offset'/);
+  assert.match(sheet, /scrollInlineChatWithComposer\(\)/);
+  assert.match(sheet, /state\.inlineChatFollowBottom = !chatArea/);
   assert.match(input, /area\.scrollTop = area\.scrollHeight/);
 });
 
