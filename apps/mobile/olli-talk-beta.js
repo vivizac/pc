@@ -7239,7 +7239,7 @@
     }
 
     if(item?.material_request_id && item?.material_event_id){
-      message.appendChild(createOlliTalkMaterialConfirmCard(item));
+      flow.appendChild(createOlliTalkMaterialConfirmCard(item));
     }
     if(window.OlliTeacherPayroll?.createTeamChatPayrollButton){
       const payrollButton=window.OlliTeacherPayroll.createTeamChatPayrollButton(item,'mobile');
@@ -9167,4 +9167,5 @@
     init();
   }
 })();
+
 

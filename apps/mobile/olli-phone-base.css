@@ -2872,17 +2872,22 @@ background: #FEFEFE;
   backdrop-filter: none ;
   -webkit-backdrop-filter: none ;
 }
-#studentMemoScreen .memoTopFadeLayer {
+#studentMemoScreen .memoTopFadeLayer,
+#studentMemoScreen .memoBottomFadeLayer {
   position: fixed;
   left: 50%;
   right: auto;
-  top: 0;
   transform: translateX(-50%);
   width: min(100vw, 860px);
   max-width: 860px;
-  height: calc(max(116px, calc(env(safe-area-inset-top) + 102px)));
   z-index: 100;
   pointer-events: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+#studentMemoScreen .memoTopFadeLayer {
+  top:0;
+  height:calc(max(116px, calc(env(safe-area-inset-top) + 102px)));
   background: linear-gradient(
     to bottom,
     rgba(var(--vivizac-edge-fade-rgb),1) 0%,
@@ -2890,8 +2895,17 @@ background: #FEFEFE;
     rgba(var(--vivizac-edge-fade-rgb),.50) 54%,
     rgba(var(--vivizac-edge-fade-rgb),0) 100%
   );
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+}
+#studentMemoScreen .memoBottomFadeLayer {
+  bottom:0;
+  height:calc(max(116px, calc(env(safe-area-inset-bottom) + 102px)));
+  background: linear-gradient(
+    to top,
+    rgba(var(--vivizac-edge-fade-rgb),1) 0%,
+    rgba(var(--vivizac-edge-fade-rgb),.94) 24%,
+    rgba(var(--vivizac-edge-fade-rgb),.50) 54%,
+    rgba(var(--vivizac-edge-fade-rgb),0) 100%
+  );
 }
 #studentMemoScreen .memoHeaderLeftActions {
   display: contents ;
@@ -4121,6 +4135,7 @@ border-color: #F0F0F0;
   border-top-right-radius: var(--olli-phone-screen-corner-radius);
 }
 #observationRosterScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .observationRosterBottomFadeLayer,
+#studentMemoScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .memoBottomFadeLayer,
 #kinderChatFeedbackScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .kcfBottomFadeLayer,
 #olliTalkBetaScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .olliTalkBetaEdgeBlurBottom {
   border-bottom-left-radius: var(--olli-phone-screen-corner-radius);
@@ -4130,6 +4145,7 @@ border-color: #F0F0F0;
    over the rounded transformed page. Normal full-screen fades stay intact. */
 #observationRosterScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .observationRosterTopFadeLayer,
 #observationRosterScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .observationRosterBottomFadeLayer,
+#studentMemoScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .memoBottomFadeLayer,
 #studentMemoScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .memoTopFadeLayer,
 #kinderChatFeedbackScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .kcfTopFadeLayer,
 #kinderChatFeedbackScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .kcfBottomFadeLayer,
@@ -6513,4 +6529,5 @@ body.olli-login-open {
 }
 .memoRosterBackIcon::before{ transform:rotate(-45deg); }
 .memoRosterBackIcon::after{ transform:rotate(45deg); }
+
 
