@@ -4,10 +4,10 @@ function syncRecordAcademyPageState(){
   screen.classList.toggle('record-academy-view', currentRecordView === 'academy');
 }
 
-function hydrateRecordAttendanceLocalSnapshot(){
+function hydrateRecordAttendanceLocalSnapshot(options = {}){
   const adapter = window.OlliPhoneAttendanceAdapter;
   if (!adapter || typeof adapter.hydrateLocalAttendanceSnapshot !== 'function') return false;
-  try { return adapter.hydrateLocalAttendanceSnapshot(new Date(), { render: true }); }
+  try { return adapter.hydrateLocalAttendanceSnapshot(new Date(), { render: options.render !== false }); }
   catch (error) {
     console.warn('출석 로컬 스냅샷 복원 실패:', error?.message || error);
     return false;
@@ -187,27 +187,33 @@ async function loadRecords(name, options = {}) {
 
 
   if (currentRecordView === 'elementary') {
+    // Restore local attendance before painting the first roster, not after.
+    // Previously the cache hydration rendered all student cards a second time.
+    hydrateRecordAttendanceLocalSnapshot({ render: false });
     renderElementaryRecords(name);
-    hydrateRecordAttendanceLocalSnapshot();
     if (localOnly) return true;
-    await loadStudentsFromSupabase();
+    const studentRefresh = await loadStudentsFromSupabase();
     if (loadToken !== window.__olliRecordListLoadToken || currentRecordView !== 'elementary') return;
-    renderElementaryRecords(name);
+    // Preserve background sync, but only replace DOM if student data changed.
+    if (studentRefresh?.changed === true) renderElementaryRecords(name);
     if (window.OlliPhoneAttendanceAdapter && typeof window.OlliPhoneAttendanceAdapter.afterRecordListLoaded === 'function') {
-      await window.OlliPhoneAttendanceAdapter.afterRecordListLoaded('elementary', name);
+      await window.OlliPhoneAttendanceAdapter.afterRecordListLoaded('elementary', name, { renderLocal: false });
     }
     return;
   }
 
   if (currentRecordView === 'kinder') {
+    // Restore local attendance before painting the first roster, not after.
+    // Previously the cache hydration rendered all student cards a second time.
+    hydrateRecordAttendanceLocalSnapshot({ render: false });
     renderKinderRecords(name);
-    hydrateRecordAttendanceLocalSnapshot();
     if (localOnly) return true;
-    await loadStudentsFromSupabase();
+    const studentRefresh = await loadStudentsFromSupabase();
     if (loadToken !== window.__olliRecordListLoadToken || currentRecordView !== 'kinder') return;
-    renderKinderRecords(name);
+    // Preserve background sync, but only replace DOM if student data changed.
+    if (studentRefresh?.changed === true) renderKinderRecords(name);
     if (window.OlliPhoneAttendanceAdapter && typeof window.OlliPhoneAttendanceAdapter.afterRecordListLoaded === 'function') {
-      await window.OlliPhoneAttendanceAdapter.afterRecordListLoaded('kinder', name);
+      await window.OlliPhoneAttendanceAdapter.afterRecordListLoaded('kinder', name, { renderLocal: false });
     }
     return;
   }

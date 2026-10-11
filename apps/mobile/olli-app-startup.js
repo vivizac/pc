@@ -263,12 +263,17 @@ async function hideOlliBootScreen() {
   }
 }
 
-function refreshOlliVisibleViewsAfterStudentServerRefresh() {
+function refreshOlliVisibleViewsAfterStudentServerRefresh(studentRefresh) {
   const safeCall = (fn) => { try { if (typeof fn === 'function') fn(); } catch (error) { console.warn('local-first view refresh skipped:', error); } };
   safeCall(typeof updateRecordHeaderUI === 'function' ? updateRecordHeaderUI : null);
   safeCall(typeof renderObservationMemoRoster === 'function' ? renderObservationMemoRoster : null);
   safeCall(typeof refreshKinderChatFeedbackStudentManagePopupIfOpen === 'function' ? refreshKinderChatFeedbackStudentManagePopupIfOpen : null);
-  safeCall(typeof renderCurrentRecordList === 'function' ? renderCurrentRecordList : null);
+  // Prepare an empty roster once, but do not recreate existing student cards
+  // when the server confirms the cached student data is unchanged.
+  const recordList = document.getElementById('recordList');
+  if (studentRefresh?.changed === true || !recordList?.children?.length) {
+    safeCall(typeof renderCurrentRecordList === 'function' ? renderCurrentRecordList : null);
+  }
   try {
     window.dispatchEvent(new CustomEvent('olli:local-first-server-refreshed', { detail:{ resource:'students' } }));
   } catch (_) {}
@@ -281,7 +286,7 @@ function startOlliStudentServerRefreshLocalFirst() {
 
   return refreshPromise
     .then((result) => {
-      refreshOlliVisibleViewsAfterStudentServerRefresh();
+      refreshOlliVisibleViewsAfterStudentServerRefresh(result);
       return result;
     })
     .catch((error) => {

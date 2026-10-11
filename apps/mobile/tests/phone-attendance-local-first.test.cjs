@@ -17,8 +17,8 @@ test('attendance local snapshot hydrates month and week caches before server wor
 });
 
 test('record list restores attendance snapshot before awaiting student server refresh', () => {
-  assert.match(navigation, /renderElementaryRecords\(name\);\s*hydrateRecordAttendanceLocalSnapshot\(\);\s*if \(localOnly\) return true;\s*await loadStudentsFromSupabase\(\);/);
-  assert.match(navigation, /renderKinderRecords\(name\);\s*hydrateRecordAttendanceLocalSnapshot\(\);\s*if \(localOnly\) return true;\s*await loadStudentsFromSupabase\(\);/);
+  assert.match(navigation, /hydrateRecordAttendanceLocalSnapshot\(\{ render: false \}\);\s*renderElementaryRecords\(name\);\s*if \(localOnly\) return true;\s*const studentRefresh = await loadStudentsFromSupabase\(\);/);
+  assert.match(navigation, /hydrateRecordAttendanceLocalSnapshot\(\{ render: false \}\);\s*renderKinderRecords\(name\);\s*if \(localOnly\) return true;\s*const studentRefresh = await loadStudentsFromSupabase\(\);/);
 });
 
 test('attendance local store separates same-kind sessions by time and class', () => {
@@ -85,7 +85,7 @@ test('attendance save failure restores only the selected exact session', () => {
 });
 
 test('attendance background refresh does not block the already rendered list', () => {
-  assert.match(adapter, /function afterRecordListLoaded\(\)[\s\S]*?hydrateLocalAttendanceSnapshot\(new Date\(\), \{ render: true \}\);[\s\S]*?Promise\.all\(/);
+  assert.match(adapter, /function afterRecordListLoaded\(_view, _name, options = \{\}\)[\s\S]*?hydrateLocalAttendanceSnapshot\(new Date\(\), \{ render: options\.renderLocal !== false \}\);[\s\S]*?Promise\.all\(/);
   assert.doesNotMatch(adapter, /async function afterRecordListLoaded\(\)/);
 });
 

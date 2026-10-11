@@ -875,10 +875,11 @@
     }
   }
 
-  function afterRecordListLoaded() {
+  function afterRecordListLoaded(_view, _name, options = {}) {
     const view = getCurrentRecordView();
     if (view !== 'elementary' && view !== 'kinder') return false;
-    hydrateLocalAttendanceSnapshot(new Date(), { render: true });
+    // loadRecords has already hydrated local attendance before first paint.
+    hydrateLocalAttendanceSnapshot(new Date(), { render: options.renderLocal !== false });
     Promise.all([
       syncCurrentMonth(new Date(), { render: true, skipLocal: true }),
       syncTodaySchedule(new Date(), { render: true, skipLocal: true })
