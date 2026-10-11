@@ -38,9 +38,9 @@
   --olli-talk-control-input-placeholder:rgba(43,49,55,.42);
   --olli-talk-edge-top-bg:linear-gradient(
     to bottom,
-    rgba(var(--vivizac-edge-fade-rgb),.60) 0%,
-    rgba(var(--vivizac-edge-fade-rgb),.30) 46%,
-    rgba(var(--vivizac-edge-fade-rgb),.30) 100%
+    rgba(var(--vivizac-edge-fade-rgb),.72) 0%,
+    rgba(var(--vivizac-edge-fade-rgb),.40) 46%,
+    rgba(var(--vivizac-edge-fade-rgb),.40) 100%
   );
   --olli-talk-header-bg:linear-gradient(
     to bottom,
@@ -51,8 +51,8 @@
   );
   --olli-talk-edge-bottom-bg:linear-gradient(
     to top,
-    rgba(var(--vivizac-edge-fade-rgb),.22) 0%,
-    rgba(var(--vivizac-edge-fade-rgb),.11) 50%,
+    rgba(var(--vivizac-edge-fade-rgb),.32) 0%,
+    rgba(var(--vivizac-edge-fade-rgb),.18) 50%,
     rgba(var(--vivizac-edge-fade-rgb),0) 100%
   );
   --olli-talk-incoming-bg:#fff;
@@ -130,9 +130,9 @@
   --olli-talk-control-input-placeholder:rgba(43,49,55,.42);
   --olli-talk-edge-top-bg:linear-gradient(
     to bottom,
-    color-mix(in srgb,var(--olli-talk-bg) 60%,transparent) 0%,
-    color-mix(in srgb,var(--olli-talk-bg) 30%,transparent) 46%,
-    color-mix(in srgb,var(--olli-talk-bg) 30%,transparent) 100%
+    color-mix(in srgb,var(--olli-talk-bg) 72%,transparent) 0%,
+    color-mix(in srgb,var(--olli-talk-bg) 40%,transparent) 46%,
+    color-mix(in srgb,var(--olli-talk-bg) 40%,transparent) 100%
   );
   --olli-talk-header-bg:linear-gradient(
     to bottom,
@@ -143,8 +143,8 @@
   );
   --olli-talk-edge-bottom-bg:linear-gradient(
     to top,
-    color-mix(in srgb,var(--olli-talk-bg) 22%,transparent) 0%,
-    color-mix(in srgb,var(--olli-talk-bg) 11%,transparent) 50%,
+    color-mix(in srgb,var(--olli-talk-bg) 32%,transparent) 0%,
+    color-mix(in srgb,var(--olli-talk-bg) 18%,transparent) 50%,
     transparent 100%
   );
 }

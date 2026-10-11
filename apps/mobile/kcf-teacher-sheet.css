@@ -416,7 +416,8 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
   -webkit-user-select:text;
   user-select:text;
   -webkit-touch-callout:default;
-  padding:8px 4px;
+  /* Match Team Chat's upper text/caret inset without moving the buttons. */
+  padding:1px 4px 8px;
   box-sizing:border-box;
   text-align:left;
   text-indent:0;
