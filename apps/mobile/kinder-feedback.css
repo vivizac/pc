@@ -2080,31 +2080,39 @@ body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn {
   justify-content:center;
   align-items:center;
   padding:0;
-  background:#fff;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
   color:#8e8e93;
-  border:1px solid #d9dde3;
-  border-radius:50%;
   box-sizing:border-box;
   cursor:pointer;
+  appearance:none;
+  -webkit-appearance:none;
   -webkit-tap-highlight-color:transparent;
 }
 body.kcfContinuousMode.kcfContinuousFeedbackFolded #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn svg,
 body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn svg {
-  width:16px;
-  height:16px;
+  width:18px;
+  height:18px;
   fill:none;
   stroke:currentColor;
   stroke-width:1.85;
   stroke-linecap:round;
   stroke-linejoin:round;
+  animation:kcfLiveHeaderCopyIconIn 170ms cubic-bezier(.2,.65,.2,1) both;
 }
-/* The copy button and student name share the successful-copy blue state. */
-body.kcfContinuousMode.kcfContinuousFeedbackFolded #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn.kcfLiveHeaderCopied,
-body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn.kcfLiveHeaderCopied {
-  background:#0A84FF;
-  color:#fff;
-  border-color:#0A84FF;
+@keyframes kcfLiveHeaderCopyIconIn {
+  from { opacity:.35; transform:scale(.88); }
+  to { opacity:1; transform:scale(1); }
 }
+@media (prefers-reduced-motion:reduce) {
+  body.kcfContinuousMode.kcfContinuousFeedbackFolded #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn svg,
+  body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveHeaderCopyBtn svg {
+    animation:none;
+  }
+}
+/* Copy-icon stays gray; a successful copy colors only the student name. */
 body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveTitleLeft:has(.kcfLiveHeaderCopyBtn.kcfLiveHeaderCopied) .kcfLiveStudentNameText,
 body.kcfFeedbackCollectView #kinderChatFeedbackScreen .kcfLiveTitleLeft:has(.kcfLiveHeaderCopyBtn.kcfLiveHeaderCopied) .kcfLiveStudentNameText {
   color:#0A84FF;
