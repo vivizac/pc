@@ -37,8 +37,8 @@ function setup({ idleSupported = true } = {}) {
   const rear = element('recordRoomScreen'), list = element('recordList');
   rear.children = [element('recordPageInner'), element('floatingBar')];
   const quick = element('kinderChatFeedbackScreen', 'flex');
-  const observation = element('observationRosterScreen', 'flex');
-  const work = element('olliTalkBetaScreen', 'flex');
+  const observation = element('observationRosterScreen');
+  const work = element('olliTalkBetaScreen');
   element('studentMemoScreen'); element('kcfPersistentTopLayer'); element('observationPersistentNavLayer');
   const body = element('body', 'block');
   const window = {
@@ -56,18 +56,19 @@ function setup({ idleSupported = true } = {}) {
   };
   if (idleSupported) window.requestIdleCallback = fn => idle.push(fn);
   context = { window, currentRecordView: 'elementary',
-    document: { body, activeElement: null, getElementById: id => nodes.get(id) || null, createElement: () => element('created'), querySelectorAll: () => [] },
+    document: { body, readyState: 'complete', activeElement: null, getElementById: id => nodes.get(id) || null, createElement: () => element('created'), querySelectorAll: () => [...nodes.values()].filter(n => /Screen$/.test(n.id)) },
     requestAnimationFrame: fn => frames.push(fn),
-    getComputedStyle: node => { events.push({ kind: 'style', id: node.id }); return { display: node.style.display, opacity: '.18' }; },
+    getComputedStyle: node => { events.push({ kind: 'style', id: node.id }); return { display: node.style.display, opacity: '1', zIndex: node.style.zIndex || 'auto' }; },
     loadRecords: (_name, options) => { events.push({ kind: 'server-sync', reuseRendered: options.reuseRendered }); return Promise.resolve(); }
   };
   vm.runInNewContext(source, context);
-  return { window, frames, idle, events, timers, rear, list, quick, observation, work,
+  return { window, frames, idle, events, timers, rear, list, quick, observation, work, nodes,
+    notify: () => window.syncOlliMainDrawerAttendanceRearPage(),
     setAcademy: value => academy = value, setDivision: value => division = value,
     tick: () => frames.shift()?.(), runIdle: async () => { idle.shift()?.(); await flush(); } };
 }
 
-test('idle preparation runs once from local data and leaves the rear screen hidden', async () => {
+test('idle preparation renders the actual rear page below the foreground without interaction', async () => {
   const s = setup();
   s.window.scheduleOlliMainDrawerAttendancePrewarm();
   s.window.scheduleOlliMainDrawerAttendancePrewarm();
@@ -75,20 +76,29 @@ test('idle preparation runs once from local data and leaves the rear screen hidd
   assert.equal(s.events.filter(e => e.kind === 'local-render').length, 0);
   await s.runIdle();
   assert.deepEqual(s.events.filter(e => e.kind === 'local-render'), [{ kind: 'local-render', localOnly: true }]);
-  assert.equal(s.rear.style.display, 'none');
+  assert.equal(s.rear.style.display, 'flex');
   assert.equal(s.list.children.length, 1);
+  assert.ok(Number(s.rear.style.zIndex) < Number(s.quick.style.zIndex));
+  assert.equal(s.rear.style.pointerEvents, 'none');
+  assert.equal(s.rear.getAttribute('aria-hidden'), 'true');
+  assert.equal(s.rear.hasAttribute('inert'), true);
   assert.equal(s.events.some(e => e.kind === 'server-sync'), false);
 });
 
 test('a prepared roster opens in one frame without rebuilding cards, then syncs after motion', async () => {
   for (const kind of ['quicknote', 'observation', 'work']) {
     const s = setup();
+    s.quick.style.display = kind === 'quicknote' ? 'flex' : 'none';
+    s.observation.style.display = kind === 'observation' ? 'flex' : 'none';
+    s.work.style.display = kind === 'work' ? 'flex' : 'none';
     s.window.scheduleOlliMainDrawerAttendancePrewarm(); await s.runIdle();
+    assert.equal(s.rear.style.display, 'flex');
     const cards = s.list.children;
     assert.equal(s.window.openOlliMainSubpageDrawer(null, kind), true);
     assert.equal(s.window.openOlliMainSubpageDrawer(null, kind), false);
     s.tick();
-    assert.equal(s.rear.classList.contains('is-olli-main-drawer-rear-open'), true);
+    assert.equal(s.window.isOlliMainSubpageDrawerOpen(), true);
+    assert.equal(s.rear.style.display, 'flex');
     assert.equal(s.list.children, cards);
     assert.equal(s.events.filter(e => e.kind === 'local-render').length, 1);
     assert.equal(s.events.some(e => e.kind === 'server-sync'), false);
@@ -124,12 +134,15 @@ test('closing during opening cancels stale motion and deferred synchronization',
     const closed = s.window.closeOlliMainSubpageDrawer();
     while (s.frames.length) s.tick();
     s.quick.dispatchTransition(); await closed; await flush();
-    assert.equal(s.rear.style.display, 'none');
+    assert.equal(s.rear.style.display, 'flex');
+    assert.equal(s.rear.hasAttribute('inert'), true);
+    assert.equal(s.rear.style.pointerEvents, 'none');
     assert.equal(s.quick.style.display, 'flex');
     assert.equal(s.window.isOlliMainSubpageDrawerOpen(), false);
     assert.equal(s.events.some(e => e.kind === 'server-sync'), false);
     s.window.openOlliMainSubpageDrawer(null, 'quicknote'); s.tick();
-    assert.equal(s.rear.classList.contains('is-olli-main-drawer-rear-open'), true);
+    assert.equal(s.window.isOlliMainSubpageDrawerOpen(), true);
+    assert.equal(s.rear.style.display, 'flex');
   }
 });
 
@@ -142,4 +155,43 @@ test('idle fallback works and visible attendance is not prepared again', async (
   const visible = setup(); visible.rear.style.display = 'flex';
   visible.window.scheduleOlliMainDrawerAttendancePrewarm(); await visible.runIdle();
   assert.equal(visible.events.some(e => e.kind === 'local-render'), false);
+});
+test('page navigation restores the rear before paint and releases it for real attendance', async () => {
+  const s = setup(); s.window.scheduleOlliMainDrawerAttendancePrewarm(); await s.runIdle();
+  s.quick.style.display = 'none'; s.observation.style.display = 'flex';
+  s.rear.style.display = 'none'; s.notify();
+  assert.equal(s.rear.style.display, 'flex');
+  assert.ok(Number(s.rear.style.zIndex) < Number(s.observation.style.zIndex));
+  s.observation.style.display = 'none'; s.rear.style.display = 'flex'; s.notify();
+  assert.equal(s.rear.style.display, 'flex');
+  assert.equal(s.rear.hasAttribute('inert'), false);
+  assert.notEqual(s.rear.style.pointerEvents, 'none');
+  assert.equal(s.rear.hasAttribute('data-olli-drawer-rear-mounted'), false);
+});
+test('opening real attendance restores interactive state, and another route keeps it hidden', async () => {
+  const s = setup(); s.window.scheduleOlliMainDrawerAttendancePrewarm(); await s.runIdle();
+  await s.window.openOlliAttendancePage();
+  assert.equal(s.rear.style.display, 'flex');
+  assert.equal(s.rear.hasAttribute('inert'), false);
+  assert.notEqual(s.rear.style.pointerEvents, 'none');
+  assert.equal(s.quick.style.display, 'none');
+  const other = setup(); other.window.scheduleOlliMainDrawerAttendancePrewarm(); await other.runIdle();
+  other.quick.style.display = 'none'; other.rear.style.display = 'none'; other.notify();
+  assert.equal(other.rear.style.display, 'none');
+  assert.equal(other.rear.hasAttribute('inert'), false);
+});
+test('all drawer rear fade state and opacity animation code is removed', () => {
+  assert.doesNotMatch(source, /beginDrawerReturnFade|olliMainDrawerRearFading|is-olli-main-drawer-rear-open|is-olli-main-drawer-rear-returning|getComputedStyle\(content\)\.opacity/);
+});
+
+test('memo and roster transitions retain the rendered rear under the active foreground', async () => {
+  const s = setup(); s.window.scheduleOlliMainDrawerAttendancePrewarm(); await s.runIdle();
+  const cards = s.list.children, memo = s.nodes.get('studentMemoScreen');
+  s.quick.style.display = 'none'; s.observation.style.display = 'flex'; s.notify();
+  memo.style.display = 'flex'; s.notify();
+  assert.ok(Number(s.rear.style.zIndex) < Number(memo.style.zIndex));
+  memo.style.display = 'none'; s.notify();
+  assert.ok(Number(s.rear.style.zIndex) < Number(s.observation.style.zIndex));
+  assert.equal(s.rear.style.display, 'flex');
+  assert.equal(s.list.children, cards);
 });

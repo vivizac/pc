@@ -646,6 +646,7 @@ function showObservationRosterScreenShell() {
   rosterScreen.style.visibility = '';
   rosterScreen.style.display = 'flex';
   renderObservationMemoRoster();
+  window.syncOlliMainDrawerAttendanceRearPage?.();
 }
 
 function hideObservationRosterScreen() {
@@ -1719,6 +1720,7 @@ async function showObservationMemoRoster(event, options = {}) {
       memoScreen.style.display = 'none';
       memoScreen.style.transform = '';
       clearObservationMemoSlideClasses();
+      window.syncOlliMainDrawerAttendanceRearPage?.();
       resetObservationMemoHistory();
       renderObservationMemoRoster();
     });
@@ -1849,6 +1851,7 @@ function openObservationMemoStudentFromRoster(studentId) {
     memoScreen.removeAttribute('inert');
   }
 
+  window.syncOlliMainDrawerAttendanceRearPage?.();
   runObservationMemoPageSlide('observation-editor-slide-enter', () => {
     hideObservationRosterScreen();
     clearObservationMemoSlideClasses();

@@ -17,6 +17,7 @@
   let drawerSearchReturnTimer = 0;
   let attendancePreparedKey = '';
   let attendancePrewarmScheduled = false;
+  let attendanceRearMountState = null;
 
   function isReducedMotion(){
     return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -29,7 +30,7 @@
   }
 
   function getVisibleMainPage(){
-    const ids = ['kinderChatFeedbackScreen', 'observationRosterScreen', 'studentMemoScreen', 'olliTalkBetaScreen'];
+    const ids = ['studentMemoScreen', 'observationRosterScreen', 'kinderChatFeedbackScreen', 'olliTalkBetaScreen'];
     for (const id of ids) {
       const page = document.getElementById(id);
       if (isVisible(page)) return page;
@@ -127,6 +128,56 @@
     }
   }
 
+  function releaseAttendanceRearPage(){
+    const state = attendanceRearMountState;
+    if (!state) return;
+    attendanceRearMountState = null;
+    // The navigator decides whether Attendance is now visible or hidden.
+    const display = state.recordRoom.style.display;
+    restoreInlineState(state.recordRoom, state.recordSaved);
+    state.recordRoom.style.display = display;
+    state.recordRoom.removeAttribute('data-olli-drawer-rear-mounted');
+    if (state.mainPage.style.zIndex === state.mainZIndex) {
+      state.mainPage.style.zIndex = state.mainSavedZIndex;
+    }
+  }
+
+  function mountAttendanceRearPage(){
+    if (drawerState || navigationInFlight) return false;
+    const mainPage = getVisibleMainPage();
+    const recordRoom = document.getElementById('recordRoomScreen');
+    if (!mainPage || !recordRoom || !hasReadyAttendanceBehindDrawer(recordRoom)) return false;
+    if (attendanceRearMountState?.mainPage !== mainPage) {
+      releaseAttendanceRearPage();
+      const computedZIndex = Number.parseInt(getComputedStyle(mainPage).zIndex, 10);
+      const mainZIndex = String(Number.isFinite(computedZIndex) && computedZIndex > 0 ? computedZIndex : 1);
+      attendanceRearMountState = {
+        mainPage, recordRoom, mainZIndex,
+        mainSavedZIndex: mainPage.style.zIndex,
+        recordSaved: captureInlineState(recordRoom)
+      };
+    }
+    const state = attendanceRearMountState;
+    const rearZIndex = String(Number(state.mainZIndex) - 1);
+    if (mainPage.style.zIndex !== state.mainZIndex) mainPage.style.zIndex = state.mainZIndex;
+    if (recordRoom.style.zIndex !== rearZIndex) recordRoom.style.zIndex = rearZIndex;
+    if (recordRoom.style.display !== 'flex') recordRoom.style.display = 'flex';
+    if (recordRoom.style.pointerEvents !== 'none') recordRoom.style.pointerEvents = 'none';
+    recordRoom.setAttribute('aria-hidden', 'true');
+    recordRoom.setAttribute('inert', '');
+    recordRoom.setAttribute('data-olli-drawer-rear-mounted', '');
+    return true;
+  }
+
+  function syncAttendanceRearPage(){
+    if (drawerState || navigationInFlight) return;
+    if (!getVisibleMainPage() || !getAttendancePreparationKey()) {
+      releaseAttendanceRearPage();
+      return;
+    }
+    if (!mountAttendanceRearPage()) scheduleOlliMainDrawerAttendancePrewarm();
+  }
+
   function getAttendancePreparationKey(){
     const academyId = String(
       (typeof window.getOlliCurrentAcademyId === 'function' ? window.getOlliCurrentAcademyId() : '') || ''
@@ -163,14 +214,14 @@
     const recordRoom = document.getElementById('recordRoomScreen');
     const key = getAttendancePreparationKey();
     if (!recordRoom || !key || drawerState || navigationInFlight || !getVisibleMainPage()) return false;
-    if (hasReadyAttendanceBehindDrawer(recordRoom)) return true;
-    if (isVisible(recordRoom)) return false;
+    if (hasReadyAttendanceBehindDrawer(recordRoom)) return mountAttendanceRearPage();
+    if (isVisible(recordRoom) && !attendanceRearMountState) return false;
     // Prepare the hidden rear page from local caches, without navigation or network.
     try {
       await prepareAttendanceState({ localOnly: true });
       if (key !== getAttendancePreparationKey() || drawerState) return false;
       attendancePreparedKey = key;
-      return hasReadyAttendanceBehindDrawer(recordRoom);
+      return mountAttendanceRearPage();
     } catch (_) {
       return false;
     }
@@ -215,14 +266,6 @@
     (saved || []).forEach((item) => {
       if (item?.element) item.element.style.order = item.order || '';
     });
-  }
-
-  function beginDrawerReturnFade(recordRoom){
-    if (!recordRoom) return;
-    // Fade only the contents; the opaque Attendance background must remain.
-    recordRoom.classList.remove('vivizac-slide-under-fade', 'olliMainDrawerRearFading');
-    void recordRoom.offsetWidth;
-    recordRoom.classList.add('olliMainDrawerRearFading');
   }
 
   function waitForTransition(element, propertyName, trigger, fallbackMs){
@@ -320,7 +363,6 @@
     recordRoom.style.zIndex = '119700';
     recordRoom.style.pointerEvents = 'auto';
     recordRoom.setAttribute('aria-hidden', 'false');
-    recordRoom.classList.remove('is-olli-main-drawer-rear-open', 'is-olli-main-drawer-rear-returning', 'olliMainDrawerRearFading');
     recordRoom.classList.toggle('olliMainDrawerSubpage', !fullWidth);
   }
 
@@ -428,7 +470,6 @@
 
       const targetCompanion = getCompanionLayer(targetMain);
       showRecordRoomBehindTransition(state, { fullWidth:true });
-      beginDrawerReturnFade(state.recordRoom);
 
       targetMain.style.zIndex = '120500';
       targetMain.style.pointerEvents = 'none';
@@ -455,10 +496,10 @@
         targetCompanion.style.pointerEvents = '';
       }
 
-      state.recordRoom.classList.remove('olliMainDrawerSubpage', 'vivizac-slide-under-fade', 'is-olli-main-drawer-rear-open', 'is-olli-main-drawer-rear-returning', 'olliMainDrawerRearFading');
+      state.recordRoom.classList.remove('olliMainDrawerSubpage', 'vivizac-slide-under-fade');
       state.recordRoom.style.zIndex = state.recordSaved.zIndex;
       state.recordRoom.style.pointerEvents = state.recordSaved.pointerEvents;
-      state.recordRoom.style.display = 'none';
+      state.recordRoom.style.display = state.recordSaved.display;
       state.recordRoom.setAttribute('aria-hidden', 'true');
 
       restoreRecordUtilityOrder(state.utilityOrderSaved);
@@ -468,6 +509,7 @@
       return true;
     } finally {
       navigationInFlight = false;
+      syncAttendanceRearPage();
     }
   }
 
@@ -501,8 +543,6 @@
       const opened = fn({ division, navigationManaged:true });
       if (opened === false) return false;
 
-      beginDrawerReturnFade(recordRoom);
-
       page.style.zIndex = '120500';
       page.style.pointerEvents = 'none';
       page.setAttribute('aria-hidden', 'false');
@@ -529,13 +569,12 @@
         companion.style.zIndex = companionZIndex;
         companion.style.pointerEvents = companionPointerEvents;
       }
-
-      recordRoom.classList.remove('vivizac-slide-under-fade', 'olliMainDrawerRearFading');
-      recordRoom.style.display = 'none';
+      recordRoom.style.display = 'flex';
       recordRoom.setAttribute('aria-hidden', 'true');
       return true;
     } finally {
       navigationInFlight = false;
+      syncAttendanceRearPage();
     }
   }
 
@@ -570,7 +609,7 @@
     restoreInlineState(state.companion, state.companionSaved);
 
     if (state.recordRoom) {
-      state.recordRoom.classList.remove('olliMainDrawerSubpage', 'vivizac-slide-under-fade', 'is-olli-main-drawer-rear-open', 'is-olli-main-drawer-rear-returning', 'olliMainDrawerRearFading');
+      state.recordRoom.classList.remove('olliMainDrawerSubpage', 'vivizac-slide-under-fade');
       restoreInlineState(state.recordRoom, state.recordSaved);
     }
 
@@ -599,13 +638,9 @@
     const { mainPage, companion, recordRoom } = state;
     const hit = document.getElementById('olliMainDrawerReturnHit');
     if (hit) hit.hidden = true;
-    // Keep the page background opaque; only its contents fade on return.
-    recordRoom?.classList.remove('vivizac-slide-under-fade');
 
     try {
       await waitForTransition(mainPage, 'transform', () => {
-        recordRoom?.classList.add('is-olli-main-drawer-rear-returning');
-        recordRoom?.classList.remove('is-olli-main-drawer-rear-open');
         mainPage?.classList.add(RETURNING_CLASS);
         companion?.classList.add(RETURNING_CLASS);
         mainPage?.classList.remove(OPEN_CLASS);
@@ -615,6 +650,7 @@
       return true;
     } finally {
       navigationInFlight = false;
+      syncAttendanceRearPage();
     }
   }
 
@@ -653,6 +689,7 @@
     recordRoom.style.zIndex = '119700';
     recordRoom.style.pointerEvents = 'auto';
     recordRoom.setAttribute('aria-hidden', 'false');
+    recordRoom.removeAttribute('inert');
     recordRoom.classList.add('olliMainDrawerSubpage');
 
     mainPage.style.zIndex = '120500';
@@ -669,21 +706,15 @@
 
     hit.hidden = false;
     document.body.classList.add(DRAWER_OPEN_CLASS);
-
-    recordRoom.classList.remove('vivizac-slide-under-fade', 'olliMainDrawerRearFading');
     // Reuse the roster prepared at idle. Only a very early click or a changed
     // academy/division needs a local-only first render here.
     if (!hasReadyAttendanceBehindDrawer(recordRoom)) {
       refreshRecordRoomSubpage({ localOnly: true });
     }
-    Array.from(recordRoom.children).forEach((content) => {
-      void getComputedStyle(content).opacity;
-    });
     void mainPage.offsetWidth;
     const openingState = drawerState;
     requestAnimationFrame(() => {
       if (drawerState !== openingState || navigationInFlight) return;
-      recordRoom.classList.add('is-olli-main-drawer-rear-open');
       mainPage.classList.add(OPEN_CLASS);
       companion?.classList.add(OPEN_CLASS);
       void waitForTransition(mainPage, 'transform', null, 400).then(() => {
@@ -715,6 +746,8 @@
       }
       restoreRecordUtilityOrder(previousState?.utilityOrderSaved);
 
+      releaseAttendanceRearPage();
+
       document.querySelectorAll('.pageScreen').forEach((screen) => {
         screen.classList.remove(MAIN_PAGE_CLASS, OPEN_CLASS, RETURNING_CLASS, SWITCH_EXIT_CLASS, SWITCH_ENTER_CLASS, 'vivizac-slide-under-fade');
         screen.style.display = screen.id === 'recordRoomScreen' ? 'flex' : 'none';
@@ -725,7 +758,7 @@
 
       const recordRoom = document.getElementById('recordRoomScreen');
       if (recordRoom) {
-        recordRoom.classList.remove('olliMainDrawerSubpage', 'is-olli-main-drawer-rear-open', 'is-olli-main-drawer-rear-returning', 'olliMainDrawerRearFading');
+        recordRoom.classList.remove('olliMainDrawerSubpage');
         recordRoom.style.zIndex = '';
         recordRoom.style.pointerEvents = '';
       }
@@ -736,6 +769,7 @@
       return true;
     } finally {
       navigationInFlight = false;
+      syncAttendanceRearPage();
     }
   }
 
@@ -789,6 +823,8 @@
 
   window.openOlliMainSubpageDrawer = openOlliMainSubpageDrawer;
   window.scheduleOlliMainDrawerAttendancePrewarm = scheduleOlliMainDrawerAttendancePrewarm;
+  window.syncOlliMainDrawerAttendanceRearPage = syncAttendanceRearPage;
+  window.releaseOlliMainDrawerAttendanceRearPage = releaseAttendanceRearPage;
   window.closeOlliMainSubpageDrawer = closeOlliMainSubpageDrawer;
   window.openOlliObservationFromRecordShortcut = openOlliObservationFromRecordShortcut;
   window.openOlliQuickNoteFromRecordShortcut = openOlliQuickNoteFromRecordShortcut;

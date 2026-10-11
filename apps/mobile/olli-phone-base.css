@@ -4205,31 +4205,6 @@ border-color: #F0F0F0;
   background:#fff;
   isolation:isolate;
 }
-#recordRoomScreen.olliMainDrawerSubpage > *,
-#recordRoomScreen.olliMainDrawerSubpage > .recordRoomScreenFloatingBar,
-#recordRoomScreen.olliMainDrawerRearFading > .recordRoomScreenFloatingBar,
-#recordRoomScreen.olliMainDrawerRearFading > * {
-  opacity:.18;
-  /* Include the button rail explicitly so its later transition:none does not
-     cancel the same content fade used by the roster. */
-  transition:opacity 320ms ease-in-out;
-}
-#recordRoomScreen.olliMainDrawerSubpage.is-olli-main-drawer-rear-open > * {
-  opacity:1;
-  /* Let the foreground uncover the pale page before it grows opaque. */
-  transition-delay:80ms;
-}
-#recordRoomScreen.olliMainDrawerSubpage.is-olli-main-drawer-rear-returning > *,
-#recordRoomScreen.olliMainDrawerRearFading > .recordRoomScreenFloatingBar,
-#recordRoomScreen.olliMainDrawerRearFading > * {
-  transition-duration:340ms;
-  transition-delay:0ms;
-}
-#recordRoomScreen.olliMainDrawerRearFading {
-  background:#fff;
-  isolation:isolate;
-}
-
 body.olli-main-subpage-drawer-search-active .olliMainDrawerMainPage.is-olli-main-drawer-open,
 body.olli-main-subpage-drawer-search-active .olliMainDrawerCompanion.is-olli-main-drawer-open {
   transform:translate3d(100%,0,0) !important;
@@ -4273,8 +4248,6 @@ body.olli-main-subpage-drawer-modal-fade-active .olliMainDrawerReturnHit {
   display:none !important;
 }
 @media (prefers-reduced-motion: reduce) {
-  #recordRoomScreen.olliMainDrawerSubpage > *,
-  #recordRoomScreen.olliMainDrawerRearFading > *,
   .olliMainDrawerMainPage,
   .olliMainDrawerCompanion,
   .olliMainDrawerMainPage::after {
