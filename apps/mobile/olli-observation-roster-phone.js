@@ -27,6 +27,8 @@ let observationRosterSortPopupOpen = false;
 let observationRosterActiveDivision = 'elementary';
 let observationRosterOutsideClickBound = false;
 let observationMemoSlideTimer = null;
+let observationMemoSlideCancel = null;
+let observationMemoRosterNavigationRequest = 0;
 let observationMemoUndoStack = [];
 let observationMemoRedoStack = [];
 let observationMemoCurrentAction = null;
@@ -661,11 +663,16 @@ function closeObservationRosterToRecordRoom(event) {
   try { input?.blur(); } catch (_) {}
   setObservationPersistentNavVisible(false);
   hideObservationRosterScreen();
+  observationMemoRosterNavigationRequest++;
   try {
     if (typeof currentObservationView !== 'undefined') currentObservationView = observationRosterActiveDivision;
     if (typeof currentRecordView !== 'undefined') currentRecordView = observationRosterActiveDivision;
   } catch (_) {}
   if (typeof showRecordRoom === 'function') showRecordRoom();
+}
+
+function cancelObservationMemoPageSlide() {
+  if (typeof observationMemoSlideCancel === 'function') observationMemoSlideCancel();
 }
 
 function runObservationMemoPageSlide(className, onComplete) {
@@ -675,25 +682,30 @@ function runObservationMemoPageSlide(className, onComplete) {
     return;
   }
 
-  if (observationMemoSlideTimer) {
-    clearTimeout(observationMemoSlideTimer);
-    observationMemoSlideTimer = null;
-  }
-
+  // Cancel the previous callback as well as its timer. Otherwise a stale
+  // animationend listener can hide the newly opened roster or memo page.
+  cancelObservationMemoPageSlide();
   clearObservationMemoSlideClasses();
   void screen.offsetWidth;
   screen.classList.add(className);
 
   let finished = false;
+  const cleanup = () => {
+    if (observationMemoSlideTimer) clearTimeout(observationMemoSlideTimer);
+    observationMemoSlideTimer = null;
+    screen.removeEventListener('animationend', handleAnimationEnd);
+    screen.classList.remove(className);
+    observationMemoSlideCancel = null;
+  };
+  const cancel = () => {
+    if (finished) return;
+    finished = true;
+    cleanup();
+  };
   const finish = () => {
     if (finished) return;
     finished = true;
-    if (observationMemoSlideTimer) {
-      clearTimeout(observationMemoSlideTimer);
-      observationMemoSlideTimer = null;
-    }
-    screen.removeEventListener('animationend', handleAnimationEnd);
-    screen.classList.remove(className);
+    cleanup();
     if (typeof onComplete === 'function') onComplete();
   };
   const handleAnimationEnd = event => {
@@ -701,10 +713,12 @@ function runObservationMemoPageSlide(className, onComplete) {
     finish();
   };
 
+  observationMemoSlideCancel = cancel;
   screen.addEventListener('animationend', handleAnimationEnd);
   observationMemoSlideTimer = setTimeout(finish, OBSERVATION_MEMO_SLIDE_MS + 100);
 
   requestAnimationFrame(() => {
+    if (finished) return;
     try {
       const animationName = getComputedStyle(screen).animationName || '';
       if (!animationName || animationName === 'none') finish();
@@ -1562,7 +1576,18 @@ function bindObservationMemoEditorEvents() {
   }
 
   window.addEventListener('pagehide', () => {
-    if (observationMemoSlideTimer) clearTimeout(observationMemoSlideTimer);
+    const memoScreen = getObservationMemoScreen();
+    const wasLeaving = memoScreen?.classList.contains('observation-editor-slide-leave');
+    const wasEntering = memoScreen?.classList.contains('observation-editor-slide-enter');
+    cancelObservationMemoPageSlide();
+    // A suspended iOS page must not resume with both pages showing or both hidden.
+    if (wasLeaving) {
+      if (memoScreen) memoScreen.style.display = 'none';
+      const roster = getObservationRosterScreen();
+      if (roster) roster.style.display = 'flex';
+    } else if (wasEntering) {
+      hideObservationRosterScreen();
+    }
     if (observationMemoKeyboardRaf) cancelAnimationFrame(observationMemoKeyboardRaf);
     if (observationMemoCaretRaf) cancelAnimationFrame(observationMemoCaretRaf);
     if (observationMemoKeyboardSettleTimer) clearTimeout(observationMemoKeyboardSettleTimer);
@@ -1578,6 +1603,11 @@ function bindObservationMemoEditorEvents() {
     clearObservationMemoHangulTransaction();
     setObservationPersistentNavVisible(false);
     clearObservationMemoSlideClasses();
+  });
+  window.addEventListener('pageshow', () => {
+    if (isObservationRosterScreenVisible() || isObservationMemoScreenVisible()) {
+      setObservationPersistentNavVisible(true);
+    }
   });
 }
 
@@ -1663,7 +1693,12 @@ async function showObservationMemoRoster(event, options = {}) {
     event.stopPropagation();
   }
 
+  // Ignore duplicate back taps while the return animation is in progress.
+  if (getObservationMemoScreen()?.classList.contains('observation-editor-slide-leave')) return;
+  const navigationRequest = ++observationMemoRosterNavigationRequest;
   await finalizeObservationMemoBeforeRosterNavigation();
+  // A newer student selection or navigation must win over this async checkpoint.
+  if (navigationRequest !== observationMemoRosterNavigationRequest) return;
 
   const memoScreen = getObservationMemoScreen();
   const shouldSlideOut = !!(memoScreen && isObservationMemoScreenVisible());
@@ -1748,6 +1783,8 @@ function enforceObservationMemoPageOwnership() {
 }
 
 function openObservationMemoStudentFromRoster(studentId) {
+  if (observationMemoSlideCancel) return false;
+  observationMemoRosterNavigationRequest++;
   const rosterScreen = getObservationRosterScreen();
   const memoScreen = getObservationMemoScreen();
   const page = getObservationMemoPage();
