@@ -1733,9 +1733,21 @@ async function showObservationMemoRoster(event, options = {}) {
     return;
   }
 
-  await finalizeObservationMemoBeforeRosterNavigation();
+  // Show the local roster immediately on entry from QuickNote. Preserve the
+  // exit checkpoint and prevent opening another memo while unsynced edits save.
+  const needsSaveGuard = Boolean(window.__olliObservationMemoServerSavePromise)
+    || (typeof hasObservationMemoDirtyChanges === 'function' && hasObservationMemoDirtyChanges());
+  observationMemoRosterSavePending = needsSaveGuard;
+  const savePromise = finalizeObservationMemoBeforeRosterNavigation();
   if (navigationRequest !== observationMemoRosterNavigationRequest) return;
   completeObservationMemoRosterNavigation(options);
+  try {
+    await savePromise;
+  } finally {
+    if (navigationRequest === observationMemoRosterNavigationRequest) {
+      observationMemoRosterSavePending = false;
+    }
+  }
 }
 
 function resizeObservationMemoEditorToContent() {
