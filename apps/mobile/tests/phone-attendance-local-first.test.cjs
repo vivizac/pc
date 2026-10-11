@@ -98,7 +98,7 @@ test('attendance server refresh only rerenders schedule when the visible snapsho
 test('phone loads cache-busted shared and adapter attendance scripts', () => {
   assert.match(html, /olli-attendance-data\.js\?v=20260924-week-local-first-1/);
   assert.ok(html.includes('olli-attendance-phone-adapter.js?v=20261011-roster-render-budget-1'));
-  assert.match(html, /olli-record-room-navigation\.js\?v=20260924-attendance-local-first-1/);
+  assert.ok(html.includes('olli-record-room-navigation.js?v=20261011-roster-render-budget-1'));
 });
 
 
