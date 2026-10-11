@@ -31,7 +31,7 @@ test('local-first start-page entry skips network session validation only for rec
   assert.match(authEntry, /async function enterOlliByStartPage\(page, options = \{\}\)/);
   assert.match(authEntry, /const localFirst = options\?\.localFirst === true;[\s\S]*?if \(localFirst\)[\s\S]*?hasOlliPhoneWritableAccountSession\(\)[\s\S]*?else if \(!\(await requireOlliPhoneWritableAccountSession\(\)\)\)/);
   assert.match(authEntry, /async function enterOlliAfterLoginOrSetup\(options = \{\}\)/);
-  assert.match(authEntry, /return enterOlliByStartPage\(page, \{ localFirst \}\)/);
+  assert.match(authEntry, /const entered = await enterOlliByStartPage\(page, \{ localFirst \}\);[\s\S]*?return entered;/);
 });
 
 test('record room has a render-only path that cannot await student server refresh', () => {
