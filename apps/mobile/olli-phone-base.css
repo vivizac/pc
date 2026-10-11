@@ -4202,6 +4202,16 @@ border-color: #F0F0F0;
      leading corners. Clipping the right 25% exposed rectangular gaps. */
   clip-path:none;
   -webkit-clip-path:none;
+  transform:scale(.97);
+  transform-origin:center center;
+  transition:transform 320ms cubic-bezier(.22,.61,.36,1);
+  will-change:transform;
+}
+#recordRoomScreen.olliMainDrawerSubpage.is-olli-main-drawer-rear-open {
+  transform:scale(1);
+}
+#recordRoomScreen.olliMainDrawerSubpage.is-olli-main-drawer-rear-returning {
+  transition-duration:340ms;
 }
 
 body.olli-main-subpage-drawer-search-active .olliMainDrawerMainPage.is-olli-main-drawer-open,
@@ -4247,6 +4257,7 @@ body.olli-main-subpage-drawer-modal-fade-active .olliMainDrawerReturnHit {
   display:none !important;
 }
 @media (prefers-reduced-motion: reduce) {
+  #recordRoomScreen.olliMainDrawerSubpage,
   .olliMainDrawerMainPage,
   .olliMainDrawerCompanion,
   .olliMainDrawerMainPage::after {
