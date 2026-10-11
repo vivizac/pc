@@ -421,7 +421,7 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
   box-sizing:border-box;
   text-align:left;
   text-indent:0;
-  caret-color:#111;
+  caret-color:#0A84FF;
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfInputActivateBtn {
   display:none;
