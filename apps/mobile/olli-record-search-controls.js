@@ -94,10 +94,11 @@ function setRecordKeyboardOffset() {
     if (detectedClosing) screen.classList.add('record-keyboard-closing');
     screen.classList.toggle('record-keyboard-open', keyboardOpen);
 
-    // 검색 상태는 터치 순간이 아니라 실제 키보드로 visualViewport가 줄어든 뒤에만 시작합니다.
-    // 순서: 터치 → focus → 키보드 상승 → viewport 변화 감지 → record-search-open.
+    // Start the bottom search layout on the first viewport movement,
+    // not after the 24px keyboard-open threshold. The keyboard-open class
+    // still controls the independent top-row collapse.
     if (
-      keyboardOpen &&
+      active && offset > 1 &&
       !closingBeforeUpdate &&
       input &&
       document.activeElement === input &&

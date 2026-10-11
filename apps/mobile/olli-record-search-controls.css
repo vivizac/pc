@@ -207,9 +207,6 @@
 #recordRoomScreen:not(.record-search-open) #recordSearchPill .recordSearchInputInline{
   pointer-events:none ;
 }
-#recordRoomScreen.record-search-open #recordSearchPill .recordSearchInputInline{
-  pointer-events:auto ;
-}
 #recordRoomScreen #recordSearchPill .recordSearchInputInline::placeholder{
   color:#7f7f7f;
   opacity:1 ;
@@ -295,6 +292,13 @@
 #recordRoomScreen.record-search-open .recordRoomScreenFloatingBar{
   justify-content:flex-start ;
   gap:0 ;
+  /* Keep the same geometry from the first keyboard pixel until fully open.
+     The visualViewport offset, not an independent duration, drives its travel. */
+  bottom:var(--record-keyboard-offset, 0px) !important;
+  height:47px ;
+  min-height:47px ;
+  padding-top:0 ;
+  padding-bottom:0 ;
 }
 #recordRoomScreen.record-search-open #studentAddBtn,
 #recordRoomScreen.record-search-open #recordSelectionControls,
@@ -309,8 +313,7 @@
   left:3px ;
   right:60px ;
   top:auto ;
-  bottom:max(10px, env(safe-area-inset-bottom)) ;
-  top:auto ;
+  bottom:0 ;
   width:auto ;
   max-width:none ;
   min-width:0 ;
@@ -322,8 +325,26 @@
   opacity:1 ;
   visibility:visible ;
   transform:none ;
+  bottom:0 ;
   pointer-events:auto ;
   transition:none;
+}
+
+/* The search controls softly appear near the keyboard instead of snapping
+   from their idle top-rail position. Their actual rise follows visualViewport. */
+@keyframes recordKeyboardSearchAppear{
+  from { opacity:0; transform:translate3d(0, 12px, 0); }
+  to { opacity:1; transform:translate3d(0, 0, 0); }
+}
+#recordRoomScreen.record-search-open #recordSearchGroup,
+#recordRoomScreen.record-search-open .recordSearchClose{
+  animation:recordKeyboardSearchAppear 260ms cubic-bezier(.22,.61,.36,1) both;
+}
+@media (prefers-reduced-motion:reduce){
+  #recordRoomScreen.record-search-open #recordSearchGroup,
+  #recordRoomScreen.record-search-open .recordSearchClose{
+    animation:none;
+  }
 }
 #recordRoomScreen.record-search-open .recordSearchClose:active{
   background:#eeeeee;
@@ -334,22 +355,6 @@
 }
 #recordRoomScreen.record-search-open.record-search-has-query #recordList{
   display:block ;
-}
-
-#recordRoomScreen.record-search-open.record-keyboard-open .recordRoomScreenFloatingBar{
-  height:47px ;
-  min-height:47px ;
-  padding-top:0 ;
-  padding-bottom:0 ;
-}
-#recordRoomScreen.record-search-open.record-keyboard-open #recordSearchGroup{
-  left:3px ;
-  right:60px ;
-  bottom:0 ;
-}
-#recordRoomScreen.record-search-open.record-keyboard-open .recordSearchClose{
-  right:3px ;
-  bottom:0 ;
 }
 
 /* 키보드가 실제로 열린 뒤에만 상단 4개 메뉴를 접는다.
@@ -378,10 +383,6 @@
   pointer-events:none !important;
 }
 
-/* 하단 검색바만 키보드 상단에 즉시 고정한다. 페이지 본문/상단의 위치는 JS로 움직이지 않는다. */
-#recordRoomScreen.record-search-open.record-keyboard-open .recordRoomScreenFloatingBar {
-  bottom:var(--record-keyboard-offset, 0px) !important;
-}
 #recordRoomScreen .recordStickyArea {
   top:0 !important;
   transform:none !important;
