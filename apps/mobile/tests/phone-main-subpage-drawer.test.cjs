@@ -17,7 +17,7 @@ const kcfJs = fs.readFileSync('kinder-feedback.js', 'utf8');
 test('QuickNote and Observation hamburgers open the shared Attendance drawer', () => {
   assert.match(html, /id="observationRosterRecordRoomBtn" onclick="openOlliMainSubpageDrawer\(event, 'observation'\)"/);
   assert.match(html, /class="kcfRoundBtn kcfRecordBtn" onclick="openOlliMainSubpageDrawer\(event, 'quicknote'\)"/);
-  assert.match(html, /src="olli-main-subpage-drawer\.js\?v=20261011-opaque-return-1"/);
+  assert.match(html, /src="olli-main-subpage-drawer\.js\?v=20261011-prepared-rear-1"/);
   assert.match(drawerJs, /async function prepareAttendanceState\(\)[\s\S]*openRecordAttendanceDashboard/);
   assert.match(drawerJs, /getOlliLastRecordDivisionView/);
 });
@@ -70,7 +70,7 @@ test('closing drawer keeps Attendance opaque while retaining fade for page switc
   assert.match(close, /recordRoom\?\.classList\.remove\('vivizac-slide-under-fade'\)/);
   assert.match(close, /waitForTransition\(mainPage, 'transform'/);
   assert.match(switches, /beginDrawerReturnFade\(state\.recordRoom\)/);
-  assert.match(html, /olli-main-subpage-drawer\.js\?v=20261011-opaque-return-1/);
+  assert.match(html, /olli-main-subpage-drawer\.js\?v=20261011-prepared-rear-1/);
 });
 
 test('Remaining main page keeps the 3px highlight-safe fade with no blur', () => {
