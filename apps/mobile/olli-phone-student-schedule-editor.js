@@ -187,9 +187,9 @@
       #elementaryInfoModal .olliPhoneScheduleSummaryList,#kinderInfoModal .olliPhoneScheduleSummaryList{display:grid;gap:7px;}
       #elementaryInfoModal .olliPhoneScheduleSummaryItem,#kinderInfoModal .olliPhoneScheduleSummaryItem{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;min-height:43px;padding:8px 10px;border-radius:12px;background:#fff;border:1px solid #e9ebee;box-sizing:border-box;}
       #elementaryInfoModal .olliPhoneScheduleOrder,#kinderInfoModal .olliPhoneScheduleOrder{min-width:35px;color:#8f959c;font-size:10px;font-weight:750;}
-      #elementaryInfoModal .olliPhoneScheduleMain,#kinderInfoModal .olliPhoneScheduleMain{min-width:0;}
-      #elementaryInfoModal .olliPhoneScheduleWhen,#kinderInfoModal .olliPhoneScheduleWhen{color:#25292e;font-size:12px;font-weight:800;letter-spacing:-.035em;}
-      #elementaryInfoModal .olliPhoneScheduleTeacher,#kinderInfoModal .olliPhoneScheduleTeacher{margin-top:2px;color:#8b9198;font-size:10.5px;font-weight:650;}
+      #elementaryInfoModal .olliPhoneScheduleMain,#kinderInfoModal .olliPhoneScheduleMain{min-width:0;display:flex;align-items:baseline;gap:4px;white-space:nowrap;overflow:hidden;}
+      #elementaryInfoModal .olliPhoneScheduleWhen,#kinderInfoModal .olliPhoneScheduleWhen{color:#25292e;font-size:12px;font-weight:500;letter-spacing:-.035em;flex:0 0 auto;}
+      #elementaryInfoModal .olliPhoneScheduleTeacher,#kinderInfoModal .olliPhoneScheduleTeacher{margin-top:0;min-width:0;color:#8b9198;font-size:10.5px;font-weight:650;overflow:hidden;text-overflow:ellipsis;}
       #elementaryInfoModal .olliPhoneScheduleClassBadge,#kinderInfoModal .olliPhoneScheduleClassBadge{height:24px;padding:0 8px;border-radius:999px;background:#f1f2f4;color:#60666e;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;white-space:nowrap;}
       #elementaryInfoModal .olliPhoneScheduleEmpty,#kinderInfoModal .olliPhoneScheduleEmpty{min-height:48px;border-radius:12px;background:#fff;border:1px dashed #dadde1;color:#9aa0a7;font-size:11px;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;}
       #elementaryInfoModal .pcStudentInfoCardIntro .olliPhoneScheduleTopDate,#kinderInfoModal .pcStudentInfoCardIntro .olliPhoneScheduleTopDate{display:grid;grid-template-columns:auto 118px;align-items:center;justify-content:end;gap:7px;margin-left:auto;}
@@ -419,7 +419,7 @@
     return '<div class="olliPhoneScheduleSummaryList">' + pairs.map((pair,index) => {
       const teacher = teacherForPair(state,pair) || '담임 미지정';
       const classLabel = displayClassForPair(state,pair);
-      return `<div class="olliPhoneScheduleSummaryItem"><div class="olliPhoneScheduleOrder">${index+1}회차</div><div class="olliPhoneScheduleMain"><div class="olliPhoneScheduleWhen">${esc(dayLabel(pair.weekday))}요일 ${esc(scheduleTimeLabel(state.division,pair.time_slot,pair.weekday))}</div><div class="olliPhoneScheduleTeacher">${esc(teacher)}</div></div>${classLabel ? `<div class="olliPhoneScheduleClassBadge">${esc(classLabel)}</div>` : ''}</div>`;
+      return `<div class="olliPhoneScheduleSummaryItem"><div class="olliPhoneScheduleOrder">${index+1}회차</div><div class="olliPhoneScheduleMain"><div class="olliPhoneScheduleWhen">${esc(dayLabel(pair.weekday))}요일 ${esc(scheduleTimeLabel(state.division,pair.time_slot,pair.weekday))}</div><div class="olliPhoneScheduleTeacher">· ${esc(teacher)}</div></div>${classLabel ? `<div class="olliPhoneScheduleClassBadge">${esc(classLabel)}</div>` : ''}</div>`;
     }).join('') + '</div>';
   }
 
@@ -845,3 +845,4 @@
   });
   global.openPhoneStudentScheduleEditor = function(division) { return openScheduleMode(division === 'kinder' ? 'kinder' : 'elementary'); };
 })(window);
+

@@ -36,7 +36,7 @@
       #elementaryInfoModal .pcStudentInfoCardIntro{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:0 0 16px;padding:0 1px 13px;border-bottom:1px solid #f0f1f3;}
       #elementaryInfoModal .pcStudentInfoCardIntro strong{font-size:17px;font-weight:820;color:#25282d;letter-spacing:-.035em;}
       #elementaryInfoModal .pcStudentInfoCardIntro span{font-size:10px;font-weight:600;color:#a0a5ad;text-align:right;line-height:1.3;}
-      #elementaryInfoModal .pcStudentInfoForm{display:grid;gap:13px;}
+      #elementaryInfoModal .pcStudentInfoForm{display:grid;gap:8px;}
       #elementaryInfoModal .pcStudentInfoGrid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
       #elementaryInfoModal .pcStudentInfoField{min-width:0;}
       #elementaryInfoModal .pcStudentInfoField .modalInput{width:100%;height:42px;min-width:0;border:1px solid #e4e6e9;border-radius:12px;background:#fff;padding:0 10px;font:inherit;font-size:13px;box-sizing:border-box;outline:none;color:#222;}
@@ -359,3 +359,4 @@
 
   installStyle();
 })(window);
+
