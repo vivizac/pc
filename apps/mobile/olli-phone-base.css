@@ -4112,6 +4112,20 @@ border-color: #F0F0F0;
     -4px 0 14px rgba(0,0,0,.055);
 }
 
+/* Keep edge-fade layers inside rounded corners only while the main drawer is open. */
+#observationRosterScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .observationRosterTopFadeLayer,
+#studentMemoScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .memoTopFadeLayer,
+#kinderChatFeedbackScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .kcfTopFadeLayer,
+#olliTalkBetaScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .olliTalkBetaEdgeBlurTop {
+  border-top-left-radius: var(--olli-phone-screen-corner-radius);
+  border-top-right-radius: var(--olli-phone-screen-corner-radius);
+}
+#observationRosterScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .observationRosterBottomFadeLayer,
+#kinderChatFeedbackScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .kcfBottomFadeLayer,
+#olliTalkBetaScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .olliTalkBetaEdgeBlurBottom {
+  border-bottom-left-radius: var(--olli-phone-screen-corner-radius);
+  border-bottom-right-radius: var(--olli-phone-screen-corner-radius);
+}
 /* Main page / record-room subpage drawer. The main page stays visible as the right 25%. */
 .olliMainDrawerMainPage,
 .olliMainDrawerCompanion {
