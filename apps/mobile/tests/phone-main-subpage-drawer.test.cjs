@@ -14,7 +14,7 @@ const kcfJs = fs.readFileSync('kinder-feedback.js', 'utf8');
 test('QuickNote and Observation hamburgers open the shared Attendance drawer', () => {
   assert.match(html, /id="observationRosterRecordRoomBtn" onclick="openOlliMainSubpageDrawer\(event, 'observation'\)"/);
   assert.match(html, /class="kcfRoundBtn kcfRecordBtn" onclick="openOlliMainSubpageDrawer\(event, 'quicknote'\)"/);
-  assert.match(html, /src="olli-main-subpage-drawer\.js\?v=20260922-bidirectional-instant-1"/);
+  assert.match(html, /src="olli-main-subpage-drawer\.js\?v=20261011-instant-underlay-1"/);
   assert.match(drawerJs, /async function prepareAttendanceState\(\)[\s\S]*openRecordAttendanceDashboard/);
   assert.match(drawerJs, /getOlliLastRecordDivisionView/);
 });
@@ -31,8 +31,19 @@ test('QuickNote and Observation hamburgers declare their source while Work hambu
 test('Main page still stops with the right quarter visible and tapping it restores the same main page', () => {
   assert.match(baseCss, /transform:translate3d\(75%,0,0\) !important;/);
   assert.match(baseCss, /width:25vw;/);
-  assert.match(baseCss, /clip-path:inset\(0 25% 0 0\);/);
+  assert.match(baseCss, /#recordRoomScreen\.olliMainDrawerSubpage\s*\{[^}]*clip-path:none;/);
+  assert.match(html, /olli-phone-base\.css\?v=20261011-full-rear-underlay-1/);
   assert.match(drawerJs, /hit\.addEventListener\('click', closeOlliMainSubpageDrawer\)/);
+});
+
+test('drawer opens with one animation frame and does not refresh cached Attendance during first paint', () => {
+  const open = drawerJs.split('function openOlliMainSubpageDrawer(event, sourceKind){')[1]?.split('async function openOlliAttendancePage(event){')[0] || '';
+  assert.match(open, /const requiresInitialRoster = !hasReadyAttendanceBehindDrawer\(recordRoom\);/);
+  assert.match(open, /if \(requiresInitialRoster\) refreshRecordRoomSubpage\(\);/);
+  assert.match(open, /requestAnimationFrame\(\(\) => \{\s*if \(drawerState !== openingState/);
+  assert.doesNotMatch(open, /requestAnimationFrame\(\(\) => \{\s*requestAnimationFrame\(/);
+  assert.match(open, /window\.setTimeout\(\(\) => \{[\s\S]*?refreshRecordRoomSubpage\(\);\s*\}, 380\)/);
+  assert.match(drawerJs, /list\.children\.length && \(mode === 'elementary' \|\| mode === 'kinder'\)/);
 });
 
 test('Remaining main page keeps the 3px highlight-safe fade with no blur', () => {

@@ -4198,8 +4198,10 @@ border-color: #F0F0F0;
 }
 #recordRoomScreen.olliMainDrawerSubpage {
   display:flex !important;
-  clip-path:inset(0 25% 0 0);
-  -webkit-clip-path:inset(0 25% 0 0);
+  /* The rear page must fill the whole viewport underneath the rounded
+     leading corners. Clipping the right 25% exposed rectangular gaps. */
+  clip-path:none;
+  -webkit-clip-path:none;
 }
 
 body.olli-main-subpage-drawer-search-active .olliMainDrawerMainPage.is-olli-main-drawer-open,

@@ -129,6 +129,12 @@
     prepareAttendanceState().catch(() => {});
   }
 
+  function hasReadyAttendanceBehindDrawer(recordRoom){
+    const list = recordRoom?.querySelector('#recordList');
+    const mode = typeof currentRecordView === 'undefined' ? '' : currentRecordView;
+    return !!(list && list.children.length && (mode === 'elementary' || mode === 'kinder'));
+  }
+
   function getRecordUtilityItem(buttonId){
     const button = document.getElementById(buttonId);
     return button ? button.closest('.recordUtilityBtn') : null;
@@ -602,15 +608,29 @@
 
     hit.hidden = false;
     document.body.classList.add(DRAWER_OPEN_CLASS);
-    refreshRecordRoomSubpage();
 
+    // The Attendance page already has a rendered roster in most sessions.
+    // Show that stable page behind the moving main page instead of replacing
+    // its DOM synchronously inside the hamburger click handler.
+    const requiresInitialRoster = !hasReadyAttendanceBehindDrawer(recordRoom);
+    if (requiresInitialRoster) refreshRecordRoomSubpage();
+
+    // The current page was already mounted; its initial transform is flushed
+    // above, so one frame is sufficient to start the 320ms slide.
     void mainPage.offsetWidth;
+    const openingState = drawerState;
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (!drawerState || navigationInFlight) return;
-        mainPage.classList.add(OPEN_CLASS);
-        companion?.classList.add(OPEN_CLASS);
-      });
+      if (drawerState !== openingState || navigationInFlight) return;
+      mainPage.classList.add(OPEN_CLASS);
+      companion?.classList.add(OPEN_CLASS);
+      if (!requiresInitialRoster) {
+        // Quietly refresh the data after the slide, not during first paint.
+        window.setTimeout(() => {
+          if (drawerState !== openingState || navigationInFlight) return;
+          if (document.body.classList.contains('olli-main-subpage-drawer-search-active')) return;
+          refreshRecordRoomSubpage();
+        }, 380);
+      }
     });
     return true;
   }
