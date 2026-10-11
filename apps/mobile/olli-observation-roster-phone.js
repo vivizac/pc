@@ -402,6 +402,26 @@ function closeObservationRosterSearch(event) {
   renderObservationMemoRoster();
 }
 
+function collapseObservationRosterStudentList() {
+  const list = document.querySelector('#observationRosterScreen .memoBodyRosterList');
+  if (!list || !list.children.length) return;
+  // Retain the existing rows during the exit motion. Rebuilding the footer
+  // here would also replace the focused search input and disturb iOS focus.
+  const height = list.getBoundingClientRect().height;
+  if (!height) return;
+  list.style.height = `${height}px`;
+  list.classList.add('memoBodyRosterListSearchCollapsing');
+  list.setAttribute('aria-hidden', 'true');
+  list.inert = true;
+  // Establish the measured start height before animating to zero.
+  list.getBoundingClientRect();
+  requestAnimationFrame(() => {
+    if (!list.isConnected || !observationRosterSearchFocused || observationRosterSearchQuery) return;
+    list.style.height = '0px';
+    list.classList.add('is-collapsed');
+  });
+}
+
 function bindObservationRosterFooterEvents() {
   const input = document.getElementById('memoRosterSearchInput');
   if (input) {
@@ -409,14 +429,9 @@ function bindObservationRosterFooterEvents() {
       if (observationRosterSearchFocused) return;
       observationRosterSearchFocused = true;
       observationRosterSortPopupOpen = false;
-      renderObservationMemoRoster();
-      const nextInput = document.getElementById('memoRosterSearchInput');
-      if (nextInput) {
-        try {
-          nextInput.focus({ preventScroll: true });
-          nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
-        } catch (_) {}
-      }
+      document.querySelector('#observationRosterScreen .memoRosterSortPopup')?.remove();
+      document.getElementById('memoRosterSortBtn')?.classList.remove('active');
+      if (!observationRosterSearchQuery) collapseObservationRosterStudentList();
     });
     input.addEventListener('input', () => {
       observationRosterSearchFocused = true;

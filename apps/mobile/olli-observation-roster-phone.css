@@ -88,6 +88,26 @@
   padding:0;
 }
 
+/* Search focus folds the existing student rows upward before they disappear.
+   Only the roster list animates; the keyboard/search controls stay unchanged. */
+#observationRosterScreen .memoBodyRosterListSearchCollapsing {
+  flex:0 0 auto;
+  overflow:hidden;
+  transform-origin:center top;
+  transition:height 260ms cubic-bezier(.22,.61,.36,1),
+             transform 260ms cubic-bezier(.22,.61,.36,1),
+             opacity 220ms ease;
+}
+#observationRosterScreen .memoBodyRosterListSearchCollapsing.is-collapsed {
+  opacity:0;
+  transform:translateY(-20px) scaleY(.94);
+}
+@media (prefers-reduced-motion:reduce) {
+  #observationRosterScreen .memoBodyRosterListSearchCollapsing {
+    transition:none;
+  }
+}
+
 #observationRosterScreen .memoBodyRosterRow {
   height:53px;
   min-height:53px;
