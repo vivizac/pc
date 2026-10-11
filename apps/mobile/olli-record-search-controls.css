@@ -175,10 +175,10 @@
 }
 
 #recordRoomScreen #recordBottomSearchControls {
-  position:absolute;
-  left:3px;
-  right:3px;
-  bottom:0;
+  position:fixed;
+  left:21px;
+  right:21px;
+  bottom:max(10px, env(safe-area-inset-bottom));
   height:47px;
   display:flex;
   align-items:center;
@@ -187,7 +187,11 @@
   visibility:hidden;
   opacity:0;
   pointer-events:none;
-  transition:opacity 180ms ease, visibility 0s linear 180ms;
+  /* Preserve the idle safe-area position; when the keyboard reaches the
+     search field, keep 4px above it without switching bottom anchors. */
+  transform:translate3d(0, calc(-1 * max(0px, var(--record-keyboard-offset, 0px) + 4px - max(10px, env(safe-area-inset-bottom)))), 0);
+  transition:transform 240ms cubic-bezier(.22,.61,.36,1),
+             opacity 180ms ease, visibility 0s linear 180ms;
 }
 #recordRoomScreen .recordBottomSearchField {
   flex:1 1 auto;
@@ -302,15 +306,11 @@
 }
 
 #recordRoomScreen.record-search-open .recordRoomScreenFloatingBar{
-  justify-content:flex-start ;
-  gap:0 ;
-  /* Keep the same geometry from the first keyboard pixel until fully open.
-     The visualViewport offset, not an independent duration, drives its travel. */
-  bottom:var(--record-keyboard-offset, 0px) !important;
-  height:47px ;
-  min-height:47px ;
-  padding-top:0 ;
-  padding-bottom:0 ;
+  /* The idle button rail never changes size or position on search activation.
+     The separate, pre-mounted search field is the only moving element. */
+  justify-content:flex-start;
+  gap:0;
+  background:transparent;
 }
 #recordRoomScreen.record-search-open #studentAddBtn,
 #recordRoomScreen.record-search-open #recordSelectionControls,
@@ -320,9 +320,8 @@
   visibility:hidden ;
   pointer-events:none ;
 }
-/* The top search icon only activates the already-mounted bottom search field.
-   Only the floating bar follows visualViewport; no control relocates or uses a
-   separate travel animation. */
+/* The top icon activates the pre-mounted bottom field without moving.
+   Only this field follows visualViewport; no additional entrance keyframes. */
 #recordRoomScreen.record-search-open #recordSearchGroup {
   visibility:hidden;
   pointer-events:none;
@@ -331,10 +330,11 @@
   visibility:visible;
   opacity:1;
   pointer-events:auto;
-  transition:opacity 180ms ease;
+  transition:transform 240ms cubic-bezier(.22,.61,.36,1), opacity 180ms ease;
 }
 @media (prefers-reduced-motion:reduce) {
-  #recordRoomScreen #recordBottomSearchControls { transition:none; }
+  #recordRoomScreen #recordBottomSearchControls,
+  #recordRoomScreen.record-search-open #recordBottomSearchControls { transition:none; }
 }
 #recordRoomScreen.record-search-open .recordSearchClose:active{
   background:#eeeeee;

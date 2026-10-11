@@ -70,6 +70,14 @@ function getRecordKeyboardOffset() {
   if (!baseline) baseline = Math.max(currentBottom, window.innerHeight || 0, document.documentElement.clientHeight || 0);
   return Math.max(0, Math.round(baseline - currentBottom));
 }
+let recordKeyboardOffsetFrame = 0;
+function scheduleRecordKeyboardOffset() {
+  if (recordKeyboardOffsetFrame) return;
+  recordKeyboardOffsetFrame = requestAnimationFrame(function() {
+    recordKeyboardOffsetFrame = 0;
+    setRecordKeyboardOffset();
+  });
+}
 function setRecordKeyboardOffset() {
   const input = getRecordSearchInput();
   const screen = getRecordSearchScreen();
@@ -83,6 +91,7 @@ function setRecordKeyboardOffset() {
     screen &&
     !closingBeforeUpdate &&
     wasKeyboardOpen &&
+    document.activeElement !== input &&
     previousOffset > 24 &&
     offset > 24 &&
     previousOffset - offset > 16
@@ -180,9 +189,9 @@ function handleSearchPillClick(event) {
       getRecordSearchInput()?.getBoundingClientRect();
     },
     afterFocus:function() {
-      setRecordKeyboardOffset();
-      setTimeout(setRecordKeyboardOffset, 120);
-      setTimeout(setRecordKeyboardOffset, 280);
+      scheduleRecordKeyboardOffset();
+      // One settle check covers iOS builds with sparse viewport events.
+      setTimeout(setRecordKeyboardOffset, 320);
     }
   });
 }
@@ -327,9 +336,7 @@ function bindRecordSearchInput() {
     const screen = getRecordSearchScreen();
     if (screen) screen.classList.remove('record-keyboard-closing');
     if (!window.__olliRecordSearchViewportBottomBaseline) captureRecordSearchViewportBaseline(true);
-    setTimeout(setRecordKeyboardOffset, 40);
-    setTimeout(setRecordKeyboardOffset, 160);
-    setTimeout(setRecordKeyboardOffset, 300);
+    scheduleRecordKeyboardOffset();
   }, true);
   input.addEventListener('blur', function() {
     const screen = getRecordSearchScreen();
@@ -338,8 +345,7 @@ function bindRecordSearchInput() {
     }
 
     // iOS 키보드가 내려가는 동안에는 하단 검색바를 숨긴 채 viewport만 추적합니다.
-    setTimeout(setRecordKeyboardOffset, 40);
-    setTimeout(setRecordKeyboardOffset, 120);
+    scheduleRecordKeyboardOffset();
     setTimeout(function() {
       const currentScreen = getRecordSearchScreen();
       const keyboardClosed = getRecordKeyboardOffset() < 24;
@@ -403,14 +409,8 @@ function initRecordSearchHandlers() {
 
   if (window.visualViewport && !window.__olliRecordSearchViewportBound) {
     window.__olliRecordSearchViewportBound = true;
-    window.visualViewport.addEventListener('resize', function() {
-      setRecordKeyboardOffset();
-      requestAnimationFrame(setRecordKeyboardOffset);
-    });
-    window.visualViewport.addEventListener('scroll', function() {
-      setRecordKeyboardOffset();
-      requestAnimationFrame(setRecordKeyboardOffset);
-    });
+    window.visualViewport.addEventListener('resize', scheduleRecordKeyboardOffset, { passive:true });
+    window.visualViewport.addEventListener('scroll', scheduleRecordKeyboardOffset, { passive:true });
   }
   if (!window.__olliRecordSearchWindowResizeBound) {
     window.__olliRecordSearchWindowResizeBound = true;

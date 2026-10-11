@@ -801,21 +801,13 @@
   min-height:var(--olli-phone-bottom-control-height, 47px) !important;
   padding:0 !important;
   z-index:120 !important;
-  /* Follow the visualViewport pixel-for-pixel; avoid easing that trails the keyboard.
-     Keep the idle safe-area baseline and move only enough to reach a 4px keyboard gap. */
+  /* Keep one bottom anchor in both states. The motion follows the viewport;
+     CSS interpolates a single-step iOS resize instead of snapping instantly. */
   transform:translate3d(0, calc(-1 * max(0px, var(--olli-observation-keyboard-offset, 0px) + 4px - var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom))))), 0) !important;
-  animation:none !important;
-  transition:none !important;
+  transition:transform 240ms cubic-bezier(.22,.61,.36,1) !important;
 }
-
-/* Keep one fixed bottom anchor across keyboard-open state changes.
-   Switching from safe-area bottom to 4px mid-motion caused a visible jump.
-   The transform above provides the same final 4px keyboard clearance. */
-#observationRosterScreen.observation-keyboard-open .memoRosterUtilityBar {
-  height:var(--olli-phone-bottom-control-height, 47px) !important;
-  min-height:var(--olli-phone-bottom-control-height, 47px) !important;
-  padding-top:0 !important;
-  padding-bottom:0 !important;
+@media (prefers-reduced-motion:reduce) {
+  #observationRosterScreen .memoRosterUtilityBar { transition:none !important; }
 }
 
 /* 하단 [검색][정렬] 도구 크기를 맞춘다. */

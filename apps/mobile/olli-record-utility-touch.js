@@ -187,6 +187,15 @@
   window.__olliObservationRosterKeyboardV3 = true;
 
   let baselineBottom = 0;
+  let keyboardFrame = 0;
+
+  function scheduleKeyboardSync() {
+    if (keyboardFrame) return;
+    keyboardFrame = requestAnimationFrame(function() {
+      keyboardFrame = 0;
+      syncKeyboardOffset();
+    });
+  }
 
   function getScreen() {
     return document.getElementById('observationRosterScreen');
@@ -255,10 +264,9 @@
   document.addEventListener('focusin', function (event) {
     if (!event.target || event.target.id !== 'memoRosterSearchInput') return;
     if (!baselineBottom) captureBaseline(true);
-    syncKeyboardOffset();
-    setTimeout(syncKeyboardOffset, 60);
-    setTimeout(syncKeyboardOffset, 160);
-    setTimeout(syncKeyboardOffset, 300);
+    scheduleKeyboardSync();
+    // One late check protects iOS versions that send a single resize event.
+    setTimeout(syncKeyboardOffset, 320);
   }, true);
 
   document.addEventListener('focusout', function (event) {
@@ -272,14 +280,8 @@
   }, true);
 
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', function () {
-      syncKeyboardOffset();
-      requestAnimationFrame(syncKeyboardOffset);
-    }, { passive:true });
-    window.visualViewport.addEventListener('scroll', function () {
-      syncKeyboardOffset();
-      requestAnimationFrame(syncKeyboardOffset);
-    }, { passive:true });
+    window.visualViewport.addEventListener('resize', scheduleKeyboardSync, { passive:true });
+    window.visualViewport.addEventListener('scroll', scheduleKeyboardSync, { passive:true });
   }
 })();
 
