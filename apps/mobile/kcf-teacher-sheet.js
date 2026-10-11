@@ -15,8 +15,8 @@
     viewportFrame:0,
     inlineControlsFrame:0,
     inlineBlurTimer:0,
-    inlineBlurAt:0,
-    inlineBlurViewportHeight:0,
+    inlineClosing:false,
+    inlineMinViewportHeight:0,
     inlineClosedViewportHeight:0,
     caretRevealTimer:0,
     suppressBlurSync:false,
@@ -55,8 +55,6 @@
   function clearInlineBlurTimer(){
     if (state.inlineBlurTimer) clearTimeout(state.inlineBlurTimer);
     state.inlineBlurTimer = 0;
-    state.inlineBlurAt = 0;
-    state.inlineBlurViewportHeight = 0;
   }
 
   function modeEnabled(){
@@ -90,12 +88,16 @@
       // move the message pane or scroll it on keyboard focus/resize.
       var covered = Math.max(0, (global.innerHeight || height) - top - height);
       screen.style.setProperty('--kcf-inline-chat-reserve', Math.ceil(covered + 204) + 'px');
-      // Begin the single-line morph during keyboard descent, not after it ends.
-      // Height recovery after blur also guards against focus loss on ascent.
-      if (state.inlineBlurAt && document.activeElement !== baseInput()
-          && (global.performance?.now?.() || 0) - state.inlineBlurAt > 120
-          && height >= Math.min(state.inlineClosedViewportHeight - 24,
-                                state.inlineBlurViewportHeight + 16)) {
+      // Keep viewport attachment during descent; start morph separately.
+      state.inlineMinViewportHeight = Math.min(state.inlineMinViewportHeight || height, height);
+      if (!state.inlineClosing
+          && state.inlineClosedViewportHeight - state.inlineMinViewportHeight > 180
+          && height - state.inlineMinViewportHeight > 80
+          && height >= state.inlineClosedViewportHeight - 160) {
+        // iOS may animate keyboard dismissal before dispatching blur.
+        beginInlineClosing();
+      }
+      if (state.inlineClosing && height >= state.inlineClosedViewportHeight - 24) {
         traceInlineFocus('keyboard-returned');
         closeInline({ skipBlur:true });
       }
@@ -518,12 +520,48 @@
     animation.addEventListener('cancel', finish, { once:true });
   }
 
+  // Start the 183px -> 47px morph immediately, retaining the visualViewport
+  // attachment until keyboard descent ends.
+  function beginInlineClosing(){
+    if (!state.inlineOpen || state.inlineClosing) return;
+    state.inlineClosing = true;
+    var screen = document.getElementById('kinderChatFeedbackScreen');
+    var composer = screen?.querySelector('.kcfComposer');
+    var fromHeight = composer?.getBoundingClientRect().height;
+    screen?.classList.add('kcfInlineDialogueClosing');
+    animateInlineComposer(composer, fromHeight);
+    if (document.activeElement === baseInput()) baseInput().blur();
+    // Fallback finalizes only; it does not delay the shrink animation.
+    clearInlineBlurTimer();
+    state.inlineBlurTimer = setTimeout(function(){
+      state.inlineBlurTimer = 0;
+      if (state.inlineOpen && state.inlineClosing
+          && document.activeElement !== baseInput()) {
+        traceInlineFocus('closing-fallback');
+        closeInline({ skipBlur:true });
+      }
+    }, 650);
+    scheduleViewportSync();
+  }
+
+  function cancelInlineClosing(){
+    if (!state.inlineClosing) return;
+    state.inlineClosing = false;
+    clearInlineBlurTimer();
+    var screen = document.getElementById('kinderChatFeedbackScreen');
+    var composer = screen?.querySelector('.kcfComposer');
+    var fromHeight = composer?.getBoundingClientRect().height;
+    screen?.classList.remove('kcfInlineDialogueClosing');
+    animateInlineComposer(composer, fromHeight);
+  }
+
   function openInline(event){
     if (state.open) close({ sync:true });
     var input = baseInput();
     var screen = document.getElementById('kinderChatFeedbackScreen');
     var keyboard = global.OlliMobileKeyboardActivation;
     if (!input || !screen || !keyboard) return false;
+    cancelInlineClosing();
     clearInlineBlurTimer();
     if (!state.inlineOpen) {
       // The final textarea geometry is established synchronously, but moving
@@ -535,6 +573,7 @@
         screen.querySelector('.kcfComposer')?.style.removeProperty('overflow');
       }
       state.inlineClosedViewportHeight = Number(global.visualViewport?.height || global.innerHeight || 0);
+      state.inlineMinViewportHeight = state.inlineClosedViewportHeight;
       state.inlineOpen = true;
       screen.classList.add('kcfInlineDialogueActive');
       input.readOnly = false;
@@ -576,6 +615,7 @@
     if (!state.inlineOpen) return;
     var opts = options || {};
     state.inlineOpen = false;
+    state.inlineClosing = false;
     clearInlineBlurTimer();
     if (state.inlineControlsFrame) cancelAnimationFrame(state.inlineControlsFrame);
     state.inlineControlsFrame = 0;
@@ -586,7 +626,7 @@
     var composer = screen?.querySelector('.kcfComposer');
     var fromHeight = composer?.getBoundingClientRect().height;
     if (screen) {
-      screen.classList.remove('kcfInlineDialogueActive');
+      screen.classList.remove('kcfInlineDialogueActive', 'kcfInlineDialogueClosing');
       screen.style.removeProperty('--kcf-inline-chat-reserve');
     }
     var layer = document.getElementById('kcfComposerLayer');
@@ -694,6 +734,7 @@
     var inline = baseInput();
     if (inline) {
       inline.addEventListener('focus', function(){
+        cancelInlineClosing();
         clearInlineBlurTimer();
         traceInlineFocus('focus-event');
         scheduleViewportSync();
@@ -701,16 +742,7 @@
       inline.addEventListener('blur', function(){
         if (!state.inlineOpen) return;
         traceInlineFocus('blur-event');
-        clearInlineBlurTimer();
-        state.inlineBlurAt = global.performance?.now?.() || Date.now();
-        state.inlineBlurViewportHeight = Number(global.visualViewport?.height || global.innerHeight || 0);
-        state.inlineBlurTimer = setTimeout(function(){
-          state.inlineBlurTimer = 0;
-          if (!state.inlineOpen || document.activeElement === inline) return;
-          traceInlineFocus('blur-fallback');
-          closeInline({ skipBlur:true });
-        }, 420);
-        scheduleViewportSync();
+        beginInlineClosing();
       });
     }
     var bottom = document.querySelector('#kinderChatFeedbackScreen .kcfComposerBottom');

@@ -461,3 +461,43 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
   grid-column:5;
   grid-row:2;
 }
+
+/* The input becomes one row during keyboard descent, not after it.
+   The active class keeps visualViewport anchoring until final cleanup. */
+#kinderChatFeedbackScreen.kcfInlineDialogueActive.kcfInlineDialogueClosing .kcfComposer {
+  height:var(--olli-phone-bottom-control-height, 47px);
+  min-height:var(--olli-phone-bottom-control-height, 47px);
+  max-height:var(--olli-phone-bottom-control-height, 47px);
+  justify-content:flex-end;
+  padding:4px 7px 3px 11px;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive.kcfInlineDialogueClosing .kcfComposerBottom {
+  display:flex;
+  align-items:center;
+  min-height:34px;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive.kcfInlineDialogueClosing .kcfInputActivateWrap {
+  flex:1 1 auto;
+  width:auto;
+  height:34px;
+  min-height:34px;
+  max-height:34px;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive.kcfInlineDialogueClosing .kcfInput {
+  height:34px !important;
+  min-height:34px !important;
+  max-height:34px !important;
+  padding:5px 2px 3px;
+  white-space:nowrap;
+  overflow:hidden !important;
+  text-overflow:ellipsis;
+  pointer-events:none;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive.kcfInlineDialogueClosing .kcfInputActivateBtn {
+  display:block;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive.kcfInlineDialogueClosing .kcfComposerBottom > .kcfAutoStudentRoster,
+#kinderChatFeedbackScreen.kcfInlineDialogueActive.kcfInlineDialogueClosing .kcfComposerModeBtn {
+  display:none;
+}
+
