@@ -71,6 +71,31 @@ function getRecordKeyboardOffset() {
   return Math.max(0, Math.round(baseline - currentBottom));
 }
 let recordKeyboardOffsetFrame = 0;
+let recordSearchListReturnTimer = 0;
+let recordSearchListReturnFallback = 0;
+function cancelRecordSearchListReturn() {
+  if (recordSearchListReturnTimer) clearTimeout(recordSearchListReturnTimer);
+  if (recordSearchListReturnFallback) clearTimeout(recordSearchListReturnFallback);
+  recordSearchListReturnTimer = 0;
+  recordSearchListReturnFallback = 0;
+  getRecordSearchScreen()?.classList.remove('record-search-list-restoring');
+}
+function finishRecordSearchListReturn() {
+  if (recordSearchListReturnTimer) clearTimeout(recordSearchListReturnTimer);
+  if (recordSearchListReturnFallback) clearTimeout(recordSearchListReturnFallback);
+  recordSearchListReturnTimer = 0;
+  recordSearchListReturnFallback = 0;
+  getRecordSearchScreen()?.classList.remove('record-search-list-restoring');
+}
+function scheduleRecordSearchListReturn() {
+  const screen = getRecordSearchScreen();
+  if (!screen?.classList.contains('record-search-list-restoring')
+      || screen.classList.contains('record-keyboard-closing')
+      || screen.classList.contains('record-keyboard-open')
+      || recordSearchListReturnTimer) return;
+  // Allow the 220ms utility-row collapse to finish before fading in the list.
+  recordSearchListReturnTimer = setTimeout(finishRecordSearchListReturn, 240);
+}
 function scheduleRecordKeyboardOffset() {
   if (recordKeyboardOffsetFrame) return;
   recordKeyboardOffsetFrame = requestAnimationFrame(function() {
@@ -123,6 +148,7 @@ function setRecordKeyboardOffset() {
     const closingNow = screen.classList.contains('record-keyboard-closing');
     if (!keyboardOpen && closingNow) {
       screen.classList.remove('record-keyboard-closing');
+      scheduleRecordSearchListReturn();
 
       // 검색어가 남아 있으면 키보드만 닫고 검색 화면/결과는 유지한다.
       // 출결 버튼처럼 검색 결과 위에서 실행하는 동작이 blur를 만들더라도
@@ -147,6 +173,7 @@ function setRecordKeyboardOffset() {
   }
 
   window.__olliRecordKeyboardLastOffset = offset;
+  if (!keyboardOpen) scheduleRecordSearchListReturn();
 }
 function syncRecordSearchQueryState() {
   const screen = getRecordSearchScreen();
@@ -171,6 +198,7 @@ function handleSearchPillClick(event) {
     input:getRecordSearchInput,
     selectionEnd:true,
     beforeFocus:function() {
+      cancelRecordSearchListReturn();
       syncRecordControlRail();
       setRecordSearchDrawerStripHidden(true);
       captureRecordSearchViewportBaseline(true);
@@ -198,22 +226,26 @@ function handleSearchPillClick(event) {
 function closeSearch(event) {
   if (event) event.stopPropagation();
   const screen = getRecordSearchScreen();
+  // Blur and visualViewport callbacks may arrive after the X click.
+  if (!screen?.classList.contains('record-search-open')) return;
   const pill = getRecordSearchPill();
-  setRecordSearchDrawerStripHidden(false);
   const input = getRecordSearchInput();
+  const hadQuery = !!String(input?.value || '').trim();
   const keyboardVisible = !!(
-    screen &&
-    (screen.classList.contains('record-keyboard-open') || getRecordKeyboardOffset() > 24)
+    screen.classList.contains('record-keyboard-open') || getRecordKeyboardOffset() > 24
   );
 
-  // 키보드가 열린 상태에서 닫는 경우, 키보드가 내려가는 동안 하단 바를 숨깁니다.
-  // 실제 viewport가 원래 높이로 돌아온 뒤 기본 하단 바가 다시 나타납니다.
-  if (screen && keyboardVisible) screen.classList.add('record-keyboard-closing');
-
-  if (screen) {
-    screen.classList.remove('record-search-open');
-    screen.classList.remove('record-search-has-query');
+  setRecordSearchDrawerStripHidden(false);
+  cancelRecordSearchListReturn();
+  // The list already exists under display:none. Keep it invisible only while
+  // the keyboard closes and the 220ms header layout transition completes.
+  if (keyboardVisible) {
+    screen.classList.add('record-search-list-restoring', 'record-keyboard-closing');
+    // Failsafe: sparse iOS viewport events must never leave the list hidden.
+    recordSearchListReturnFallback = setTimeout(finishRecordSearchListReturn, 900);
   }
+
+  screen.classList.remove('record-search-open', 'record-search-has-query');
   if (pill) {
     pill.classList.remove('active');
     pill.setAttribute('aria-expanded', 'false');
@@ -227,14 +259,16 @@ function closeSearch(event) {
     setRecordKeyboardOffset();
   } else {
     document.documentElement.style.setProperty('--record-keyboard-offset', '0px');
-    if (screen) {
-      screen.classList.remove('record-keyboard-open');
-      screen.classList.remove('record-keyboard-closing');
-    }
+    screen.classList.remove('record-keyboard-open', 'record-keyboard-closing');
     window.__olliRecordSearchViewportBottomBaseline = 0;
     window.__olliRecordKeyboardLastOffset = 0;
   }
-  loadRecords('');
+  // Empty search only hid the existing list: do not recreate every student
+  // row or refetch Supabase when simply closing the keyboard.
+  const list = document.getElementById('recordList');
+  if (hadQuery || (list && !list.children.length)) {
+    void loadRecords('', { localOnly:true });
+  }
 }
 async function searchRecords() {
   syncRecordSearchQueryState();

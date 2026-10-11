@@ -346,6 +346,18 @@
 #recordRoomScreen.record-search-open.record-search-has-query #recordList{
   display:block ;
 }
+/* Keep the existing roster out of view until the keyboard and header finish
+   restoring. Fade it in instead of showing it halfway through a layout shift. */
+#recordRoomScreen #recordList {
+  transition:opacity 170ms ease;
+}
+#recordRoomScreen.record-search-list-restoring #recordList {
+  opacity:0;
+  pointer-events:none;
+}
+@media (prefers-reduced-motion:reduce) {
+  #recordRoomScreen #recordList { transition:none; }
+}
 
 /* 키보드가 실제로 열린 뒤에만 상단 4개 메뉴를 접는다.
    라인과 초등부/유치부 행은 숨기거나 위치를 강제 보정하지 않고,
