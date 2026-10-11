@@ -18,7 +18,7 @@ test('QuickNote and Observation hamburgers open the shared Attendance drawer', (
   assert.match(html, /id="observationRosterRecordRoomBtn" onclick="openOlliMainSubpageDrawer\(event, 'observation'\)"/);
   assert.match(html, /class="kcfRoundBtn kcfRecordBtn" onclick="openOlliMainSubpageDrawer\(event, 'quicknote'\)"/);
   assert.match(html, /src="olli-main-subpage-drawer\.js\?v=20261011-prepared-rear-1"/);
-  assert.match(drawerJs, /async function prepareAttendanceState\(\)[\s\S]*openRecordAttendanceDashboard/);
+  assert.match(drawerJs, /async function prepareAttendanceState\(options = \{\}\)[\s\S]*openRecordAttendanceDashboard/);
   assert.match(drawerJs, /getOlliLastRecordDivisionView/);
 });
 
