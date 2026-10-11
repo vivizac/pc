@@ -90,8 +90,8 @@
         </div>
         <div class="pcStudentInfoSchedule"><div class="olliPhoneScheduleEmpty">시간표에서 불러오는 중...</div></div>
         <div class="pcStudentInfoField"><div class="modalLabel">픽업</div><div id="kinderInfoPickupReadonly" class="pcStudentInfoTeacherReadonly isEmpty">등록된 픽업 없음</div></div>
-        <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeKinderInfoModal()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="phoneKinderInfoSaveBtn" onclick="saveKinderInfo()">저장</button></div>
         ${global.renderPhoneStudentInfoManagementControls ? global.renderPhoneStudentInfoManagementControls(student, 'kinder') : ''}
+        <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeKinderInfoModal()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="phoneKinderInfoSaveBtn" onclick="saveKinderInfo()">저장</button></div>
       </div>
     </div></div>`;
   }
@@ -283,4 +283,5 @@
 
   installStyle();
 })(window);
+
 

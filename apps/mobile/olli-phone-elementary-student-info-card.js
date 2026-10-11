@@ -101,8 +101,8 @@
         </div>
         <div class="pcStudentInfoSchedule"><div class="olliPhoneScheduleEmpty">시간표에서 불러오는 중...</div></div>
         <div class="pcStudentInfoField"><div class="modalLabel">그룹</div><div id="elementaryGroupToggleRow" class="infoToggleRow">${renderGroupButtons()}</div></div>
-        <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeElementaryInfoModal()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="phoneElementaryInfoSaveBtn" onclick="saveElementaryInfo()">저장</button></div>
         ${global.renderPhoneStudentInfoManagementControls ? global.renderPhoneStudentInfoManagementControls(student, 'elementary') : ''}
+        <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeElementaryInfoModal()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="phoneElementaryInfoSaveBtn" onclick="saveElementaryInfo()">저장</button></div>
       </div>
     </div></div>`;
   }
@@ -359,4 +359,5 @@
 
   installStyle();
 })(window);
+
 

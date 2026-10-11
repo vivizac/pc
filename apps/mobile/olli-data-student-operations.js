@@ -106,17 +106,17 @@ function handleStudentRowClick(event, studentId) {
 }
 
 
-// Attendance student lifecycle controls live below Cancel/Save in the phone info sheet.
+// Attendance student lifecycle controls live above Cancel/Save in the phone info sheet.
 // The click handler resolves the current sheet target, never a stale long-press selection.
 function renderPhoneStudentInfoManagementControls(student, division) {
   const type = division === 'kinder' ? 'kinder' : 'elementary';
   const status = typeof getStudentStatus === 'function' ? getStudentStatus(student) : String(student?.status || 'active');
-  const actions = status === 'active'
-    ? [['paused', '휴원'], ['withdrawn', '퇴원']]
-    : (status === 'paused' ? [['active', '재등록'], ['withdrawn', '퇴원']] : [['active', '재등록']]);
-  const statusButtons = actions.map(([action, label]) =>
-    `<button type="button" class="pcStudentInfoManagementBtn" onclick="handlePhoneStudentInfoManagementAction('${action}','${type}')">${label}</button>`
-  ).join('');
+  const actions = [['paused', '휴원'], ['withdrawn', '퇴원'], ['active', '재등록']];
+  const statusButtons = actions.map(([action, label]) => {
+    const disabled = action === 'active' ? status === 'active'
+      : action === 'paused' ? status !== 'active' : status === 'withdrawn';
+    return `<button type="button" class="pcStudentInfoManagementBtn"${disabled ? ' disabled' : ''} onclick="handlePhoneStudentInfoManagementAction('${action}','${type}')">${label}</button>`;
+  }).join('');
   return `<section class="pcStudentInfoManagement" aria-label="학생 관리">
     <div class="pcStudentInfoManagementLabel">학생 관리</div>
     <div class="pcStudentInfoManagementActions">${statusButtons}</div>
