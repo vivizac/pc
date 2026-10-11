@@ -8,13 +8,13 @@ const startup = fs.readFileSync('olli-app-startup.js', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
 
 // Exercise the real student-list branches with a fake DOM and stubbed network.
-function exerciseRoster(view, { changed = false, localOnly = false } = {}) {
+function exerciseRoster(view, { changed = false, localOnly = false, reuseRendered = false } = {}) {
   const events = [];
   const begin = navigation.indexOf('async function loadRecords(name, options = {}) {');
   const end = navigation.indexOf('  const academyId = requireOlliAcademyId(', begin);
   assert.ok(begin >= 0 && end > begin);
   const body = navigation.slice(begin, end) + '\n  return;\n}';
-  const makeLoader = new Function('events', 'view', 'changed', `
+  const makeLoader = new Function('events', 'view', 'changed', 'reuseRendered', `
     let currentRecordView = view, currentObservationView = view;
     const window = { __olliRecordListLoadToken: 0,
       OlliPhoneAttendanceAdapter: {
@@ -22,7 +22,7 @@ function exerciseRoster(view, { changed = false, localOnly = false } = {}) {
         afterRecordListLoaded: (division, name, options) => { events.push('after:'+options.renderLocal); return true }
       }
     };
-    const document = { getElementById: () => ({ children: [] }) };
+    const document = { getElementById: () => ({ children: reuseRendered ? [{}] : [] }) };
     const getOlliCurrentAcademyId = () => 'academy-test';
     const renderElementaryRecords = () => events.push('elementary-render');
     const renderKinderRecords = () => events.push('kinder-render');
@@ -32,7 +32,7 @@ function exerciseRoster(view, { changed = false, localOnly = false } = {}) {
     ${body}
     return loadRecords;
   `);
-  return makeLoader(events, view, changed)('', { localOnly }).then(() => events);
+  return makeLoader(events, view, changed, reuseRendered)('', { localOnly, reuseRendered }).then(() => events);
 }
 
 test('cached elementary and kinder display local attendance in exactly one initial paint', async () => {
@@ -54,11 +54,26 @@ test('localOnly screen restore never waits for server data', async () => {
   assert.deepEqual(events, ['hydrate:false', 'elementary-render']);
 });
 
+test('prewarmed drawer reuses student DOM if background refresh finds no changes', async () => {
+  for (const view of ['elementary','kinder']) {
+    const events = await exerciseRoster(view, { reuseRendered: true, changed: false });
+    assert.deepEqual(events, ['hydrate:false', 'server-refresh', 'after:false']);
+  }
+});
+
+test('prewarmed drawer updates student DOM only after actual server changes', async () => {
+  for (const view of ['elementary','kinder']) {
+    const events = await exerciseRoster(view, { reuseRendered: true, changed: true });
+    assert.deepEqual(events, ['hydrate:false', 'server-refresh', view+'-render', 'after:false']);
+  }
+});
+
 test('server attendance sync and startup guard remain connected', () => {
   assert.match(adapter, /Promise\.all\(\[\s*syncCurrentMonth\(new Date\(\), \{ render: true, skipLocal: true \}\),\s*syncTodaySchedule\(new Date\(\), \{ render: true, skipLocal: true \}\)/);
   assert.match(startup, /refreshOlliVisibleViewsAfterStudentServerRefresh\(result\)/);
   assert.match(startup, /studentRefresh\?\.changed === true \|\| !recordList\?\.children\?\.length/);
   for (const file of ['olli-record-room-navigation.js', 'olli-attendance-phone-adapter.js', 'olli-app-startup.js']) {
-    assert.match(html, new RegExp(file.replace(/\./g,'\\.')+'\\?v=20261011-roster-render-budget-1'));
+    const version = file === 'olli-attendance-phone-adapter.js' ? '20261011-roster-render-budget-1' : '20261011-prepared-rear-1';
+    assert.ok(html.includes(file + '?v=' + version));
   }
 });
