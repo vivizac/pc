@@ -849,7 +849,7 @@ background: #FEFEFE ;
 }
 
 
-/* 학생 길게 누르기 선택/삭제 */
+/* 기록보드 학생 작업 팝업 및 학생 다중 선택 공통 스타일 */
 .studentActionOverlay {
   display: none;
   position: fixed;
@@ -863,11 +863,6 @@ background: #FEFEFE ;
 .studentActionOverlay.show {
   display: flex;
 }
-#recordRoomScreen > #studentActionOverlay {
-  z-index: 120300;
-  justify-content: flex-start;
-  padding-left: 21px;
-}
 .studentActionCard {
   width: 100%;
   max-width: 520px;
@@ -879,11 +874,6 @@ background: #FEFEFE ;
   -webkit-backdrop-filter: blur(16px);
   overflow: hidden;
 }
-#recordRoomScreen > #studentActionOverlay .studentActionCard {
-  width: 65%;
-  max-width: 338px;
-}
-
 .studentActionTitle {
   padding: 12px 22px 4px;
   font-size: calc(14px * var(--olli-text-scale));

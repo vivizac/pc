@@ -59,120 +59,6 @@ async function transferKinderToElementary(studentId) {
   }
 }
 
-function clearStudentRowSelection() {
-  document.querySelectorAll('.studentRowSelected').forEach(el => el.classList.remove('studentRowSelected'));
-}
-
-function triggerLightHaptic() {
-  try {
-    if (navigator.vibrate) navigator.vibrate(10);
-  } catch (e) {}
-}
-
-function getPointerPoint(e) {
-  const p = e && e.touches && e.touches[0] ? e.touches[0] : e;
-  return { x: p?.clientX || 0, y: p?.clientY || 0 };
-}
-
-function cancelStudentLongPress() {
-  if (studentLongPressTimer) {
-    clearTimeout(studentLongPressTimer);
-    studentLongPressTimer = null;
-  }
-  if (studentPressAnimTimer) {
-    clearTimeout(studentPressAnimTimer);
-    studentPressAnimTimer = null;
-  }
-  if (studentPressAnimReleaseTimer) {
-    clearTimeout(studentPressAnimReleaseTimer);
-    studentPressAnimReleaseTimer = null;
-  }
-  if (studentActionPopupTimer) {
-    clearTimeout(studentActionPopupTimer);
-    studentActionPopupTimer = null;
-  }
-  clearStudentRowSelection();
-}
-
-function startStudentLongPress(e, studentId) {
-  if (studentSelectionMode) return;
-  if (e.pointerType === 'mouse' && e.button !== 0) return;
-  cancelStudentLongPress();
-  const row = e.currentTarget;
-  const point = getPointerPoint(e);
-  studentLongPressStart = point;
-
-  studentPressAnimTimer = setTimeout(() => {
-    studentPressAnimTimer = null;
-    clearStudentRowSelection();
-    if (row) row.classList.add('studentRowSelected');
-
-    studentPressAnimReleaseTimer = setTimeout(() => {
-      studentPressAnimReleaseTimer = null;
-      if (row) row.classList.remove('studentRowSelected');
-    }, 180);
-  }, 100);
-
-  studentLongPressTimer = setTimeout(() => {
-    studentLongPressTimer = null;
-    suppressNextStudentClick = true;
-
-    if (studentPressAnimTimer) {
-      clearTimeout(studentPressAnimTimer);
-      studentPressAnimTimer = null;
-    }
-    if (studentPressAnimReleaseTimer) {
-      clearTimeout(studentPressAnimReleaseTimer);
-      studentPressAnimReleaseTimer = null;
-    }
-    if (row) row.classList.remove('studentRowSelected');
-
-    triggerLightHaptic();
-    studentActionPopupTimer = setTimeout(() => {
-      studentActionPopupTimer = null;
-      openStudentActionMenu(studentId, row);
-    }, 20);
-  }, 480);
-}
-
-function moveStudentLongPress(e) {
-  if (!studentLongPressTimer) return;
-  const point = getPointerPoint(e);
-  const dx = Math.abs(point.x - studentLongPressStart.x);
-  const dy = Math.abs(point.y - studentLongPressStart.y);
-  if (dx > 10 || dy > 10) cancelStudentLongPress();
-}
-
-function openStudentActionMenu(studentId, rowEl) {
-  const recordScreen = document.getElementById('recordRoomScreen');
-  const rowOwner = rowEl && typeof rowEl.closest === 'function' ? rowEl.closest('#recordRoomScreen') : null;
-  if (!recordScreen || rowOwner !== recordScreen) return;
-
-  try {
-    if (getComputedStyle(recordScreen).display === 'none') return;
-  } catch (_) {
-    if (recordScreen.style.display === 'none') return;
-  }
-
-  const student = findStudentById(studentId);
-  if (!student) return;
-  selectedStudentActionId = studentId;
-  // 팝업이 뜰 때 학생 버튼이 다시 올라오지 않도록 선택 클래스를 유지하지 않는다.
-  clearStudentRowSelection();
-  const title = document.getElementById('studentActionTitle');
-  if (title) title.textContent = `${student.name} 선택`;
-  const overlay = recordScreen.querySelector('#studentActionOverlay');
-  if (overlay) overlay.classList.add('show');
-}
-
-function closeStudentActionMenu() {
-  selectedStudentActionId = '';
-  clearStudentRowSelection();
-  const recordScreen = document.getElementById('recordRoomScreen');
-  const overlay = recordScreen?.querySelector('#studentActionOverlay') || document.getElementById('studentActionOverlay');
-  if (overlay) overlay.classList.remove('show');
-}
-
 function openStudentInfoById(studentId) {
   const student = typeof findStudentById === 'function' ? findStudentById(String(studentId || '')) : null;
   if (!student) return false;
@@ -191,23 +77,10 @@ function openStudentInfoById(studentId) {
 }
 if (typeof window !== 'undefined') window.openStudentInfoById = openStudentInfoById;
 
-function openSelectedStudentInfoFromActionMenu() {
-  const student = findStudentById(selectedStudentActionId);
-  if (!student) return;
-  closeStudentActionMenu();
-  studentInfoModalTarget = student;
-  if (student.type === 'kinder') openKinderInfoModal();
-  else openElementaryInfoModal();
-}
-
 function handleStudentRowClick(event, studentId) {
   if (event) {
     event.preventDefault();
     event.stopPropagation();
-  }
-  if (suppressNextStudentClick) {
-    suppressNextStudentClick = false;
-    return;
   }
   const student = typeof findStudentById === 'function' ? findStudentById(studentId) : null;
   if (!student) return;
@@ -232,21 +105,71 @@ function handleStudentRowClick(event, studentId) {
   }
 }
 
-function enterStudentSelectionMode() {
-  if (!selectedStudentActionId) return;
-  studentSelectionMode = true;
-  selectedStudentIds.clear();
-  selectedStudentIds.add(selectedStudentActionId);
-  closeStudentActionMenu();
-  suppressNextStudentClick = false;
-  updateRecordHeaderUI();
-  const searchValue = document.getElementById('searchName')?.value.trim() || '';
-  loadRecords(searchValue);
+
+// Attendance student lifecycle controls live below Cancel/Save in the phone info sheet.
+// The click handler resolves the current sheet target, never a stale long-press selection.
+function renderPhoneStudentInfoManagementControls(student, division) {
+  const type = division === 'kinder' ? 'kinder' : 'elementary';
+  const status = typeof getStudentStatus === 'function' ? getStudentStatus(student) : String(student?.status || 'active');
+  const actions = status === 'active'
+    ? [['paused', '휴원'], ['withdrawn', '퇴원']]
+    : (status === 'paused' ? [['active', '재등록'], ['withdrawn', '퇴원']] : [['active', '재등록']]);
+  const statusButtons = actions.map(([action, label]) =>
+    `<button type="button" class="pcStudentInfoManagementBtn" onclick="handlePhoneStudentInfoManagementAction('${action}','${type}')">${label}</button>`
+  ).join('');
+  return `<section class="pcStudentInfoManagement" aria-label="학생 관리">
+    <div class="pcStudentInfoManagementLabel">학생 관리</div>
+    <div class="pcStudentInfoManagementActions">${statusButtons}</div>
+    <button type="button" class="pcStudentInfoDeleteBtn" onclick="handlePhoneStudentInfoManagementAction('delete','${type}')">학생 삭제</button>
+  </section>`;
+}
+let phoneStudentInfoManagementBusy = false;
+async function handlePhoneStudentInfoManagementAction(action, division) {
+  if (phoneStudentInfoManagementBusy) return false;
+  const type = division === 'kinder' ? 'kinder' : 'elementary';
+  const modal = document.getElementById(type === 'kinder' ? 'kinderInfoModal' : 'elementaryInfoModal');
+  if (!modal || modal.style.display !== 'flex') return false;
+  const target = typeof getStudentInfoModalTarget === 'function'
+    ? getStudentInfoModalTarget(type)
+    : (typeof studentInfoModalTarget !== 'undefined' ? studentInfoModalTarget : null);
+  if (!target || (target.type || 'elementary') !== type) return false;
+  const student = findStudentById(String(target.id || ''));
+  if (!student || (student.type || 'elementary') !== type) return false;
+  const status = getStudentStatus(student);
+  const allowed = action === 'delete' ||
+    (action === 'active' && status !== 'active') ||
+    (action === 'paused' && status === 'active') ||
+    (action === 'withdrawn' && status !== 'withdrawn');
+  if (!allowed) return false;
+
+  const question = action === 'delete'
+    ? '삭제 시 통계에서 제외됩니다.\n실제 수업한 학생은 퇴원으로 처리해 주세요.'
+    : `${student.name} 학생을 ${action === 'active' ? '재등록' : action === 'paused' ? '휴원' : '퇴원'} 처리할까요?\n저장하지 않은 학생정보 수정은 반영되지 않습니다.`;
+  if (!confirm(question)) return false;
+
+  phoneStudentInfoManagementBusy = true;
+  try {
+    const succeeded = action === 'delete'
+      ? await deleteStudentById(String(student.id))
+      : await updateStudentStatusById(action, String(student.id));
+    if (!succeeded) return false;
+    const openTarget = typeof getStudentInfoModalTarget === 'function' ? getStudentInfoModalTarget(type) : target;
+    if (openTarget && String(openTarget.id) === String(student.id) && modal.style.display === 'flex') {
+      if (type === 'kinder') closeKinderInfoModal();
+      else closeElementaryInfoModal();
+    }
+    return true;
+  } catch (error) {
+    alert(`학생 상태 변경에 실패했습니다.\n${error?.message || error}`);
+    return false;
+  } finally {
+    phoneStudentInfoManagementBusy = false;
+  }
 }
 
-async function setSelectedStudentStatus(status) {
-  if (!selectedStudentActionId) return;
-  const targetId = selectedStudentActionId;
+async function updateStudentStatusById(status, studentId) {
+  const targetId = String(studentId || '').trim();
+  if (!targetId) return false;
   const student = findStudentById(targetId);
   if (!student) return;
 
@@ -280,7 +203,6 @@ async function setSelectedStudentStatus(status) {
     currentMemoStudent = nextStudent;
   }
 
-  closeStudentActionMenu();
   const searchValue = document.getElementById('searchName')?.value.trim() || '';
 
   // 서버를 다시 읽기 전에 로컬 상태를 즉시 반영합니다.
@@ -297,6 +219,7 @@ async function setSelectedStudentStatus(status) {
 
   await loadRecords(searchValue);
   if (currentRecordView === 'academy') renderRecordAcademyManagementDashboard();
+  return true;
 }
 
 async function deleteSelectedStudents() {
@@ -377,8 +300,7 @@ async function deleteStudentById(studentId) {
     await deactivateStudentInSupabase(studentId);
   } catch (err) {
     alert(`학생 삭제 서버 저장에 실패했습니다.\n명단에서 숨기지 않고 그대로 유지합니다.\n저장 진단의 student_soft_delete 오류를 확인해 주세요.\n${String(err && (err.message || err) || '')}`);
-    closeStudentActionMenu();
-    return;
+    return false;
   }
   setAllStudents(getAllStudents().filter(item => String(item.id) !== String(studentId)));
   unmarkDeletedStudentId(studentId);
@@ -388,19 +310,10 @@ async function deleteStudentById(studentId) {
     document.getElementById('studentMemoScreen').style.display = 'none';
     document.getElementById('recordRoomScreen').style.display = 'flex';
   }
-  closeStudentActionMenu();
   selectedStudentIds.delete(studentId);
   updateRecordHeaderUI();
   await loadRecords(document.getElementById('searchName')?.value.trim() || '');
-}
-
-async function confirmDeleteSelectedStudent() {
-  if (!selectedStudentActionId) return;
-  const student = findStudentById(selectedStudentActionId);
-  if (!student) return;
-  const ok = confirm('삭제 시 통계에서 제외됩니다.\n실제 수업한 학생은 퇴원으로 처리해 주세요.');
-  if (!ok) return;
-  await deleteStudentById(selectedStudentActionId);
+  return true;
 }
 
 function isSupabaseConfigured() {
