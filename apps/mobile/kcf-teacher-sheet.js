@@ -18,6 +18,9 @@
     inlineRevealTimer:0,
     inlineRevealed:false,
     inlineClosing:false,
+    inlineChatFollowBottom:false,
+    inlineChatFollowFrame:0,
+    inlineChatFollowUntil:0,
     inlineMinViewportHeight:0,
     inlineClosedViewportHeight:0,
     caretRevealTimer:0,
@@ -66,11 +69,42 @@
     state.inlineRevealTimer = 0;
   }
 
+  function scrollInlineChatWithComposer(){
+    if (!state.inlineOpen || !state.inlineChatFollowBottom) return;
+    var area = document.getElementById('kcfChatArea');
+    if (!area) return;
+    area.scrollTop = Math.max(0, area.scrollHeight - area.clientHeight);
+  }
+
+  function stopInlineChatFollowFrame(){
+    if (state.inlineChatFollowFrame) cancelAnimationFrame(state.inlineChatFollowFrame);
+    state.inlineChatFollowFrame = 0;
+    state.inlineChatFollowUntil = 0;
+  }
+
+  function followInlineChatExpansion(duration){
+    if (!state.inlineOpen || !state.inlineChatFollowBottom) return;
+    var now = global.performance?.now?.() || Date.now();
+    state.inlineChatFollowUntil = Math.max(state.inlineChatFollowUntil, now + duration);
+    if (state.inlineChatFollowFrame) return;
+    function tick(){
+      state.inlineChatFollowFrame = 0;
+      if (!state.inlineOpen || !state.inlineChatFollowBottom) return;
+      scrollInlineChatWithComposer();
+      if ((global.performance?.now?.() || Date.now()) < state.inlineChatFollowUntil) {
+        state.inlineChatFollowFrame = requestAnimationFrame(tick);
+      }
+    }
+    state.inlineChatFollowFrame = requestAnimationFrame(tick);
+  }
+
   function revealInlineComposer(){
     if (!state.inlineOpen || state.inlineClosing || state.inlineRevealed) return;
     state.inlineRevealed = true;
     clearInlineRevealTimer();
     document.getElementById('kinderChatFeedbackScreen')?.classList.add('kcfInlineDialogueRevealing');
+    // Match the 285ms glass expansion without changing native focus.
+    followInlineChatExpansion(305);
   }
 
   function scheduleInlineRevealFallback(){
@@ -105,10 +139,12 @@
       layer.style.setProperty('--kcf-inline-vv-top', Math.round(top) + 'px');
       layer.style.setProperty('--kcf-inline-vv-width', Math.max(1, Math.round(width)) + 'px');
       layer.style.setProperty('--kcf-inline-vv-height', Math.max(1, Math.round(height)) + 'px');
-      // Extra scrollable space is only used when a message arrives. Do not
-      // move the message pane or scroll it on keyboard focus/resize.
+      // The message viewport shares the native keyboard offset with the composer.
+      // Its bottom inset tracks keyboard movement; the glass expansion controls
+      // the remaining visible gap so messages never sit beneath the input.
       var covered = Math.max(0, (global.innerHeight || height) - top - height);
-      screen.style.setProperty('--kcf-inline-chat-reserve', Math.ceil(covered + 204) + 'px');
+      screen.style.setProperty('--kcf-inline-chat-keyboard-offset', Math.ceil(covered) + 'px');
+      scrollInlineChatWithComposer();
       // Keep viewport attachment during descent; start morph separately.
       state.inlineMinViewportHeight = Math.min(state.inlineMinViewportHeight || height, height);
       if (!state.inlineClosing && !state.inlineRevealed
@@ -135,6 +171,26 @@
       state.viewportFrame = 0;
       syncViewport();
     });
+  }
+
+  // Respect manual history browsing: subsequent viewport events must not
+  // force the conversation back to the latest message after a user swipe.
+  function bindInlineChatGesture(){
+    var area = document.getElementById('kcfChatArea');
+    if (!area || area.dataset.kcfInlineFollowBound === '1') return;
+    area.dataset.kcfInlineFollowBound = '1';
+    area.addEventListener('pointerdown', function(){
+      if (state.inlineOpen) {
+        state.inlineChatFollowBottom = false;
+        stopInlineChatFollowFrame();
+      }
+    }, { passive:true });
+    area.addEventListener('wheel', function(){
+      if (state.inlineOpen) {
+        state.inlineChatFollowBottom = false;
+        stopInlineChatFollowFrame();
+      }
+    }, { passive:true });
   }
 
   function teacherScrollableTarget(target){
@@ -551,6 +607,7 @@
     if (!state.inlineOpen || state.inlineClosing) return;
     clearInlineRevealTimer();
     state.inlineClosing = true;
+    followInlineChatExpansion(210);
     var screen = document.getElementById('kinderChatFeedbackScreen');
     var composer = screen?.querySelector('.kcfComposer');
     var fromHeight = composer?.getBoundingClientRect().height;
@@ -583,6 +640,7 @@
   }
 
   function openInline(event){
+    bindInlineChatGesture();
     if (state.open) close({ sync:true });
     var input = baseInput();
     var screen = document.getElementById('kinderChatFeedbackScreen');
@@ -601,6 +659,9 @@
       }
       state.inlineClosedViewportHeight = Number(global.visualViewport?.height || global.innerHeight || 0);
       state.inlineMinViewportHeight = state.inlineClosedViewportHeight;
+      var chatArea = document.getElementById('kcfChatArea');
+      state.inlineChatFollowBottom = !chatArea
+        || chatArea.scrollHeight - chatArea.clientHeight - chatArea.scrollTop <= 100;
       state.inlineOpen = true;
       state.inlineRevealed = false;
       screen.classList.remove('kcfInlineDialogueRevealing');
@@ -648,6 +709,8 @@
     state.inlineOpen = false;
     state.inlineClosing = false;
     state.inlineRevealed = false;
+    state.inlineChatFollowBottom = false;
+    stopInlineChatFollowFrame();
     clearInlineBlurTimer();
     clearInlineRevealTimer();
     if (state.inlineControlsFrame) cancelAnimationFrame(state.inlineControlsFrame);
@@ -660,7 +723,7 @@
     var fromHeight = composer?.getBoundingClientRect().height;
     if (screen) {
       screen.classList.remove('kcfInlineDialogueActive', 'kcfInlineDialogueClosing', 'kcfInlineDialogueRevealing');
-      screen.style.removeProperty('--kcf-inline-chat-reserve');
+      screen.style.removeProperty('--kcf-inline-chat-keyboard-offset');
     }
     var layer = document.getElementById('kcfComposerLayer');
     if (layer) {

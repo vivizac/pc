@@ -336,8 +336,8 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
   filter:none;
 }
 
-/* Dialogue reuses the original QuickNote bottom composer and its controls.
-   Only the input layer follows the visual keyboard; the chat pane stays fixed. */
+/* Dialogue shares visualViewport keyboard movement between the composer
+   and the scrollable messages. Continuous-record mode remains unchanged. */
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerWrap {
   bottom:1px;
 }
@@ -349,8 +349,36 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
   height:var(--kcf-inline-vv-height, 100vh);
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfChatArea {
-  padding-bottom:var(--kcf-inline-chat-reserve, 204px);
+  /* Leave the last message at the idle composer distance before focus, then
+     move the viewport edge upward with the keyboard on every resize frame. */
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  bottom:calc(
+    var(--kcf-inline-chat-keyboard-offset, 0px)
+    + var(--olli-phone-bottom-control-height, 47px)
+    + var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom)))
+    + 38px
+  );
+  height:auto;
+  flex:none;
+  padding-bottom:0;
   overflow-anchor:none;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive.kcfInlineDialogueRevealing .kcfChatArea {
+  /* 183px composer minus 47px idle height, preserving existing 18px spacing. */
+  padding-bottom:118px;
+  transition:padding-bottom 285ms cubic-bezier(.2,.65,.2,1);
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive.kcfInlineDialogueClosing .kcfChatArea {
+  padding-bottom:0;
+  transition:padding-bottom 190ms cubic-bezier(.2,.65,.2,1);
+}
+@media (prefers-reduced-motion:reduce) {
+  #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfChatArea {
+    transition:none;
+  }
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposer {
   height:183px;

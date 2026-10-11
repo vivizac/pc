@@ -101,6 +101,20 @@ test('inline opening keeps synchronous iOS focus and reveals the glass after key
   assert.match(html, /kcf-teacher-sheet\.js\?v=20261011-keyboard-reveal-1/);
 });
 
+test('dialogue messages follow the keyboard without changing native textarea focus', () => {
+  assert.match(sheet, /screen\.style\.setProperty\('--kcf-inline-chat-keyboard-offset', Math\.ceil\(covered\) \+ 'px'\)/);
+  assert.match(sheet, /function scrollInlineChatWithComposer\(\)/);
+  assert.match(sheet, /area\.scrollTop = Math\.max\(0, area\.scrollHeight - area\.clientHeight\)/);
+  assert.match(sheet, /state\.inlineChatFollowBottom = !chatArea/);
+  assert.match(sheet, /area\.addEventListener\('pointerdown'/);
+  assert.match(sheet, /followInlineChatExpansion\(305\)/);
+  assert.match(css, /kcfInlineDialogueActive \.kcfChatArea \{[\s\S]*?position:absolute;[\s\S]*?--kcf-inline-chat-keyboard-offset/);
+  assert.match(css, /kcfInlineDialogueRevealing \.kcfChatArea \{[\s\S]*?padding-bottom:118px/);
+  assert.match(css, /kcfInlineDialogueClosing \.kcfChatArea \{[\s\S]*?padding-bottom:0/);
+  assert.match(html, /kcf-teacher-sheet\.js\?v=20261011-chat-follow-composer-1/);
+  assert.match(html, /kcf-teacher-sheet\.css\?v=20261011-chat-follow-composer-1/);
+});
+
 test('continuous footer matches original controls and plus has no focus chrome', () => {
   const footer = css.split('.kcfTeacherSheetBottom {')[1]?.split('}')[0] || '';
   assert.match(footer, /flex:0 0 40px;/);
