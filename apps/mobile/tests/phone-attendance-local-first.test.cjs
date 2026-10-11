@@ -17,8 +17,8 @@ test('attendance local snapshot hydrates month and week caches before server wor
 });
 
 test('record list restores attendance snapshot before awaiting student server refresh', () => {
-  assert.match(navigation, /hydrateRecordAttendanceLocalSnapshot\(\{ render: false \}\);\s*renderElementaryRecords\(name\);\s*if \(localOnly\) return true;\s*const studentRefresh = await loadStudentsFromSupabase\(\);/);
-  assert.match(navigation, /hydrateRecordAttendanceLocalSnapshot\(\{ render: false \}\);\s*renderKinderRecords\(name\);\s*if \(localOnly\) return true;\s*const studentRefresh = await loadStudentsFromSupabase\(\);/);
+  assert.match(navigation, /hydrateRecordAttendanceLocalSnapshot\(\{ render: false \}\);[\s\S]*?options\.reuseRendered === true && list\.children\.length[\s\S]*?renderElementaryRecords\(name\);\s*if \(localOnly\) return true;\s*const studentRefresh = await loadStudentsFromSupabase\(\);/);
+  assert.match(navigation, /hydrateRecordAttendanceLocalSnapshot\(\{ render: false \}\);[\s\S]*?options\.reuseRendered === true && list\.children\.length[\s\S]*?renderKinderRecords\(name\);\s*if \(localOnly\) return true;\s*const studentRefresh = await loadStudentsFromSupabase\(\);/);
 });
 
 test('attendance local store separates same-kind sessions by time and class', () => {
@@ -98,7 +98,7 @@ test('attendance server refresh only rerenders schedule when the visible snapsho
 test('phone loads cache-busted shared and adapter attendance scripts', () => {
   assert.match(html, /olli-attendance-data\.js\?v=20260924-week-local-first-1/);
   assert.ok(html.includes('olli-attendance-phone-adapter.js?v=20261011-roster-render-budget-1'));
-  assert.ok(html.includes('olli-record-room-navigation.js?v=20261011-roster-render-budget-1'));
+  assert.ok(html.includes('olli-record-room-navigation.js?v=20261011-prepared-rear-1'));
 });
 
 

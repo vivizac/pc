@@ -15,9 +15,9 @@ test('attendance elementary and kinder tab choice is stored locally per academy'
 });
 
 test('opening Attendance restores the last locally saved elementary or kinder tab', () => {
-  assert.match(navigation, /async function openRecordAttendanceDashboard\(\)[\s\S]*window\.getOlliLastRecordDivisionView\(\)/);
+  assert.match(navigation, /async function openRecordAttendanceDashboard\(options = \{\}\)[\s\S]*window\.getOlliLastRecordDivisionView\(\)/);
   assert.match(navigation, /currentObservationView = targetView;[\s\S]*currentRecordView = targetView;/);
-  assert.match(navigation, /updateRecordHeaderUI\(\);[\s\S]*loadRecords\(''\)/);
+  assert.match(navigation, /updateRecordHeaderUI\(\);[\s\S]*loadRecords\('', \{ localOnly: options\.localOnly === true \}\)/);
 });
 
 test('changed attendance state assets use fresh cache keys', () => {
