@@ -633,7 +633,7 @@ ${normalizedAnalysisPromptText}` : ''}`;
 
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>';
+      btn.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>';
     }
   }
 }
@@ -1466,7 +1466,7 @@ function renderObservationMemoScreenChrome(session) {
 
   if (feedbackBtn) {
     feedbackBtn.style.display = 'inline-flex';
-    feedbackBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>성장 피드백 생성';
+    feedbackBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>성장 피드백 생성';
   }
   if (analysisBtn) analysisBtn.style.display = session.type === 'elementary' ? 'inline-flex' : 'none';
   if (elementaryWrap) elementaryWrap.style.display = 'block';
