@@ -14,7 +14,7 @@ const kcfJs = fs.readFileSync('kinder-feedback.js', 'utf8');
 test('QuickNote and Observation hamburgers open the shared Attendance drawer', () => {
   assert.match(html, /id="observationRosterRecordRoomBtn" onclick="openOlliMainSubpageDrawer\(event, 'observation'\)"/);
   assert.match(html, /class="kcfRoundBtn kcfRecordBtn" onclick="openOlliMainSubpageDrawer\(event, 'quicknote'\)"/);
-  assert.match(html, /src="olli-main-subpage-drawer\.js\?v=20261011-instant-underlay-1"/);
+  assert.match(html, /src="olli-main-subpage-drawer\.js\?v=20261011-opaque-return-1"/);
   assert.match(drawerJs, /async function prepareAttendanceState\(\)[\s\S]*openRecordAttendanceDashboard/);
   assert.match(drawerJs, /getOlliLastRecordDivisionView/);
 });
@@ -44,6 +44,18 @@ test('drawer opens with one animation frame and does not refresh cached Attendan
   assert.doesNotMatch(open, /requestAnimationFrame\(\(\) => \{\s*requestAnimationFrame\(/);
   assert.match(open, /window\.setTimeout\(\(\) => \{[\s\S]*?refreshRecordRoomSubpage\(\);\s*\}, 380\)/);
   assert.match(drawerJs, /list\.children\.length && \(mode === 'elementary' \|\| mode === 'kinder'\)/);
+});
+
+test('closing drawer keeps Attendance opaque while retaining fade for page switches', () => {
+  const close = drawerJs.split('async function closeOlliMainSubpageDrawer(event){')[1]
+    ?.split('function openOlliMainSubpageDrawer(event, sourceKind){')[0] || '';
+  const switches = drawerJs.split('async function switchOlliMainSubpageDrawerPage(targetKind, event)')[1]
+    ?.split('function openOlliObservationFromRecordShortcut(event)')[0] || '';
+  assert.doesNotMatch(close, /beginDrawerReturnFade\(recordRoom\)/);
+  assert.match(close, /recordRoom\?\.classList\.remove\('vivizac-slide-under-fade'\)/);
+  assert.match(close, /waitForTransition\(mainPage, 'transform'/);
+  assert.match(switches, /beginDrawerReturnFade\(state\.recordRoom\)/);
+  assert.match(html, /olli-main-subpage-drawer\.js\?v=20261011-opaque-return-1/);
 });
 
 test('Remaining main page keeps the 3px highlight-safe fade with no blur', () => {

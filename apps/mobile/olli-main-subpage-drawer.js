@@ -541,7 +541,9 @@
     const { mainPage, companion, recordRoom } = state;
     const hit = document.getElementById('olliMainDrawerReturnHit');
     if (hit) hit.hidden = true;
-    beginDrawerReturnFade(recordRoom);
+    // Keep the rear Attendance page fully opaque while the front page returns.
+    // Fading the rear to .18 revealed inactive QuickNote/Observation screens.
+    recordRoom?.classList.remove('vivizac-slide-under-fade');
 
     try {
       await waitForTransition(mainPage, 'transform', () => {
