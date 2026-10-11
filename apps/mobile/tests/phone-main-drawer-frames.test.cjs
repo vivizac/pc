@@ -11,7 +11,7 @@ function setup({ idleSupported = true } = {}) {
   function element(id, display = 'none') {
     const classes = new Set(), attrs = new Map(), listeners = new Map();
     const node = {
-      id, style: { display }, children: [], offsetWidth: 390,
+      id, style: { display, removeProperty(key) { delete this[key]; }, setProperty(key, value) { this[key] = value; } }, children: [], offsetWidth: 390,
       classList: {
         add: (...items) => items.forEach(item => classes.add(item)),
         remove: (...items) => items.forEach(item => classes.delete(item)),
@@ -62,7 +62,7 @@ function setup({ idleSupported = true } = {}) {
     loadRecords: (_name, options) => { events.push({ kind: 'server-sync', reuseRendered: options.reuseRendered }); return Promise.resolve(); }
   };
   vm.runInNewContext(source, context);
-  return { window, frames, idle, events, timers, rear, list, quick, observation, work, nodes,
+  return { context, window, frames, idle, events, timers, rear, list, quick, observation, work, nodes,
     notify: () => window.syncOlliMainDrawerAttendanceRearPage(),
     setAcademy: value => academy = value, setDivision: value => division = value,
     tick: () => frames.shift()?.(), runIdle: async () => { idle.shift()?.(); await flush(); } };
@@ -94,12 +94,17 @@ test('a prepared roster opens in one frame without rebuilding cards, then syncs 
     s.window.scheduleOlliMainDrawerAttendancePrewarm(); await s.runIdle();
     assert.equal(s.rear.style.display, 'flex');
     const cards = s.list.children;
+    const front = ({ quicknote: s.quick, observation: s.observation, work: s.work })[kind];
+    const frontZ = front.style.zIndex, rearZ = s.rear.style.zIndex;
+    assert.equal(front.hasAttribute('data-olli-drawer-rear-host'), true);
     assert.equal(s.window.openOlliMainSubpageDrawer(null, kind), true);
     assert.equal(s.window.openOlliMainSubpageDrawer(null, kind), false);
     s.tick();
     assert.equal(s.window.isOlliMainSubpageDrawerOpen(), true);
     assert.equal(s.rear.style.display, 'flex');
     assert.equal(s.list.children, cards);
+    assert.equal(front.style.zIndex, frontZ);
+    assert.equal(s.rear.style.zIndex, rearZ);
     assert.equal(s.events.filter(e => e.kind === 'local-render').length, 1);
     assert.equal(s.events.some(e => e.kind === 'server-sync'), false);
     ({ quicknote: s.quick, observation: s.observation, work: s.work })[kind].dispatchTransition();
@@ -194,4 +199,49 @@ test('memo and roster transitions retain the rendered rear under the active fore
   assert.ok(Number(s.rear.style.zIndex) < Number(s.observation.style.zIndex));
   assert.equal(s.rear.style.display, 'flex');
   assert.equal(s.list.children, cards);
+});
+
+
+test('Work entry ignores the mounted rear as its source and restores it before the first frame', async () => {
+  for (const kind of ['quicknote', 'observation', 'attendance']) {
+    const s = setup();
+    if (kind === 'attendance') {
+      s.quick.style.display = 'none'; s.rear.style.display = 'flex';
+    } else {
+      if (kind === 'observation') {
+        s.quick.style.display = 'none'; s.observation.style.display = 'flex';
+      }
+      s.window.scheduleOlliMainDrawerAttendancePrewarm(); await s.runIdle();
+    }
+    const cards = s.list.children;
+    const talk = fs.readFileSync('olli-talk-beta.js', 'utf8');
+    const open = talk.slice(talk.indexOf('  async function openOlliTalkBetaPage('), talk.indexOf('  async function closeOlliTalkBetaPage('));
+    Object.assign(s.context, {
+      olliTalkChatGestureSettleTimer: null, OLLI_TALK_INITIAL_RENDER_LIMIT: 100,
+      getScreen: () => s.work,
+      isOlliTalkTabbedPageId: id => ['kinderChatFeedbackScreen', 'observationRosterScreen', 'studentMemoScreen'].includes(id),
+      getOlliTalkBetaContext: () => ({}), readOlliTalkMessageCache: () => null,
+      clearTimeout: () => {}
+    });
+    for (const name of ['syncOlliTalkContextTab', 'syncOlliTalkContrastTheme', 'closeOlliTalkSearch', 'applyOlliTalkMemberCount', 'setOlliTalkLoadingState', 'bindViewport', 'resizeInput', 'syncViewport', 'updateOlliTalkBetaComposerState']) s.context[name] = () => {};
+    vm.runInNewContext(open, s.context);
+    await s.context.openOlliTalkBetaPage();
+    assert.equal(s.context.olliTalkBetaReturnPageId, { quicknote:'kinderChatFeedbackScreen', observation:'observationRosterScreen', attendance:'recordRoomScreen' }[kind]);
+    assert.equal(s.work.style.display, 'flex');
+    if (kind === 'attendance') await s.runIdle();
+    assert.equal(s.rear.style.display, 'flex');
+    assert.equal(s.rear.hasAttribute('inert'), true);
+    assert.equal(s.work.hasAttribute('data-olli-drawer-rear-host'), true);
+    if (kind !== 'attendance') assert.equal(s.list.children, cards);
+    assert.equal(s.events.some(e => e.kind === 'server-sync'), false);
+    const helper = talk.slice(talk.indexOf('  async function slideOlliTalkOutTo('), talk.indexOf('  async function openOlliTalkBetaPage('));
+    vm.runInNewContext(helper, s.context);
+    const target = kind === 'observation' ? s.observation : kind === 'attendance' ? s.rear : s.quick;
+    await s.context.slideOlliTalkOutTo(target);
+    assert.equal(s.work.style.display, 'none');
+    assert.equal(s.work.hasAttribute('data-olli-drawer-rear-host'), false);
+    assert.equal(s.rear.style.display, 'flex');
+    assert.equal(s.rear.hasAttribute('inert'), kind !== 'attendance');
+    if (kind !== 'attendance') assert.equal(target.hasAttribute('data-olli-drawer-rear-host'), true);
+  }
 });

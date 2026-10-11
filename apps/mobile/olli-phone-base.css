@@ -4139,6 +4139,7 @@ border-color: #F0F0F0;
 }
 
 /* Main page / record-room subpage drawer. The main page stays visible as the right 25%. */
+[data-olli-drawer-rear-host],
 .olliMainDrawerMainPage,
 .olliMainDrawerCompanion {
   transition:
@@ -4146,6 +4147,7 @@ border-color: #F0F0F0;
     opacity 320ms cubic-bezier(.22,.61,.36,1);
   will-change:transform,opacity;
 }
+[data-olli-drawer-rear-host]::after,
 .olliMainDrawerMainPage::after {
   content:'';
   position:absolute;
@@ -4198,6 +4200,9 @@ border-color: #F0F0F0;
 }
 #recordRoomScreen.olliMainDrawerSubpage {
   display:flex !important;
+}
+#recordRoomScreen[data-olli-drawer-rear-mounted],
+#recordRoomScreen.olliMainDrawerSubpage {
   /* The rear page must fill the whole viewport underneath the rounded
      leading corners. Clipping the right 25% exposed rectangular gaps. */
   clip-path:none;
@@ -6508,3 +6513,4 @@ body.olli-login-open {
 }
 .memoRosterBackIcon::before{ transform:rotate(-45deg); }
 .memoRosterBackIcon::after{ transform:rotate(45deg); }
+

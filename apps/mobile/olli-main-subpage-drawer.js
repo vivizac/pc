@@ -137,6 +137,7 @@
     restoreInlineState(state.recordRoom, state.recordSaved);
     state.recordRoom.style.display = display;
     state.recordRoom.removeAttribute('data-olli-drawer-rear-mounted');
+    state.mainPage.removeAttribute('data-olli-drawer-rear-host');
     if (state.mainPage.style.zIndex === state.mainZIndex) {
       state.mainPage.style.zIndex = state.mainSavedZIndex;
     }
@@ -166,6 +167,7 @@
     recordRoom.setAttribute('aria-hidden', 'true');
     recordRoom.setAttribute('inert', '');
     recordRoom.setAttribute('data-olli-drawer-rear-mounted', '');
+    mainPage.setAttribute('data-olli-drawer-rear-host', '');
     return true;
   }
 
@@ -685,14 +687,17 @@
       utilityOrderSaved
     };
 
+    // Keep a mounted rear's stacking order unchanged throughout the slide.
+    const reuseRearLayers = attendanceRearMountState?.mainPage === mainPage
+      && attendanceRearMountState.recordRoom === recordRoom;
     recordRoom.style.display = 'flex';
-    recordRoom.style.zIndex = '119700';
+    if (!reuseRearLayers) recordRoom.style.zIndex = '119700';
     recordRoom.style.pointerEvents = 'auto';
     recordRoom.setAttribute('aria-hidden', 'false');
     recordRoom.removeAttribute('inert');
     recordRoom.classList.add('olliMainDrawerSubpage');
 
-    mainPage.style.zIndex = '120500';
+    if (!reuseRearLayers) mainPage.style.zIndex = '120500';
     mainPage.style.pointerEvents = 'none';
     mainPage.removeAttribute('inert');
     mainPage.classList.add(MAIN_PAGE_CLASS);
@@ -850,3 +855,4 @@
   window.setOlliMainSubpageDrawerCompanionFaded = setOlliMainSubpageDrawerCompanionFaded;
   window.isOlliPhoneNavigationInFlight = () => navigationInFlight;
 })();
+
