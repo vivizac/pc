@@ -546,7 +546,6 @@ async function enterOlliAfterLoginOrSetup(options = {}){
   if (page) {
     markOlliStartPageSetupDoneForCurrentContext();
     const entered = await enterOlliByStartPage(page, { localFirst });
-    if (entered) window.scheduleOlliMainDrawerAttendancePrewarm?.();
     return entered;
   }
 
@@ -560,7 +559,6 @@ async function enterOlliAfterLoginOrSetup(options = {}){
   page = getOlliAllowedStartPage('observation_note');
   if (!localFirst) await saveOlliDefaultStartPage(page);
   const entered = await enterOlliByStartPage(page, { localFirst });
-  if (entered) window.scheduleOlliMainDrawerAttendancePrewarm?.();
   return entered;
 }
 function updateOlliStartPageSettingUI(){
