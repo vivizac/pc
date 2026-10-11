@@ -98,8 +98,8 @@ test('inline opening keeps synchronous iOS focus and reveals the glass after key
   assert.doesNotMatch(opener, /animateInlineComposer\(composer, fromHeight\)/);
   const closer = sheet.split('function closeInline(options){')[1]?.split('function open(event){')[0] || '';
   assert.match(closer, /clearInlineRevealTimer\(\)/);
-  assert.match(html, /kcf-teacher-sheet\.css\?v=20261011-keyboard-reveal-1/);
-  assert.match(html, /kcf-teacher-sheet\.js\?v=20261011-keyboard-reveal-1/);
+  assert.match(html, /kcf-teacher-sheet\.css\?v=20261011-chat-follow-composer-1/);
+  assert.match(html, /kcf-teacher-sheet\.js\?v=20261011-chat-follow-composer-1/);
 });
 
 test('dialogue messages follow the keyboard without changing native textarea focus', () => {
