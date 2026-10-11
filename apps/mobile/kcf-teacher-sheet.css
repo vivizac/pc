@@ -392,7 +392,13 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
   to { clip-path:inset(0 0 0 0 round 24px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposer::before { animation:none; }
+  #kinderChatFeedbackScreen.kcfInlineDialogueActive.kcfInlineDialogueRevealing .kcfComposer::before {
+    animation:none;
+    clip-path:inset(0 0 0 0 round 24px);
+  }
+  #kinderChatFeedbackScreen.kcfInlineDialogueActive.kcfInlineDialogueRevealing .kcfInputActivateWrap {
+    transition:none;
+  }
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerBottom {
   display:grid;

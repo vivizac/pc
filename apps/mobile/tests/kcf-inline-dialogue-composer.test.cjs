@@ -95,7 +95,8 @@ test('inline opening keeps synchronous iOS focus and reveals the glass after key
   assert.match(css, /kcfInlineDialogueActive\.kcfInlineDialogueRevealing \.kcfComposer::before \{/);
   assert.match(css, /kcfInlineDialogueActive\.kcfInlineDialogueRevealing \.kcfInputActivateWrap \{/);
   assert.doesNotMatch(opener, /animateInlineComposer\(composer, fromHeight\)/);
-  assert.match(sheet, /clearInlineRevealTimer\(\);\s*var input = baseInput\(\)/);
+  const closer = sheet.split('function closeInline(options){')[1]?.split('function open(event){')[0] || '';
+  assert.match(closer, /clearInlineRevealTimer\(\)/);
   assert.match(html, /kcf-teacher-sheet\.css\?v=20261011-keyboard-reveal-1/);
   assert.match(html, /kcf-teacher-sheet\.js\?v=20261011-keyboard-reveal-1/);
 });
