@@ -801,15 +801,17 @@
   min-height:var(--olli-phone-bottom-control-height, 47px) !important;
   padding:0 !important;
   z-index:120 !important;
-  transform:translate3d(0, calc(-1 * var(--olli-observation-keyboard-offset, 0px)), 0) !important;
+  /* Follow the visualViewport pixel-for-pixel; avoid easing that trails the keyboard.
+     Keep the idle safe-area baseline and move only enough to reach a 4px keyboard gap. */
+  transform:translate3d(0, calc(-1 * max(0px, var(--olli-observation-keyboard-offset, 0px) + 4px - var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom))))), 0) !important;
   animation:none !important;
   transition:none !important;
 }
 
-/* 출석부 검색바와 동일하게 키보드 위 4px 간격만 남긴다.
-   키보드가 열린 동안에는 iPhone safe-area 하단 패딩을 제거해 검색창이 불필요하게 위로 뜨지 않도록 한다. */
+/* Keep one fixed bottom anchor across keyboard-open state changes.
+   Switching from safe-area bottom to 4px mid-motion caused a visible jump.
+   The transform above provides the same final 4px keyboard clearance. */
 #observationRosterScreen.observation-keyboard-open .memoRosterUtilityBar {
-  bottom:4px !important;
   height:var(--olli-phone-bottom-control-height, 47px) !important;
   min-height:var(--olli-phone-bottom-control-height, 47px) !important;
   padding-top:0 !important;

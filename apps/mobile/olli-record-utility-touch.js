@@ -273,11 +273,13 @@
 
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', function () {
+      syncKeyboardOffset();
       requestAnimationFrame(syncKeyboardOffset);
-    });
+    }, { passive:true });
     window.visualViewport.addEventListener('scroll', function () {
+      syncKeyboardOffset();
       requestAnimationFrame(syncKeyboardOffset);
-    });
+    }, { passive:true });
   }
 })();
 
