@@ -15,6 +15,8 @@
     viewportFrame:0,
     inlineControlsFrame:0,
     inlineBlurTimer:0,
+    inlineRevealTimer:0,
+    inlineRevealed:false,
     inlineClosing:false,
     inlineMinViewportHeight:0,
     inlineClosedViewportHeight:0,
@@ -57,6 +59,25 @@
     state.inlineBlurTimer = 0;
   }
 
+  // Keep native focus and textarea geometry synchronous for iOS. Reveal only
+  // the decorative glass/upper input once the native keyboard starts moving.
+  function clearInlineRevealTimer(){
+    if (state.inlineRevealTimer) clearTimeout(state.inlineRevealTimer);
+    state.inlineRevealTimer = 0;
+  }
+
+  function revealInlineComposer(){
+    if (!state.inlineOpen || state.inlineClosing || state.inlineRevealed) return;
+    state.inlineRevealed = true;
+    clearInlineRevealTimer();
+    document.getElementById('kinderChatFeedbackScreen')?.classList.add('kcfInlineDialogueRevealing');
+  }
+
+  function scheduleInlineRevealFallback(){
+    clearInlineRevealTimer();
+    state.inlineRevealTimer = setTimeout(revealInlineComposer, 230);
+  }
+
   function modeEnabled(){
     var mode = global.KcfTeacherMode || global.KcfAutoMode;
     try { return !!(mode && typeof mode.isEnabled === 'function' && mode.isEnabled()); }
@@ -90,6 +111,10 @@
       screen.style.setProperty('--kcf-inline-chat-reserve', Math.ceil(covered + 204) + 'px');
       // Keep viewport attachment during descent; start morph separately.
       state.inlineMinViewportHeight = Math.min(state.inlineMinViewportHeight || height, height);
+      if (!state.inlineClosing && !state.inlineRevealed
+          && state.inlineClosedViewportHeight - height >= 28) {
+        revealInlineComposer();
+      }
       if (!state.inlineClosing
           && state.inlineClosedViewportHeight - state.inlineMinViewportHeight > 180
           && height - state.inlineMinViewportHeight > 80
@@ -524,6 +549,7 @@
   // attachment until keyboard descent ends.
   function beginInlineClosing(){
     if (!state.inlineOpen || state.inlineClosing) return;
+    clearInlineRevealTimer();
     state.inlineClosing = true;
     var screen = document.getElementById('kinderChatFeedbackScreen');
     var composer = screen?.querySelector('.kcfComposer');
@@ -553,6 +579,7 @@
     var fromHeight = composer?.getBoundingClientRect().height;
     screen?.classList.remove('kcfInlineDialogueClosing');
     animateInlineComposer(composer, fromHeight);
+    if (!state.inlineRevealed) scheduleInlineRevealFallback();
   }
 
   function openInline(event){
@@ -575,6 +602,8 @@
       state.inlineClosedViewportHeight = Number(global.visualViewport?.height || global.innerHeight || 0);
       state.inlineMinViewportHeight = state.inlineClosedViewportHeight;
       state.inlineOpen = true;
+      state.inlineRevealed = false;
+      screen.classList.remove('kcfInlineDialogueRevealing');
       screen.classList.add('kcfInlineDialogueActive');
       input.readOnly = false;
       input.rows = 5;
@@ -588,6 +617,8 @@
         afterFocus:scheduleViewportSync
       });
       traceInlineFocus('after-focus');
+      // Never delay keyboard focus; only the non-interactive visual reveal.
+      scheduleInlineRevealFallback();
       if (!input.value) {
         try { input.setSelectionRange(0, 0); input.scrollTop = 0; } catch (_) {}
       }
@@ -616,7 +647,9 @@
     var opts = options || {};
     state.inlineOpen = false;
     state.inlineClosing = false;
+    state.inlineRevealed = false;
     clearInlineBlurTimer();
+    clearInlineRevealTimer();
     if (state.inlineControlsFrame) cancelAnimationFrame(state.inlineControlsFrame);
     state.inlineControlsFrame = 0;
     var input = baseInput();
@@ -626,7 +659,7 @@
     var composer = screen?.querySelector('.kcfComposer');
     var fromHeight = composer?.getBoundingClientRect().height;
     if (screen) {
-      screen.classList.remove('kcfInlineDialogueActive', 'kcfInlineDialogueClosing');
+      screen.classList.remove('kcfInlineDialogueActive', 'kcfInlineDialogueClosing', 'kcfInlineDialogueRevealing');
       screen.style.removeProperty('--kcf-inline-chat-reserve');
     }
     var layer = document.getElementById('kcfComposerLayer');

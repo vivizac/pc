@@ -373,7 +373,19 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
   backdrop-filter:blur(22px) saturate(1.08);
   -webkit-backdrop-filter:blur(22px) saturate(1.08);
   pointer-events:none;
-  animation:kcfInlineGlassExpand 190ms cubic-bezier(.2,.65,.2,1) both;
+  /* Stay visually at the idle 47px glass until the keyboard begins rising. */
+  clip-path:inset(calc(100% - 47px) 0 0 0 round 24px);
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive.kcfInlineDialogueRevealing .kcfComposer::before {
+  animation:kcfInlineGlassExpand 285ms cubic-bezier(.2,.65,.2,1) both;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfInputActivateWrap {
+  /* Focused textarea retains final geometry, but does not pop into view early. */
+  opacity:0;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive.kcfInlineDialogueRevealing .kcfInputActivateWrap {
+  opacity:1;
+  transition:opacity 140ms ease-out 125ms;
 }
 @keyframes kcfInlineGlassExpand {
   from { clip-path:inset(calc(100% - 47px) 0 0 0 round 24px); }

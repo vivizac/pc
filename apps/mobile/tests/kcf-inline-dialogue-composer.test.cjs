@@ -79,11 +79,25 @@ test('dialogue opens without animating the focused textarea ancestor', () => {
   assert.doesNotMatch(opener, /animateInlineComposer\(composer, fromHeight\)/);
   assert.match(closer, /animateInlineComposer\(composer, fromHeight\)/);
   assert.match(opener, /previous\.cancel\(\)/);
-  assert.match(css, /animation:kcfInlineGlassExpand 190ms cubic-bezier\(\.2,\.65,\.2,1\) both/);
+  assert.match(css, /animation:kcfInlineGlassExpand 285ms cubic-bezier\(\.2,\.65,\.2,1\) both/);
   assert.match(css, /@keyframes kcfInlineGlassExpand/);
   assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(sheet, /input\.rows = 5/);
   assert.match(sheet, /input\.rows = 1/);
+});
+
+test('inline opening keeps synchronous iOS focus and reveals the glass after keyboard motion', () => {
+  const opener = sheet.split('function openInline(event){')[1]?.split('function closeInline(options){')[0] || '';
+  assert.ok(opener.indexOf("screen.classList.add('kcfInlineDialogueActive')") < opener.indexOf('keyboard.activate(event, {'));
+  assert.ok(opener.indexOf('keyboard.activate(event, {') < opener.indexOf('scheduleInlineRevealFallback();'));
+  assert.match(sheet, /state.inlineClosedViewportHeight - height >= 28/);
+  assert.match(sheet, /setTimeout\(revealInlineComposer, 230\)/);
+  assert.match(css, /kcfInlineDialogueActive\.kcfInlineDialogueRevealing \.kcfComposer::before \{/);
+  assert.match(css, /kcfInlineDialogueActive\.kcfInlineDialogueRevealing \.kcfInputActivateWrap \{/);
+  assert.doesNotMatch(opener, /animateInlineComposer\(composer, fromHeight\)/);
+  assert.match(sheet, /clearInlineRevealTimer\(\);\s*var input = baseInput\(\)/);
+  assert.match(html, /kcf-teacher-sheet\.css\?v=20261011-keyboard-reveal-1/);
+  assert.match(html, /kcf-teacher-sheet\.js\?v=20261011-keyboard-reveal-1/);
 });
 
 test('continuous footer matches original controls and plus has no focus chrome', () => {
