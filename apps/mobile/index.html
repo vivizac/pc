@@ -134,17 +134,27 @@
 </button>
 
 <div class="recordSearchGroup recordSearchOnlyGroup" id="recordSearchGroup">
-<button aria-label="검색" class="recordSearchPill recordPillBtn" id="recordSearchPill" onclick="handleSearchPillClick(event)" title="검색">
-<div class="recordSearchIcon">
+<button aria-controls="recordBottomSearchControls" aria-expanded="false" aria-label="검색 활성화" class="recordSearchPill recordPillBtn" id="recordSearchPill" onclick="handleSearchPillClick(event)" title="검색" type="button">
+<span aria-hidden="true" class="recordSearchIcon">
 <svg fill="none" viewbox="0 0 24 24">
 <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2.2"></circle>
 <path d="M16 16L21 21" stroke="currentColor" stroke-linecap="round" stroke-width="2.2"></path>
 </svg>
-</div>
-<input autocapitalize="off" autocomplete="off" autocorrect="off" class="recordSearchInputInline" enterkeyhint="done" id="searchName" inputmode="search" onclick="event.stopPropagation()" placeholder="검색" spellcheck="false"/>
+</span>
 </button>
 </div>
-<button aria-label="검색 닫기" class="recordSearchClose" onclick="closeSearch(event)" title="검색 닫기">✕</button>
+<div aria-label="학생 검색" class="recordBottomSearchControls" id="recordBottomSearchControls" role="search">
+<div class="recordBottomSearchField">
+<span aria-hidden="true" class="recordSearchIcon">
+<svg fill="none" viewbox="0 0 24 24">
+<circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2.2"></circle>
+<path d="M16 16L21 21" stroke="currentColor" stroke-width="2.2"></path>
+</svg>
+</span>
+<input autocapitalize="off" autocomplete="off" autocorrect="off" class="recordSearchInputInline" enterkeyhint="done" id="searchName" inputmode="search" placeholder="검색" spellcheck="false"/>
+</div>
+<button aria-label="검색 닫기" class="recordSearchClose" onclick="closeSearch(event)" title="검색 닫기" type="button">✕</button>
+</div>
 <div class="recordSelectionControls" id="recordSelectionControls">
 <button class="recordSelectionControlBtn" onclick="exitStudentSelectionMode()">취소</button>
 <button class="recordSelectionControlBtn danger" onclick="deleteSelectedStudents()">삭제</button>
@@ -557,7 +567,7 @@
 <script src="scene-feedback-text-common.js"></script>
 <script src="olli-record-scene-tools-phone-adapter.js"></script>
 <script src="olli-mobile-keyboard-activation.js?v=20261008-standard-1"></script>
-<script src="olli-record-search-controls.js?v=20261011-keyboard-rise-continuous-1"></script>
+<script src="olli-record-search-controls.js?v=20261011-static-bottom-search-1"></script>
 <script src="olli-attendance-data.js?v=20260924-week-local-first-1"></script>
 <script src="olli-observation-autosave-phone-adapter.js?v=20260920-growth-all-divisions-1"></script>
 <script src="observation-memo-edit-state-core.js?v=20260928-edit-state-core-1"></script>
@@ -1188,7 +1198,7 @@
 <script src="kcf-voice-text-normalizer.js?v=20260918-time-normalize-1"></script>
 <script src="kcf-voice-transcription.js?v=20261002-sheet-controls-1"></script>
 <script src="olli-feedback-registration-runtime.js?v=20261009-missing-student-guide-1"></script>
-<link rel="stylesheet" href="olli-record-search-controls.css?v=20261011-keyboard-rise-continuous-1">
+<link rel="stylesheet" href="olli-record-search-controls.css?v=20261011-static-bottom-search-1">
 <script src="olli-storage-core.js?v=20260924-consult-summary-local-first-1"></script>
 <link rel="stylesheet" href="olli-observation-responsive.css">
 <script src="olli-memo-ipad-runtime.js"></script>

@@ -94,11 +94,9 @@ function setRecordKeyboardOffset() {
     if (detectedClosing) screen.classList.add('record-keyboard-closing');
     screen.classList.toggle('record-keyboard-open', keyboardOpen);
 
-    // Start the bottom search layout on the first viewport movement,
-    // not after the 24px keyboard-open threshold. The keyboard-open class
-    // still controls the independent top-row collapse.
+    // Direct/programmatic focus can also activate the already-mounted field.
+    // The top search button itself never changes position or becomes an input.
     if (
-      active && offset > 1 &&
       !closingBeforeUpdate &&
       input &&
       document.activeElement === input &&
@@ -106,7 +104,10 @@ function setRecordKeyboardOffset() {
     ) {
       screen.classList.add('record-search-open');
       const pill = getRecordSearchPill();
-      if (pill) pill.classList.add('active');
+      if (pill) {
+        pill.classList.add('active');
+        pill.setAttribute('aria-expanded', 'true');
+      }
       syncRecordSearchQueryState();
     }
 
@@ -165,7 +166,18 @@ function handleSearchPillClick(event) {
       setRecordSearchDrawerStripHidden(true);
       captureRecordSearchViewportBaseline(true);
       window.__olliRecordKeyboardLastOffset = 0;
-      if (screen) screen.classList.remove('record-keyboard-closing');
+      if (screen) {
+        screen.classList.remove('record-keyboard-closing');
+        screen.classList.add('record-search-open');
+      }
+      const pill = getRecordSearchPill();
+      if (pill) {
+        pill.classList.add('active');
+        pill.setAttribute('aria-expanded', 'true');
+      }
+      syncRecordSearchQueryState();
+      // The input is already mounted; make it focusable in this same gesture.
+      getRecordSearchInput()?.getBoundingClientRect();
     },
     afterFocus:function() {
       setRecordKeyboardOffset();
@@ -193,7 +205,10 @@ function closeSearch(event) {
     screen.classList.remove('record-search-open');
     screen.classList.remove('record-search-has-query');
   }
-  if (pill) pill.classList.remove('active');
+  if (pill) {
+    pill.classList.remove('active');
+    pill.setAttribute('aria-expanded', 'false');
+  }
   if (input) {
     input.value = '';
     try { input.blur(); } catch(err) {}
@@ -274,7 +289,10 @@ function restoreRecordSearchAfterAppReturn() {
     screen.classList.remove('record-keyboard-closing');
     setRecordSearchDrawerStripHidden(false);
   }
-  if (pill) pill.classList.remove('active');
+  if (pill) {
+    pill.classList.remove('active');
+    pill.setAttribute('aria-expanded', 'false');
+  }
   document.documentElement.style.setProperty('--record-keyboard-offset', '0px');
   window.__olliRecordSearchViewportBottomBaseline = 0;
   window.__olliRecordKeyboardLastOffset = 0;

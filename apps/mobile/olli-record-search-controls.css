@@ -152,13 +152,8 @@
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;
 }
-#recordRoomScreen.record-search-open #recordSearchPill.recordSearchPill{
-  justify-content:flex-start ;
-  gap:8px ;
-  padding:0 14px ;
-}
-
-#recordRoomScreen #recordSearchPill .recordSearchIcon{
+#recordRoomScreen #recordSearchPill .recordSearchIcon,
+#recordRoomScreen .recordBottomSearchField .recordSearchIcon{
   width:23px ;
   height:23px ;
   min-width:23px ;
@@ -168,7 +163,8 @@
   color:#111;
   pointer-events:none ;
 }
-#recordRoomScreen #recordSearchPill .recordSearchIcon svg{
+#recordRoomScreen #recordSearchPill .recordSearchIcon svg,
+#recordRoomScreen .recordBottomSearchField .recordSearchIcon svg{
   width:23px ;
   height:23px ;
   stroke:currentColor ;
@@ -178,16 +174,42 @@
   stroke-linejoin:round ;
 }
 
-#recordRoomScreen #recordSearchPill .recordSearchInputInline{
-  display:block ;
-  visibility:visible ;
-  opacity:0 ;
-  width:0 ;
-  min-width:0 ;
-  flex:0 0 0 ;
-  height:100% ;
-  border:none ;
-  outline:none ;
+#recordRoomScreen #recordBottomSearchControls {
+  position:absolute;
+  left:3px;
+  right:3px;
+  bottom:0;
+  height:47px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  z-index:144;
+  visibility:hidden;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 180ms ease, visibility 0s linear 180ms;
+}
+#recordRoomScreen .recordBottomSearchField {
+  flex:1 1 auto;
+  min-width:0;
+  height:47px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:0 14px;
+  box-sizing:border-box;
+  border-radius:999px;
+  background:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.96), 0 0 0 1px rgba(0,0,0,.025), 0 8px 28px rgba(0,0,0,.055);
+}
+#recordRoomScreen .recordBottomSearchField .recordSearchInputInline {
+  display:block;
+  flex:1 1 auto;
+  width:100%;
+  min-width:0;
+  height:100%;
+  border:none;
+  outline:none;
   background:transparent;
   color:#111;
   font-size:calc(15px * var(--olli-text-scale));
@@ -195,19 +217,9 @@
   line-height:1.15;
   letter-spacing:-0.03em;
   font-family:inherit;
-  padding:0 ;
-  pointer-events:none ;
+  padding:0;
 }
-#recordRoomScreen.record-search-open #recordSearchPill .recordSearchInputInline{
-  opacity:1 ;
-  width:auto ;
-  flex:1 1 0 ;
-  pointer-events:auto ;
-}
-#recordRoomScreen:not(.record-search-open) #recordSearchPill .recordSearchInputInline{
-  pointer-events:none ;
-}
-#recordRoomScreen #recordSearchPill .recordSearchInputInline::placeholder{
+#recordRoomScreen .recordBottomSearchField .recordSearchInputInline::placeholder{
   color:#7f7f7f;
   opacity:1 ;
   font-size:calc(15px * var(--olli-text-scale));
@@ -216,9 +228,9 @@
 
 #recordRoomScreen .recordSearchClose{
   display:inline-flex ;
-  position:absolute ;
-  right:3px ;
-  bottom:max(10px, env(safe-area-inset-bottom)) ;
+  position:static ;
+  right:auto ;
+  bottom:auto ;
   top:auto ;
   left:auto ;
   width:47px ;
@@ -237,10 +249,10 @@
   font-size:calc(21px * var(--olli-text-scale));
   font-weight:400;
   line-height:1;
-  opacity:0 ;
-  visibility:hidden ;
+  opacity:1 ;
+  visibility:visible ;
   transform:none ;
-  pointer-events:none ;
+  pointer-events:auto ;
   cursor:pointer;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.96), 0 0 0 1px rgba(0,0,0,.025), 0 8px 28px rgba(0,0,0,.055);
   z-index:145 ;
@@ -308,43 +320,21 @@
   visibility:hidden ;
   pointer-events:none ;
 }
-#recordRoomScreen.record-search-open #recordSearchGroup{
-  position:absolute ;
-  left:3px ;
-  right:60px ;
-  top:auto ;
-  bottom:0 ;
-  width:auto ;
-  max-width:none ;
-  min-width:0 ;
-  flex:none ;
-  margin:0 ;
-  z-index:144 ;
+/* The top search icon only activates the already-mounted bottom search field.
+   Only the floating bar follows visualViewport; no control relocates or uses a
+   separate travel animation. */
+#recordRoomScreen.record-search-open #recordSearchGroup {
+  visibility:hidden;
+  pointer-events:none;
 }
-#recordRoomScreen.record-search-open .recordSearchClose{
-  opacity:1 ;
-  visibility:visible ;
-  transform:none ;
-  bottom:0 ;
-  pointer-events:auto ;
-  transition:none;
+#recordRoomScreen.record-search-open #recordBottomSearchControls {
+  visibility:visible;
+  opacity:1;
+  pointer-events:auto;
+  transition:opacity 180ms ease;
 }
-
-/* The search controls softly appear near the keyboard instead of snapping
-   from their idle top-rail position. Their actual rise follows visualViewport. */
-@keyframes recordKeyboardSearchAppear{
-  from { opacity:0; transform:translate3d(0, 12px, 0); }
-  to { opacity:1; transform:translate3d(0, 0, 0); }
-}
-#recordRoomScreen.record-search-open #recordSearchGroup,
-#recordRoomScreen.record-search-open .recordSearchClose{
-  animation:recordKeyboardSearchAppear 260ms cubic-bezier(.22,.61,.36,1) both;
-}
-@media (prefers-reduced-motion:reduce){
-  #recordRoomScreen.record-search-open #recordSearchGroup,
-  #recordRoomScreen.record-search-open .recordSearchClose{
-    animation:none;
-  }
+@media (prefers-reduced-motion:reduce) {
+  #recordRoomScreen #recordBottomSearchControls { transition:none; }
 }
 #recordRoomScreen.record-search-open .recordSearchClose:active{
   background:#eeeeee;
@@ -421,11 +411,4 @@
   pointer-events:none !important;
 }
 
-/* 검색이 열리면 상단 원형 검색 버튼은 기존 하단 검색창 위치로 전환된다. */
-#recordRoomScreen.record-search-open #recordSearchGroup.recordSearchGroup,
-#recordRoomScreen.record-search-open #recordSearchGroup.recordSearchOnlyGroup{
-  max-width:none;
-  min-width:0;
-  height:47px;
-  min-height:47px;
-}
+
