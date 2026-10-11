@@ -216,6 +216,7 @@ function renderKinderStudentRows(students, searchMode = false) {
 }
 
 function renderElementaryRecords(name) {
+  if (window.deferOlliMainDrawerAttendanceRender?.('elementary', name)) return;
   const list = document.getElementById('recordList');
   const query = String(name || '').trim();
   if (window.OlliPhoneAttendanceAdapter && typeof window.OlliPhoneAttendanceAdapter.renderRecordListOverride === 'function'
@@ -242,6 +243,7 @@ function renderElementaryRecords(name) {
 }
 
 function renderKinderRecords(name) {
+  if (window.deferOlliMainDrawerAttendanceRender?.('kinder', name)) return;
   const list = document.getElementById('recordList');
   const query = String(name || '').trim();
   if (window.OlliPhoneAttendanceAdapter && typeof window.OlliPhoneAttendanceAdapter.renderRecordListOverride === 'function'
@@ -273,3 +275,4 @@ function renderKinderRecords(name) {
   syncPhoneRecordInitialSortLabel();
   notifyPhoneRecordListRendered('kinder');
 }
+

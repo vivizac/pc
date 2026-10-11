@@ -18,6 +18,8 @@
   let attendancePreparedKey = '';
   let attendancePrewarmScheduled = false;
   let attendanceRearMountState = null;
+  let deferredAttendanceRender = null;
+  let attendanceTransitionInFlight = false;
 
   function isReducedMotion(){
     return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -244,6 +246,30 @@
     }
   }
 
+  function deferAttendanceRender(view, name){
+    if (!attendanceTransitionInFlight && !drawerState?.attendanceOpening) return false;
+    // Never delay the first local roster when there are no mounted cards yet.
+    const list = document.getElementById('recordList');
+    const key = getAttendancePreparationKey();
+    if (!list?.children.length || !key) return false;
+    deferredAttendanceRender = { view, name, key };
+    return true;
+  }
+
+  function flushDeferredAttendanceRender(){
+    if (attendanceTransitionInFlight || drawerState?.attendanceOpening) return;
+    const pending = deferredAttendanceRender;
+    deferredAttendanceRender = null;
+    if (!pending || pending.key !== getAttendancePreparationKey()) return;
+    if (typeof currentRecordView === 'undefined' || currentRecordView !== pending.view) return;
+    // Read the latest data now; intermediate refreshes only replace this request.
+    if (pending.view === 'elementary' && typeof renderElementaryRecords === 'function') {
+      renderElementaryRecords(pending.name);
+    } else if (pending.view === 'kinder' && typeof renderKinderRecords === 'function') {
+      renderKinderRecords(pending.name);
+    }
+  }
+
   function getRecordUtilityItem(buttonId){
     const button = document.getElementById(buttonId);
     return button ? button.closest('.recordUtilityBtn') : null;
@@ -427,6 +453,7 @@
     }
 
     navigationInFlight = true;
+    attendanceTransitionInFlight = true;
     const hit = document.getElementById('olliMainDrawerReturnHit');
     if (hit) hit.hidden = true;
 
@@ -511,7 +538,9 @@
       return true;
     } finally {
       navigationInFlight = false;
+      attendanceTransitionInFlight = false;
       syncAttendanceRearPage();
+      flushDeferredAttendanceRender();
     }
   }
 
@@ -540,6 +569,7 @@
     const companionPointerEvents = companion?.style.pointerEvents || '';
 
     navigationInFlight = true;
+    attendanceTransitionInFlight = true;
     try {
       const division = getDrawerDivision();
       const opened = fn({ division, navigationManaged:true });
@@ -576,7 +606,9 @@
       return true;
     } finally {
       navigationInFlight = false;
+      attendanceTransitionInFlight = false;
       syncAttendanceRearPage();
+      flushDeferredAttendanceRender();
     }
   }
 
@@ -636,6 +668,7 @@
     document.body.classList.remove('olli-main-subpage-drawer-modal-fade-active');
 
     navigationInFlight = true;
+    attendanceTransitionInFlight = true;
     const state = drawerState;
     const { mainPage, companion, recordRoom } = state;
     const hit = document.getElementById('olliMainDrawerReturnHit');
@@ -652,7 +685,9 @@
       return true;
     } finally {
       navigationInFlight = false;
+      attendanceTransitionInFlight = false;
       syncAttendanceRearPage();
+      flushDeferredAttendanceRender();
     }
   }
 
@@ -716,6 +751,8 @@
     if (!hasReadyAttendanceBehindDrawer(recordRoom)) {
       refreshRecordRoomSubpage({ localOnly: true });
     }
+    // The local fallback above remains synchronous; pause only subsequent paints.
+    drawerState.attendanceOpening = true;
     void mainPage.offsetWidth;
     const openingState = drawerState;
     requestAnimationFrame(() => {
@@ -725,6 +762,8 @@
       void waitForTransition(mainPage, 'transform', null, 400).then(() => {
         if (drawerState !== openingState || navigationInFlight) return;
         if (!mainPage.classList.contains(OPEN_CLASS)) return;
+        openingState.attendanceOpening = false;
+        flushDeferredAttendanceRender();
         if (document.body.classList.contains('olli-main-subpage-drawer-search-active')) return;
         // Preserve the mounted cards during motion; sync after the slide.
         refreshRecordRoomSubpage({ reuseRendered: true });
@@ -775,6 +814,7 @@
     } finally {
       navigationInFlight = false;
       syncAttendanceRearPage();
+      flushDeferredAttendanceRender();
     }
   }
 
@@ -826,6 +866,7 @@
     return false;
   }
 
+  window.deferOlliMainDrawerAttendanceRender = deferAttendanceRender;
   window.openOlliMainSubpageDrawer = openOlliMainSubpageDrawer;
   window.scheduleOlliMainDrawerAttendancePrewarm = scheduleOlliMainDrawerAttendancePrewarm;
   window.syncOlliMainDrawerAttendanceRearPage = syncAttendanceRearPage;
@@ -855,4 +896,5 @@
   window.setOlliMainSubpageDrawerCompanionFaded = setOlliMainSubpageDrawerCompanionFaded;
   window.isOlliPhoneNavigationInFlight = () => navigationInFlight;
 })();
+
 

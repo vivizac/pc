@@ -245,3 +245,121 @@ test('Work entry ignores the mounted rear as its source and restores it before t
     if (kind !== 'attendance') assert.equal(target.hasAttribute('data-olli-drawer-rear-host'), true);
   }
 });
+
+function bindAttendanceRenderer(s) {
+  const paints = [];
+  let data = 'cached';
+  s.window.OlliPhoneAttendanceAdapter = { renderRecordListOverride(view, name) {
+    paints.push({ view, name, data }); s.list.children = [{ data }]; return true;
+  }};
+  s.context.document.addEventListener = () => {};
+  s.context.setTimeout = s.window.setTimeout;
+  s.window.document = s.context.document;
+  vm.runInNewContext(fs.readFileSync('olli-record-list-view.js', 'utf8'), s.context);
+  s.window.renderElementaryRecords = s.context.renderElementaryRecords;
+  s.window.renderKinderRecords = s.context.renderKinderRecords;
+  return { paints, setData(value) { data = value; } };
+}
+
+test('opening holds real roster renders and paints the newest result only once after motion', async () => {
+  for (const view of ['elementary', 'kinder']) {
+  const s = setup(); s.setDivision(view); s.window.scheduleOlliMainDrawerAttendancePrewarm(); await s.runIdle();
+  const r = bindAttendanceRenderer(s), cards = s.list.children;
+  s.window.openOlliMainSubpageDrawer(null, 'quicknote'); s.tick();
+  for (const data of ['first refresh', 'latest refresh']) {
+    r.setData(data); s.context[view === 'kinder' ? 'renderKinderRecords' : 'renderElementaryRecords']('');
+  }
+  assert.equal(s.list.children, cards); assert.equal(r.paints.length, 0);
+  s.quick.dispatchTransition(); await flush();
+  assert.deepEqual(r.paints, [{ view, name:'', data:'latest refresh' }]);
+  s.context[view === 'kinder' ? 'renderKinderRecords' : 'renderElementaryRecords']('after motion');
+  assert.equal(r.paints.length, 2);
+  }
+});
+
+test('closing holds updates until the return finishes', async () => {
+  const s = setup(); s.window.scheduleOlliMainDrawerAttendancePrewarm(); await s.runIdle();
+  const r = bindAttendanceRenderer(s);
+  s.window.openOlliMainSubpageDrawer(null, 'quicknote'); s.tick(); s.quick.dispatchTransition(); await flush();
+  const closing = s.window.closeOlliMainSubpageDrawer(), cards = s.list.children;
+  r.setData('latest'); s.context.renderElementaryRecords('');
+  assert.equal(s.list.children, cards); assert.equal(r.paints.length, 0);
+  s.quick.dispatchTransition(); await closing;
+  assert.equal(r.paints.length, 1); assert.equal(r.paints[0].data, 'latest');
+});
+
+test('transition fallback releases pending paints when transitionend is missing', async () => {
+  const s = setup(); s.window.scheduleOlliMainDrawerAttendancePrewarm(); await s.runIdle();
+  const r = bindAttendanceRenderer(s);
+  s.window.openOlliMainSubpageDrawer(null, 'quicknote'); s.tick();
+  s.context.renderElementaryRecords(''); assert.equal(r.paints.length, 0);
+  [...s.timers.values()].find(t => t.delay === 400).fn(); await flush();
+  assert.equal(r.paints.length, 1);
+});
+
+test('pending paints from a previous academy or division are discarded', async () => {
+  for (const changed of ['academy', 'division']) {
+    const s = setup(); s.window.scheduleOlliMainDrawerAttendancePrewarm(); await s.runIdle();
+    const r = bindAttendanceRenderer(s);
+    s.window.openOlliMainSubpageDrawer(null, 'quicknote'); s.tick();
+    s.context.renderElementaryRecords('');
+    if (changed === 'academy') s.setAcademy('academy-2');
+    else { s.setDivision('kinder'); s.context.currentRecordView = 'kinder'; }
+    s.quick.dispatchTransition(); await flush();
+    assert.equal(r.paints.length, 0);
+  }
+});
+
+test('an empty local roster is rendered immediately even while motion is active', async () => {
+  const s = setup(), r = bindAttendanceRenderer(s);
+  s.window.openOlliMainSubpageDrawer(null, 'quicknote'); s.tick();
+  s.list.children = [];
+  s.context.renderElementaryRecords(''); assert.equal(r.paints.length, 1);
+});
+
+test('the real attendance refresh merges fetched rows during motion without replacing mounted cards', async () => {
+  const s = setup(); s.window.scheduleOlliMainDrawerAttendancePrewarm(); await s.runIdle();
+  const r = bindAttendanceRenderer(s), cached = [{ status:'absent' }], incoming = [{ status:'attended' }];
+  let stored = cached, resolveRows, requests = 0;
+  const data = { getCachedMonth:() => stored, loadMonth:() => { requests++; return new Promise(resolve => { resolveRows = resolve; }); } };
+  Object.assign(s.context, { global:s.window, shared:() => data, currentYearMonth:() => '2026-10', attendanceRowsSignature:JSON.stringify,
+    mergeServerMonth:rows => { stored = rows; r.setData(rows[0].status); }, getCurrentRecordView:() => s.context.currentRecordView });
+  const adapter = fs.readFileSync('olli-attendance-phone-adapter.js', 'utf8');
+  const render = adapter.slice(adapter.indexOf('  function renderCurrentRecordList()'), adapter.indexOf('  function cloneValue('));
+  const sync = adapter.slice(adapter.indexOf('  async function syncCurrentMonth('), adapter.indexOf('  function setTodayScheduleFromWeek('));
+  vm.runInNewContext(render + sync, s.context);
+  s.window.openOlliMainSubpageDrawer(null, 'quicknote'); s.tick();
+  const cards = s.list.children, pending = s.context.syncCurrentMonth(new Date(), { render:true });
+  assert.equal(requests, 1); resolveRows(incoming); await pending;
+  assert.equal(stored, incoming); assert.equal(s.list.children, cards); assert.equal(r.paints.length, 0);
+  s.quick.dispatchTransition(); await flush();
+  assert.equal(r.paints.length, 1); assert.equal(r.paints[0].data, 'attended');
+});
+
+test('closing during opening releases the newest pending update once', async () => {
+  for (const frameStarted of [false, true]) {
+    const s = setup(); s.window.scheduleOlliMainDrawerAttendancePrewarm(); await s.runIdle();
+    const r = bindAttendanceRenderer(s);
+    s.window.openOlliMainSubpageDrawer(null, 'quicknote');
+    if (frameStarted) s.tick();
+    s.context.renderElementaryRecords('');
+    const closing = s.window.closeOlliMainSubpageDrawer();
+    while (s.frames.length) s.tick();
+    s.quick.dispatchTransition(); await closing; await flush();
+    assert.equal(r.paints.length, 1);
+    assert.equal(s.window.isOlliMainSubpageDrawerOpen(), false);
+  }
+});
+test('real attendance navigation still paints locally before its server request completes', async () => {
+  const s = setup(); s.window.scheduleOlliMainDrawerAttendancePrewarm(); await s.runIdle();
+  const r = bindAttendanceRenderer(s);
+  let finishServer;
+  s.window.openRecordAttendanceDashboard = () => {
+    s.context.renderElementaryRecords('');
+    return new Promise(resolve => { finishServer = resolve; });
+  };
+  const opened = s.window.openOlliAttendancePage();
+  assert.equal(r.paints.length, 1);
+  finishServer(true); await opened;
+  assert.equal(s.rear.hasAttribute('inert'), false);
+});
