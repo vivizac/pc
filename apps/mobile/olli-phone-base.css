@@ -4126,6 +4126,18 @@ border-color: #F0F0F0;
   border-bottom-left-radius: var(--olli-phone-screen-corner-radius);
   border-bottom-right-radius: var(--olli-phone-screen-corner-radius);
 }
+/* In the retained 25% strip, do not composite fixed edge blur/fade
+   over the rounded transformed page. Normal full-screen fades stay intact. */
+#observationRosterScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .observationRosterTopFadeLayer,
+#observationRosterScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .observationRosterBottomFadeLayer,
+#studentMemoScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .memoTopFadeLayer,
+#kinderChatFeedbackScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .kcfTopFadeLayer,
+#kinderChatFeedbackScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .kcfBottomFadeLayer,
+#olliTalkBetaScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .olliTalkBetaEdgeBlurTop,
+#olliTalkBetaScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .olliTalkBetaEdgeBlurBottom {
+  display: none;
+}
+
 /* Main page / record-room subpage drawer. The main page stays visible as the right 25%. */
 .olliMainDrawerMainPage,
 .olliMainDrawerCompanion {

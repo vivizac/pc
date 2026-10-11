@@ -1696,10 +1696,6 @@ async function showObservationMemoRoster(event, options = {}) {
   // Ignore duplicate back taps while the return animation is in progress.
   if (getObservationMemoScreen()?.classList.contains('observation-editor-slide-leave')) return;
   const navigationRequest = ++observationMemoRosterNavigationRequest;
-  await finalizeObservationMemoBeforeRosterNavigation();
-  // A newer student selection or navigation must win over this async checkpoint.
-  if (navigationRequest !== observationMemoRosterNavigationRequest) return;
-
   const memoScreen = getObservationMemoScreen();
   const shouldSlideOut = !!(memoScreen && isObservationMemoScreenVisible());
   if (shouldSlideOut && ['elementary', 'kinder'].includes(currentMemoType)) {
@@ -1709,6 +1705,9 @@ async function showObservationMemoRoster(event, options = {}) {
     const editor = getObservationMemoEditor();
     finalizeObservationMemoHistoryBoundary(editor);
     try { editor?.blur(); } catch (_) {}
+    // Start the save/checkpoint without waiting for the network before
+    // showing the slide. Local draft persistence still runs on input/blur.
+    const savePromise = finalizeObservationMemoBeforeRosterNavigation();
     memoScreen.classList.remove('observation-editor-keyboard-open');
     observationMemoKeyboardBaselineBottom = 0;
     showObservationRosterScreenShell();
@@ -1719,9 +1718,15 @@ async function showObservationMemoRoster(event, options = {}) {
       resetObservationMemoHistory();
       renderObservationMemoRoster();
     });
+    // Keep the same server save/checkpoint behavior, but off the visual
+    // navigation's critical path. A newer navigation cannot be overwritten.
+    await savePromise;
+    if (navigationRequest !== observationMemoRosterNavigationRequest) return;
     return;
   }
 
+  await finalizeObservationMemoBeforeRosterNavigation();
+  if (navigationRequest !== observationMemoRosterNavigationRequest) return;
   completeObservationMemoRosterNavigation(options);
 }
 
