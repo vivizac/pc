@@ -51,7 +51,7 @@ test('drawer prewarms Attendance locally and syncs only after the animation', ()
 });
 
 test('startup and login prewarm the cached roster, without blocking network or redraw', () => {
-  assert.match(startup, /if \(isOlliLoggedInForStartPage\(\)\) window\.scheduleOlliMainDrawerAttendancePrewarm\?\.\(\)/);
+  assert.match(startup, /window\.scheduleOlliMainDrawerAttendancePrewarm\?\.\(\);[\s\S]*?startOlliReconnectValidationInBackground\(initialAcademyId\)/);
   assert.match(auth, /if \(entered\) window\.scheduleOlliMainDrawerAttendancePrewarm\?\.\(\)/);
   assert.match(navigation, /async function openRecordAttendanceDashboard\(options = \{\}\)/);
   assert.match(navigation, /await loadRecords\('', \{ localOnly: options\.localOnly === true \}\)/);
