@@ -29,6 +29,7 @@ let observationRosterOutsideClickBound = false;
 let observationMemoSlideTimer = null;
 let observationMemoSlideCancel = null;
 let observationMemoRosterNavigationRequest = 0;
+let observationMemoRosterSavePending = false;
 let observationMemoUndoStack = [];
 let observationMemoRedoStack = [];
 let observationMemoCurrentAction = null;
@@ -1705,8 +1706,11 @@ async function showObservationMemoRoster(event, options = {}) {
     const editor = getObservationMemoEditor();
     finalizeObservationMemoHistoryBoundary(editor);
     try { editor?.blur(); } catch (_) {}
-    // Start the save/checkpoint without waiting for the network before
-    // showing the slide. Local draft persistence still runs on input/blur.
+    // Guard unsynced edits while allowing the back slide to start immediately.
+    // A completed snapshot needs no lock while only its exit checkpoint is made.
+    const needsSaveGuard = Boolean(window.__olliObservationMemoServerSavePromise)
+      || (typeof hasObservationMemoDirtyChanges === 'function' && hasObservationMemoDirtyChanges());
+    observationMemoRosterSavePending = needsSaveGuard;
     const savePromise = finalizeObservationMemoBeforeRosterNavigation();
     memoScreen.classList.remove('observation-editor-keyboard-open');
     observationMemoKeyboardBaselineBottom = 0;
@@ -1720,7 +1724,11 @@ async function showObservationMemoRoster(event, options = {}) {
     });
     // Keep the same server save/checkpoint behavior, but off the visual
     // navigation's critical path. A newer navigation cannot be overwritten.
-    await savePromise;
+    try {
+      await savePromise;
+    } finally {
+      observationMemoRosterSavePending = false;
+    }
     if (navigationRequest !== observationMemoRosterNavigationRequest) return;
     return;
   }
@@ -1788,7 +1796,7 @@ function enforceObservationMemoPageOwnership() {
 }
 
 function openObservationMemoStudentFromRoster(studentId) {
-  if (observationMemoSlideCancel) return false;
+  if (observationMemoSlideCancel || observationMemoRosterSavePending) return false;
   observationMemoRosterNavigationRequest++;
   const rosterScreen = getObservationRosterScreen();
   const memoScreen = getObservationMemoScreen();
