@@ -15,6 +15,8 @@
   let drawerState = null;
   let navigationInFlight = false;
   let drawerSearchReturnTimer = 0;
+  let attendancePreparedKey = '';
+  let attendancePrewarmScheduled = false;
 
   function isReducedMotion(){
     return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -125,9 +127,68 @@
     }
   }
 
-  function refreshRecordRoomSubpage(){
-    // Load only on demand; the first local render runs before motion starts.
-    prepareAttendanceState().catch(() => {});
+  function getAttendancePreparationKey(){
+    const academyId = String(
+      (typeof window.getOlliCurrentAcademyId === 'function' ? window.getOlliCurrentAcademyId() : '') || ''
+    ).trim();
+    const division = typeof window.getOlliLastRecordDivisionView === 'function'
+      ? window.getOlliLastRecordDivisionView()
+      : (typeof currentObservationView !== 'undefined' && currentObservationView === 'kinder' ? 'kinder' : 'elementary');
+    return academyId ? academyId + ':' + division : '';
+  }
+
+  function refreshRecordRoomSubpage(options = {}){
+    if (options.reuseRendered) {
+      // Keep the existing student cards until the server confirms new data.
+      if (typeof loadRecords === 'function') {
+        Promise.resolve(loadRecords('', { reuseRendered: true })).catch(() => {});
+      }
+      return;
+    }
+    const key = getAttendancePreparationKey();
+    prepareAttendanceState({ localOnly: options.localOnly === true }).then(() => {
+      if (options.localOnly && key === getAttendancePreparationKey()) attendancePreparedKey = key;
+    }).catch(() => {});
+  }
+
+  function hasReadyAttendanceBehindDrawer(recordRoom){
+    const list = recordRoom?.querySelector('#recordList');
+    const mode = typeof currentRecordView === 'undefined' ? '' : currentRecordView;
+    const key = getAttendancePreparationKey();
+    return !!(key && attendancePreparedKey === key && list && list.children.length
+      && (mode === 'elementary' || mode === 'kinder') && key.endsWith(':' + mode));
+  }
+
+  async function prewarmOlliMainDrawerAttendanceLocal(){
+    const recordRoom = document.getElementById('recordRoomScreen');
+    const key = getAttendancePreparationKey();
+    if (!recordRoom || !key || drawerState || navigationInFlight || !getVisibleMainPage()) return false;
+    if (hasReadyAttendanceBehindDrawer(recordRoom)) return true;
+    if (isVisible(recordRoom)) return false;
+    // Prepare the hidden rear page from local caches, without navigation or network.
+    try {
+      await prepareAttendanceState({ localOnly: true });
+      if (key !== getAttendancePreparationKey() || drawerState) return false;
+      attendancePreparedKey = key;
+      return hasReadyAttendanceBehindDrawer(recordRoom);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function scheduleOlliMainDrawerAttendancePrewarm(){
+    if (attendancePrewarmScheduled) return;
+    attendancePrewarmScheduled = true;
+    const run = () => {
+      attendancePrewarmScheduled = false;
+      void prewarmOlliMainDrawerAttendanceLocal();
+    };
+    // Do not block the first foreground paint to prepare the rear roster.
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(run, { timeout: 1200 });
+    } else {
+      window.setTimeout(run, 120);
+    }
   }
 
   function getRecordUtilityItem(buttonId){
@@ -610,22 +671,27 @@
     document.body.classList.add(DRAWER_OPEN_CLASS);
 
     recordRoom.classList.remove('vivizac-slide-under-fade', 'olliMainDrawerRearFading');
-    // Establish the pale rear page without starting motion in the same frame
-    // as the synchronous local roster render. No startup/idle prewarm is needed.
-    void recordRoom.offsetWidth;
+    // Reuse the roster prepared at idle. Only a very early click or a changed
+    // academy/division needs a local-only first render here.
+    if (!hasReadyAttendanceBehindDrawer(recordRoom)) {
+      refreshRecordRoomSubpage({ localOnly: true });
+    }
+    Array.from(recordRoom.children).forEach((content) => {
+      void getComputedStyle(content).opacity;
+    });
     void mainPage.offsetWidth;
     const openingState = drawerState;
     requestAnimationFrame(() => {
       if (drawerState !== openingState || navigationInFlight) return;
-      refreshRecordRoomSubpage();
-      Array.from(recordRoom.children).forEach((content) => {
-        void getComputedStyle(content).opacity;
-      });
-      requestAnimationFrame(() => {
+      recordRoom.classList.add('is-olli-main-drawer-rear-open');
+      mainPage.classList.add(OPEN_CLASS);
+      companion?.classList.add(OPEN_CLASS);
+      void waitForTransition(mainPage, 'transform', null, 400).then(() => {
         if (drawerState !== openingState || navigationInFlight) return;
-        recordRoom.classList.add('is-olli-main-drawer-rear-open');
-        mainPage.classList.add(OPEN_CLASS);
-        companion?.classList.add(OPEN_CLASS);
+        if (!mainPage.classList.contains(OPEN_CLASS)) return;
+        if (document.body.classList.contains('olli-main-subpage-drawer-search-active')) return;
+        // Preserve the mounted cards during motion; sync after the slide.
+        refreshRecordRoomSubpage({ reuseRendered: true });
       });
     });
     return true;
@@ -722,6 +788,7 @@
   }
 
   window.openOlliMainSubpageDrawer = openOlliMainSubpageDrawer;
+  window.scheduleOlliMainDrawerAttendancePrewarm = scheduleOlliMainDrawerAttendancePrewarm;
   window.closeOlliMainSubpageDrawer = closeOlliMainSubpageDrawer;
   window.openOlliObservationFromRecordShortcut = openOlliObservationFromRecordShortcut;
   window.openOlliQuickNoteFromRecordShortcut = openOlliQuickNoteFromRecordShortcut;

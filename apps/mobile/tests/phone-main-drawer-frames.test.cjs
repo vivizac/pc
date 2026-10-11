@@ -2,11 +2,12 @@ const fs = require('fs');
 const vm = require('vm');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-
 const source = fs.readFileSync('olli-main-subpage-drawer.js', 'utf8');
+const flush = () => new Promise(resolve => setImmediate(resolve));
 
-function setup() {
-  const frames = [], events = [], nodes = new Map();
+function setup({ idleSupported = true } = {}) {
+  const frames = [], idle = [], events = [], nodes = new Map(), timers = new Map();
+  let academy = 'academy-1', division = 'elementary', nextTimer = 0, context;
   function element(id, display = 'none') {
     const classes = new Set(), attrs = new Map(), listeners = new Map();
     const node = {
@@ -21,80 +22,124 @@ function setup() {
       setAttribute: (key, value) => attrs.set(key, value),
       removeAttribute: key => attrs.delete(key),
       hasAttribute: key => attrs.has(key),
-      addEventListener: (key, callback) => listeners.set(key, callback),
-      removeEventListener: key => listeners.delete(key),
+      querySelector: selector => selector === '#recordList' ? nodes.get('recordList') : null,
+      addEventListener: (key, callback) => {
+        if (!listeners.has(key)) listeners.set(key, new Set());
+        listeners.get(key).add(callback);
+      },
+      removeEventListener: (key, callback) => listeners.get(key)?.delete(callback),
       appendChild: child => nodes.set(child.id, child),
-      dispatchTransition: () => listeners.get('transitionend')?.({ target: node, propertyName: 'transform' })
+      dispatchTransition: () => [...(listeners.get('transitionend') || [])].forEach(fn => fn({ target: node, propertyName: 'transform' }))
     };
     nodes.set(id, node);
     return node;
   }
-  const rear = element('recordRoomScreen');
+  const rear = element('recordRoomScreen'), list = element('recordList');
   rear.children = [element('recordPageInner'), element('floatingBar')];
   const quick = element('kinderChatFeedbackScreen', 'flex');
   const observation = element('observationRosterScreen', 'flex');
-  element('studentMemoScreen');
-  element('kcfPersistentTopLayer');
-  element('observationPersistentNavLayer');
-  element('olliTalkBetaScreen', 'flex');
+  const work = element('olliTalkBetaScreen', 'flex');
+  element('studentMemoScreen'); element('kcfPersistentTopLayer'); element('observationPersistentNavLayer');
   const body = element('body', 'block');
   const window = {
     matchMedia: () => ({ matches: false }),
-    setTimeout: () => 1, clearTimeout: () => {},
-    // Local render happens synchronously; server synchronization remains pending.
-    openRecordAttendanceDashboard: () => {
-      events.push('local-render');
-      assert.equal(quick.classList.contains('is-olli-main-drawer-open'), false);
-      return new Promise(() => {});
+    setTimeout: (fn, delay) => { const id = ++nextTimer; timers.set(id, { fn, delay }); return id; },
+    clearTimeout: id => timers.delete(id),
+    getOlliCurrentAcademyId: () => academy,
+    getOlliLastRecordDivisionView: () => division,
+    openRecordAttendanceDashboard: options => {
+      events.push({ kind: 'local-render', localOnly: options.localOnly });
+      context.currentRecordView = division;
+      list.children = [{}];
+      return Promise.resolve(true);
     }
   };
-  const document = {
-    body, activeElement: null,
-    getElementById: id => nodes.get(id) || null,
-    createElement: () => element('created'),
-    querySelectorAll: () => []
+  if (idleSupported) window.requestIdleCallback = fn => idle.push(fn);
+  context = { window, currentRecordView: 'elementary',
+    document: { body, activeElement: null, getElementById: id => nodes.get(id) || null, createElement: () => element('created'), querySelectorAll: () => [] },
+    requestAnimationFrame: fn => frames.push(fn),
+    getComputedStyle: node => { events.push({ kind: 'style', id: node.id }); return { display: node.style.display, opacity: '.18' }; },
+    loadRecords: (_name, options) => { events.push({ kind: 'server-sync', reuseRendered: options.reuseRendered }); return Promise.resolve(); }
   };
-  vm.runInNewContext(source, {
-    window, document,
-    requestAnimationFrame: callback => frames.push(callback),
-    getComputedStyle: node => {
-      events.push('style:' + node.id);
-      return { display: node.style.display, opacity: '.18' };
-    }
-  });
-  return { window, frames, events, rear, quick, observation, tick: () => frames.shift()?.() };
+  vm.runInNewContext(source, context);
+  return { window, frames, idle, events, timers, rear, list, quick, observation, work,
+    setAcademy: value => academy = value, setDivision: value => division = value,
+    tick: () => frames.shift()?.(), runIdle: async () => { idle.shift()?.(); await flush(); } };
 }
 
-test('local render and pale styles precede motion without waiting for server sync', () => {
+test('idle preparation runs once from local data and leaves the rear screen hidden', async () => {
+  const s = setup();
+  s.window.scheduleOlliMainDrawerAttendancePrewarm();
+  s.window.scheduleOlliMainDrawerAttendancePrewarm();
+  assert.equal(s.idle.length, 1);
+  assert.equal(s.events.filter(e => e.kind === 'local-render').length, 0);
+  await s.runIdle();
+  assert.deepEqual(s.events.filter(e => e.kind === 'local-render'), [{ kind: 'local-render', localOnly: true }]);
+  assert.equal(s.rear.style.display, 'none');
+  assert.equal(s.list.children.length, 1);
+  assert.equal(s.events.some(e => e.kind === 'server-sync'), false);
+});
+
+test('a prepared roster opens in one frame without rebuilding cards, then syncs after motion', async () => {
   for (const kind of ['quicknote', 'observation', 'work']) {
     const s = setup();
+    s.window.scheduleOlliMainDrawerAttendancePrewarm(); await s.runIdle();
+    const cards = s.list.children;
     assert.equal(s.window.openOlliMainSubpageDrawer(null, kind), true);
     assert.equal(s.window.openOlliMainSubpageDrawer(null, kind), false);
-    assert.equal(s.events.includes('local-render'), false);
-    s.tick();
-    assert.equal(s.rear.classList.contains('is-olli-main-drawer-rear-open'), false);
-    assert.deepEqual(s.events.slice(-3), ['local-render', 'style:recordPageInner', 'style:floatingBar']);
     s.tick();
     assert.equal(s.rear.classList.contains('is-olli-main-drawer-rear-open'), true);
-    assert.equal(s.window.isOlliMainSubpageDrawerOpen(), true);
+    assert.equal(s.list.children, cards);
+    assert.equal(s.events.filter(e => e.kind === 'local-render').length, 1);
+    assert.equal(s.events.some(e => e.kind === 'server-sync'), false);
+    ({ quicknote: s.quick, observation: s.observation, work: s.work })[kind].dispatchTransition();
+    await flush();
+    assert.deepEqual(s.events.filter(e => e.kind === 'server-sync'), [{ kind: 'server-sync', reuseRendered: true }]);
   }
 });
 
-test('closing cancels pending opening frames and restores the original screen', async () => {
-  for (const ticks of [0, 1, 2]) {
+test('an early click or changed academy/division falls back to local-only rendering', async () => {
+  for (const change of ['early', 'academy', 'division']) {
     const s = setup();
+    s.window.scheduleOlliMainDrawerAttendancePrewarm();
+    if (change !== 'early') await s.runIdle();
+    if (change === 'academy') s.setAcademy('academy-2');
+    if (change === 'division') s.setDivision('kinder');
+    const before = s.events.filter(e => e.kind === 'local-render').length;
+    s.window.openOlliMainSubpageDrawer(null, 'quicknote');
+    assert.equal(s.events.filter(e => e.kind === 'local-render').length, before + 1);
+    assert.equal(s.events.filter(e => e.kind === 'local-render').at(-1).localOnly, true);
+    s.tick(); await s.runIdle();
+    assert.equal(s.events.filter(e => e.kind === 'local-render').length, before + 1);
+    assert.equal(s.events.some(e => e.kind === 'server-sync'), false);
+  }
+});
+
+test('closing during opening cancels stale motion and deferred synchronization', async () => {
+  for (const ticks of [0, 1]) {
+    const s = setup();
+    s.window.scheduleOlliMainDrawerAttendancePrewarm(); await s.runIdle();
     s.window.openOlliMainSubpageDrawer(null, 'quicknote');
     for (let i = 0; i < ticks; i++) s.tick();
     const closed = s.window.closeOlliMainSubpageDrawer();
     while (s.frames.length) s.tick();
-    assert.equal(s.rear.classList.contains('is-olli-main-drawer-rear-open'), false);
-    s.quick.dispatchTransition();
-    assert.equal(await closed, true);
+    s.quick.dispatchTransition(); await closed; await flush();
     assert.equal(s.rear.style.display, 'none');
     assert.equal(s.quick.style.display, 'flex');
     assert.equal(s.window.isOlliMainSubpageDrawerOpen(), false);
-    assert.equal(s.window.openOlliMainSubpageDrawer(null, 'quicknote'), true);
-    s.tick(); s.tick();
+    assert.equal(s.events.some(e => e.kind === 'server-sync'), false);
+    s.window.openOlliMainSubpageDrawer(null, 'quicknote'); s.tick();
     assert.equal(s.rear.classList.contains('is-olli-main-drawer-rear-open'), true);
   }
+});
+
+test('idle fallback works and visible attendance is not prepared again', async () => {
+  const s = setup({ idleSupported: false });
+  s.window.scheduleOlliMainDrawerAttendancePrewarm();
+  const timer = [...s.timers.values()].find(t => t.delay === 120);
+  assert.ok(timer); timer.fn(); await flush();
+  assert.equal(s.list.children.length, 1);
+  const visible = setup(); visible.rear.style.display = 'flex';
+  visible.window.scheduleOlliMainDrawerAttendancePrewarm(); await visible.runIdle();
+  assert.equal(visible.events.some(e => e.kind === 'local-render'), false);
 });
