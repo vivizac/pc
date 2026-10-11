@@ -357,7 +357,7 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
   min-height:183px;
   max-height:183px;
   justify-content:flex-end;
-  padding:7px 11px 5px;
+  padding:7px 7px 5px 11px;
   /* The editor has its final geometry before focus; animate only the glass. */
   background:transparent;
   border-color:transparent;
@@ -428,7 +428,8 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfAttachBtn {
   grid-column:1;
   grid-row:2;
-  margin:0;
+  margin-left:-4px;
+  margin-right:0;
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerBottom > .kcfAutoStudentRoster {
   grid-column:2;

@@ -16,6 +16,7 @@
     inlineControlsFrame:0,
     inlineBlurTimer:0,
     inlineBlurAt:0,
+    inlineBlurViewportHeight:0,
     inlineClosedViewportHeight:0,
     caretRevealTimer:0,
     suppressBlurSync:false,
@@ -55,6 +56,7 @@
     if (state.inlineBlurTimer) clearTimeout(state.inlineBlurTimer);
     state.inlineBlurTimer = 0;
     state.inlineBlurAt = 0;
+    state.inlineBlurViewportHeight = 0;
   }
 
   function modeEnabled(){
@@ -88,11 +90,12 @@
       // move the message pane or scroll it on keyboard focus/resize.
       var covered = Math.max(0, (global.innerHeight || height) - top - height);
       screen.style.setProperty('--kcf-inline-chat-reserve', Math.ceil(covered + 204) + 'px');
-      // Like TeamChat, wait for the keyboard's viewport descent after blur.
-      // A transient focus loss while the keyboard is rising must not close it.
+      // Begin the single-line morph during keyboard descent, not after it ends.
+      // Height recovery after blur also guards against focus loss on ascent.
       if (state.inlineBlurAt && document.activeElement !== baseInput()
           && (global.performance?.now?.() || 0) - state.inlineBlurAt > 120
-          && height >= state.inlineClosedViewportHeight - 24) {
+          && height >= Math.min(state.inlineClosedViewportHeight - 24,
+                                state.inlineBlurViewportHeight + 16)) {
         traceInlineFocus('keyboard-returned');
         closeInline({ skipBlur:true });
       }
@@ -700,6 +703,7 @@
         traceInlineFocus('blur-event');
         clearInlineBlurTimer();
         state.inlineBlurAt = global.performance?.now?.() || Date.now();
+        state.inlineBlurViewportHeight = Number(global.visualViewport?.height || global.innerHeight || 0);
         state.inlineBlurTimer = setTimeout(function(){
           state.inlineBlurTimer = 0;
           if (!state.inlineOpen || document.activeElement === inline) return;
