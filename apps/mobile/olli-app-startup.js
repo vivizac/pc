@@ -483,6 +483,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     await bootDismissPromise;
   }
 
+  // Local-only preparation after the first page is shown; no server wait.
+  if (isOlliLoggedInForStartPage()) window.scheduleOlliMainDrawerAttendancePrewarm?.();
+
   window.showRecordRoom = showRecordRoom;
   window.openRecordAttendanceDashboard = openRecordAttendanceDashboard;
   window.hideRecordRoom = hideRecordRoom;

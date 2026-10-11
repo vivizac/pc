@@ -14,7 +14,7 @@ function hydrateRecordAttendanceLocalSnapshot(options = {}){
   }
 }
 
-async function openRecordAttendanceDashboard(){
+async function openRecordAttendanceDashboard(options = {}){
   studentSelectionMode = false;
   selectedStudentIds.clear();
   const targetView = (typeof window.getOlliLastRecordDivisionView === 'function')
@@ -29,7 +29,7 @@ async function openRecordAttendanceDashboard(){
     window.setOlliMainSubpageDrawerSearchActive(false);
   }
   if (typeof window.refreshRecordSortPopup === 'function') setTimeout(window.refreshRecordSortPopup, 0);
-  await loadRecords('');
+  await loadRecords('', { localOnly: options.localOnly === true });
 }
 
 async function toggleRecordAcademyManagementMode(){
@@ -190,7 +190,8 @@ async function loadRecords(name, options = {}) {
     // Restore local attendance before painting the first roster, not after.
     // Previously the cache hydration rendered all student cards a second time.
     hydrateRecordAttendanceLocalSnapshot({ render: false });
-    renderElementaryRecords(name);
+    // Preserve the mounted list during background-only server refresh.
+    if (!(options.reuseRendered === true && list.children.length)) renderElementaryRecords(name);
     if (localOnly) return true;
     const studentRefresh = await loadStudentsFromSupabase();
     if (loadToken !== window.__olliRecordListLoadToken || currentRecordView !== 'elementary') return;
@@ -206,7 +207,8 @@ async function loadRecords(name, options = {}) {
     // Restore local attendance before painting the first roster, not after.
     // Previously the cache hydration rendered all student cards a second time.
     hydrateRecordAttendanceLocalSnapshot({ render: false });
-    renderKinderRecords(name);
+    // Preserve the mounted list during background-only server refresh.
+    if (!(options.reuseRendered === true && list.children.length)) renderKinderRecords(name);
     if (localOnly) return true;
     const studentRefresh = await loadStudentsFromSupabase();
     if (loadToken !== window.__olliRecordListLoadToken || currentRecordView !== 'kinder') return;

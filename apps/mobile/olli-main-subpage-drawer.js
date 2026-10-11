@@ -15,6 +15,8 @@
   let drawerState = null;
   let navigationInFlight = false;
   let drawerSearchReturnTimer = 0;
+  let attendancePreparedKey = '';
+  let attendancePrewarmScheduled = false;
 
   function isReducedMotion(){
     return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -103,11 +105,11 @@
     return hit;
   }
 
-  async function prepareAttendanceState(){
+  async function prepareAttendanceState(options = {}){
     const openAttendance = window.openRecordAttendanceDashboard
       || (typeof openRecordAttendanceDashboard === 'function' ? openRecordAttendanceDashboard : null);
     if (typeof openAttendance === 'function') {
-      await openAttendance();
+      await openAttendance({ localOnly: options.localOnly === true });
       return true;
     }
 
@@ -118,21 +120,75 @@
       if (typeof currentObservationView !== 'undefined') currentObservationView = targetView;
       if (typeof currentRecordView !== 'undefined') currentRecordView = targetView;
       if (typeof updateRecordHeaderUI === 'function') updateRecordHeaderUI();
-      if (typeof loadRecords === 'function') await loadRecords('');
+      if (typeof loadRecords === 'function') await loadRecords('', { localOnly: options.localOnly === true });
       return true;
     } catch (_) {
       return false;
     }
   }
 
-  function refreshRecordRoomSubpage(){
-    prepareAttendanceState().catch(() => {});
+  function getAttendancePreparationKey(){
+    const academyId = String(
+      (typeof window.getOlliCurrentAcademyId === 'function' ? window.getOlliCurrentAcademyId() : '') || ''
+    ).trim();
+    const division = typeof window.getOlliLastRecordDivisionView === 'function'
+      ? window.getOlliLastRecordDivisionView()
+      : (typeof currentObservationView !== 'undefined' && currentObservationView === 'kinder' ? 'kinder' : 'elementary');
+    return academyId ? academyId + ':' + division : '';
+  }
+
+  function refreshRecordRoomSubpage(options = {}){
+    if (options.reuseRendered) {
+      // Keep the existing student cards until the server confirms new data.
+      if (typeof loadRecords === 'function') {
+        Promise.resolve(loadRecords('', { reuseRendered: true })).catch(() => {});
+      }
+      return;
+    }
+    const key = getAttendancePreparationKey();
+    prepareAttendanceState({ localOnly: options.localOnly === true }).then(() => {
+      if (options.localOnly && key === getAttendancePreparationKey()) attendancePreparedKey = key;
+    }).catch(() => {});
   }
 
   function hasReadyAttendanceBehindDrawer(recordRoom){
     const list = recordRoom?.querySelector('#recordList');
     const mode = typeof currentRecordView === 'undefined' ? '' : currentRecordView;
-    return !!(list && list.children.length && (mode === 'elementary' || mode === 'kinder'));
+    const key = getAttendancePreparationKey();
+    return !!(key && attendancePreparedKey === key && list && list.children.length
+      && (mode === 'elementary' || mode === 'kinder') && key.endsWith(':' + mode));
+  }
+
+  async function prewarmOlliMainDrawerAttendanceLocal(){
+    const recordRoom = document.getElementById('recordRoomScreen');
+    const key = getAttendancePreparationKey();
+    if (!recordRoom || !key || drawerState || navigationInFlight || !getVisibleMainPage()) return false;
+    if (hasReadyAttendanceBehindDrawer(recordRoom)) return true;
+    if (isVisible(recordRoom)) return false;
+    // Prepare the hidden rear page from local caches, without navigation or network.
+    try {
+      await prepareAttendanceState({ localOnly: true });
+      if (key !== getAttendancePreparationKey() || drawerState) return false;
+      attendancePreparedKey = key;
+      return hasReadyAttendanceBehindDrawer(recordRoom);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function scheduleOlliMainDrawerAttendancePrewarm(){
+    if (attendancePrewarmScheduled) return;
+    attendancePrewarmScheduled = true;
+    const run = () => {
+      attendancePrewarmScheduled = false;
+      void prewarmOlliMainDrawerAttendanceLocal();
+    };
+    // Do not block the first foreground paint to prepare the rear roster.
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(run, { timeout: 1200 });
+    } else {
+      window.setTimeout(run, 120);
+    }
   }
 
   function getRecordUtilityItem(buttonId){
@@ -615,24 +671,23 @@
     // Show that stable page behind the moving main page instead of replacing
     // its DOM synchronously inside the hamburger click handler.
     const requiresInitialRoster = !hasReadyAttendanceBehindDrawer(recordRoom);
-    if (requiresInitialRoster) refreshRecordRoomSubpage();
+    if (requiresInitialRoster) refreshRecordRoomSubpage({ localOnly: true });
 
-    // The current page was already mounted; its initial transform is flushed
-    // above, so one frame is sufficient to start the 320ms slide.
+    // Only move the foreground page; the rear roster is already mounted.
+    // No unconditional student-card render is scheduled during the slide.
     void mainPage.offsetWidth;
     const openingState = drawerState;
     requestAnimationFrame(() => {
       if (drawerState !== openingState || navigationInFlight) return;
       mainPage.classList.add(OPEN_CLASS);
       companion?.classList.add(OPEN_CLASS);
-      if (!requiresInitialRoster) {
-        // Quietly refresh the data after the slide, not during first paint.
-        window.setTimeout(() => {
-          if (drawerState !== openingState || navigationInFlight) return;
-          if (document.body.classList.contains('olli-main-subpage-drawer-search-active')) return;
-          refreshRecordRoomSubpage();
-        }, 380);
-      }
+      void waitForTransition(mainPage, 'transform', null, 400).then(() => {
+        if (drawerState !== openingState || navigationInFlight) return;
+        if (!mainPage.classList.contains(OPEN_CLASS)) return;
+        if (document.body.classList.contains('olli-main-subpage-drawer-search-active')) return;
+        // Sync after the movement, then repaint only confirmed changes.
+        refreshRecordRoomSubpage({ reuseRendered: true });
+      });
     });
     return true;
   }
@@ -728,6 +783,7 @@
   }
 
   window.openOlliMainSubpageDrawer = openOlliMainSubpageDrawer;
+  window.scheduleOlliMainDrawerAttendancePrewarm = scheduleOlliMainDrawerAttendancePrewarm;
   window.closeOlliMainSubpageDrawer = closeOlliMainSubpageDrawer;
   window.openOlliObservationFromRecordShortcut = openOlliObservationFromRecordShortcut;
   window.openOlliQuickNoteFromRecordShortcut = openOlliQuickNoteFromRecordShortcut;

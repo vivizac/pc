@@ -6,6 +6,9 @@ const html = fs.readFileSync('index.html', 'utf8');
 const baseCss = fs.readFileSync('olli-phone-base.css', 'utf8');
 const kcfCss = fs.readFileSync('kinder-feedback.css', 'utf8');
 const drawerJs = fs.readFileSync('olli-main-subpage-drawer.js', 'utf8');
+const startup = fs.readFileSync('olli-app-startup.js', 'utf8');
+const auth = fs.readFileSync('olli-auth-entry-phone-adapter.js', 'utf8');
+const navigation = fs.readFileSync('olli-record-room-navigation.js', 'utf8');
 const talkJs = fs.readFileSync('olli-talk-beta.js', 'utf8');
 const runtimeJs = fs.readFileSync('olli-observation-runtime.js', 'utf8');
 const rosterJs = fs.readFileSync('olli-observation-roster-phone.js', 'utf8');
@@ -36,14 +39,26 @@ test('Main page still stops with the right quarter visible and tapping it restor
   assert.match(drawerJs, /hit\.addEventListener\('click', closeOlliMainSubpageDrawer\)/);
 });
 
-test('drawer opens with one animation frame and does not refresh cached Attendance during first paint', () => {
+test('drawer prewarms Attendance locally and syncs only after the animation', () => {
   const open = drawerJs.split('function openOlliMainSubpageDrawer(event, sourceKind){')[1]?.split('async function openOlliAttendancePage(event){')[0] || '';
-  assert.match(open, /const requiresInitialRoster = !hasReadyAttendanceBehindDrawer\(recordRoom\);/);
-  assert.match(open, /if \(requiresInitialRoster\) refreshRecordRoomSubpage\(\);/);
+  assert.match(drawerJs, /async function prewarmOlliMainDrawerAttendanceLocal\(\)[\s\S]*?prepareAttendanceState\(\{ localOnly: true \}\)/);
+  assert.match(open, /if \(requiresInitialRoster\) refreshRecordRoomSubpage\(\{ localOnly: true \}\)/);
   assert.match(open, /requestAnimationFrame\(\(\) => \{\s*if \(drawerState !== openingState/);
+  assert.match(open, /waitForTransition\(mainPage, 'transform', null, 400\)/);
+  assert.match(open, /refreshRecordRoomSubpage\(\{ reuseRendered: true \}\)/);
+  assert.doesNotMatch(open, /\}, 380\)/);
   assert.doesNotMatch(open, /requestAnimationFrame\(\(\) => \{\s*requestAnimationFrame\(/);
-  assert.match(open, /window\.setTimeout\(\(\) => \{[\s\S]*?refreshRecordRoomSubpage\(\);\s*\}, 380\)/);
-  assert.match(drawerJs, /list\.children\.length && \(mode === 'elementary' \|\| mode === 'kinder'\)/);
+});
+
+test('startup and login prewarm the cached roster, without blocking network or redraw', () => {
+  assert.match(startup, /if \(isOlliLoggedInForStartPage\(\)\) window\.scheduleOlliMainDrawerAttendancePrewarm\?\.\(\)/);
+  assert.match(auth, /if \(entered\) window\.scheduleOlliMainDrawerAttendancePrewarm\?\.\(\)/);
+  assert.match(navigation, /async function openRecordAttendanceDashboard\(options = \{\}\)/);
+  assert.match(navigation, /await loadRecords\('', \{ localOnly: options\.localOnly === true \}\)/);
+  assert.match(navigation, /options\.reuseRendered === true && list\.children\.length/);
+  assert.match(navigation, /if \(studentRefresh\?\.changed === true\) renderElementaryRecords\(name\)/);
+  assert.match(navigation, /if \(studentRefresh\?\.changed === true\) renderKinderRecords\(name\)/);
+  assert.match(html, /olli-record-room-navigation\.js\?v=20261011-prepared-rear-1/);
 });
 
 test('closing drawer keeps Attendance opaque while retaining fade for page switches', () => {

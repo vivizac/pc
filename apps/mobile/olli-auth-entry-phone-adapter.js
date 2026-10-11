@@ -545,7 +545,9 @@ async function enterOlliAfterLoginOrSetup(options = {}){
   let page = getOlliDefaultStartPage();
   if (page) {
     markOlliStartPageSetupDoneForCurrentContext();
-    return enterOlliByStartPage(page, { localFirst });
+    const entered = await enterOlliByStartPage(page, { localFirst });
+    if (entered) window.scheduleOlliMainDrawerAttendancePrewarm?.();
+    return entered;
   }
 
   // 학원을 처음 만들거나 처음 승인받아 연결된 경우에만 시작 페이지를 묻습니다.
@@ -557,7 +559,9 @@ async function enterOlliAfterLoginOrSetup(options = {}){
 
   page = getOlliAllowedStartPage('observation_note');
   if (!localFirst) await saveOlliDefaultStartPage(page);
-  return enterOlliByStartPage(page, { localFirst });
+  const entered = await enterOlliByStartPage(page, { localFirst });
+  if (entered) window.scheduleOlliMainDrawerAttendancePrewarm?.();
+  return entered;
 }
 function updateOlliStartPageSettingUI(){
   const page = getOlliDefaultStartPage() || 'observation_note';
