@@ -753,20 +753,41 @@
     cardState.loading = true;
     cardState.dirty = false;
     const requestId = ++cardState.requestId;
-    showStudentInfoContent('<div class="pcStudentInfoCardViewport pcStudentInfoLoading">학생정보와 시간표를 불러오고 있습니다.</div>');
+    // Local first: render the stored student and its last known timetable before any RPC.
+    const local = readLocalStudentContext(student);
+    await renderStudentInfoCard(student, local.enrollments, [], local.pickups);
+    cardState.loading = false;
+    // Profile and schedule reads are independent; either can refresh the view.
     try {
-      if (typeof global.loadStudentsFromSupabase === 'function') {
-        await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
-        student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;
+      const [profileResult, scheduleResult] = await Promise.allSettled([
+        typeof global.loadStudentsFromSupabase === 'function'
+          ? global.loadStudentsFromSupabase({ skipLifecycleSync: true }) : Promise.resolve(),
+        loadAuthoritativeStudentContext(id)
+      ]);
+      if (cardState.studentId !== id || cardState.requestId !== requestId || !isStudentInfoViewOpen()) return;
+      const latest = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;
+      if (scheduleResult.status === 'fulfilled') rememberStudentContext(id, scheduleResult.value);
+      const context = scheduleResult.status === 'fulfilled' ? scheduleResult.value : local;
+      if (profileResult.status === 'rejected') console.warn('학생정보 최신 확인 실패:', profileResult.reason);
+      if (scheduleResult.status === 'rejected') console.warn('학생 수업시간 최신 확인 실패:', scheduleResult.reason);
+      if (cardState.dirty || cardState.saveInFlight) {
+        // Never replace inputs while the teacher edits. Timetable remains read-only and may refresh safely.
+        cardState.enrollments = context.enrollments;
+        cardState.pickups = context.pickups;
+        const teacher = resolveTimetableTeacherName(latest.type, context.enrollments, []);
+        const scheduleBox = document.querySelector('#pcAttendanceDetailPanel .pcStudentInfoSchedule');
+        if (scheduleBox) scheduleBox.innerHTML = studentInfoScheduleHtml({ ...latest, __olli_timetable_teacher: teacher }, context.enrollments);
+        const teacherBox = document.querySelector('#pcAttendanceDetailPanel .pcStudentInfoTeacherReadonly');
+        if (teacherBox) {
+          teacherBox.textContent = '담임 : ' + (teacher || '미지정');
+          teacherBox.classList.toggle('isEmpty', !teacher);
+        }
+        return;
       }
-      const context = await loadAuthoritativeStudentContext(id);
-      const teacherAssignments = [];
-      student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;
-      if (cardState.studentId !== id || cardState.requestId !== requestId || !isStudentInfoViewOpen()) return;
-      await renderStudentInfoCard(student, context.enrollments, teacherAssignments, context.pickups);
+      await renderStudentInfoCard(latest, context.enrollments, [], context.pickups);
     } catch (error) {
-      if (cardState.studentId !== id || cardState.requestId !== requestId || !isStudentInfoViewOpen()) return;
-      showStudentInfoContent(`<div class="pcStudentInfoCardViewport pcStudentInfoLoading">${esc(error.message || '학생정보를 불러오지 못했습니다.')}</div>`);
+      // Leave the successfully rendered local student visible after an RPC failure.
+      console.warn('학생정보 백그라운드 갱신 실패:', error);
     } finally {
       if (cardState.requestId === requestId) cardState.loading = false;
     }
@@ -912,6 +933,7 @@
       if (!latest) return true;
       const context = await loadAuthoritativeStudentContext(id);
       if (!isCurrent() || cardState.dirty || cardState.saveInFlight) return false;
+      rememberStudentContext(id, context);
       const teacherAssignments = [];
       if (!isCurrent() || cardState.dirty || cardState.saveInFlight) return false;
       await renderStudentInfoCard(latest, context.enrollments, teacherAssignments, context.pickups);
