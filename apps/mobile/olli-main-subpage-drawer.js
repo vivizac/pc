@@ -20,6 +20,94 @@
   let deferredAttendanceRender = null;
   let attendanceTransitionInFlight = false;
 
+  // Read-only, opt-in slide timing. Never stores or transmits student data.
+  const slideDiagEnabled = (() => {
+    try { return new URLSearchParams(window.location.search).get('olliSlideDiag') === '1'; }
+    catch (_) { return false; }
+  })();
+  const slideDiagRuns = [];
+  let slideDiagPanel = null;
+  function printSlideDiag() {
+    const header = 'OLLI mobile attendance slide diagnostic (ms)';
+    const rows = slideDiagRuns.map((r, i) => {
+      const gaps = r.frames.slice(1).map((v, k) => v - r.frames[k]);
+      const maxGap = gaps.length ? Math.round(Math.max(...gaps)) : 0;
+      const slowFrames = gaps.filter(n => n > 25).length;
+      return [
+        '#' + (i + 1), 'rearReady=' + r.rearReady, 'reusable=' + r.reusable,
+        'cards=' + r.cardCount, 'openWork=' + r.openWorkMs,
+        'localLoad=' + r.localLoadMs, 'forcedLayout=' + r.forcedLayoutMs,
+        'firstRAF=' + r.firstRAFMs, 'transformStart=' + r.transformStartMs,
+        'DOMchanges=' + r.mutations, 'frames>25ms=' + slowFrames, 'maxFrameGap=' + maxGap
+      ].join(' | ');
+    });
+    return [header, 'Version: e3287cd + diagnostic probe', ...rows].join('\n');
+  }
+  function displaySlideDiag() {
+    if (!slideDiagPanel) {
+      const panel = document.createElement('div');
+      panel.style.cssText = 'position:fixed;left:10px;right:10px;bottom:12px;z-index:2147483646;background:#fff;color:#111;border:1px solid #d9dde3;border-radius:12px;padding:10px;box-shadow:0 3px 22px #0003;font:12px/1.35 sans-serif;max-height:33vh;overflow:auto';
+      const title = document.createElement('div');
+      title.textContent = '출석부 슬라이드 진단 (개인정보 수집 없음)';
+      title.style.cssText = 'font-weight:600;margin-bottom:5px';
+      const summary = document.createElement('pre');
+      summary.style.cssText = 'font:10px/1.4 monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:15vh;overflow:auto';
+      const copy = document.createElement('button');
+      copy.textContent = '측정 결과 복사';
+      copy.style.cssText = 'padding:8px 12px;border:1px solid #dedede;border-radius:8px;background:#fff;color:#111;margin-top:8px';
+      copy.addEventListener('click', () => {
+        const report = printSlideDiag();
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(report).then(() => { copy.textContent = '복사됨'; })
+            .catch(() => { window.prompt('측정 결과를 복사하세요', report); });
+        } else window.prompt('측정 결과를 복사하세요', report);
+      });
+      const close = document.createElement('button');
+      close.textContent = '닫기';
+      close.style.cssText = 'padding:8px 12px;border:1px solid #dedede;border-radius:8px;background:#fff;color:#111;margin:8px 0 0 8px';
+      close.addEventListener('click', () => { panel.style.display = 'none'; });
+      panel.append(title, summary, copy, close);
+      document.body.appendChild(panel);
+      slideDiagPanel = panel;
+    }
+    slideDiagPanel.querySelector('pre').textContent = printSlideDiag();
+    slideDiagPanel.style.display = 'block';
+  }
+  function beginSlideDiag(mainPage, recordRoom, rearReady) {
+    if (!slideDiagEnabled || typeof performance?.now !== 'function') return null;
+    const t = performance.now();
+    const list = document.getElementById('recordList');
+    const run = {
+      t, rearReady, reusable: window.canReusePhoneRecordList?.(getDrawerDivision(), '') === true,
+      cardCount: list?.querySelectorAll('.elementaryStudentRow,.kinderStudentRow').length || 0,
+      openWorkMs: 0, localLoadMs: 0, forcedLayoutMs: 0,
+      firstRAFMs: 'none', transformStartMs: 'none', mutations: 0, frames: []
+    };
+    const observer = typeof MutationObserver === 'function' && list ? new MutationObserver(events => {
+      run.mutations += events.reduce((n, e) => n + e.addedNodes.length + e.removedNodes.length, 0);
+    }) : null;
+    observer?.observe(list, { childList:true, subtree:true });
+    const onTransition = e => {
+      if (e.target === mainPage && e.propertyName === 'transform' && run.transformStartMs === 'none') {
+        run.transformStartMs = Math.round((performance.now() - t) * 10) / 10;
+      }
+    };
+    mainPage.addEventListener('transitionstart', onTransition);
+    const sample = ts => {
+      if (run.firstRAFMs === 'none') run.firstRAFMs = Math.round((ts - t) * 10) / 10;
+      run.frames.push(ts);
+      if (ts - t < 430) requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+    setTimeout(() => {
+      observer?.disconnect();
+      mainPage.removeEventListener('transitionstart', onTransition);
+      slideDiagRuns.push(run);
+      displaySlideDiag();
+    }, 560);
+    return run;
+  }
+
   function isReducedMotion(){
     return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   }
@@ -758,6 +846,7 @@
     const hit = getReturnHit();
     const utilityOrderSaved = applyRecordUtilityOrder(mainPage);
 
+    const slideDiag = beginSlideDiag(mainPage, recordRoom, !!preparedRearSaved);
     // Keep the prepared DOM displayed; do not hide/show it between frames.
     const recordSaved = preparedRearSaved || captureInlineState(recordRoom);
     releasePreparedRear(true);
@@ -802,10 +891,17 @@
     // Lock subsequent renders before the local-first preparation starts.
     // An old academy/division roster still renders immediately via the reuse guard.
     drawerState.attendanceOpening = true;
+    const slideLoadStart = slideDiag ? performance.now() : 0;
     refreshRecordRoomSubpage({ localOnly: true, reuseRendered: true });
+    if (slideDiag) slideDiag.localLoadMs = Math.round((performance.now() - slideLoadStart) * 10) / 10;
+    const slideLayoutStart = slideDiag ? performance.now() : 0;
     void recordRoom.offsetWidth;
     recordRoom.style.transition = originalAttendanceTransition;
     void mainPage.offsetWidth;
+    if (slideDiag) {
+      slideDiag.forcedLayoutMs = Math.round((performance.now() - slideLayoutStart) * 10) / 10;
+      slideDiag.openWorkMs = Math.round((performance.now() - slideDiag.t) * 10) / 10;
+    }
     const openingState = drawerState;
     requestAnimationFrame(() => {
       if (drawerState !== openingState || navigationInFlight) return;
