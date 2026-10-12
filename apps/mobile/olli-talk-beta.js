@@ -8525,10 +8525,8 @@
       targetScreen.setAttribute('aria-hidden', 'false');
     }
 
-    window.releaseOlliMainDrawerAttendanceRearPage?.();
     screen.style.display = 'none';
     screen.setAttribute('aria-hidden', 'true');
-    window.syncOlliMainDrawerAttendanceRearPage?.();
   }
 
   async function openOlliTalkBetaPage(event){
@@ -8538,12 +8536,10 @@
     }
 
     const sourceScreen = Array.from(document.querySelectorAll('.pageScreen')).find((candidate) => {
-      if (!candidate || candidate.id === 'olliTalkBetaScreen'
-        || candidate.hasAttribute('data-olli-drawer-rear-mounted')) return false;
+      if (!candidate || candidate.id === 'olliTalkBetaScreen') return false;
       try { return getComputedStyle(candidate).display !== 'none'; }
       catch (_) { return candidate.style.display !== 'none'; }
     });
-    window.releaseOlliMainDrawerAttendanceRearPage?.();
     olliTalkBetaReturnPageId = String(sourceScreen?.id || 'recordRoomScreen');
     olliTalkBetaReturnToFeedback = olliTalkBetaReturnPageId === 'kinderChatFeedbackScreen';
     syncOlliTalkContextTab();
@@ -8616,7 +8612,6 @@
       }
     }
 
-    window.syncOlliMainDrawerAttendanceRearPage?.();
 
     bindViewport();
     resizeInput();
@@ -9167,5 +9162,6 @@
     init();
   }
 })();
+
 
 

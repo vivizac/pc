@@ -873,7 +873,6 @@ async function toggleRecordMode() {
 
 async function showRecordRoom(options = {}) {
   const localOnly = options?.localOnly === true;
-  window.releaseOlliMainDrawerAttendanceRearPage?.();
   if (window.OlliOneMinuteFeedbackLifecycle && typeof window.OlliOneMinuteFeedbackLifecycle.beforeLeave === 'function') {
     window.OlliOneMinuteFeedbackLifecycle.beforeLeave();
   }
@@ -951,7 +950,6 @@ function hideRecordRoom() {
     const record = document.getElementById('recordRoomScreen');
     if (record) record.style.display = 'flex';
   }
-  window.syncOlliMainDrawerAttendanceRearPage?.();
 }
 function toggleStudentBlock(el) {
   const block = el.closest('.recordStudentBlock');
@@ -1998,3 +1996,4 @@ function renderRecordAttendanceSummary() {
   if (currentRecordView === 'kinder') renderKinderRecords(searchValue);
   else renderElementaryRecords(searchValue);
 }
+

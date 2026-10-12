@@ -460,9 +460,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         await enterOlliAfterLoginOrSetup({ localFirst: true });
       }
 
-      // The foreground local route is ready; prepare its hidden rear roster
-      // at idle rather than waiting for the boot fade to finish.
-      window.scheduleOlliMainDrawerAttendancePrewarm?.();
       // 화면이 준비된 뒤에만 계정/학원 검증과 서버 최신화가 백그라운드에서 시작됩니다.
       void startOlliReconnectValidationInBackground(initialAcademyId);
     } else if (!(typeof applyOlliTeacherInviteFromUrl === 'function' && applyOlliTeacherInviteFromUrl())) {
@@ -476,7 +473,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (isOlliLoggedInForStartPage()) {
       try {
         await enterOlliByStartPage(getOlliDefaultStartPage() || 'observation_note', { localFirst: true });
-        window.scheduleOlliMainDrawerAttendancePrewarm?.();
         void startOlliReconnectValidationInBackground(initialAcademyId);
       } catch (localError) {
         console.warn('재접속 로컬 화면 복구 실패:', localError?.message || localError);
@@ -638,3 +634,4 @@ document.addEventListener('input', function(event) {
 document.addEventListener('DOMContentLoaded', function() {
   updateSceneMemoPlaceholder();
 });
+

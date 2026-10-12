@@ -49,7 +49,7 @@ test('a previously scheduled 320ms reset preserves the mounted rear', async () =
   const s=setup();s.positions();
   s.window.openKinderChatFeedbackPage();await flush();
   assert.ok(s.timers.some(t => t.ms === 320));
-  s.rear.setAttribute('data-olli-drawer-rear-mounted');s.run();
+  s.setOpen(true);s.run();
   assert.equal(s.rear.scrollTop,64);assert.equal(s.rear.inner.scrollTop,64);
 });
 
@@ -64,7 +64,7 @@ test('delayed callbacks cannot move any page or viewport during opening, closing
 
 test('the visibility observer also preserves a rear becoming visible', () => {
   const s=setup();s.rear.style.display='none';s.notify(s.rear);s.positions();
-  s.rear.setAttribute('data-olli-drawer-rear-mounted');s.rear.style.display='flex';s.notify(s.rear);s.run();
+  s.setOpen(true);s.rear.style.display='flex';s.notify(s.rear);s.run();
   assert.equal(s.rear.inner.scrollTop,64);
 });
 
@@ -72,8 +72,9 @@ test('ordinary attendance navigation still resets its scroll when the rear role 
   const s=setup();s.front.style.display='none';s.positions();
   await s.window.openRecordAttendanceDashboard();await flush();s.run();
   assert.equal(s.rear.inner.scrollTop,0);assert.ok(s.resets.length>0);
-  s.positions();s.rear.setAttribute('data-olli-drawer-rear-mounted');s.window.olliResetPageScroll();
+  s.positions();s.setOpen(true);s.window.olliResetPageScroll();
   assert.equal(s.rear.inner.scrollTop,64);
-  s.rear.removeAttribute('data-olli-drawer-rear-mounted');s.window.olliResetPageScroll();
+  s.setOpen(false);s.window.olliResetPageScroll();
   assert.equal(s.rear.inner.scrollTop,0);
 });
+

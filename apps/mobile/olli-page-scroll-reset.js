@@ -49,10 +49,8 @@
 
   function resetPageScroll(root) {
     if (!root || hasActiveEditableInside(root)) return;
-    // A mounted rear is already positioned. Delayed navigation resets must not
-    // move it or the viewport while the foreground is sliding over it.
+    // Delayed navigation resets must not move the page or viewport during a slide.
     if (window.isOlliMainSubpageDrawerOpen?.() || window.isOlliPhoneNavigationInFlight?.()) return;
-    if (root.id === 'recordRoomScreen' && root.hasAttribute('data-olli-drawer-rear-mounted')) return;
     resetScrollElement(root);
     try {
       root.querySelectorAll(SCROLL_CONTAINER_SELECTOR).forEach(function(el){
@@ -144,4 +142,5 @@
     bindFunctionWrappers();
   }
 })();
+
 

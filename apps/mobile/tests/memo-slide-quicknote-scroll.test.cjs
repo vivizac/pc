@@ -77,39 +77,23 @@ test('CSS declares unconditional textarea pan protection and horizontal wrapper 
   assert.doesNotMatch(read('kcf-teacher-sheet.js'),/syncComposerTouchPolicy|data-kcf-touch-scrollable/);
 });
 
-test('memo entry and exit get a foreground layer before mounting the standby attendance',()=>{
+test('memo entry and exit remain independent of attendance standby',()=>{
   for(const className of ['observation-editor-slide-enter','observation-editor-slide-leave']) {
-    const classes=new Set();let inlineZ='1',completed=0;
+    const classes=new Set();let completed=0;
     const screen={offsetWidth:393,classList:{add:k=>classes.add(k),remove:(...ks)=>ks.forEach(k=>classes.delete(k))},
       addEventListener:()=>{},removeEventListener:()=>{}};
     const context={getObservationMemoScreen:()=>screen,cancelObservationMemoPageSlide:()=>{},
       clearObservationMemoSlideClasses:()=>classes.clear(),observationMemoSlideTimer:null,
       observationMemoSlideCancel:null,OBSERVATION_MEMO_SLIDE_MS:360,
       setTimeout:fn=>{context.finish=fn;return 1;},clearTimeout:()=>{},requestAnimationFrame:()=>{},
-      window:{releaseOlliMainDrawerAttendanceRearPage:()=>{inlineZ='';},
-        syncOlliMainDrawerAttendanceRearPage:()=>{inlineZ=inlineZ || (classes.has(className)?'120000':'1');}}};
+      window:{}};
     const source=read('olli-observation-roster-phone.js');
     vm.runInNewContext(source.slice(source.indexOf('function runObservationMemoPageSlide('),
       source.indexOf('\nfunction createObservationMemoSnapshot(')),context);
     context.runObservationMemoPageSlide(className,()=>completed++);
-    assert.equal(inlineZ,'');
     assert.equal(classes.has(className),true);
     assert.equal(completed,0);
     context.finish();assert.equal(completed,1);
-  }
-});
-
-test('idle attendance mounting waits until the memo animation finishes',()=>{
-  const source=read('olli-main-subpage-drawer.js');
-  const start=source.indexOf('  function mountAttendanceRearPage(){');
-  const end=source.indexOf('\n  function ',start+10);
-  const fn=source.slice(start,end);
-  for(const name of ['observation-editor-slide-enter','observation-editor-slide-leave']) {
-    const context={drawerState:null,navigationInFlight:false,
-      getVisibleMainPage:()=>({id:'studentMemoScreen',classList:{contains:key=>key===name}}),
-      document:{getElementById:()=>({})},hasReadyAttendanceBehindDrawer:()=>true};
-    vm.runInNewContext(fn,context);
-    assert.equal(context.mountAttendanceRearPage(),false);
   }
 });
 
