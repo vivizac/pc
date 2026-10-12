@@ -55,6 +55,36 @@ test('finished touch does not reuse a previous gesture',()=>{
   assert.equal(s.move(100,120),false);
 });
 
+test('waiting one second before dragging does not release the composer touch guard',async()=>{
+  const s=scrollHarness();
+  await new Promise(resolve=>setTimeout(resolve,1000));
+  assert.equal(s.move(100,120),true);
+});
+
+test('native touch policy follows actual textarea overflow before a gesture starts',()=>{
+  const source=read('kcf-teacher-sheet.js');
+  const start=source.indexOf('  function syncComposerTouchPolicy(){');
+  const end=source.indexOf('\n  function trackTeacherComposerTouch(',start);
+  const attrs=new Set();
+  const input={clientHeight:128,scrollHeight:128,toggleAttribute:(key,on)=>on?attrs.add(key):attrs.delete(key)};
+  const context={baseInput:()=>input,editor:()=>null};
+  vm.runInNewContext(source.slice(start,end),context);
+  context.syncComposerTouchPolicy();assert.equal(attrs.has('data-kcf-touch-scrollable'),false);
+  input.scrollHeight=300;
+  context.syncComposerTouchPolicy();assert.equal(attrs.has('data-kcf-touch-scrollable'),true);
+  input.scrollHeight=128;
+  context.syncComposerTouchPolicy();assert.equal(attrs.has('data-kcf-touch-scrollable'),false);
+});
+
+test('CSS declares delayed-pan protection and keeps native long-text and horizontal-card scrolling',()=>{
+  const css=read('kcf-teacher-sheet.css');
+  assert.match(css,/#kinderChatFeedbackScreen\.kcfInlineDialogueActive \.kcfInput \{[^}]*touch-action:none;/);
+  assert.match(css,/#kinderChatFeedbackScreen\.kcfInlineDialogueActive \.kcfComposer \{[^}]*touch-action:pan-x;/);
+  assert.match(css,/\.kcfInput\[data-kcf-touch-scrollable\] \{\s*touch-action:pan-y;/);
+  assert.match(css,/\.kcfComposer:has\(\.kcfInput\[data-kcf-touch-scrollable\]\) \{\s*touch-action:auto;/);
+  assert.match(css,/\.kcfTeacherSheetInput\[data-kcf-touch-scrollable\] \{\s*touch-action:pan-y;/);
+});
+
 test('memo entry and exit get a foreground layer before mounting the standby attendance',()=>{
   for(const className of ['observation-editor-slide-enter','observation-editor-slide-leave']) {
     const classes=new Set();let inlineZ='1',completed=0;

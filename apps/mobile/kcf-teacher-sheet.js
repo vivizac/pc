@@ -122,6 +122,7 @@
 
   function syncViewport(){
     if (!state.open && !state.inlineOpen) return;
+    syncComposerTouchPolicy();
     var viewport = global.visualViewport;
     var width = viewport ? Number(viewport.width || global.innerWidth || 0) : Math.max(global.innerWidth || 0, document.documentElement.clientWidth || 0);
     var height = viewport ? Number(viewport.height || global.innerHeight || 0) : Math.max(global.innerHeight || 0, document.documentElement.clientHeight || 0);
@@ -198,6 +199,14 @@
   function teacherScrollableTarget(target){
     if (!target || !target.closest) return null;
     return target.closest('#kcfInput, .kcfTeacherSheetInput, .kcfAutoStudentRosterScroller');
+  }
+
+  function syncComposerTouchPolicy(){
+    [baseInput(), editor()].forEach(function(input){
+      if (!input) return;
+      input.toggleAttribute('data-kcf-touch-scrollable', input.clientHeight > 0
+        && input.scrollHeight > input.clientHeight + 1);
+    });
   }
 
   function trackTeacherComposerTouch(event){
@@ -277,6 +286,7 @@
     if (!source || !target) return;
     if (target.value !== source.value) target.value = source.value;
     target.placeholder = '수업 기록을 적어주세요';
+    syncComposerTouchPolicy();
     syncWarning();
     if (opts.focus === true && state.open) focusEditor();
     else if (opts.focus === true && state.inlineOpen) {
@@ -518,6 +528,7 @@
     if (input) {
       input.addEventListener('input', function(){
         syncToBase();
+        syncComposerTouchPolicy();
         syncWarning();
       });
       input.addEventListener('blur', function(){
@@ -859,6 +870,7 @@
     global.addEventListener('resize', scheduleViewportSync);
     var inline = baseInput();
     if (inline) {
+      inline.addEventListener('input', syncComposerTouchPolicy);
       inline.addEventListener('focus', function(){
         cancelInlineClosing();
         clearInlineBlurTimer();

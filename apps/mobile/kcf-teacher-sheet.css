@@ -108,6 +108,8 @@ body.kcfContinuousMode .kcfTeacherSheetBody {
   outline:0;
   resize:none;
   overflow-y:auto;
+  touch-action:none;
+  overscroll-behavior-y:contain;
   background:#fff;
   color:#111;
   padding:16px 48px 12px 6px;
@@ -117,6 +119,10 @@ body.kcfContinuousMode .kcfTeacherSheetBody {
   -webkit-appearance:none;
   appearance:none;
   box-shadow:none;
+}
+
+.kcfTeacherSheetInput[data-kcf-touch-scrollable] {
+  touch-action:pan-y;
 }
 
 .kcfTeacherSheetInput::placeholder {
@@ -381,6 +387,10 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
   }
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposer {
+  /* Declare vertical pan ownership before a delayed drag starts. Keep
+     horizontal student-card gestures available inside the short composer. */
+  touch-action:pan-x;
+  overscroll-behavior-y:contain;
   height:183px;
   min-height:183px;
   max-height:183px;
@@ -450,6 +460,8 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
   max-height:128px;
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfInput {
+  touch-action:none;
+  overscroll-behavior-y:contain;
   height:128px !important;
   min-height:128px !important;
   max-height:128px !important;
@@ -471,6 +483,12 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfInputActivateBtn {
   display:none;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposer:has(.kcfInput[data-kcf-touch-scrollable]) {
+  touch-action:auto;
+}
+#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfInput[data-kcf-touch-scrollable] {
+  touch-action:pan-y;
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfAttachBtn {
   grid-column:1;
@@ -547,4 +565,5 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
 #kinderChatFeedbackScreen.kcfInlineDialogueActive.kcfInlineDialogueClosing .kcfComposerModeBtn {
   display:none;
 }
+
 
