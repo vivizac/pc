@@ -115,9 +115,9 @@
 }
 
 #observationRosterScreen .memoBodyRosterRow {
-  height:53px;
-  min-height:53px;
-  max-height:53px;
+  height:54px;
+  min-height:54px;
+  max-height:54px;
   box-sizing:border-box;
   display:flex;
   align-items:center;
@@ -1050,3 +1050,4 @@
 #observationPersistentNavLayer .observationTopWorkBtn:active{
   transform:scale(.98);
 }
+
