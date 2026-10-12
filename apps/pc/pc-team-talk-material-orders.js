@@ -656,9 +656,9 @@
 
     const byMonth = new Map();
     items.forEach(item => {
-      const ordered = new Date(item?.ordered_at || 0);
-      if (!Number.isFinite(ordered.getTime())) return;
-      const month = ordered.getMonth() + 1;
+      const neededOn = clean(item?.needed_on);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(neededOn)) return;
+      const month = Number(neededOn.slice(5, 7));
       if (!byMonth.has(month)) byMonth.set(month, []);
       byMonth.get(month).push(item);
     });
@@ -678,16 +678,19 @@
           create('strong', '', clean(item?.item_name) || '재료'),
           create('span', '', [
             '수량 ' + (clean(item?.quantity_text) || '-'),
-            '주문 ' + formatDate(item?.ordered_at),
-            '도착 ' + formatDate(item?.arrived_at)
+            '필요일 ' + formatDate(item?.needed_on),
+            ...(item?.ordered_at ? ['주문 ' + formatDate(item.ordered_at)] : []),
+            ...(item?.arrived_at ? ['도착 ' + formatDate(item.arrived_at)] : [])
           ].join(' · '))
         );
-        top.append(materialIcon(item), copy, create('span', 'olliMatStatusTag arrived', '보관'));
+        const meta = statusMeta(item?.status);
+        top.append(materialIcon(item), copy, create('span', `olliMatStatusTag ${meta.className}`, meta.label));
         card.appendChild(top);
 
         const detail = create('div', 'olliMatArchiveOrderDetail');
         [
           ['요청자', clean(item?.requested_by_name) || '-'],
+          ['상태', statusMeta(item?.status).label],
           ['사용수업', clean(item?.use_context) || '미지정'],
           ['필요일', item?.needed_on ? formatDate(item.needed_on) : '미지정']
         ].forEach(([label, value]) => {
