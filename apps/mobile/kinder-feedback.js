@@ -1813,15 +1813,25 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
         liveUi.bubble.setAttribute('aria-busy', 'false');
       }
       syncKinderChatFeedbackLiveItemToInbox(item);
-      const saved = await saveKinderChatFeedbackLive(item.id, item.studentId);
-      if (item.trialSessionId && saved !== true && successTeacherMode) {
-        successTeacherMode.onFeedbackRequestResult({
-          id:item.id, studentId:item.rosterSelectionId, status:'error'
-        });
-      }
-      syncKinderChatFeedbackLiveItemToInbox(item);
       showKinderChatFeedbackLiveActions(item);
       if (liveUi.area) liveUi.area.scrollTop = liveUi.area.scrollHeight;
+      // Save only the completed result, without waiting to reveal the feedback.
+      // Any failure leaves the original result locally available with a retry action.
+      void saveKinderChatFeedbackLive(item.id, item.studentId).then((saved) => {
+        if (kcfLiveFeedbackItems.get(item.id) !== item) return;
+        if (item.trialSessionId && saved !== true && successTeacherMode) {
+          successTeacherMode.onFeedbackRequestResult({
+            id:item.id, studentId:item.rosterSelectionId, status:'error'
+          });
+        }
+        syncKinderChatFeedbackLiveItemToInbox(item);
+        refreshKinderChatFeedbackLiveActions(item);
+      }).catch((error) => {
+        console.warn('퀵노트 피드백 백그라운드 저장 실패:', error);
+        if (kcfLiveFeedbackItems.get(item.id) !== item) return;
+        try { showPushToast('피드백이 서버에 저장되지 않았어요. 저장 재시도를 눌러 주세요.'); } catch (_) {}
+        refreshKinderChatFeedbackLiveActions(item);
+      });
     } catch(err) {
       if (isKinderChatFeedbackLiveRequestDiscarded(item.id)) {
         item.status = 'discarded';
