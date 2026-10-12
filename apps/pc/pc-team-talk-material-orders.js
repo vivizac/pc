@@ -459,6 +459,30 @@
     return state.items.filter(matchesFilter);
   }
 
+  // Keep the existing status/category positions, sorting only each requested status
+  // by the original request creation time (not status change or delivery time).
+  function sortLatestRequestsWithinStatus(items) {
+    const byStatus = new Map();
+    ['requested', 'ordered', 'arrived'].forEach(status => {
+      const rows = items.filter(item => clean(item?.status) === status);
+      rows.sort((a, b) => {
+        const aTime = Date.parse(clean(a?.created_at)) || 0;
+        const bTime = Date.parse(clean(b?.created_at)) || 0;
+        return bTime - aTime;
+      });
+      byStatus.set(status, rows);
+    });
+    const nextIndex = new Map();
+    return items.map(item => {
+      const status = clean(item?.status);
+      const rows = byStatus.get(status);
+      if (!rows) return item;
+      const index = nextIndex.get(status) || 0;
+      nextIndex.set(status, index + 1);
+      return rows[index];
+    });
+  }
+
   function ensureSelection(items) {
     if (!items.length) {
       state.selectedId = '';
@@ -505,7 +529,7 @@
   function renderList() {
     const body = rootQuery('[data-material-list]');
     if (!body) return;
-    const items = filteredItems();
+    const items = sortLatestRequestsWithinStatus(filteredItems());
     ensureSelection(items);
     body.replaceChildren();
 
