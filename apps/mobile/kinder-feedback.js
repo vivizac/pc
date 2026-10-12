@@ -1371,7 +1371,7 @@ function createKinderChatFeedbackLiveMessage(options = {}) {
     retryBtn.disabled = true;
     try {
       if (await saveKinderChatFeedbackLive(options.id)) {
-        try { showPushToast('체험 피드백을 서버에 저장했어요.'); } catch (_) {}
+        try { showPushToast('피드백을 서버에 저장했어요.'); } catch (_) {}
       }
     } finally {
       refreshKinderChatFeedbackLiveActions(getKinderChatFeedbackLiveItem(options.id));
@@ -1411,12 +1411,15 @@ function refreshKinderChatFeedbackLiveActions(item) {
   const editBtn = row.querySelector('.kcfLiveEditBtn');
   const retryBtn = row.querySelector('.kcfTrialRetryBtn');
   if (retryBtn) {
-    retryBtn.style.display = item.trialSessionId && !item.saved ? '' : 'none';
-    retryBtn.disabled = !item.resultText || item.status === 'streaming';
+    // Keep the retry path for all unsaved feedback (including restored sessions).
+    retryBtn.style.display = item.resultText && !item.saved && !item.reviewed
+      && item.status !== 'streaming' && item.status !== 'error' && item.status !== 'interrupted'
+      ? '' : 'none';
+    retryBtn.disabled = !item.resultText || kcfLiveSaveInFlight.has(String(item.id || ''));
   }
   if (inboxBtn) inboxBtn.disabled = !item.resultText || item.status === 'streaming';
   if (copyBtn) copyBtn.disabled = !item.resultText || !!segments.length;
-  if (editBtn) editBtn.disabled = !item.resultText || item.status === 'streaming';
+  if (editBtn) editBtn.disabled = !item.resultText || item.status === 'streaming' || kcfLiveSaveInFlight.has(String(item.id || ''));
 }
 function showKinderChatFeedbackLiveActions(item) {
   const row = getKinderChatFeedbackLiveRow(item?.id);
@@ -1555,7 +1558,21 @@ async function saveKcfTrialFeedbackOnServer(item, content, update = false) {
   return { id:String(result.id), content:String(content || ''), academy_id:academyId, trial_session_id:trialId };
 }
 
-async function saveKinderChatFeedbackLive(id, selectedStudentId = '') {
+const kcfLiveSaveInFlight = new Map();
+function saveKinderChatFeedbackLive(id, selectedStudentId = '') {
+  const key = String(id || '');
+  if (kcfLiveSaveInFlight.has(key)) return kcfLiveSaveInFlight.get(key);
+  const pending = saveKinderChatFeedbackLiveOnce(key, selectedStudentId).finally(() => {
+    kcfLiveSaveInFlight.delete(key);
+    const current = getKinderChatFeedbackLiveItem(key);
+    if (current) refreshKinderChatFeedbackLiveActions(current);
+  });
+  kcfLiveSaveInFlight.set(key, pending);
+  const current = getKinderChatFeedbackLiveItem(key);
+  if (current) refreshKinderChatFeedbackLiveActions(current);
+  return pending;
+}
+async function saveKinderChatFeedbackLiveOnce(id, selectedStudentId = '') {
   const item = getKinderChatFeedbackLiveItem(id);
   if (!item || !String(item.resultText || '').trim() || item.status === 'streaming') return false;
   if (item.saved || item.reviewed) return true;
@@ -1616,8 +1633,8 @@ async function saveKinderChatFeedbackLive(id, selectedStudentId = '') {
     savedOk = false;
   }
 
-  if (savedOk === false) {
-    try { showPushToast('피드백 자동 저장을 확인해 주세요.'); } catch(e) {}
+  if (!savedOk) {
+    try { showPushToast('피드백이 서버에 저장되지 않았어요. 저장 재시도를 눌러 주세요.'); } catch(e) {}
     return false;
   }
 
