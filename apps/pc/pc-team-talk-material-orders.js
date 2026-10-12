@@ -124,23 +124,9 @@
     return `${y}.${m}.${d} ${hh}:${mm}`;
   }
 
-  function materialArchiveCutoffMs(now = new Date()) {
-    const source = now instanceof Date ? now : new Date(now);
-    if (!Number.isFinite(source.getTime())) return 0;
-    const target = new Date(source.getTime());
-    const originalDay = source.getDate();
-    target.setDate(1);
-    target.setMonth(target.getMonth() - 1);
-    const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
-    target.setDate(Math.min(originalDay, lastDay));
-    return target.getTime();
-  }
-
   function isMaterialArchiveEligible(item, now = new Date()) {
-    if (clean(item?.status) !== 'arrived') return false;
-    const orderedAt = new Date(item?.ordered_at || 0).getTime();
-    if (!Number.isFinite(orderedAt) || orderedAt <= 0) return false;
-    return orderedAt <= materialArchiveCutoffMs(now);
+    const neededOn = clean(item?.needed_on);
+    return /^\d{4}-\d{2}-\d{2}$/.test(neededOn) && neededOn < localDateKey(now);
   }
 
   function currentMaterialItems() {
@@ -336,7 +322,7 @@
             </button>
             <div class="olliMatArchiveHeaderCopy">
               <strong>지난 주문내역</strong>
-              <span>도착 완료 후 주문일로부터 한 달이 지난 기록을 연도별로 정리합니다.</span>
+              <span>필요일이 지난 재료 요청을 연도별로 정리합니다.</span>
             </div>
           </header>
           <div class="olliMatArchiveWorkspace">
@@ -645,7 +631,7 @@
       const empty = create('div', 'olliMatArchiveEmpty');
       empty.append(
         create('strong', '', '아직 보관된 주문이 없어요.'),
-        create('span', '', '도착 완료된 주문은 주문일로부터 한 달 뒤 자동으로 이곳에 정리됩니다.')
+        create('span', '', '필요일이 지난 요청은 자동으로 이곳에 정리됩니다.')
       );
       host.appendChild(empty);
       return;
