@@ -291,10 +291,11 @@
 
   function deferAttendanceRender(view, name){
     if (!attendanceTransitionInFlight && !drawerState?.attendanceOpening) return false;
-    // Never delay the first local roster when there are no mounted cards yet.
-    const list = document.getElementById('recordList');
     const key = getAttendancePreparationKey();
-    if (!list?.children.length || !key) return false;
+    // The first correct local roster must be allowed to render before motion.
+    // Never postpone replacement of an old academy, division, sort, or search list.
+    if (!key || window.canReusePhoneRecordList?.(view, name) !== true) return false;
+    // Coalesce overlapping local/server/Realtime requests while the page moves.
     deferredAttendanceRender = { view, name, key };
     return true;
   }
@@ -305,7 +306,7 @@
     deferredAttendanceRender = null;
     if (!pending || pending.key !== getAttendancePreparationKey()) return;
     if (typeof currentRecordView === 'undefined' || currentRecordView !== pending.view) return;
-    // Read the latest data now; intermediate refreshes only replace this request.
+    // Re-render once from the latest local state; do not replay stale snapshots.
     if (pending.view === 'elementary' && typeof renderElementaryRecords === 'function') {
       renderElementaryRecords(pending.name);
     } else if (pending.view === 'kinder' && typeof renderKinderRecords === 'function') {
@@ -794,11 +795,10 @@
 
     hit.hidden = false;
     document.body.classList.add(DRAWER_OPEN_CLASS);
-    // Prepare only when requested, preserving the existing local-first load.
-    // Reuse the already mounted local roster; only first entry/changed context renders it.
-    refreshRecordRoomSubpage({ localOnly: true, reuseRendered: true });
-    // Pause subsequent paints during motion, after the initial local render.
+    // Lock subsequent renders before the local-first preparation starts.
+    // An old academy/division roster still renders immediately via the reuse guard.
     drawerState.attendanceOpening = true;
+    refreshRecordRoomSubpage({ localOnly: true, reuseRendered: true });
     void recordRoom.offsetWidth;
     void mainPage.offsetWidth;
     const openingState = drawerState;
