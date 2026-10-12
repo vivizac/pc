@@ -338,7 +338,9 @@
       modeButton.id = 'kcfModeSwitchBtn';
       modeButton.type = 'button';
       modeButton.className = 'kcfComposerModeBtn';
-      modeButton.setAttribute('aria-label', '연속기록으로 전환');
+      modeButton.setAttribute('aria-label', '기록 모드 선택');
+      modeButton.setAttribute('aria-haspopup', 'menu');
+      modeButton.setAttribute('aria-expanded', 'false');
       modeButton.innerHTML = '<span class="kcfComposerModeLabel">대화</span>'
         + '<svg class="kcfModeChevron" viewBox="0 0 24 24" aria-hidden="true">'
         + '<path d="m6 9 6 6 6-6"></path></svg>';
@@ -457,7 +459,7 @@
       if (!btn) return;
       var label = btn.querySelector('.kcfComposerModeLabel');
       if (label) label.textContent = continuous ? '연속기록' : '대화';
-      btn.setAttribute('aria-label', continuous ? '대화로 전환' : '연속기록으로 전환');
+      btn.setAttribute('aria-label', '기록 모드 선택: ' + (continuous ? '연속기록' : '대화'));
     });
   }
   function setComposerMode(mode, event){
@@ -480,8 +482,62 @@
     btn.addEventListener('click',function(event){
       event.preventDefault();
       event.stopPropagation();
-      setComposerMode(state.composerMode === 'dialogue' ? 'continuous' : 'dialogue', event);
+      toggleModeMenu();
     });
+  }
+
+  function closeModeMenu(){
+    var menu = document.getElementById('kcfComposerModeMenu');
+    if (menu) menu.hidden = true;
+    document.getElementById('kcfModeSwitchBtn')?.setAttribute('aria-expanded', 'false');
+  }
+
+  function positionModeMenu(){
+    var menu = document.getElementById('kcfComposerModeMenu');
+    var button = document.getElementById('kcfModeSwitchBtn');
+    if (!menu || menu.hidden || !button) return;
+    var rect = button.getBoundingClientRect();
+    var viewport = global.visualViewport;
+    var left = Number(viewport?.offsetLeft || 0);
+    var top = Number(viewport?.offsetTop || 0);
+    var width = Number(viewport?.width || global.innerWidth);
+    menu.style.left = Math.max(left + 8, Math.min(rect.right - menu.offsetWidth, left + width - menu.offsetWidth - 8)) + 'px';
+    menu.style.top = Math.max(top + 8, rect.top - menu.offsetHeight - 8) + 'px';
+  }
+
+  function toggleModeMenu(){
+    var menu = document.getElementById('kcfComposerModeMenu');
+    if (menu && !menu.hidden) { closeModeMenu(); return; }
+    if (!menu) {
+      menu = document.createElement('div');
+      menu.id = 'kcfComposerModeMenu';
+      menu.className = 'kcfComposerModeMenu';
+      menu.setAttribute('role', 'menu');
+      menu.setAttribute('aria-label', '기록 모드');
+      [['dialogue', '대화'], ['continuous', '연속기록']].forEach(function(option){
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'kcfComposerModeOption';
+        item.dataset.mode = option[0];
+        item.setAttribute('role', 'menuitemradio');
+        item.innerHTML = '<span>' + option[1] + '</span><span class="kcfModeSelectedMark" aria-hidden="true">✓</span>';
+        item.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
+        item.addEventListener('click', function(event){
+          event.preventDefault();
+          event.stopPropagation();
+          closeModeMenu();
+          setComposerMode(option[0], event);
+        });
+        menu.appendChild(item);
+      });
+      document.body.appendChild(menu);
+    }
+    menu.querySelectorAll('[data-mode]').forEach(function(item){
+      item.setAttribute('aria-checked', String(item.dataset.mode === state.composerMode));
+    });
+    menu.hidden = false;
+    document.getElementById('kcfModeSwitchBtn')?.setAttribute('aria-expanded', 'true');
+    positionModeMenu();
   }
 
   function ensureSheet(){
@@ -645,6 +701,7 @@
   // Start the 183px -> 47px morph immediately, retaining the visualViewport
   // attachment until keyboard descent ends.
   function beginInlineClosing(){
+    closeModeMenu();
     if (!state.inlineOpen || state.inlineClosing) return;
     clearInlineRevealTimer();
     state.inlineClosing = true;
@@ -745,6 +802,7 @@
   }
 
   function closeInline(options){
+    closeModeMenu();
     if (!state.inlineOpen) return;
     var opts = options || {};
     state.inlineOpen = false;
@@ -820,6 +878,7 @@
   }
 
   function close(options){
+    closeModeMenu();
     var opts = options || {};
     if (!state.open) {
       closeInline();
@@ -863,6 +922,14 @@
   function init(){
     ensureSheet();
     syncModeUi();
+    document.addEventListener('pointerdown', function(event){
+      if (!event.target?.closest?.('#kcfComposerModeMenu, #kcfModeSwitchBtn')) closeModeMenu();
+    });
+    document.addEventListener('keydown', function(event){
+      if (event.key === 'Escape') closeModeMenu();
+    });
+    global.addEventListener('resize', closeModeMenu);
+    global.visualViewport?.addEventListener('resize', closeModeMenu);
     if (global.visualViewport) {
       global.visualViewport.addEventListener('resize', scheduleViewportSync);
       global.visualViewport.addEventListener('scroll', scheduleViewportSync);
