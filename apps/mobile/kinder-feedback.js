@@ -1413,6 +1413,7 @@ function refreshKinderChatFeedbackLiveActions(item) {
   if (retryBtn) {
     // Keep the retry path for all unsaved feedback (including restored sessions).
     retryBtn.style.display = item.resultText && !item.saved && !item.reviewed
+      && !kcfLiveSaveInFlight.has(String(item.id || ''))
       && item.status !== 'streaming' && item.status !== 'error' && item.status !== 'interrupted'
       ? '' : 'none';
     retryBtn.disabled = !item.resultText || kcfLiveSaveInFlight.has(String(item.id || ''));
