@@ -139,8 +139,8 @@
   }
 
   function refreshRecordRoomSubpage(options = {}){
-    if (options.reuseRendered) {
-      // Keep the existing student cards until the server confirms new data.
+    if (options.reuseRendered && options.localOnly !== true) {
+      // Reuse mounted cards, then check the server only after the slide finishes.
       if (typeof loadRecords === 'function') {
         Promise.resolve(loadRecords('', { reuseRendered: true })).catch(() => {});
       }
