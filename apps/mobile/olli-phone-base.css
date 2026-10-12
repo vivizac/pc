@@ -4201,8 +4201,8 @@ border-color: #F0F0F0;
   opacity:0;
   pointer-events:none;
   z-index:2147483000;
-  /* White wash arrives last, once the slide is well underway. */
-  transition:opacity 105ms ease 195ms;
+  /* Never animate the white wash during drawer open/close. */
+  transition:none;
 }
 .olliMainDrawerMainPage.is-olli-main-drawer-open {
   transform:translate3d(75%,0,0) !important;
@@ -4215,6 +4215,11 @@ border-color: #F0F0F0;
     -4px 0 14px rgba(0,0,0,.055);
 }
 .olliMainDrawerMainPage.is-olli-main-drawer-open::after {
+  /* Hide at the same instant the slide opens, without a delayed fade. */
+  opacity:0;
+}
+.olliMainDrawerMainPage.is-olli-main-drawer-returning::after {
+  /* Apply at the instant the return slide starts. */
   opacity:1;
 }
 .olliMainDrawerCompanion.is-olli-main-drawer-open {
@@ -4238,8 +4243,6 @@ border-color: #F0F0F0;
 }
 .olliMainDrawerMainPage.is-olli-main-drawer-switch-exit::after {
   opacity:0;
-  /* Page-switch exit must not wait for the drawer-opening wash delay. */
-  transition:opacity 105ms ease 0ms;
 }
 .olliMainDrawerMainPage.is-olli-main-drawer-switch-enter,
 .olliMainDrawerCompanion.is-olli-main-drawer-switch-enter {
