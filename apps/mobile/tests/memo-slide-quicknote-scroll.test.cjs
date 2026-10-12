@@ -5,14 +5,14 @@ const path = require('node:path');
 const vm = require('node:vm');
 const read = name => fs.readFileSync(path.join(__dirname, '..', name), 'utf8');
 
-function scrollHarness({inline=true, sheet=false, height=40, top=0, roster=false, inComposer=true}={}) {
+function scrollHarness({inline=true, sheet=false, height=40, top=0, roster=false, inComposer=true, gap=false}={}) {
   const source = read('kcf-teacher-sheet.js');
   const start = source.indexOf('  function teacherScrollableTarget(');
   const end = source.indexOf('\n  function syncWarning()', start);
   const element = {scrollHeight:height, clientHeight:40, scrollTop:top,
     classList:{contains:()=>roster}};
   const target = {closest:selector=>selector.startsWith('#kinderChatFeedbackScreen')
-    ? (inComposer ? {} : null) : element};
+    ? (inComposer ? {} : null) : (gap ? null : element)};
   const context = {state:{inlineOpen:inline},document:{body:{classList:{contains:()=>sheet}}}};
   vm.runInNewContext(source.slice(start, end), context);
   const move = (x,y) => {
@@ -34,16 +34,16 @@ test('inline short input blocks vertical page pan, preserves taps and horizontal
 test('inline composer guard does not intercept conversation scrolling',()=>{
   assert.equal(scrollHarness({inComposer:false}).move(100,120),false);
 });
-test('long input scrolls internally but cannot drag beyond top or bottom',()=>{
-  assert.equal(scrollHarness({height:200,top:80}).move(100,120),false);
+test('long input keeps the Team Chat vertical pan lock at every text scroll position',()=>{
+  assert.equal(scrollHarness({height:200,top:80}).move(100,120),true);
   assert.equal(scrollHarness({height:200,top:0}).move(100,120),true);
-  assert.equal(scrollHarness({height:200,top:0}).move(100,80),false);
+  assert.equal(scrollHarness({height:200,top:0}).move(100,80),true);
   assert.equal(scrollHarness({height:200,top:160}).move(100,80),true);
-  assert.equal(scrollHarness({height:200,top:160}).move(100,120),false);
+  assert.equal(scrollHarness({height:200,top:160}).move(100,120),true);
 });
-test('continuous sheet retains short-input protection and long-text scrolling',()=>{
+test('continuous sheet blocks short and long textarea panning',()=>{
   assert.equal(scrollHarness({inline:false,sheet:true}).move(100,120),true);
-  assert.equal(scrollHarness({inline:false,sheet:true,height:200,top:80}).move(100,120),false);
+  assert.equal(scrollHarness({inline:false,sheet:true,height:200,top:80}).move(100,120),true);
 });
 test('inline student-card row preserves horizontal swipe and blocks vertical page pan',()=>{
   const s=scrollHarness({roster:true});
@@ -56,33 +56,25 @@ test('finished touch does not reuse a previous gesture',()=>{
 });
 
 test('waiting one second before dragging does not release the composer touch guard',async()=>{
-  const s=scrollHarness();
+  const s=scrollHarness({height:200,top:80});
   await new Promise(resolve=>setTimeout(resolve,1000));
   assert.equal(s.move(100,120),true);
 });
 
-test('native touch policy follows actual textarea overflow before a gesture starts',()=>{
-  const source=read('kcf-teacher-sheet.js');
-  const start=source.indexOf('  function syncComposerTouchPolicy(){');
-  const end=source.indexOf('\n  function trackTeacherComposerTouch(',start);
-  const attrs=new Set();
-  const input={clientHeight:128,scrollHeight:128,toggleAttribute:(key,on)=>on?attrs.add(key):attrs.delete(key)};
-  const context={baseInput:()=>input,editor:()=>null};
-  vm.runInNewContext(source.slice(start,end),context);
-  context.syncComposerTouchPolicy();assert.equal(attrs.has('data-kcf-touch-scrollable'),false);
-  input.scrollHeight=300;
-  context.syncComposerTouchPolicy();assert.equal(attrs.has('data-kcf-touch-scrollable'),true);
-  input.scrollHeight=128;
-  context.syncComposerTouchPolicy();assert.equal(attrs.has('data-kcf-touch-scrollable'),false);
+test('blank input wrapper space is guarded without covering the conversation scroller',()=>{
+  const s=scrollHarness({gap:true});
+  assert.equal(s.move(100,120),true);
+  assert.equal(s.move(120,100),false);
 });
 
-test('CSS declares delayed-pan protection and keeps native long-text and horizontal-card scrolling',()=>{
+test('CSS declares unconditional textarea pan protection and horizontal wrapper gestures',()=>{
   const css=read('kcf-teacher-sheet.css');
   assert.match(css,/#kinderChatFeedbackScreen\.kcfInlineDialogueActive \.kcfInput \{[^}]*touch-action:none;/);
   assert.match(css,/#kinderChatFeedbackScreen\.kcfInlineDialogueActive \.kcfComposer \{[^}]*touch-action:pan-x;/);
-  assert.match(css,/\.kcfInput\[data-kcf-touch-scrollable\] \{\s*touch-action:pan-y;/);
-  assert.match(css,/\.kcfComposer:has\(\.kcfInput\[data-kcf-touch-scrollable\]\) \{\s*touch-action:auto;/);
-  assert.match(css,/\.kcfTeacherSheetInput\[data-kcf-touch-scrollable\] \{\s*touch-action:pan-y;/);
+  assert.match(css,/#kinderChatFeedbackScreen\.kcfInlineDialogueActive \.kcfComposerWrap \{[^}]*touch-action:pan-x;/);
+  assert.match(css,/\.kcfTeacherSheetInput \{[^}]*touch-action:none;/);
+  assert.doesNotMatch(css,/data-kcf-touch-scrollable/);
+  assert.doesNotMatch(read('kcf-teacher-sheet.js'),/syncComposerTouchPolicy|data-kcf-touch-scrollable/);
 });
 
 test('memo entry and exit get a foreground layer before mounting the standby attendance',()=>{
@@ -120,3 +112,4 @@ test('idle attendance mounting waits until the memo animation finishes',()=>{
     assert.equal(context.mountAttendanceRearPage(),false);
   }
 });
+

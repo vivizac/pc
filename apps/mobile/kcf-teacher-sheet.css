@@ -121,10 +121,6 @@ body.kcfContinuousMode .kcfTeacherSheetBody {
   box-shadow:none;
 }
 
-.kcfTeacherSheetInput[data-kcf-touch-scrollable] {
-  touch-action:pan-y;
-}
-
 .kcfTeacherSheetInput::placeholder {
   color:#b8b8b8;
   font-size:calc(14.5px * var(--olli-text-scale, 1));
@@ -352,6 +348,9 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
    and the scrollable messages. Continuous-record mode remains unchanged. */
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerWrap {
   bottom:1px;
+  /* Include the gaps around the input, while retaining horizontal card swipes. */
+  touch-action:pan-x;
+  overscroll-behavior-y:contain;
 }
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposerLayer {
   inset:auto;
@@ -490,12 +489,6 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfInputActivateBtn {
   display:none;
 }
-#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfComposer:has(.kcfInput[data-kcf-touch-scrollable]) {
-  touch-action:auto;
-}
-#kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfInput[data-kcf-touch-scrollable] {
-  touch-action:pan-y;
-}
 #kinderChatFeedbackScreen.kcfInlineDialogueActive .kcfAttachBtn {
   grid-column:1;
   grid-row:2;
@@ -571,5 +564,6 @@ body.kcfContinuousMode #kcfTeacherSheetOverlay .kcfAttachBtn svg {
 #kinderChatFeedbackScreen.kcfInlineDialogueActive.kcfInlineDialogueClosing .kcfComposerModeBtn {
   display:none;
 }
+
 
 

@@ -122,7 +122,6 @@
 
   function syncViewport(){
     if (!state.open && !state.inlineOpen) return;
-    syncComposerTouchPolicy();
     var viewport = global.visualViewport;
     var width = viewport ? Number(viewport.width || global.innerWidth || 0) : Math.max(global.innerWidth || 0, document.documentElement.clientWidth || 0);
     var height = viewport ? Number(viewport.height || global.innerHeight || 0) : Math.max(global.innerHeight || 0, document.documentElement.clientHeight || 0);
@@ -201,14 +200,6 @@
     return target.closest('#kcfInput, .kcfTeacherSheetInput, .kcfAutoStudentRosterScroller');
   }
 
-  function syncComposerTouchPolicy(){
-    [baseInput(), editor()].forEach(function(input){
-      if (!input) return;
-      input.toggleAttribute('data-kcf-touch-scrollable', input.clientHeight > 0
-        && input.scrollHeight > input.clientHeight + 1);
-    });
-  }
-
   function trackTeacherComposerTouch(event){
     var touch = event.touches?.[0];
     state.composerTouchStartX = touch ? Number(touch.clientX) : null;
@@ -222,7 +213,7 @@
 
   function preventTeacherBackgroundTouchMove(event){
     var sheetOpen = document.body.classList.contains('kcfTeacherSheetOpen');
-    var inlineComposer = state.inlineOpen && event.target?.closest?.('#kinderChatFeedbackScreen .kcfComposer');
+    var inlineComposer = state.inlineOpen && event.target?.closest?.('#kinderChatFeedbackScreen .kcfComposerWrap');
     if (!sheetOpen && !inlineComposer) return;
     var touch = event.touches?.[0];
     var tracked = touch && state.composerTouchStartX !== null && state.composerTouchStartY !== null;
@@ -236,13 +227,7 @@
         if (inlineComposer && event.cancelable) event.preventDefault();
         return;
       }
-      if (scrollable.scrollHeight > scrollable.clientHeight + 1) {
-        // Long text owns its scroll; only block a drag escaping its edges.
-        if (!tracked || Math.abs(deltaY) <= Math.abs(deltaX)) return;
-        var atTop = scrollable.scrollTop <= 1;
-        var atBottom = scrollable.scrollTop + scrollable.clientHeight >= scrollable.scrollHeight - 1;
-        if (!(deltaY > 0 && atTop) && !(deltaY < 0 && atBottom)) return;
-      }
+      // Match Team Chat: textarea overflow never releases the vertical pan lock.
     }
     if (event.cancelable) event.preventDefault();
   }
@@ -286,7 +271,6 @@
     if (!source || !target) return;
     if (target.value !== source.value) target.value = source.value;
     target.placeholder = '수업 기록을 적어주세요';
-    syncComposerTouchPolicy();
     syncWarning();
     if (opts.focus === true && state.open) focusEditor();
     else if (opts.focus === true && state.inlineOpen) {
@@ -584,7 +568,6 @@
     if (input) {
       input.addEventListener('input', function(){
         syncToBase();
-        syncComposerTouchPolicy();
         syncWarning();
       });
       input.addEventListener('blur', function(){
@@ -937,7 +920,6 @@
     global.addEventListener('resize', scheduleViewportSync);
     var inline = baseInput();
     if (inline) {
-      inline.addEventListener('input', syncComposerTouchPolicy);
       inline.addEventListener('focus', function(){
         cancelInlineClosing();
         clearInlineBlurTimer();
@@ -992,4 +974,5 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once:true });
   else init();
 })(window);
+
 
