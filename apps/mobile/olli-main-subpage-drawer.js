@@ -186,6 +186,12 @@
       releasePreparedRear();
       return;
     }
+    // Never keep an old academy/division/search/sort roster underneath a new session.
+    if (window.canReusePhoneRecordList?.(getDrawerDivision(), '') !== true) {
+      releasePreparedRear();
+      scheduleAttendancePrewarm();
+      return;
+    }
     // Route transitions can set display:none on all screens. Restore only this
     // non-interactive layer when a supported foreground page is visible.
     if (room.style.display !== 'flex') room.style.display = 'flex';
