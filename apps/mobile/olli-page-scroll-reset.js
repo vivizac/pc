@@ -14,7 +14,8 @@
   ].join(',');
 
   function isVisibleElement(el) {
-    if (!el) return false;
+    // Prepared attendance is a background layer, not a navigated screen.
+    if (!el || el.classList?.contains('olliAttendanceRearPrepared')) return false;
     const style = window.getComputedStyle ? getComputedStyle(el) : null;
     return !style || (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0');
   }
