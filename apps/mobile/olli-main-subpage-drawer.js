@@ -244,6 +244,22 @@
   // Keep the page hidden; the drawer itself remains the only owner of its visibility.
   let attendancePrewarmHandle = 0;
   let attendancePrewarmUsesIdle = false;
+  let bootDismissPrewarmObserver = null;
+
+  // The initial server refresh can request prewarming while the boot overlay
+  // is still visible. Resume that request once the overlay is actually gone.
+  function retryAttendancePrewarmAfterBoot(boot){
+    if (bootDismissPrewarmObserver || typeof MutationObserver !== 'function') return;
+    bootDismissPrewarmObserver = new MutationObserver(() => {
+      if (isVisible(boot)) return;
+      bootDismissPrewarmObserver.disconnect();
+      bootDismissPrewarmObserver = null;
+      scheduleAttendancePrewarm();
+    });
+    bootDismissPrewarmObserver.observe(boot, {
+      attributes: true, attributeFilter: ['style', 'class']
+    });
+  }
 
   function cancelAttendancePrewarm(){
     if (!attendancePrewarmHandle) return;
@@ -373,7 +389,11 @@
     if (attendancePrewarmHandle) { noteRearWarm('schedule-skip:already-pending'); return false; }
     if (drawerState || navigationInFlight) { noteRearWarm('schedule-skip:navigation'); return false; }
     const bootScreen = document.getElementById('olliBootScreen');
-    if (bootScreen && isVisible(bootScreen)) { noteRearWarm('schedule-skip:boot-visible'); return false; }
+    if (bootScreen && isVisible(bootScreen)) {
+      noteRearWarm('schedule-wait:boot-dismissal');
+      retryAttendancePrewarmAfterBoot(bootScreen);
+      return false;
+    }
     const recordRoom = document.getElementById('recordRoomScreen');
     if (!recordRoom) { noteRearWarm('schedule-skip:missing-screen'); return false; }
     if (isVisible(recordRoom)) { noteRearWarm('schedule-skip:record-room-already-visible'); return false; }
