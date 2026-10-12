@@ -87,6 +87,16 @@ function finishRecordSearchListReturn() {
   recordSearchListReturnFallback = 0;
   getRecordSearchScreen()?.classList.remove('record-search-list-restoring');
 }
+function prepareRecordSearchForDrawerRear() {
+  const screen = getRecordSearchScreen();
+  if (!screen) return;
+  // Keep a saved query, but release keyboard-only state before revealing the rear.
+  cancelRecordSearchListReturn();
+  screen.classList.remove('record-keyboard-open', 'record-keyboard-closing');
+  document.documentElement.style.setProperty('--record-keyboard-offset', '0px');
+  window.__olliRecordSearchViewportBottomBaseline = 0;
+  window.__olliRecordKeyboardLastOffset = 0;
+}
 function scheduleRecordSearchListReturn() {
   const screen = getRecordSearchScreen();
   if (!screen?.classList.contains('record-search-list-restoring')
@@ -107,7 +117,9 @@ function setRecordKeyboardOffset() {
   const input = getRecordSearchInput();
   const screen = getRecordSearchScreen();
   const closingBeforeUpdate = !!(screen && screen.classList.contains('record-keyboard-closing'));
-  const active = isRecordSearchOpen() || document.activeElement === input || closingBeforeUpdate;
+  const inputFocused = document.activeElement === input;
+  const mountedRear = !!screen?.hasAttribute('data-olli-drawer-rear-mounted');
+  const active = (isRecordSearchOpen() && (!mountedRear || inputFocused)) || inputFocused || closingBeforeUpdate;
   const offset = active ? getRecordKeyboardOffset() : 0;
   const previousOffset = Number(window.__olliRecordKeyboardLastOffset || 0);
   const wasKeyboardOpen = !!(screen && screen.classList.contains('record-keyboard-open'));
@@ -456,8 +468,10 @@ function initRecordSearchHandlers() {
     window.addEventListener('pageshow', restoreRecordSearchAfterAppReturn);
   }
 }
+window.prepareOlliRecordSearchForDrawerRear = prepareRecordSearchForDrawerRear;
 window.setRecordKeyboardOffset = setRecordKeyboardOffset;
 window.syncRecordControlRail = syncRecordControlRail;
 window.toggleRecordSearch = handleSearchPillClick;
 document.addEventListener('DOMContentLoaded', initRecordSearchHandlers);
 initRecordSearchHandlers();
+

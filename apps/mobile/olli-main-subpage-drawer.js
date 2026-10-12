@@ -170,6 +170,7 @@
     recordRoom.setAttribute('inert', '');
     recordRoom.setAttribute('data-olli-drawer-rear-mounted', '');
     mainPage.setAttribute('data-olli-drawer-rear-host', '');
+    window.prepareOlliRecordSearchForDrawerRear?.();
     return true;
   }
 
@@ -725,6 +726,7 @@
     // Keep a mounted rear's stacking order unchanged throughout the slide.
     const reuseRearLayers = attendanceRearMountState?.mainPage === mainPage
       && attendanceRearMountState.recordRoom === recordRoom;
+    if (!reuseRearLayers) window.prepareOlliRecordSearchForDrawerRear?.();
     recordRoom.style.display = 'flex';
     if (!reuseRearLayers) recordRoom.style.zIndex = '119700';
     recordRoom.style.pointerEvents = 'auto';
@@ -896,5 +898,6 @@
   window.setOlliMainSubpageDrawerCompanionFaded = setOlliMainSubpageDrawerCompanionFaded;
   window.isOlliPhoneNavigationInFlight = () => navigationInFlight;
 })();
+
 
 
