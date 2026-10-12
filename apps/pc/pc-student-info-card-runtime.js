@@ -736,6 +736,92 @@
     cardState.dirty = false;
   }
 
+  // Refresh visible student info without removing the inputs or their scroll/focus state.
+  function syncStudentInfoInputValue(id, value) {
+    const input = document.getElementById(id);
+    if (!input || document.activeElement === input) return;
+    const next = String(value == null ? '' : value);
+    if (input.value !== next) input.value = next;
+  }
+
+  function syncStudentInfoDateValues(prefix, student) {
+    const enrolled = clean(student && student.enrolled_at).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    syncStudentInfoInputValue(prefix + 'YearInput', enrolled ? enrolled[1] : clean(student && student.year));
+    syncStudentInfoInputValue(prefix + 'MonthInput', enrolled ? String(Number(enrolled[2])) : clean(student && student.month));
+    syncStudentInfoInputValue(prefix + 'DayInput', enrolled ? String(Number(enrolled[3])) : clean(student && student.day));
+  }
+
+  function refreshStudentInfoCardInPlace(student, enrollments, teacherAssignments, pickups = []) {
+    const card = document.querySelector('#pcAttendanceDetailPanel .pcAttendanceCombinedCard.pcAttendanceInfoOpen .pcStudentInfoCard');
+    const division = student.type === 'kinder' ? 'kinder' : 'elementary';
+    if (!card || card.dataset.division !== division) return false;
+    const previous = cardState.student || student;
+    const previousEnrollments = cardState.enrollments;
+    const previousSchedule = studentInfoScheduleHtml(previous, previousEnrollments);
+    const fields = lessonFieldsFromEnrollments(enrollments);
+    const timetableTeacher = resolveTimetableTeacherName(division, enrollments, teacherAssignments);
+    const editing = cardState.dirty || cardState.saveInFlight;
+    const updatedStudent = Object.assign({}, editing ? previous : student, fields, {
+      class_time: fields.lesson_time,
+      __olli_timetable_teacher: timetableTeacher,
+      __olli_authoritative_enrollments: enrollments,
+      __olli_authoritative_pickups: pickups
+    });
+    cardState.student = updatedStudent;
+    cardState.enrollments = enrollments;
+    cardState.pickups = pickups;
+    if (!editing) {
+      try { studentInfoModalTarget = updatedStudent; } catch (_) {}
+      const title = card.querySelector('.pcStudentInfoCardIntro strong');
+      const nextTitle = clean(updatedStudent.name || '학생') + ' 학생정보';
+      if (title && title.textContent !== nextTitle) title.textContent = nextTitle;
+      if (division === 'elementary') {
+        syncStudentInfoInputValue('elementaryInfoNameInput', updatedStudent.name);
+        syncStudentInfoInputValue('elementarySchoolInput', updatedStudent.school);
+        syncStudentInfoInputValue('elementaryGradeInput', typeof global.formatElementaryGradeInputValue === 'function'
+          ? global.formatElementaryGradeInputValue(updatedStudent.grade) : updatedStudent.grade);
+        syncStudentInfoInputValue('elementaryAgeInput', typeof global.formatElementaryAgeInputValue === 'function'
+          ? global.formatElementaryAgeInputValue((typeof global.getElementaryAgeFromGrade === 'function'
+              ? global.getElementaryAgeFromGrade(updatedStudent.grade) : '') || updatedStudent.age || '') : updatedStudent.age);
+        syncStudentInfoDateValues('elementaryInfo', updatedStudent);
+        if (clean(previous.group) !== clean(updatedStudent.group)
+            || clean(previous.personality) !== clean(updatedStudent.personality)) {
+          try { elementaryInfoDraft = { group: updatedStudent.group || '', personality: updatedStudent.personality || '' }; } catch (_) {}
+          if (typeof global.olliPrepareInfoExtra === 'function') global.olliPrepareInfoExtra('elementary', updatedStudent);
+          if (typeof global.syncElementaryInfoButtons === 'function') global.syncElementaryInfoButtons();
+        }
+      } else {
+        syncStudentInfoInputValue('kinderInfoNameInput', updatedStudent.name);
+        syncStudentInfoInputValue('kinderKindergartenInput', updatedStudent.kindergarten);
+        syncStudentInfoInputValue('kinderAgeInput', updatedStudent.age);
+        syncStudentInfoInputValue('kinderLessonDayInput', fields.lesson_day);
+        syncStudentInfoDateValues('kinderInfo', updatedStudent);
+        if (clean(previous.personality) !== clean(updatedStudent.personality)) {
+          try { kinderInfoDraft = { personality: updatedStudent.personality || '' }; } catch (_) {}
+          if (typeof global.olliPrepareInfoExtra === 'function') global.olliPrepareInfoExtra('kinder', updatedStudent);
+        }
+      }
+    }
+    const teacherBox = card.querySelector('.pcStudentInfoGrid3 .pcStudentInfoTeacherReadonly');
+    const teacherLabel = '담임 : ' + (timetableTeacher || '미지정');
+    if (teacherBox) {
+      if (teacherBox.textContent !== teacherLabel) teacherBox.textContent = teacherLabel;
+      teacherBox.classList.toggle('isEmpty', !timetableTeacher);
+    }
+    const scheduleBox = card.querySelector('.pcStudentInfoSchedule');
+    const nextSchedule = studentInfoScheduleHtml(updatedStudent, enrollments);
+    if (scheduleBox && previousSchedule !== nextSchedule) scheduleBox.innerHTML = nextSchedule;
+    if (division === 'kinder') {
+      const pickupBox = card.querySelector('#kinderInfoPickupReadonly');
+      const pickupText = pickupSummary(pickups);
+      if (pickupBox) {
+        const nextText = pickupText || '등록된 픽업 없음';
+        if (pickupBox.textContent !== nextText) pickupBox.textContent = nextText;
+        pickupBox.classList.toggle('isEmpty', !pickupText);
+      }
+    }
+    return true;
+  }
   async function openStudentInfoCard(studentId) {
     let id = clean(studentId) || selectedAttendanceStudentId();
     if (!id && cardState.studentId) id = cardState.studentId;
@@ -773,28 +859,12 @@
       const context = scheduleResult.status === 'fulfilled' ? scheduleResult.value : local;
       if (profileResult.status === 'rejected') console.warn('학생정보 최신 확인 실패:', profileResult.reason);
       if (scheduleResult.status === 'rejected') console.warn('학생 수업시간 최신 확인 실패:', scheduleResult.reason);
-      if (cardState.dirty || cardState.saveInFlight) {
-        // Never replace inputs while the teacher edits. Timetable remains read-only and may refresh safely.
-        cardState.enrollments = context.enrollments;
-        cardState.pickups = context.pickups;
-        const teacher = resolveTimetableTeacherName(latest.type, context.enrollments, []);
-        const fields = lessonFieldsFromEnrollments(context.enrollments);
-        cardState.student = { ...cardState.student, ...fields,
-          class_time: fields.lesson_time,
-          __olli_timetable_teacher: teacher,
-          __olli_authoritative_enrollments: context.enrollments,
-          __olli_authoritative_pickups: context.pickups
-        };
-        const scheduleBox = document.querySelector('#pcAttendanceDetailPanel .pcStudentInfoSchedule');
-        if (scheduleBox) scheduleBox.innerHTML = studentInfoScheduleHtml({ ...latest, __olli_timetable_teacher: teacher }, context.enrollments);
-        const teacherBox = document.querySelector('#pcAttendanceDetailPanel .pcStudentInfoTeacherReadonly');
-        if (teacherBox) {
-          teacherBox.textContent = '담임 : ' + (teacher || '미지정');
-          teacherBox.classList.toggle('isEmpty', !teacher);
-        }
-        return;
+      // The local-first card stays mounted; refresh only values that actually changed.
+      if (!refreshStudentInfoCardInPlace(latest, context.enrollments, [], context.pickups)
+          && !cardState.dirty && !cardState.saveInFlight) {
+        // A genuine division change needs a different form, not a routine refresh.
+        await renderStudentInfoCard(latest, context.enrollments, [], context.pickups);
       }
-      await renderStudentInfoCard(latest, context.enrollments, [], context.pickups);
     } catch (error) {
       // Leave the successfully rendered local student visible after an RPC failure.
       console.warn('학생정보 백그라운드 갱신 실패:', error);
@@ -939,9 +1009,11 @@
       const context = await loadAuthoritativeStudentContext(id);
       if (!isCurrent() || cardState.dirty || cardState.saveInFlight) return false;
       rememberStudentContext(id, context);
-      const teacherAssignments = [];
       if (!isCurrent() || cardState.dirty || cardState.saveInFlight) return false;
-      await renderStudentInfoCard(latest, context.enrollments, teacherAssignments, context.pickups);
+      if (!refreshStudentInfoCardInPlace(latest, context.enrollments, [], context.pickups)) {
+        // Only rebuild when the student changes division while the card is open.
+        await renderStudentInfoCard(latest, context.enrollments, [], context.pickups);
+      }
       return true;
     } catch (error) {
       console.warn('학생정보 Realtime 최신본 확인 실패:', error && (error.message || error));
