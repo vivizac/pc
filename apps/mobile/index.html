@@ -23,7 +23,7 @@
 <link href="icon.png" rel="icon" type="image/png"/>
 <link href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="olli-phone-base.css?v=20261012-confirm-gap-memo-fade-7">
+<link rel="stylesheet" href="olli-phone-base.css?v=20261012-settings-groups-clean-1">
 <!-- v40_63: v40_56 기준, 성장페이지 팝업 버튼 기능 안정화 / alert 없음 -->
 
 <link rel="stylesheet" href="olli-start-page-phone.css">
@@ -552,7 +552,7 @@
 <div class="settingsHeader">
 <div class="settingsHeaderLeft">
 <button aria-label="기록실로 돌아가기" class="settingsRoundBtn" onclick="closePhoneSettingsPage()" type="button">
-<svg viewbox="0 0 24 24"><path d="M15.5 5l-7 7 7 7"></path></svg>
+<span aria-hidden="true" class="memoRosterBackIcon"></span>
 </button>
 <button class="settingsTitlePill" type="button">설정</button>
 </div>
@@ -565,13 +565,7 @@
 <div class="settingsProfileEdit">프로필 편집</div>
 </div>
 </div>
-<section class="settingsSection" data-owner-manager-only="true"><div class="settingsCard"><div class="settingsRow" data-owner-manager-only="true" onclick="openPhoneSettingsDetail('teacherInvite')" role="button">
-<div class="settingsRowLeft">
-<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4 12v7a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-7"></path><path d="M12 3v12"></path><path d="M7.5 7.5L12 3l4.5 4.5"></path><path d="M5 12h14"></path></svg></span>
-<span class="settingsRowTitle">선생님 초대</span>
-</div>
-<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
-</div></div></section>
+
 <section class="settingsSection" data-owner-only="true"><div class="settingsCard"><div class="settingsRow" onclick="openOlliTeacherPayrollSettings()" role="button">
 <div class="settingsRowLeft">
 <span class="settingsRowIcon"><svg viewbox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2"></rect><path d="M8 7.5h8"></path><path d="M8 12h2"></path><path d="M14 12h2"></path><path d="M8 16h2"></path><path d="M14 16h2"></path></svg></span>
@@ -593,13 +587,7 @@
 </div>
 <span class="settingsRowValue" id="settingsStartPageValue">관찰노트</span>
 </div>
-<div class="settingsRow" data-academy-management="true" onclick="openPhoneSettingsSheet('timetableMode')" role="button">
-<div class="settingsRowLeft">
-<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 7.5v5l3 2"></path></svg></span>
-<span class="settingsRowTitle">시간표 설정</span>
-</div>
-<span class="settingsRowValue" id="settingsTimetableModeValue">정시 타임</span>
-</div>
+
 <div class="settingsRow" onclick="openPhoneSettingsSheet('textSize')" role="button">
 <div class="settingsRowLeft">
 <span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M5.5 6.5h13"></path><path d="M12 6.5v12"></path><path d="M9 18.5h6"></path></svg></span>
@@ -636,13 +624,13 @@
 <span class="settingsRowTitle">그룹별 피드백 발송월</span>
 </div>
 <span class="settingsRowValue" id="settingsGroupFeedbackMonthsValue">설정</span>
-</div></div></section>
-<section class="settingsSection"><div class="settingsCard"><div class="settingsRow" data-academy-management="true" id="settingsStudentBulkEditRow" onclick="openPhoneSettingsDetail('attendancePhotoImport')" role="button">
-<div class="settingsRowLeft">
-<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M7 6.5h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"></path><path d="M9 4.5h6"></path><path d="M9 11h6"></path><path d="M9 14h4"></path></svg></span>
-<span class="settingsRowTitle">학생정보 일괄 수정</span>
 </div>
-<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+<div class="settingsRow" data-academy-management="true" onclick="openPhoneSettingsSheet('timetableMode')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 7.5v5l3 2"></path></svg></span>
+<span class="settingsRowTitle">시간표 설정</span>
+</div>
+<span class="settingsRowValue" id="settingsTimetableModeValue">정시 타임</span>
 </div>
 <div class="settingsRow" data-academy-management="true" onclick="openPhoneSettingsDetail('attendancePrint')" role="button">
 <div class="settingsRowLeft">
@@ -650,8 +638,22 @@
 <span class="settingsRowTitle">출석부 출력</span>
 </div>
 <svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" data-academy-management="true" id="settingsStudentBulkEditRow" onclick="openPhoneSettingsDetail('attendancePhotoImport')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M7 6.5h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"></path><path d="M9 4.5h6"></path><path d="M9 11h6"></path><path d="M9 14h4"></path></svg></span>
+<span class="settingsRowTitle">학생정보 일괄 수정</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
 </div></div></section>
-<section class="settingsSection"><div class="settingsCard"><div class="settingsRow" data-owner-only="true" id="settingsAcademySwitchRow" onclick="openPhoneSettingsDetail('academySwitch')" role="button">
+
+<section class="settingsSection"><div class="settingsCard"><div class="settingsRow" data-owner-manager-only="true" onclick="openPhoneSettingsDetail('teacherInvite')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4 12v7a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-7"></path><path d="M12 3v12"></path><path d="M7.5 7.5L12 3l4.5 4.5"></path><path d="M5 12h14"></path></svg></span>
+<span class="settingsRowTitle">선생님 초대</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div><div class="settingsRow" data-owner-only="true" id="settingsAcademySwitchRow" onclick="openPhoneSettingsDetail('academySwitch')" role="button">
 <div class="settingsRowLeft">
 <span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4 20V7l8-4 8 4v13"></path><path d="M8 20v-5h8v5"></path><path d="M8 9h.01"></path><path d="M12 9h.01"></path><path d="M16 9h.01"></path></svg></span>
 <span class="settingsRowTitle">학원 관리</span>
@@ -730,16 +732,6 @@
 </div>
 </div>
 </div>
-</section><section class="settingsSection settingsDevSection" data-owner-only="true">
-<div class="settingsCard">
-<div class="settingsRow" onclick="openPhoneSettingsDetail('storageDiagnostics')" role="button">
-<div class="settingsRowLeft">
-<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4.5 5.5h15"></path><path d="M4.5 12h15"></path><path d="M4.5 18.5h15"></path><path d="M8 5.5v13"></path><path d="M16 5.5v13"></path></svg></span>
-<span class="settingsRowTitle">저장 진단</span>
-</div>
-<span class="settingsRowValue" id="settingsStorageDiagnosticsValue">점검</span>
-</div>
-</div>
 </section>
 </div>
 </div>
@@ -749,7 +741,7 @@
 <div class="settingsHeader">
 <div class="settingsHeaderLeft">
 <button aria-label="설정으로 돌아가기" class="settingsRoundBtn" onclick="closePhoneSettingsDetail()" type="button">
-<svg viewbox="0 0 24 24"><path d="M15.5 5l-7 7 7 7"></path></svg>
+<span aria-hidden="true" class="memoRosterBackIcon"></span>
 </button>
 <button class="settingsTitlePill" id="settingsDetailTitlePill" type="button">상세</button>
 </div>
@@ -779,10 +771,10 @@
 </div>
 </div>
 </div>
-<script src="olli-settings-common-core.js?v=20260924-settings-core-1"></script>
+<script src="olli-settings-common-core.js?v=20261012-settings-groups-clean-1"></script>
 <script src="olli-settings-members.js"></script>
 
-<script src="olli-settings-storage.js"></script>
+<script src="olli-settings-storage.js?v=20261012-settings-groups-clean-1"></script>
 
 <script src="olli-settings-imports-base.js"></script>
 
@@ -798,7 +790,7 @@
 <script src="olli-settings-access.js"></script>
 
 <script src="olli-settings-attendance-export.js"></script>
-<script src="olli-settings-detail-data.js?v=20260927-dead-registry-clean-1"></script>
+<script src="olli-settings-detail-data.js?v=20261012-settings-groups-clean-1"></script>
 <script src="olli-settings-detail-phone.js?v=20260927-team-talk-phone-only-1"></script>
 <script src="olli-team-talk-avatar-catalog.js?v=20261011-avatars-06-09-1"></script>
 <script src="olli-settings-team-talk-phone.js?v=20261010-olli-integrated-1"></script>
@@ -1183,11 +1175,12 @@
 <script src="olli-record-attendance-summary.js?v=20261001-search-only-restored-1"></script>
 <script src="olli-student-lifecycle-init.js"></script>
 
-<link rel="stylesheet" href="olli-observation-roster-phone.css?v=20261012-roster-card-54">
+<link rel="stylesheet" href="olli-observation-roster-phone.css?v=20261012-settings-groups-clean-1">
 <link rel="stylesheet" href="olli-record-utility-touch.css?v=20261012-roster-name-align-11">
 <link rel="stylesheet" href="olli-phone-control-style.css?v=20261009-remove-toggle-override-1">
 <script src="olli-record-utility-touch.js?v=20261011-search-motion-owner-1"></script>
 </body></html>
+
 
 
 

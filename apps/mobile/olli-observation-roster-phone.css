@@ -659,7 +659,8 @@
   touch-action:manipulation;
   pointer-events:auto;
 }
-#studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn .memoRosterBackIcon {
+#studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn .memoRosterBackIcon,
+.settingsRoundBtn .memoRosterBackIcon {
   position:relative;
   display:block;
   width:21px;
@@ -669,7 +670,9 @@
   pointer-events:none;
 }
 #studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn .memoRosterBackIcon::before,
-#studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn .memoRosterBackIcon::after {
+#studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn .memoRosterBackIcon::after,
+.settingsRoundBtn .memoRosterBackIcon::before,
+.settingsRoundBtn .memoRosterBackIcon::after {
   content:"";
   position:absolute;
   left:4px;
@@ -680,10 +683,12 @@
   background:currentColor;
   transform-origin:1px 1px;
 }
-#studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn .memoRosterBackIcon::before {
+#studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn .memoRosterBackIcon::before,
+.settingsRoundBtn .memoRosterBackIcon::before {
   transform:rotate(-45deg);
 }
-#studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn .memoRosterBackIcon::after {
+#studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn .memoRosterBackIcon::after,
+.settingsRoundBtn .memoRosterBackIcon::after {
   transform:rotate(45deg);
 }
 #observationRosterScreen .observationWorkTabs {
@@ -1050,4 +1055,5 @@
 #observationPersistentNavLayer .observationTopWorkBtn:active{
   transform:scale(.98);
 }
+
 

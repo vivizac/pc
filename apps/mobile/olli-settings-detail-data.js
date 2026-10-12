@@ -1,6 +1,5 @@
 
 const settingsDetailData = {
-  storageDiagnostics:{title:'저장 진단',html:renderOlliStorageDiagnostics},
   academySwitch:{title:'학원 관리',html:renderOlliAcademySwitchOptions,instantRender:true,beforeOpen:async function(){ if (typeof restoreOlliAccountSession === 'function') await restoreOlliAccountSession({ silent: true }); if (typeof loadOlliAcademyManagementData === 'function') await loadOlliAcademyManagementData(); }},
   ownerOtherAcademyFind:{title:'다른 학원 찾기',html:renderOlliOwnerOtherAcademyFindOptions,instantRender:true,beforeOpen:async function(){ if (typeof restoreOlliAccountSession === 'function') await restoreOlliAccountSession({ silent: true }); }},
   teacherMyAcademies:{title:'내가 속한 학원',html:renderSettingsTeacherMyAcademies,instantRender:true,beforeOpen:async function(){ if (typeof restoreOlliAccountSession === 'function') await restoreOlliAccountSession({ silent: true }); }},
@@ -17,4 +16,5 @@ const settingsDetailData = {
 };
 
 let settingsCurrentDetailType = '';
+
 

@@ -5528,11 +5528,6 @@ body.olli-login-open {
   }
 
 
-/* 설정 하단 테스트 섹션 여백만 정리 */
-#settingsPageScreen .settingsDevSection {
-  margin-top: 28px;
-  padding-bottom: 8px;
-}
 
 .growthMemoPageInner {
   width: 100%;
@@ -6529,5 +6524,6 @@ body.olli-login-open {
 }
 .memoRosterBackIcon::before{ transform:rotate(-45deg); }
 .memoRosterBackIcon::after{ transform:rotate(45deg); }
+
 
 

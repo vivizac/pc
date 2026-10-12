@@ -156,10 +156,6 @@ function applySettingsPermissionUI() {
     el.style.display = (role === 'owner' || role === 'manager' || role === 'super_admin') ? '' : 'none';
   });
 
-  const canViewDevTestEntry = canUseOlliDevTestTools();
-  document.querySelectorAll('.settingsDevSection').forEach(el => {
-    el.style.display = canViewDevTestEntry ? '' : 'none';
-  });
 
 
   const canViewAcademyManagement = role === 'owner' || role === 'manager' || role === 'super_admin';
@@ -1334,4 +1330,5 @@ let settingsRolePopupSelectedRole = 'teacher';
 let settingsCrossAcademyManagerMemberId = '';
 let settingsCrossAcademyManagerSelectedIds = new Set();
 let settingsCrossAcademyManagerLoading = false;
+
 
