@@ -466,8 +466,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       showOlliLoginEntry();
     }
 
-    // 부트 화면의 최소 노출 시간만 지키며, 네트워크 완료 여부와는 무관하게 첫 로컬 화면을 공개합니다.
+    // 부트 화면이 완전히 사라진 뒤 유휴 시간에 숨겨진 출석부 DOM만 미리 준비합니다.
+    // 화면 전환, 서버 조회, 데이터 저장은 여기서 실행하지 않습니다.
     await bootDismissPromise;
+    if (isOlliLoggedInForStartPage()) window.olliScheduleAttendancePrewarm?.();
   } catch (err) {
     console.error('startup init error:', err);
     if (isOlliLoggedInForStartPage()) {
