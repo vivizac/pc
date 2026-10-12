@@ -900,6 +900,7 @@
     const utilityOrderSaved = applyRecordUtilityOrder(mainPage);
 
     const preparedRosterReady = !!preparedRearSaved
+      && recordRoom.classList.contains(PREPARED_REAR_CLASS)
       && window.canReusePhoneRecordList?.(getDrawerDivision(), '') === true;
     const slideDiag = beginSlideDiag(mainPage, recordRoom, !!preparedRearSaved);
     if (slideDiag) slideDiag.pendingAtClick = pendingPrewarmAtClick;
@@ -924,8 +925,8 @@
     recordRoom.setAttribute('aria-hidden', 'false');
     recordRoom.removeAttribute('inert');
     recordRoom.classList.remove(REVEALED_CLASS, RETURNING_CLASS);
-    // A retained rear page is already mounted at 100%. Snap to the opening
-    // 92% state without animating backwards before revealing it to 100%.
+    // A cold rear page starts at 100% and must snap to the 92% state.
+    // An already prepared rear page was composited at 92% before the tap.
     const originalAttendanceTransition = recordRoom.style.transition;
     // Prepared rear has already painted at 92%; do not invalidate that
     // transform layer or re-snapshot the same starting scale on a warm open.
