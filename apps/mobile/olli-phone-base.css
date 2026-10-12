@@ -4141,8 +4141,23 @@ border-color: #F0F0F0;
   border-bottom-left-radius: var(--olli-phone-screen-corner-radius);
   border-bottom-right-radius: var(--olli-phone-screen-corner-radius);
 }
-/* In the retained 25% strip, do not composite fixed edge blur/fade
-   over the rounded transformed page. Normal full-screen fades stay intact. */
+/* The drawer moves first. From 145ms, the existing top/bottom fades
+   dissolve over 130ms. Hide their blur surfaces only after that fade.
+   The reverse path restores visibility at zero opacity, then fades in. */
+.olliMainDrawerMainPage :is(
+  .observationRosterTopFadeLayer,
+  .observationRosterBottomFadeLayer,
+  .memoTopFadeLayer,
+  .memoBottomFadeLayer,
+  .kcfTopFadeLayer,
+  .kcfBottomFadeLayer,
+  .olliTalkBetaEdgeBlurTop,
+  .olliTalkBetaEdgeBlurBottom
+) {
+  transition: opacity 130ms ease 145ms, visibility 0s linear 0ms;
+}
+/* Retained-strip blur/fade surfaces fade out instead of disappearing
+   instantly on the first transform frame. Rounded corner clipping stays. */
 #observationRosterScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .observationRosterTopFadeLayer,
 #observationRosterScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .observationRosterBottomFadeLayer,
 #studentMemoScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .memoBottomFadeLayer,
@@ -4151,7 +4166,9 @@ border-color: #F0F0F0;
 #kinderChatFeedbackScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .kcfBottomFadeLayer,
 #olliTalkBetaScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .olliTalkBetaEdgeBlurTop,
 #olliTalkBetaScreen.olliMainDrawerMainPage.is-olli-main-drawer-open .olliTalkBetaEdgeBlurBottom {
-  display: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 130ms ease 145ms, visibility 0s linear 275ms;
 }
 
 /* The retained rear surface is already at the drawer's 92% starting scale.
@@ -4171,7 +4188,8 @@ border-color: #F0F0F0;
 .olliMainDrawerCompanion {
   transition:
     transform 320ms cubic-bezier(.22,.61,.36,1),
-    opacity 320ms cubic-bezier(.22,.61,.36,1);
+    opacity 320ms cubic-bezier(.22,.61,.36,1),
+    box-shadow 115ms ease 105ms;
   will-change:transform,opacity;
 }
 .olliMainDrawerMainPage::after {
@@ -4183,13 +4201,16 @@ border-color: #F0F0F0;
   opacity:0;
   pointer-events:none;
   z-index:2147483000;
-  transition:opacity 320ms cubic-bezier(.22,.61,.36,1);
+  /* White wash arrives last, once the slide is well underway. */
+  transition:opacity 105ms ease 195ms;
 }
 .olliMainDrawerMainPage.is-olli-main-drawer-open {
   transform:translate3d(75%,0,0) !important;
   opacity:1 !important;
-  /* Retain the outer shadows, but drop the extra 1.5px inset rim in drawer mode. */
+  /* Match all three base shadows so inset-rim opacity can interpolate
+     after 105ms. Outer shadows stay constant during the slide. */
   box-shadow:
+    inset 0 0 0 1.5px rgba(255,255,255,0),
     -18px 0 38px rgba(0,0,0,.10),
     -4px 0 14px rgba(0,0,0,.055);
 }
@@ -4205,9 +4226,9 @@ border-color: #F0F0F0;
   transition-duration:340ms;
   transition-timing-function:cubic-bezier(0.22, 0.61, 0.36, 1);
 }
-.olliMainDrawerMainPage.is-olli-main-drawer-returning::after {
-  transition-duration:340ms;
-  transition-timing-function:cubic-bezier(0.22, 0.61, 0.36, 1);
+.olliMainDrawerMainPage.is-olli-main-drawer-returning {
+  transition-duration:340ms,340ms,115ms;
+  transition-delay:0ms,0ms,105ms;
 }
 .olliMainDrawerMainPage.is-olli-main-drawer-switch-exit,
 .olliMainDrawerCompanion.is-olli-main-drawer-switch-exit {
@@ -4217,7 +4238,8 @@ border-color: #F0F0F0;
 }
 .olliMainDrawerMainPage.is-olli-main-drawer-switch-exit::after {
   opacity:0;
-  transition-duration:280ms;
+  /* Page-switch exit must not wait for the drawer-opening wash delay. */
+  transition:opacity 105ms ease 0ms;
 }
 .olliMainDrawerMainPage.is-olli-main-drawer-switch-enter,
 .olliMainDrawerCompanion.is-olli-main-drawer-switch-enter {
@@ -4264,6 +4286,8 @@ body.olli-main-subpage-drawer-modal-fade-active .olliMainDrawerCompanion.is-olli
 }
 body.olli-main-subpage-drawer-modal-fade-active .olliMainDrawerMainPage.is-olli-main-drawer-open::after {
   opacity:0 !important;
+  /* A modal dismissal is not the staged drawer-opening transition. */
+  transition:opacity 105ms ease 0ms;
 }
 body.olli-main-subpage-drawer-modal-fade-active .olliMainDrawerReturnHit {
   pointer-events:none !important;
@@ -4291,7 +4315,17 @@ body.olli-main-subpage-drawer-modal-fade-active .olliMainDrawerReturnHit {
   #recordRoomScreen.olliMainDrawerSubpage,
   .olliMainDrawerMainPage,
   .olliMainDrawerCompanion,
-  .olliMainDrawerMainPage::after {
+  .olliMainDrawerMainPage::after,
+  .olliMainDrawerMainPage :is(
+    .observationRosterTopFadeLayer,
+    .observationRosterBottomFadeLayer,
+    .memoTopFadeLayer,
+    .memoBottomFadeLayer,
+    .kcfTopFadeLayer,
+    .kcfBottomFadeLayer,
+    .olliTalkBetaEdgeBlurTop,
+    .olliTalkBetaEdgeBlurBottom
+  ) {
     transition:none !important;
     animation:none !important;
   }
