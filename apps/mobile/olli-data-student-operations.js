@@ -120,8 +120,12 @@ function renderPhoneStudentInfoManagementControls(student, division) {
   return `<section class="pcStudentInfoManagement" aria-label="학생 관리">
     <div class="pcStudentInfoManagementLabel">학생 관리</div>
     <div class="pcStudentInfoManagementActions">${statusButtons}</div>
-    <button type="button" class="pcStudentInfoDeleteBtn" onclick="handlePhoneStudentInfoManagementAction('delete','${type}')">학생 삭제</button>
   </section>`;
+}
+// The destructive action stays after Cancel/Save; retain its original status handler.
+function renderPhoneStudentInfoDeleteControl(division) {
+  const type = division === 'kinder' ? 'kinder' : 'elementary';
+  return `<button type="button" class="pcStudentInfoDeleteBtn" onclick="handlePhoneStudentInfoManagementAction('delete','${type}')">학생 삭제</button>`;
 }
 let phoneStudentInfoManagementBusy = false;
 async function handlePhoneStudentInfoManagementAction(action, division) {
