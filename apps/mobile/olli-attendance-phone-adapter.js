@@ -707,6 +707,10 @@
     const regularEmpty = regularHtml ? '' : `<div class="recordEmpty recordTodayEmpty">${query ? '검색된 당일 등원 학생이 없습니다.' : '오늘 등원 예정인 학생이 없습니다.'}</div>`;
     const makeupSection = makeupHtml ? `${renderSessionDivider('보강')}${makeupHtml}` : '';
     list.innerHTML = `${regularHtml}${regularEmpty}${makeupSection}`;
+    // The day-sort renderer owns this DOM, so it must mark it as reusable too.
+    if (typeof global.markPhoneRecordListRendered === 'function') {
+      global.markPhoneRecordListRendered(view, name);
+    }
     return true;
   }
 
