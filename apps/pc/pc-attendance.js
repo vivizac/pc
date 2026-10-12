@@ -685,6 +685,8 @@ function recordModeTabsHtml() {
     if (!student) return;
     const nextStudentId = String(student.id || '');
     const wasSelected = state.selectedStudentId === nextStudentId;
+    if (!wasSelected && typeof global.olliPcStudentInfoBeforeSelectionChange === 'function'
+        && !global.olliPcStudentInfoBeforeSelectionChange(nextStudentId)) return;
     if (!wasSelected) { state.archiveMonthKey = ''; state.currentRecordData = { feedbacks: [], summaries: [] }; }
     state.selectedStudentId = nextStudentId;
     decorateRows();
