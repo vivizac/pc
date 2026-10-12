@@ -2222,13 +2222,13 @@ background: #FEFEFE ;
 /* 기록실 고정 영역: 헤더 + 관찰기록 버튼 영역 + 구분선 + 부서 전환 텍스트까지 고정 */
 #recordPageInner.recordPageInner {
   padding-top: 0;
-  background: #FEFEFE;
+  background: #fff;
 }
 .recordStickyArea {
   position: sticky;
   top: 0;
   z-index: 80;
-  background: #FEFEFE;
+  background: #fff;
   padding-top: 12px;
   padding-bottom: 0;
   overflow: visible;
@@ -2238,7 +2238,7 @@ background: #FEFEFE ;
   content: '';
   position: absolute;
   inset: 0;
-  background: #FEFEFE;
+  background: #fff;
   z-index: -1;
 }
 .recordStickyArea::after {
@@ -2489,7 +2489,7 @@ html {
 
 /* 기록실 상단 고정 영역과 그 뒤에 깔린 가상 배경 */
 #recordRoomScreen {
-  background:#FEFEFE ;
+  background:#fff;
 }
 
 /* 1분 피드백/기록보드 영역 뒤 배경 */
