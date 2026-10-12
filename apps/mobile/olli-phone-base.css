@@ -4154,11 +4154,16 @@ border-color: #F0F0F0;
   display: none;
 }
 
-/* Prepainted attendance is a non-interactive rear surface, not the current page. */
+/* The retained rear surface is already at the drawer's 92% starting scale.
+   Prepare its transform layer before the tap; only the 92% -> 100%
+   transition runs when the foreground page slides aside. */
 #recordRoomScreen.olliAttendanceRearPrepared {
   display:flex;
   z-index:0;
   pointer-events:none;
+  transform:scale(.92);
+  transform-origin:center center;
+  will-change:transform;
 }
 
 /* Main page / record-room subpage drawer. The main page stays visible as the right 25%. */
