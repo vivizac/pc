@@ -315,7 +315,10 @@ async function autoSaveGeneratedFeedback(text, options = {}, btn = null) {
     }, tableName === 'fail_feedbacks' ? '실패·성장 피드백 저장' : '피드백 저장');
     const savedRow = await saveFeedbackRowVerified(tableName, feedbackPayload, tableName === 'fail_feedbacks' ? '실패·성장 피드백 저장' : '피드백 저장');
 
-    await refreshRecordsAfterFeedbackSave();
+    // Do not turn a confirmed Supabase save into a failed save/retry simply
+    // because refreshing the visible attendance list failed afterward.
+    try { await refreshRecordsAfterFeedbackSave(); }
+    catch (refreshError) { console.warn('저장된 피드백 목록 새로고침 실패:', refreshError); }
     closeFeedbackResultCardFromButton(btn);
     if (tableName === 'fail_feedbacks' && typeof resetGrowthFeedbackAfterSuccessfulSave === 'function') {
       resetGrowthFeedbackAfterSuccessfulSave(studentDivision);
