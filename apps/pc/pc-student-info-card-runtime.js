@@ -18,6 +18,7 @@
     saveInFlight: false,
     dirty: false,
     observer: null,
+    requestId: 0,
     installed: false
   };
 
@@ -408,6 +409,9 @@
     style.textContent = `
       #recordRoomScreen .pcAttendanceStudentInfoBtn{height:32px;padding:0 12px;border:1px solid #e6e9ed;border-radius:999px;background:#fff;color:#5f6670;font:inherit;font-size:11px;font-weight:720;cursor:pointer;white-space:nowrap;}
       #recordRoomScreen .pcAttendanceStudentInfoBtn:hover{background:#f6f7f8;color:#222;}
+      #recordRoomScreen .pcAttendanceCombinedCard.pcAttendanceInfoOpen{background:#fff;}
+      #recordRoomScreen .pcAttendanceCombinedCard.pcAttendanceInfoOpen>.pcAttendanceArchiveHead,
+      #recordRoomScreen .pcAttendanceCombinedCard.pcAttendanceInfoOpen>.pcAttendanceCombinedBody{display:none;}
       #recordRoomScreen .pcStudentInfoCardViewport{flex:1;min-height:0;overflow-y:auto;padding:18px 20px 22px;background:#fff;box-sizing:border-box;scrollbar-width:none;}
       #recordRoomScreen .pcStudentInfoCardViewport::-webkit-scrollbar{display:none;}
       #recordRoomScreen .pcStudentInfoCard{width:min(760px,100%);margin:0 auto;padding:4px 2px 12px;box-sizing:border-box;}
@@ -444,17 +448,13 @@
     document.head.appendChild(style);
   }
 
-  function infoHeadHtml(mode) {
-    const button = mode === 'info'
-      ? '<button type="button" class="pcAttendanceStudentInfoBtn" onclick="closeOlliPcStudentInfoCard()">관찰기록</button>'
-      : '<button type="button" class="pcAttendanceStudentInfoBtn" onclick="openOlliPcStudentInfoCard()">학생정보</button>';
-    return `<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">관찰기록</div>${button}</div>`;
+  function isStudentInfoViewOpen() {
+    return !!document.querySelector('#pcAttendanceDetailPanel .pcAttendanceCombinedCard.pcAttendanceInfoOpen');
   }
 
   function ensureStudentInfoButton() {
     const panel = document.getElementById('pcAttendanceDetailPanel');
-    if (!panel || panel.querySelector('.pcStudentInfoCardViewport')) return;
-    const head = panel.querySelector('.pcAttendanceDetailHead');
+    const head = panel?.querySelector('.pcAttendanceDetailHead');
     if (!head) return;
     const studentId = selectedAttendanceStudentId();
     let btn = head.querySelector('.pcAttendanceStudentInfoBtn');
@@ -466,10 +466,49 @@
       btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'pcAttendanceStudentInfoBtn';
-      btn.textContent = '학생정보';
-      btn.addEventListener('click', () => global.openOlliPcStudentInfoCard(studentId));
+      btn.addEventListener('click', () => {
+        const currentId = selectedAttendanceStudentId();
+        if (!currentId) return;
+        if (cardState.studentId === currentId && isStudentInfoViewOpen()) global.closeOlliPcStudentInfoCard();
+        else global.openOlliPcStudentInfoCard(currentId);
+      });
       head.appendChild(btn);
     }
+    const label = cardState.studentId === studentId && isStudentInfoViewOpen() ? '피드백' : '학생정보';
+    if (btn.textContent !== label) btn.textContent = label;
+  }
+
+  function showStudentInfoContent(html) {
+    const card = document.querySelector('#pcAttendanceDetailPanel .pcAttendanceCombinedCard');
+    if (!card) throw new Error('피드백 보관함 영역을 찾지 못했습니다.');
+    card.querySelector(':scope > .pcStudentInfoCardViewport')?.remove();
+    card.classList.add('pcAttendanceInfoOpen');
+    card.setAttribute('aria-label', '학생정보');
+    card.insertAdjacentHTML('beforeend', html);
+    ensureStudentInfoButton();
+  }
+
+  function resetStudentInfoView() {
+    cardState.requestId += 1;
+    document.querySelector('#pcAttendanceDetailPanel .pcAttendanceCombinedCard.pcAttendanceInfoOpen')?.classList.remove('pcAttendanceInfoOpen');
+    const card = document.querySelector('#pcAttendanceDetailPanel .pcAttendanceCombinedCard');
+    card?.querySelector(':scope > .pcStudentInfoCardViewport')?.remove();
+    card?.setAttribute('aria-label', '피드백 보관함');
+    cardState.studentId = '';
+    cardState.student = null;
+    cardState.enrollments = [];
+    cardState.pickups = [];
+    cardState.loading = false;
+    cardState.dirty = false;
+    try { studentInfoModalTarget = null; } catch (_) {}
+    ensureStudentInfoButton();
+  }
+
+  function leaveStudentInfoView() {
+    if (cardState.saveInFlight) return false;
+    if (cardState.dirty && isStudentInfoViewOpen() && !global.confirm('저장하지 않은 학생정보 변경사항이 있습니다. 저장하지 않고 나가시겠습니까?')) return false;
+    resetStudentInfoView();
+    return true;
   }
 
   function renderGroupButtons() {
@@ -571,8 +610,7 @@
   }
 
   async function renderStudentInfoCard(student, enrollments, teacherAssignments, pickups = []) {
-    const panel = document.getElementById('pcAttendanceDetailPanel');
-    if (!panel) throw new Error('학생정보를 표시할 관찰기록 카드를 찾지 못했습니다.');
+    if (!document.querySelector('#pcAttendanceDetailPanel .pcAttendanceCombinedCard')) throw new Error('학생정보를 표시할 피드백 보관함을 찾지 못했습니다.');
     const division = student.type === 'kinder' ? 'kinder' : 'elementary';
     const fields = lessonFieldsFromEnrollments(enrollments);
     const timetableTeacher = resolveTimetableTeacherName(division, enrollments, teacherAssignments);
@@ -587,7 +625,7 @@
     cardState.pickups = pickups;
     try { studentInfoModalTarget = authoritativeStudent; } catch (_) {}
 
-    panel.innerHTML = infoHeadHtml('info') + (division === 'kinder' ? kinderCardHtml(authoritativeStudent) : elementaryCardHtml(authoritativeStudent));
+    showStudentInfoContent(division === 'kinder' ? kinderCardHtml(authoritativeStudent) : elementaryCardHtml(authoritativeStudent));
 
     if (division === 'elementary') {
       try {
@@ -632,6 +670,8 @@
     let id = clean(studentId) || selectedAttendanceStudentId();
     if (!id && cardState.studentId) id = cardState.studentId;
     if (!id) return;
+    if (cardState.studentId === id && isStudentInfoViewOpen()) return;
+    if (cardState.studentId && cardState.studentId !== id && !leaveStudentInfoView()) return;
     let student = typeof global.findStudentById === 'function' ? global.findStudentById(id) : null;
     if (!student) return;
 
@@ -641,13 +681,12 @@
       if (typeof global.pcSelectAttendanceStudent === 'function') await Promise.resolve(global.pcSelectAttendanceStudent(id));
     }
 
-    const panel = document.getElementById('pcAttendanceDetailPanel');
-    if (!panel) return;
-    if (global.OlliPcAttendance && typeof global.OlliPcAttendance.unmountEditor === 'function') global.OlliPcAttendance.unmountEditor();
+    if (!document.querySelector('#pcAttendanceDetailPanel .pcAttendanceCombinedCard')) return;
     cardState.studentId = id;
     cardState.loading = true;
     cardState.dirty = false;
-    panel.innerHTML = infoHeadHtml('info') + '<div class="pcStudentInfoLoading">학생정보와 시간표를 불러오고 있습니다.</div>';
+    const requestId = ++cardState.requestId;
+    showStudentInfoContent('<div class="pcStudentInfoCardViewport pcStudentInfoLoading">학생정보와 시간표를 불러오고 있습니다.</div>');
     try {
       if (typeof global.loadStudentsFromSupabase === 'function') {
         await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
@@ -656,28 +695,18 @@
       const context = await loadAuthoritativeStudentContext(id);
       const teacherAssignments = [];
       student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;
-      if (cardState.studentId !== id) return;
+      if (cardState.studentId !== id || cardState.requestId !== requestId || !isStudentInfoViewOpen()) return;
       await renderStudentInfoCard(student, context.enrollments, teacherAssignments, context.pickups);
     } catch (error) {
-      if (cardState.studentId !== id) return;
-      panel.innerHTML = infoHeadHtml('info') + `<div class="pcStudentInfoLoading">${esc(error.message || '학생정보를 불러오지 못했습니다.')}</div>`;
+      if (cardState.studentId !== id || cardState.requestId !== requestId || !isStudentInfoViewOpen()) return;
+      showStudentInfoContent(`<div class="pcStudentInfoCardViewport pcStudentInfoLoading">${esc(error.message || '학생정보를 불러오지 못했습니다.')}</div>`);
     } finally {
-      cardState.loading = false;
+      if (cardState.requestId === requestId) cardState.loading = false;
     }
   }
 
   async function closeStudentInfoCard() {
-    const id = cardState.studentId || selectedAttendanceStudentId();
-    cardState.studentId = '';
-    cardState.student = null;
-    cardState.enrollments = [];
-    cardState.pickups = [];
-    cardState.dirty = false;
-    try { studentInfoModalTarget = null; } catch (_) {}
-    if (id && typeof global.pcSelectAttendanceStudent === 'function') {
-      await Promise.resolve(global.pcSelectAttendanceStudent(id));
-      setTimeout(ensureStudentInfoButton, 0);
-    }
+    return leaveStudentInfoView();
   }
 
   async function saveStudentInfoCard() {
@@ -759,12 +788,7 @@
         global.showPushToast(scheduleChanged ? '학생정보와 시간표를 저장했어요.' : '학생정보를 저장했어요.');
       }
       const id = savedStudent.id;
-      cardState.studentId = '';
-      cardState.student = null;
-      cardState.enrollments = [];
-      cardState.pickups = [];
-      cardState.dirty = false;
-      try { studentInfoModalTarget = null; } catch (_) {}
+      resetStudentInfoView();
       if (typeof global.pcSelectAttendanceStudent === 'function') await Promise.resolve(global.pcSelectAttendanceStudent(id));
       if (global.OlliPcAttendance && typeof global.OlliPcAttendance.renderList === 'function') global.OlliPcAttendance.renderList();
       setTimeout(ensureStudentInfoButton, 0);
@@ -808,6 +832,7 @@
     const academyId = currentAcademyId();
     const sessionToken = currentSessionToken();
     const isCurrent = () => clean(cardState.studentId) === id
+      && isStudentInfoViewOpen()
       && academyId === currentAcademyId()
       && sessionToken === currentSessionToken()
       && (!realtimeContext || realtimeContext.isCurrent());
@@ -846,6 +871,7 @@
     try { studentInfoModalTarget = student; } catch (_) {}
     if (typeof global.pcOpenSection === 'function') await Promise.resolve(global.pcOpenSection('attendance'));
     if (typeof global.pcSelectAttendanceStudent === 'function') await Promise.resolve(global.pcSelectAttendanceStudent(student.id));
+    if (selectedAttendanceStudentId() !== clean(student.id)) return;
     await openStudentInfoCard(student.id);
   }
 
@@ -906,6 +932,9 @@
   global.saveOlliStudentScheduleFromInfo = function(studentId, lessonDay, lessonTime, options) {
     const pairs = Array.isArray(options && options.pairs) ? options.pairs : pairsFromLessonFields(lessonDay, lessonTime);
     return setAuthoritativeSchedule(studentId, pairs);
+  };
+  global.olliPcStudentInfoBeforeSelectionChange = function(nextStudentId) {
+    return !cardState.studentId || cardState.studentId === clean(nextStudentId) || leaveStudentInfoView();
   };
   global.openOlliPcStudentInfoCard = openStudentInfoCard;
   global.closeOlliPcStudentInfoCard = closeStudentInfoCard;
