@@ -138,6 +138,69 @@
     return academyId ? academyId + ':' + division : '';
   }
 
+  // Stage 2: build the rear attendance roster once, after the first screen is stable.
+  // Keep the page hidden; the drawer itself remains the only owner of its visibility.
+  let attendancePrewarmHandle = 0;
+  let attendancePrewarmUsesIdle = false;
+
+  function cancelAttendancePrewarm(){
+    if (!attendancePrewarmHandle) return;
+    if (attendancePrewarmUsesIdle && typeof window.cancelIdleCallback === 'function') {
+      window.cancelIdleCallback(attendancePrewarmHandle);
+    } else {
+      clearTimeout(attendancePrewarmHandle);
+    }
+    attendancePrewarmHandle = 0;
+  }
+
+  function prepareAttendanceBehindFromLocal(){
+    const recordRoom = document.getElementById('recordRoomScreen');
+    const list = document.getElementById('recordList');
+    const contextKey = getAttendancePreparationKey();
+    const division = getDrawerDivision();
+    // Never render over an active page or an in-progress drawer navigation.
+    if (!recordRoom || !list || !contextKey || drawerState || navigationInFlight || isVisible(recordRoom)) return false;
+    if (window.canReusePhoneRecordList?.(division, '')) return true;
+    try {
+      // This cache hydration reads no server data and must never paint by itself.
+      window.OlliPhoneAttendanceAdapter?.hydrateLocalAttendanceSnapshot?.(new Date(), { render:false });
+      if (drawerState || navigationInFlight || isVisible(recordRoom)
+          || contextKey !== getAttendancePreparationKey()) return false;
+      if (division === 'kinder') {
+        if (typeof window.renderKinderRecords !== 'function') return false;
+        window.renderKinderRecords('');
+      } else {
+        if (typeof window.renderElementaryRecords !== 'function') return false;
+        window.renderElementaryRecords('');
+      }
+      return window.canReusePhoneRecordList?.(division, '') === true;
+    } catch (error) {
+      console.warn('출석부 로컬 사전 준비 실패:', error?.message || error);
+      return false;
+    }
+  }
+
+  function scheduleAttendancePrewarm(){
+    if (attendancePrewarmHandle || drawerState || navigationInFlight) return false;
+    const recordRoom = document.getElementById('recordRoomScreen');
+    if (!recordRoom || isVisible(recordRoom) || !getAttendancePreparationKey()) return false;
+    const division = getDrawerDivision();
+    if (window.canReusePhoneRecordList?.(division, '')) return true;
+    attendancePrewarmUsesIdle = typeof window.requestIdleCallback === 'function';
+    const run = () => {
+      attendancePrewarmHandle = 0;
+      prepareAttendanceBehindFromLocal();
+    };
+    attendancePrewarmHandle = attendancePrewarmUsesIdle
+      ? window.requestIdleCallback(run, { timeout:1800 })
+      : window.setTimeout(run, 240);
+    return true;
+  }
+
+  window.olliScheduleAttendancePrewarm = scheduleAttendancePrewarm;
+  // Also prepare after a later login/session refresh, without fetching additional data.
+  window.addEventListener('olli:local-first-server-refreshed', scheduleAttendancePrewarm);
+
   function refreshRecordRoomSubpage(options = {}){
     if (options.reuseRendered && options.localOnly !== true) {
       // Reuse mounted cards, then check the server only after the slide finishes.
@@ -599,6 +662,7 @@
       event.stopPropagation();
     }
     if (navigationInFlight || drawerState) return false;
+    cancelAttendancePrewarm();
 
     const explicitMainPage = getMainPageFromExplicitSource(sourceKind);
     const mainPage = explicitMainPage || getVisibleMainPage();
