@@ -503,6 +503,7 @@
   }
 
   function open() {
+    bindTodoRealtime();
     const app = core();
     app.showRecordRoomImmediately('academy');
     app.updateRecordLayout();
