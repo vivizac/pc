@@ -61,6 +61,45 @@
     return result;
   }
 
+  // Preserve the last confirmed schedule locally so opening student info never waits for the network.
+  const STUDENT_CONTEXT_CACHE = 'olli_pc_student_info_schedule_v1';
+  function studentContextCacheKey(studentId) {
+    const academyId = currentAcademyId();
+    const accountId = clean(localStorage.getItem('olli_account_id_v1'));
+    return academyId && accountId && clean(studentId)
+      ? [STUDENT_CONTEXT_CACHE, academyId, accountId, clean(studentId)].join(':') : '';
+  }
+  function readLocalStudentContext(student) {
+    const key = studentContextCacheKey(student?.id);
+    if (key) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(key) || 'null');
+        if (cached?.student_id === clean(student.id)
+          && Array.isArray(cached.enrollments) && Array.isArray(cached.pickups)) {
+          return { enrollments: cached.enrollments, pickups: cached.pickups };
+        }
+      } catch (_) {}
+    }
+    const enrollments = Array.isArray(student?.__olli_authoritative_enrollments)
+      ? student.__olli_authoritative_enrollments
+      : pairsFromLessonFields(student?.lesson_day, student?.lesson_time || student?.class_time);
+    return {
+      enrollments: Array.isArray(enrollments) ? enrollments : [],
+      pickups: Array.isArray(student?.__olli_authoritative_pickups) ? student.__olli_authoritative_pickups : []
+    };
+  }
+  function rememberStudentContext(studentId, context) {
+    const key = studentContextCacheKey(studentId);
+    if (!key) return;
+    try {
+      localStorage.setItem(key, JSON.stringify({
+        student_id: clean(studentId),
+        enrollments: context.enrollments,
+        pickups: context.pickups
+      }));
+    } catch (_) {}
+  }
+
   async function loadAuthoritativeStudentContext(studentId) {
     const result = await scheduleRpc('olli_schedule_student_enrollments', {
       p_student_id: studentId,
