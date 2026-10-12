@@ -4154,6 +4154,13 @@ border-color: #F0F0F0;
   display: none;
 }
 
+/* Prepainted attendance is a non-interactive rear surface, not the current page. */
+#recordRoomScreen.olliAttendanceRearPrepared {
+  display:flex;
+  z-index:0;
+  pointer-events:none;
+}
+
 /* Main page / record-room subpage drawer. The main page stays visible as the right 25%. */
 .olliMainDrawerMainPage,
 .olliMainDrawerCompanion {
