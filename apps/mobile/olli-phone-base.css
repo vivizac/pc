@@ -2890,10 +2890,10 @@ background: #FEFEFE;
   height:calc(max(116px, calc(env(safe-area-inset-top) + 102px)));
   background: linear-gradient(
     to bottom,
-    rgba(var(--vivizac-edge-fade-rgb),1) 0%,
-    rgba(var(--vivizac-edge-fade-rgb),.94) 24%,
-    rgba(var(--vivizac-edge-fade-rgb),.50) 54%,
-    rgba(var(--vivizac-edge-fade-rgb),0) 100%
+    rgba(254,254,254,1) 0%,
+    rgba(254,254,254,.94) 24%,
+    rgba(254,254,254,.50) 54%,
+    rgba(254,254,254,0) 100%
   );
 }
 #studentMemoScreen .memoBottomFadeLayer {
@@ -2901,10 +2901,10 @@ background: #FEFEFE;
   height:calc(max(116px, calc(env(safe-area-inset-bottom) + 102px)));
   background: linear-gradient(
     to top,
-    rgba(var(--vivizac-edge-fade-rgb),1) 0%,
-    rgba(var(--vivizac-edge-fade-rgb),.94) 24%,
-    rgba(var(--vivizac-edge-fade-rgb),.50) 54%,
-    rgba(var(--vivizac-edge-fade-rgb),0) 100%
+    rgba(254,254,254,1) 0%,
+    rgba(254,254,254,.94) 24%,
+    rgba(254,254,254,.50) 54%,
+    rgba(254,254,254,0) 100%
   );
 }
 #studentMemoScreen .memoHeaderLeftActions {

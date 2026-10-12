@@ -572,10 +572,10 @@
   height:calc(var(--vivizac-note-header-h, 66px) + max(18px, calc(env(safe-area-inset-top) + 6px)) - 10px);
   background:linear-gradient(
     to bottom,
-    rgba(var(--vivizac-edge-fade-rgb),1) 0%,
-    rgba(var(--vivizac-edge-fade-rgb),.94) 24%,
-    rgba(var(--vivizac-edge-fade-rgb),.50) 54%,
-    rgba(var(--vivizac-edge-fade-rgb),0) 100%
+    rgba(254,254,254,1) 0%,
+    rgba(254,254,254,.94) 24%,
+    rgba(254,254,254,.50) 54%,
+    rgba(254,254,254,0) 100%
   );
   -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 58%,transparent 100%);
   mask-image:linear-gradient(to bottom,#000 0%,#000 58%,transparent 100%);
@@ -587,10 +587,10 @@
   height:calc(var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom))) + var(--olli-phone-bottom-control-height, 47px));
   background:linear-gradient(
     to top,
-    rgba(var(--vivizac-edge-fade-rgb),1) 0%,
-    rgba(var(--vivizac-edge-fade-rgb),.94) 24%,
-    rgba(var(--vivizac-edge-fade-rgb),.50) 54%,
-    rgba(var(--vivizac-edge-fade-rgb),0) 100%
+    rgba(254,254,254,1) 0%,
+    rgba(254,254,254,.94) 24%,
+    rgba(254,254,254,.50) 54%,
+    rgba(254,254,254,0) 100%
   );
   -webkit-mask-image:linear-gradient(to top,#000 0%,#000 58%,transparent 100%);
   mask-image:linear-gradient(to top,#000 0%,#000 58%,transparent 100%);
