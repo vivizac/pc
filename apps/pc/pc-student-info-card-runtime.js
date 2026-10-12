@@ -803,15 +803,16 @@
     const division = target.type === 'kinder' ? 'kinder' : 'elementary';
     const saveBtn = document.getElementById('pcStudentInfoSaveBtn');
     cardState.saveInFlight = true;
-    let saveStage = 'profile';
     let profileSaved = false;
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
     try {
-      const extra = typeof global.olliGetInfoExtra === 'function' ? (global.olliGetInfoExtra(division) || {}) : {};
-      if (typeof global.olliGetInfoSchedulePairs !== 'function') {
-        throw new Error('학생 시간표 편집기가 준비되지 않았습니다. 화면을 새로고침한 뒤 다시 시도해 주세요.');
-      }
-      const pairs = global.olliGetInfoSchedulePairs(division);
+      const extra = typeof global.olliGetInfoExtra === 'function' ? { ...(global.olliGetInfoExtra(division) || {}) } : {};
+      // Profile fields only; the old info modal must not contribute schedule edits.
+      delete extra.lesson_day;
+      delete extra.lesson_time;
+      delete extra.class_time;
+      delete extra.teacher;
+      delete extra.homeroom_teacher;
       const dateInfo = readDateInputs(division === 'kinder' ? 'kinderInfo' : 'elementaryInfo');
       if (!dateInfo) throw new Error('등록 날짜를 올바르게 입력해 주세요.');
 
@@ -863,17 +864,12 @@
       }
 
       if (typeof global.ensureStudentSavedToSupabase !== 'function') throw new Error('학생정보 저장 함수를 찾지 못했습니다.');
-      const scheduleChanged = !schedulePairsEqual(pairs, cardState.enrollments);
+      // Student profile saves never edit timetable enrollments.
       const savedStudent = await global.ensureStudentSavedToSupabase(profile);
       profileSaved = true;
-      if (scheduleChanged) {
-        saveStage = 'schedule';
-        await setAuthoritativeSchedule(savedStudent.id, pairs);
-      }
-      saveStage = 'reload';
       if (typeof global.loadStudentsFromSupabase === 'function') await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
       if (typeof global.showPushToast === 'function') {
-        global.showPushToast(scheduleChanged ? '학생정보와 시간표를 저장했어요.' : '학생정보를 저장했어요.');
+        global.showPushToast('학생정보를 저장했어요.');
       }
       const id = savedStudent.id;
       resetStudentInfoView();
@@ -882,9 +878,7 @@
       setTimeout(ensureStudentInfoButton, 0);
     } catch (error) {
       const message = error.message || error;
-      if (saveStage === 'schedule' && profileSaved) {
-        alert(`학생정보는 저장되었지만 시간표 저장에 실패했어요.\n\n${message}\n\n시간표 변경예약이 있다면 시간표 페이지에서 예약 내용을 먼저 확인해 주세요.`);
-      } else if (saveStage === 'reload' && profileSaved) {
+      if (profileSaved) {
         alert(`학생정보는 저장되었지만 화면 새로고침 중 오류가 발생했어요.\n\n${message}`);
       } else {
         alert(`학생정보 서버 저장 중 오류가 발생했어요.\n\n${message}`);
