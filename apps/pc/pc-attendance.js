@@ -397,7 +397,7 @@
     if (!title || !body) return;
     const sortButtons = [
       [PC_SORT_MODES.DAY, '요일별'],
-      [PC_SORT_MODES.GROUP, '그룹별'],
+      [PC_SORT_MODES.GROUP, '피드백 그룹'],
       [PC_SORT_MODES.GRADE, '학년별 · 나이별'],
       [PC_SORT_MODES.PAUSED, '휴원별'],
       [PC_SORT_MODES.WITHDRAWN, '퇴원별']
