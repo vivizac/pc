@@ -342,7 +342,8 @@ async function autoSaveMemoFeedback(text, futureDirection = '') {
       await refreshRecordsAfterFeedbackSave();
     } else {
       const recordRoomScreen = document.getElementById('recordRoomScreen');
-      const recordVisible = recordRoomScreen && recordRoomScreen.style.display !== 'none';
+      const recordVisible = recordRoomScreen && recordRoomScreen.style.display !== 'none'
+        && !recordRoomScreen.classList.contains('olliAttendanceRearPrepared');
       if (recordVisible && typeof loadRecords === 'function') await loadRecords('');
     }
 
@@ -872,6 +873,8 @@ async function toggleRecordMode() {
 }
 
 async function showRecordRoom(options = {}) {
+  // The actual attendance route must be interactive rather than a retained rear layer.
+  window.olliReleasePreparedAttendanceRear?.(true);
   const localOnly = options?.localOnly === true;
   if (window.OlliOneMinuteFeedbackLifecycle && typeof window.OlliOneMinuteFeedbackLifecycle.beforeLeave === 'function') {
     window.OlliOneMinuteFeedbackLifecycle.beforeLeave();
