@@ -1,0 +1,5 @@
+/* Keep authored text sizes stable when a mobile browser changes orientation. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
