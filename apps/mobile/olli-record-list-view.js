@@ -162,6 +162,52 @@ function canReusePhoneRecordList(view, name) {
 window.markPhoneRecordListRendered = markPhoneRecordListRendered;
 window.canReusePhoneRecordList = canReusePhoneRecordList;
 
+// Stage 5: patch a changed student card only while the surrounding roster structure
+// remains identical. Sorting, status sections, and day-specific duplicate sessions
+// always fall back to the existing full-list rendering path.
+const phoneRecordRowPatchState = new WeakMap();
+function parsePhoneRecordRowPatch(html) {
+  if (typeof document.createElement !== 'function') return null;
+  const template = document.createElement('template');
+  if (!template.content) return null;
+  template.innerHTML = html;
+  const rows = Array.from(template.content.querySelectorAll('.elementaryStudentRow, .kinderStudentRow'));
+  if (!rows.length) return null;
+  const ids = rows.map(row => String(row.getAttribute('data-record-student-id') || ''));
+  if (ids.some(id => !id) || new Set(ids).size !== ids.length) return null;
+  rows.forEach(row => row.replaceWith(document.createComment('olli-student-row')));
+  return { rows, ids, structure: template.innerHTML };
+}
+
+function applyPhoneRecordRosterHtml(list, view, name, nextHtml) {
+  const key = phoneRecordListRenderKey(view, name);
+  const canReuse = window.canReusePhoneRecordList?.(view, name) === true;
+  const previous = phoneRecordRowPatchState.get(list);
+  if (canReuse && list.innerHTML === nextHtml) return;
+  let next = null;
+  // Parsing in a template keeps potentially costly card images out of the live DOM.
+  try { next = parsePhoneRecordRowPatch(nextHtml); } catch (_) {}
+  const previousMatches = !!(canReuse && key && previous && next
+    && previous.key === key && previous.structure === next.structure
+    && previous.ids.length === next.ids.length
+    && previous.ids.every((id, i) => id === next.ids[i]));
+  if (previousMatches) {
+    const currentRows = Array.from(list.querySelectorAll('.elementaryStudentRow, .kinderStudentRow'));
+    if (currentRows.length === next.rows.length
+      && currentRows.every((row, i) => row.getAttribute('data-record-student-id') === next.ids[i])) {
+      next.rows.forEach((newRow, i) => {
+        if (currentRows[i].outerHTML !== newRow.outerHTML) currentRows[i].replaceWith(newRow);
+      });
+      phoneRecordRowPatchState.set(list, { key, structure: next.structure, ids: next.ids });
+      return;
+    }
+  }
+  // If the student set/order, grouping, or rendered section changes, rebuild once.
+  list.innerHTML = nextHtml;
+  if (key && next) phoneRecordRowPatchState.set(list, { key, structure: next.structure, ids: next.ids });
+  else phoneRecordRowPatchState.delete(list);
+}
+
 function notifyPhoneRecordListRendered(view, name) {
   markPhoneRecordListRendered(view, name);
   try {
@@ -195,7 +241,7 @@ function renderElementaryStudentRows(students, searchMode = false) {
     const statusClass = status === 'paused' ? ' studentStatusPaused' : (status === 'withdrawn' ? ' studentStatusWithdrawn' : '');
     const searchStudentAttr = searchMode ? ` data-record-search-student-id="${escapeHtml(student.id)}"` : '';
     return `${dividerHtml}
-    <button class="elementaryStudentRow${groupBreakClass}${statusClass}"${searchStudentAttr} onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')">
+    <button class="elementaryStudentRow${groupBreakClass}${statusClass}"${searchStudentAttr} data-record-student-id="${escapeHtml(student.id)}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')">
       <div class="elementaryRowInner">
         ${renderPhoneElementaryAttendanceLeadIcon(student)}
         <span class="studentTextWrap">
@@ -230,7 +276,7 @@ function renderKinderStudentRows(students, searchMode = false) {
     const statusClass = status === 'paused' ? ' studentStatusPaused' : (status === 'withdrawn' ? ' studentStatusWithdrawn' : '');
     const searchStudentAttr = searchMode ? ` data-record-search-student-id="${escapeHtml(student.id)}"` : '';
     return `${dividerHtml}
-    <button class="kinderStudentRow${groupBreakClass}${statusClass}"${searchStudentAttr} onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')">
+    <button class="kinderStudentRow${groupBreakClass}${statusClass}"${searchStudentAttr} data-record-student-id="${escapeHtml(student.id)}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')">
       <div class="kinderRowInner">
         ${renderPhoneKinderAttendanceLeadIcon(student)}
         <span class="studentTextWrap">
@@ -265,8 +311,7 @@ function renderElementaryRecords(name) {
     + activeEmptyHtml
     + renderPhoneRecordStatusSection('elementary', 'paused', '휴원', pausedHtml, '휴원생이 없습니다.', searchMode)
     + renderPhoneRecordStatusSection('elementary', 'withdrawn', '퇴원', withdrawnHtml, '최근 한 달 내 퇴원생이 없습니다.', searchMode);
-  // Do not detach and recreate identical student cards after deferred updates.
-  if (!window.canReusePhoneRecordList?.('elementary', name) || list.innerHTML !== nextHtml) list.innerHTML = nextHtml;
+  applyPhoneRecordRosterHtml(list, 'elementary', name, nextHtml);
   syncPhoneRecordInitialSortLabel();
   notifyPhoneRecordListRendered('elementary', name);
 }
@@ -301,7 +346,7 @@ function renderKinderRecords(name) {
     + activeEmptyHtml
     + renderPhoneRecordStatusSection('kinder', 'paused', '휴원', pausedHtml, '휴원생이 없습니다.', searchMode)
     + renderPhoneRecordStatusSection('kinder', 'withdrawn', '퇴원', withdrawnHtml, '최근 한 달 내 퇴원생이 없습니다.', searchMode);
-  if (!window.canReusePhoneRecordList?.('kinder', name) || list.innerHTML !== nextHtml) list.innerHTML = nextHtml;
+  applyPhoneRecordRosterHtml(list, 'kinder', name, nextHtml);
   syncPhoneRecordInitialSortLabel();
   notifyPhoneRecordListRendered('kinder', name);
 }
