@@ -7,6 +7,11 @@
   let serverTodoAcademyId = '';
   let serverTodoLoadPromise = null;
   let serverTodoRealtimeWatcher = null;
+  let materialOrderItems = [];
+  let materialOrderAcademyId = '';
+  let materialOrderSessionToken = '';
+  let materialOrderLoadPromise = null;
+  let materialOrderError = false;
 
   function core() { return global.OlliPcCore; }
   function escape(value) {
@@ -101,6 +106,93 @@
     });
 
     return serverTodoLoadPromise;
+  }
+
+  function materialsForCurrentAcademy() {
+    const context = todoServerContext();
+    return context.academyId === materialOrderAcademyId
+      && context.sessionToken === materialOrderSessionToken ? materialOrderItems : [];
+  }
+
+  async function loadMaterialOrders(options = {}) {
+    const opts = { render: true, ...options };
+    const context = todoServerContext();
+    if (!context.academyId || !context.sessionToken) {
+      materialOrderItems = [];
+      materialOrderAcademyId = '';
+      materialOrderSessionToken = '';
+      materialOrderError = false;
+      if (opts.render && core()?.state?.section === 'academy') renderMaterialOrders();
+      return false;
+    }
+    if (materialOrderLoadPromise && materialOrderAcademyId === context.academyId
+        && materialOrderSessionToken === context.sessionToken) return materialOrderLoadPromise;
+
+    const academyId = context.academyId;
+    const sessionToken = context.sessionToken;
+    materialOrderAcademyId = academyId;
+    materialOrderSessionToken = sessionToken;
+    materialOrderLoadPromise = (async () => {
+      const result = await callTodoRpc('olli_team_material_requests_list', {
+        p_session_token: sessionToken,
+        p_academy_id: academyId,
+        p_limit: 300
+      });
+      if (result?.ok !== true) throw new Error(result?.message || '재료주문 목록을 불러오지 못했습니다.');
+      const current = todoServerContext();
+      if (current.academyId !== academyId || current.sessionToken !== sessionToken) return false;
+      materialOrderItems = Array.isArray(result.items) ? result.items : [];
+      materialOrderError = false;
+      if (opts.render && core()?.state?.section === 'academy') renderMaterialOrders();
+      return true;
+    })().catch((error) => {
+      const current = todoServerContext();
+      if (current.academyId === academyId && current.sessionToken === sessionToken) {
+        materialOrderError = true;
+        if (opts.render && core()?.state?.section === 'academy') renderMaterialOrders();
+      }
+      console.warn('PC 학생관리 재료주문 조회 실패:', error?.message || error);
+      return false;
+    }).finally(() => { materialOrderLoadPromise = null; });
+    return materialOrderLoadPromise;
+  }
+
+  function renderMaterialOrders() {
+    const host = document.getElementById('pcAcademyMaterialsSection');
+    if (!host) return;
+    const ranking = { requested: 0, on_hold: 1, ordered: 2, arrived: 3 };
+    const items = materialsForCurrentAcademy().slice().sort((a, b) => {
+      const rankA = ranking[a?.status] ?? 4;
+      const rankB = ranking[b?.status] ?? 4;
+      return rankA - rankB || String(b?.created_at || '').localeCompare(String(a?.created_at || ''));
+    });
+    const statusLabels = { requested: '요청', on_hold: '보류', ordered: '주문완료', arrived: '도착' };
+    const count = items.filter((item) => item.status === 'requested' || item.status === 'on_hold').length;
+    const rows = items.map((item) => {
+      const status = String(item?.status || 'requested');
+      const date = String(item?.needed_on || '').trim();
+      const neededText = date ? '필요일 ' + escape(date) : '필요일 미설정';
+      return '<button type="button" class="pcAcademyMaterialRow" onclick="pcOpenAcademyMaterials()" title="업무의 재료주문 화면에서 확인">'
+        + '<span class="pcAcademyMaterialMain"><strong>'+escape(item?.item_name || '재료')+'</strong>'
+        + '<small>'+escape(item?.quantity_text || '수량 미지정')+' · '+neededText+'</small></span>'
+        + '<span class="pcAcademyMaterialStatus '+escape(status)+'">'+escape(statusLabels[status] || status)+'</span>'
+        + '</button>';
+    }).join('');
+    const empty = materialOrderError
+      ? '<div class="pcAcademyMaterialEmpty">재료주문을 불러오지 못했습니다. 재료주문 화면에서 확인해 주세요.</div>'
+      : '<div class="pcAcademyMaterialEmpty">현재 진행 중인 재료주문이 없습니다.</div>';
+    host.innerHTML = '<div class="pcAcademySectionHeader"><div><div class="pcAcademySectionTitle">재료주문</div>'
+      + '<div class="pcAcademySectionSub">기존 주문 목록과 실시간으로 연결됩니다.</div></div>'
+      + '<span class="pcAcademySectionCount">'+count+'건 대기</span></div>'
+      + '<button type="button" class="pcAcademyMaterialsOpen" onclick="pcOpenAcademyMaterials()">재료주문 화면 열기 <span aria-hidden="true">›</span></button>'
+      + '<div class="pcAcademyMaterialsList">'+(rows || empty)+'</div>';
+  }
+
+  async function openMaterials() {
+    if (typeof global.pcOpenSection !== 'function') return;
+    await Promise.resolve(global.pcOpenSection('talk'));
+    const tab = document.querySelector('#olliPcTeamTalkScreen [data-team-talk-workspace-tab="materials"]');
+    if (tab) tab.click();
   }
 
   function dueLabelsForStudent(student) {
@@ -238,9 +330,12 @@
       + buildStatCard(month+'월 상담', due.length, '초등부 '+consultationElementary+'명 · 유치부 '+consultationKinder+'명')
       + buildStatCard('올해 등록', thisYearRegistered.length, '이달 등록 '+thisMonthRegistered.length+'명 · 이달 퇴원 '+thisMonthWithdrawn.length+'명')
       + buildStatCard('올해 퇴원', thisYearWithdrawn.length, '휴원 '+paused.length+'명 · 퇴원 '+thisYearWithdrawn.length+'명')
-      + '</div><section class="recordAcademyConsultSection pcAcademyTodoSection" id="pcAcademyTodoSection"></section>';
+      + '</div><div class="pcAcademyWorkOrderGrid"><section class="recordAcademyConsultSection pcAcademyTodoSection" id="pcAcademyTodoSection"></section>'
+      + '<section class="recordAcademyConsultSection pcAcademyMaterialsSection" id="pcAcademyMaterialsSection"></section></div>';
     renderTodoCard();
+    renderMaterialOrders();
     loadServerTodos({ render:true }).catch(() => {});
+    loadMaterialOrders({ render:true }).catch(() => {});
     renderConsultationPanel(due);
     filter(core().state.academyFilter);
     handleSearch(core().state.searchValues.academy);
@@ -272,7 +367,7 @@
         + '<button type="button" class="pcAcademyTodoDelete" aria-label="할 일 삭제" title="삭제" onclick="pcDeleteAcademyTodo(\''+id+'\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>'
         + '</div>';
     }).join('') : '<div class="pcAcademyTodoEmpty"><span>오늘 처리할 일을 적어보세요.</span><small>추가한 할 일은 학원 구성원에게 함께 표시됩니다.</small></div>';
-    host.innerHTML = '<div class="pcAcademySectionHeader"><div><div class="pcAcademySectionTitle">할 일</div><div class="pcAcademySectionSub">업무와 메모를 한곳에서 관리해요.</div></div><span class="pcAcademySectionCount">'+remaining+'개 남음</span></div>'
+    host.innerHTML = '<div class="pcAcademySectionHeader"><div><div class="pcAcademySectionTitle">학원 업무</div><div class="pcAcademySectionSub">업무와 메모를 한곳에서 관리해요.</div></div><span class="pcAcademySectionCount">'+remaining+'개 남음</span></div>'
       + '<form class="pcAcademyTodoForm" onsubmit="pcAddAcademyTodo(event)"><input id="pcAcademyTodoInput" type="text" maxlength="80" autocomplete="off" placeholder="할 일을 입력해 주세요"><button type="submit">추가</button></form>'
       + '<div class="pcAcademyTodoList">'+rows+'</div>';
   }
@@ -467,7 +562,12 @@
     if (serverTodoRealtimeWatcher || typeof global.OlliRealtime?.watchDomain !== 'function') return;
     serverTodoRealtimeWatcher = global.OlliRealtime.watchDomain('chat', async (context) => {
       if (!context?.isCurrent?.()) return false;
-      return loadServerTodos({ render: core()?.state?.section === 'academy' });
+      const visible = core()?.state?.section === 'academy';
+      const [tasksOk, ordersOk] = await Promise.all([
+        loadServerTodos({ render: visible }),
+        loadMaterialOrders({ render: visible })
+      ]);
+      return tasksOk || ordersOk;
     });
   }
 
@@ -483,7 +583,8 @@
     if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') renderDashboard();
   }
 
-  global.OlliPcStudentManagement = { renderContext, renderDashboard, renderTodoCard, renderConsultationPanel, loadServerTodos, open, filter, handleSearch, resolveStudent, refreshConsultationCompletionState, bindRows, start };
+  global.OlliPcStudentManagement = { renderContext, renderDashboard, renderTodoCard, renderMaterialOrders, renderConsultationPanel, loadServerTodos, loadMaterialOrders, open, filter, handleSearch, resolveStudent, refreshConsultationCompletionState, bindRows, start };
+  global.pcOpenAcademyMaterials = openMaterials;
   global.pcAddAcademyTodo = addTodo;
   global.pcToggleAcademyTodo = toggleTodo;
   global.pcDeleteAcademyTodo = deleteTodo;
