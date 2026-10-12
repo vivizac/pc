@@ -558,7 +558,7 @@
 
   function elementaryCardHtml(student) {
     return `<div class="pcStudentInfoCardViewport"><div class="pcStudentInfoCard" data-division="elementary">
-      <div class="pcStudentInfoCardIntro"><strong>${esc(student.name || '학생')} 학생정보</strong><span>요일·시간은 시간표 기준으로 저장됩니다.</span></div>
+      <div class="pcStudentInfoCardIntro"><strong>${esc(student.name || '학생')} 학생정보</strong><span></span></div>
       <div class="pcStudentInfoForm">
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><div class="modalLabel">이름</div><input class="modalInput" id="elementaryInfoNameInput"></div>
@@ -575,11 +575,35 @@
           <div class="pcStudentInfoField"><div class="modalLabel">월</div><input class="modalInput" id="elementaryInfoMonthInput" type="number" min="1" max="12"></div>
           <div class="pcStudentInfoField"><div class="modalLabel">일</div><input class="modalInput" id="elementaryInfoDayInput" type="number" min="1" max="31"></div>
         </div>
-        <div class="pcStudentInfoSchedule"><div class="pcStudentInfoScheduleTitle">요일 / 시간</div><div id="elementaryLessonDayToggleRow" class="infoDayToggleRow"></div><div id="elementaryLessonTimeToggleRow" class="infoTimeToggleRow"></div></div>
+        <div class="pcStudentInfoSchedule" aria-label="수업시간 조회">${studentInfoScheduleHtml(student, student.__olli_authoritative_enrollments)}</div>
         <div class="pcStudentInfoField"><div class="modalLabel">그룹</div><div id="elementaryGroupToggleRow" class="infoToggleRow">${renderGroupButtons()}</div></div>
         <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeOlliPcStudentInfoCard()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="pcStudentInfoSaveBtn" onclick="saveOlliPcStudentInfoCard()">저장</button></div>
       </div>
     </div></div>`;
+  }
+
+  function studentInfoScheduleHtml(student, enrollments) {
+    const rows = (Array.isArray(enrollments) ? enrollments : []).slice().sort((a, b) => {
+      const ao = Number(a?.session_order) || 999;
+      const bo = Number(b?.session_order) || 999;
+      return ao - bo || Number(a?.weekday) - Number(b?.weekday) || Number(a?.time_slot) - Number(b?.time_slot);
+    });
+    const items = rows.length ? rows.map((row, index) => {
+      const day = NUM_DAY[Number(row?.weekday)] || '';
+      const slot = Number(row?.time_slot);
+      const time = Number.isFinite(slot)
+        ? (Number.isInteger(slot) ? slot + '시' : Math.floor(slot) + ':30') : '';
+      const teacher = clean(row?.teacher_name) || (index === 0 ? clean(student?.__olli_timetable_teacher) : '');
+      const group = clean(row?.class_group).toUpperCase();
+      const classLabel = group === 'A' || group === 'B' ? group + '반' : '';
+      return `<div class="pcStudentInfoScheduleItem">
+        <span class="pcStudentInfoScheduleOrder">${index + 1}회차</span>
+        <span class="pcStudentInfoScheduleMain"><span class="pcStudentInfoScheduleWhen">${esc(day)}요일 ${esc(time)}</span>${teacher ? `<span class="pcStudentInfoScheduleTeacher">· ${esc(teacher)}</span>` : ''}</span>
+        ${classLabel ? `<span class="pcStudentInfoScheduleClassBadge">${esc(classLabel)}</span>` : ''}
+      </div>`;
+    }).join('') : '<div class="pcStudentInfoScheduleEmpty">등록된 수업이 없습니다.</div>';
+    return '<div class="pcStudentInfoScheduleHead"><div class="pcStudentInfoScheduleTitle">수업시간</div></div>'
+      + '<div class="pcStudentInfoScheduleList">' + items + '</div>';
   }
 
   function pickupSummary(rows) {
@@ -601,7 +625,7 @@
 
   function kinderCardHtml(student) {
     return `<div class="pcStudentInfoCardViewport"><div class="pcStudentInfoCard" data-division="kinder">
-      <div class="pcStudentInfoCardIntro"><strong>${esc(student.name || '학생')} 학생정보</strong><span>요일·시간은 시간표 기준으로 저장됩니다.</span></div>
+      <div class="pcStudentInfoCardIntro"><strong>${esc(student.name || '학생')} 학생정보</strong><span></span></div>
       <div class="pcStudentInfoForm">
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><div class="modalLabel">이름</div><input class="modalInput" id="kinderInfoNameInput"></div>
@@ -618,7 +642,7 @@
           <div class="pcStudentInfoField"><div class="modalLabel">일</div><input class="modalInput" id="kinderInfoDayInput" type="number" min="1" max="31"></div>
         </div>
         <input id="kinderLessonDayInput" type="hidden">
-        <div class="pcStudentInfoSchedule"><div class="pcStudentInfoScheduleTitle">요일 / 시간</div><div id="kinderLessonDayToggleRow" class="infoDayToggleRow"></div><div id="kinderLessonTimeToggleRow" class="infoTimeToggleRow"></div></div>
+        <div class="pcStudentInfoSchedule" aria-label="수업시간 조회">${studentInfoScheduleHtml(student, student.__olli_authoritative_enrollments)}</div>
         <div class="pcStudentInfoField"><div class="modalLabel">픽업</div><div id="kinderInfoPickupReadonly" class="pcStudentInfoTeacherReadonly isEmpty">등록된 픽업 없음</div></div>
         <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeOlliPcStudentInfoCard()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="pcStudentInfoSaveBtn" onclick="saveOlliPcStudentInfoCard()">저장</button></div>
       </div>
