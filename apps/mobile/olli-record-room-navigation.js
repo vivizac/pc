@@ -32,10 +32,9 @@ async function openRecordAttendanceDashboard(options = {}){
   if (typeof window.setOlliMainSubpageDrawerSearchActive === 'function') {
     window.setOlliMainSubpageDrawerSearchActive(false);
   }
-  // A drawer-owned local open defers popup HTML work until the slide ends.
+  // Only explicit drawer opens defer popup HTML work until the slide ends.
   // Direct attendance navigation and division changes still refresh immediately.
-  const drawerOpening = options.localOnly === true && options.reuseRendered === true;
-  if (!drawerOpening && typeof window.refreshRecordSortPopup === 'function') {
+  if (options.deferSortPopup !== true && typeof window.refreshRecordSortPopup === 'function') {
     setTimeout(window.refreshRecordSortPopup, 0);
   }
   // The drawer's already-mounted roster is authoritative for this transition.
