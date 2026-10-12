@@ -7,6 +7,7 @@
   const OPEN_CLASS = 'is-olli-main-drawer-open';
   const REVEALED_CLASS = 'is-olli-attendance-revealed';
   const RETURNING_CLASS = 'is-olli-main-drawer-returning';
+  const PREPARED_REAR_CLASS = 'olliAttendanceRearPrepared';
   const SWITCH_EXIT_CLASS = 'is-olli-main-drawer-switch-exit';
   const SWITCH_ENTER_CLASS = 'is-olli-main-drawer-switch-enter';
   const DRAWER_RETURN_FALLBACK_MS = 430;
@@ -24,7 +25,7 @@
   }
 
   function isVisible(element){
-    if (!element) return false;
+    if (!element || (element.id === 'recordRoomScreen' && element.classList.contains(PREPARED_REAR_CLASS))) return false;
     try { return getComputedStyle(element).display !== 'none'; }
     catch (_) { return element.style.display !== 'none'; }
   }
@@ -153,6 +154,72 @@
     attendancePrewarmHandle = 0;
   }
 
+  // Stage 3: the real attendance DOM stays mounted beneath the active note page.
+  // The state is not a route; only the drawer may promote it to an interactive page.
+  let preparedRearSaved = null;
+  let preparedRearObserver = null;
+
+  function canKeepPreparedRear(){
+    const boot = document.getElementById('olliBootScreen');
+    return !drawerState && !navigationInFlight && (!boot || !isVisible(boot))
+      && !!getVisibleMainPage() && !!getAttendancePreparationKey();
+  }
+
+  function releasePreparedRear(keepDisplay = false){
+    if (!preparedRearSaved) return false;
+    const recordRoom = document.getElementById('recordRoomScreen');
+    const saved = preparedRearSaved;
+    preparedRearSaved = null;
+    if (!recordRoom) return false;
+    const liveDisplay = recordRoom.style.display;
+    recordRoom.classList.remove(PREPARED_REAR_CLASS);
+    restoreInlineState(recordRoom, saved);
+    if (keepDisplay) recordRoom.style.display = liveDisplay;
+    return true;
+  }
+
+  function reconcilePreparedRear(){
+    if (!preparedRearSaved || drawerState || navigationInFlight) return;
+    const room = document.getElementById('recordRoomScreen');
+    if (!room) return;
+    if (!canKeepPreparedRear()) {
+      releasePreparedRear();
+      return;
+    }
+    // Route transitions can set display:none on all screens. Restore only this
+    // non-interactive layer when a supported foreground page is visible.
+    if (room.style.display !== 'flex') room.style.display = 'flex';
+  }
+
+  function observePreparedRearLifecycle(){
+    if (preparedRearObserver || typeof MutationObserver !== 'function') return;
+    preparedRearObserver = new MutationObserver(reconcilePreparedRear);
+    ['recordRoomScreen','studentMemoScreen','observationRosterScreen','kinderChatFeedbackScreen','olliTalkBetaScreen']
+      .forEach(id => {
+        const screen = document.getElementById(id);
+        if (screen) preparedRearObserver.observe(screen, { attributes:true, attributeFilter:['style','class'] });
+      });
+  }
+
+  function mountPreparedRear(){
+    const room = document.getElementById('recordRoomScreen');
+    if (!room || !canKeepPreparedRear()
+        || window.canReusePhoneRecordList?.(getDrawerDivision(), '') !== true) return false;
+    if (!preparedRearSaved) preparedRearSaved = captureInlineState(room);
+    room.classList.add(PREPARED_REAR_CLASS);
+    room.style.display = 'flex';
+    room.style.zIndex = '0';
+    room.style.pointerEvents = 'none';
+    room.setAttribute('aria-hidden', 'true');
+    room.setAttribute('inert', '');
+    observePreparedRearLifecycle();
+    return true;
+  }
+
+  // Direct navigation and authentication must never mistake this layer for
+  // the foreground attendance route.
+  window.olliReleasePreparedAttendanceRear = (keepDisplay = false) => releasePreparedRear(keepDisplay);
+
   function prepareAttendanceBehindFromLocal(){
     const recordRoom = document.getElementById('recordRoomScreen');
     const bootScreen = document.getElementById('olliBootScreen');
@@ -162,7 +229,7 @@
     const division = getDrawerDivision();
     // Never render over an active page or an in-progress drawer navigation.
     if (!recordRoom || !list || !contextKey || drawerState || navigationInFlight || isVisible(recordRoom)) return false;
-    if (window.canReusePhoneRecordList?.(division, '')) return true;
+    if (window.canReusePhoneRecordList?.(division, '')) return mountPreparedRear();
     try {
       // This cache hydration reads no server data and must never paint by itself.
       window.OlliPhoneAttendanceAdapter?.hydrateLocalAttendanceSnapshot?.(new Date(), { render:false });
@@ -175,7 +242,7 @@
         if (typeof window.renderElementaryRecords !== 'function') return false;
         window.renderElementaryRecords('');
       }
-      return window.canReusePhoneRecordList?.(division, '') === true;
+      return mountPreparedRear();
     } catch (error) {
       console.warn('출석부 로컬 사전 준비 실패:', error?.message || error);
       return false;
@@ -189,7 +256,7 @@
     const recordRoom = document.getElementById('recordRoomScreen');
     if (!recordRoom || isVisible(recordRoom) || !getAttendancePreparationKey()) return false;
     const division = getDrawerDivision();
-    if (window.canReusePhoneRecordList?.(division, '')) return true;
+    if (window.canReusePhoneRecordList?.(division, '')) return mountPreparedRear();
     attendancePrewarmUsesIdle = typeof window.requestIdleCallback === 'function';
     const run = () => {
       attendancePrewarmHandle = 0;
@@ -505,6 +572,7 @@
       document.body.classList.remove(DRAWER_OPEN_CLASS);
       document.body.classList.remove('olli-main-subpage-drawer-search-active');
       drawerState = null;
+      mountPreparedRear();
       return true;
     } finally {
       navigationInFlight = false;
@@ -614,6 +682,7 @@
       state.recordRoom.classList.remove('olliMainDrawerSubpage', REVEALED_CLASS, RETURNING_CLASS, 'vivizac-slide-under-fade');
       restoreInlineState(state.recordRoom, state.recordSaved);
     }
+    mountPreparedRear();
 
     restoreRecordUtilityOrder(state.utilityOrderSaved);
     const hit = document.getElementById('olliMainDrawerReturnHit');
@@ -682,13 +751,16 @@
     const hit = getReturnHit();
     const utilityOrderSaved = applyRecordUtilityOrder(mainPage);
 
+    // Keep the prepared DOM displayed; do not hide/show it between frames.
+    const recordSaved = preparedRearSaved || captureInlineState(recordRoom);
+    releasePreparedRear(true);
     drawerState = {
       mainPage,
       companion,
       recordRoom,
       mainSaved: captureInlineState(mainPage),
       companionSaved: captureInlineState(companion),
-      recordSaved: captureInlineState(recordRoom),
+      recordSaved,
       utilityOrderSaved
     };
 
