@@ -41,7 +41,7 @@
         'DOMchanges=' + r.mutations, 'frames>25ms=' + slowFrames, 'maxFrameGap=' + maxGap
       ].join(' | ');
     });
-    return [header, 'Version: e3287cd + diagnostic probe', ...rows].join('\n');
+    return [header, 'Version: deferred warm-roster load (experimental)', ...rows].join('\n');
   }
   function displaySlideDiag() {
     if (!slideDiagPanel) {
@@ -199,7 +199,7 @@
     const openAttendance = window.openRecordAttendanceDashboard
       || (typeof openRecordAttendanceDashboard === 'function' ? openRecordAttendanceDashboard : null);
     if (typeof openAttendance === 'function') {
-      await openAttendance({ localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true });
+      await openAttendance({ localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true, deferLocalLoad: options.deferLocalLoad === true });
       return true;
     }
 
@@ -210,7 +210,7 @@
       if (typeof currentObservationView !== 'undefined') currentObservationView = targetView;
       if (typeof currentRecordView !== 'undefined') currentRecordView = targetView;
       if (typeof updateRecordHeaderUI === 'function') updateRecordHeaderUI();
-      if (typeof loadRecords === 'function') await loadRecords('', { localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true });
+      if (!options.deferLocalLoad && typeof loadRecords === 'function') await loadRecords('', { localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true });
       return true;
     } catch (_) {
       return false;
@@ -374,7 +374,7 @@
       }
       return;
     }
-    prepareAttendanceState({ localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true }).catch(() => {});
+    prepareAttendanceState({ localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true, deferLocalLoad: options.deferLocalLoad === true }).catch(() => {});
   }
 
   function deferAttendanceRender(view, name){
@@ -846,6 +846,8 @@
     const hit = getReturnHit();
     const utilityOrderSaved = applyRecordUtilityOrder(mainPage);
 
+    const preparedRosterReady = !!preparedRearSaved
+      && window.canReusePhoneRecordList?.(getDrawerDivision(), '') === true;
     const slideDiag = beginSlideDiag(mainPage, recordRoom, !!preparedRearSaved);
     // Keep the prepared DOM displayed; do not hide/show it between frames.
     const recordSaved = preparedRearSaved || captureInlineState(recordRoom);
@@ -892,7 +894,9 @@
     // An old academy/division roster still renders immediately via the reuse guard.
     drawerState.attendanceOpening = true;
     const slideLoadStart = slideDiag ? performance.now() : 0;
-    refreshRecordRoomSubpage({ localOnly: true, reuseRendered: true });
+    // The rear roster was already rendered. Keep UI state in sync but defer
+    // redundant local hydration until the existing post-slide refresh.
+    refreshRecordRoomSubpage({ localOnly: true, reuseRendered: true, deferLocalLoad: preparedRosterReady });
     if (slideDiag) slideDiag.localLoadMs = Math.round((performance.now() - slideLoadStart) * 10) / 10;
     const slideLayoutStart = slideDiag ? performance.now() : 0;
     void recordRoom.offsetWidth;
