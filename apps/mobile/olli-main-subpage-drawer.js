@@ -110,7 +110,7 @@
     const openAttendance = window.openRecordAttendanceDashboard
       || (typeof openRecordAttendanceDashboard === 'function' ? openRecordAttendanceDashboard : null);
     if (typeof openAttendance === 'function') {
-      await openAttendance({ localOnly: options.localOnly === true });
+      await openAttendance({ localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true });
       return true;
     }
 
@@ -121,7 +121,7 @@
       if (typeof currentObservationView !== 'undefined') currentObservationView = targetView;
       if (typeof currentRecordView !== 'undefined') currentRecordView = targetView;
       if (typeof updateRecordHeaderUI === 'function') updateRecordHeaderUI();
-      if (typeof loadRecords === 'function') await loadRecords('', { localOnly: options.localOnly === true });
+      if (typeof loadRecords === 'function') await loadRecords('', { localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true });
       return true;
     } catch (_) {
       return false;
@@ -146,7 +146,7 @@
       }
       return;
     }
-    prepareAttendanceState({ localOnly: options.localOnly === true }).catch(() => {});
+    prepareAttendanceState({ localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true }).catch(() => {});
   }
 
   function deferAttendanceRender(view, name){
@@ -649,7 +649,8 @@
     hit.hidden = false;
     document.body.classList.add(DRAWER_OPEN_CLASS);
     // Prepare only when requested, preserving the existing local-first load.
-    refreshRecordRoomSubpage({ localOnly: true });
+    // Reuse the already mounted local roster; only first entry/changed context renders it.
+    refreshRecordRoomSubpage({ localOnly: true, reuseRendered: true });
     // Pause subsequent paints during motion, after the initial local render.
     drawerState.attendanceOpening = true;
     void recordRoom.offsetWidth;
