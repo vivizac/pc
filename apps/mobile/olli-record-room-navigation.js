@@ -29,7 +29,11 @@ async function openRecordAttendanceDashboard(options = {}){
     window.setOlliMainSubpageDrawerSearchActive(false);
   }
   if (typeof window.refreshRecordSortPopup === 'function') setTimeout(window.refreshRecordSortPopup, 0);
-  await loadRecords('', { localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true });
+  // The drawer's already-mounted roster is authoritative for this transition.
+  // Its normal post-slide refresh will hydrate local state and check the server.
+  if (!options.deferLocalLoad) {
+    await loadRecords('', { localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true });
+  }
 }
 
 async function toggleRecordAcademyManagementMode(){
