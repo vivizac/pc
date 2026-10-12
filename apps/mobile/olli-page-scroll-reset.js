@@ -49,6 +49,10 @@
 
   function resetPageScroll(root) {
     if (!root || hasActiveEditableInside(root)) return;
+    // A mounted rear is already positioned. Delayed navigation resets must not
+    // move it or the viewport while the foreground is sliding over it.
+    if (window.isOlliMainSubpageDrawerOpen?.() || window.isOlliPhoneNavigationInFlight?.()) return;
+    if (root.id === 'recordRoomScreen' && root.hasAttribute('data-olli-drawer-rear-mounted')) return;
     resetScrollElement(root);
     try {
       root.querySelectorAll(SCROLL_CONTAINER_SELECTOR).forEach(function(el){
@@ -102,6 +106,8 @@
     if (typeof original !== 'function' || original.__olliScrollResetWrapped) return;
     const wrapped = function(){
       const result = original.apply(this, arguments);
+      // Idle local preparation is not navigation and must not reset other pages.
+      if (name === 'openRecordAttendanceDashboard' && arguments[0]?.localOnly === true) return result;
       Promise.resolve(result).finally(function(){ scheduleReset(); });
       return result;
     };
@@ -138,3 +144,4 @@
     bindFunctionWrappers();
   }
 })();
+
