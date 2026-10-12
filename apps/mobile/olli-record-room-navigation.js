@@ -29,7 +29,7 @@ async function openRecordAttendanceDashboard(options = {}){
     window.setOlliMainSubpageDrawerSearchActive(false);
   }
   if (typeof window.refreshRecordSortPopup === 'function') setTimeout(window.refreshRecordSortPopup, 0);
-  await loadRecords('', { localOnly: options.localOnly === true });
+  await loadRecords('', { localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true });
 }
 
 async function toggleRecordAcademyManagementMode(){
@@ -191,7 +191,7 @@ async function loadRecords(name, options = {}) {
     // Previously the cache hydration rendered all student cards a second time.
     hydrateRecordAttendanceLocalSnapshot({ render: false });
     // Preserve the mounted list during background-only server refresh.
-    if (!(options.reuseRendered === true && list.children.length)) renderElementaryRecords(name);
+    if (!(options.reuseRendered === true && window.canReusePhoneRecordList?.('elementary', name))) renderElementaryRecords(name);
     if (localOnly) return true;
     const studentRefresh = await loadStudentsFromSupabase();
     if (loadToken !== window.__olliRecordListLoadToken || currentRecordView !== 'elementary') return;
@@ -208,7 +208,7 @@ async function loadRecords(name, options = {}) {
     // Previously the cache hydration rendered all student cards a second time.
     hydrateRecordAttendanceLocalSnapshot({ render: false });
     // Preserve the mounted list during background-only server refresh.
-    if (!(options.reuseRendered === true && list.children.length)) renderKinderRecords(name);
+    if (!(options.reuseRendered === true && window.canReusePhoneRecordList?.('kinder', name))) renderKinderRecords(name);
     if (localOnly) return true;
     const studentRefresh = await loadStudentsFromSupabase();
     if (loadToken !== window.__olliRecordListLoadToken || currentRecordView !== 'kinder') return;
