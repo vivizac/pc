@@ -18,30 +18,7 @@ function getOlliTeacherInviteAcademyInfo() {
 }
 
 function buildOlliTeacherInviteUrl() {
-  const info = getOlliTeacherInviteAcademyInfo();
-  if (!info.academyCode) return '';
-  const base = String(window.location.origin || '') + String(window.location.pathname || '');
-  const params = new URLSearchParams();
-  params.set('invite', 'teacher');
-  params.set('academy_code', info.academyCode);
-  if (info.academyName) params.set('academy_name', info.academyName);
-  return base + '?' + params.toString();
-}
-
-function getOlliAppQrTargetUrl() {
   return 'https://vivizac-feedback.vercel.app/';
-}
-
-function buildOlliTeacherInviteMessage() {
-  const info = getOlliTeacherInviteAcademyInfo();
-  const inviteUrl = buildOlliTeacherInviteUrl();
-  if (!info.academyCode) return '';
-  return [
-    '선생님 등록 링크입니다.',
-    '이 링크로 들어가 이름을 입력하고 승인 요청해 주세요.',
-    '학원코드: ' + info.academyCode,
-    inviteUrl
-  ].filter(Boolean).join('\n');
 }
 
 function renderSettingsTeacherInviteApprovalInline() {
@@ -103,19 +80,17 @@ function renderSettingsTeacherInvite() {
     return '<div class="settingsDetailIntro"><div class="settingsDetailTitle">초대할 학원 정보를<br>확인하지 못했습니다.</div></div>'
       + '<div class="settingsInfoCard"><div class="settingsInfoItem">원장 계정으로 로그인한 뒤 다시 시도해 주세요.</div></div>';
   }
-  const qrTargetUrl = getOlliAppQrTargetUrl();
-  const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(qrTargetUrl);
+  const inviteUrl = buildOlliTeacherInviteUrl();
   return '<div class="settingsInfoCard"><div class="settingsTeacherInvitePlainList">'
     + '<div class="settingsTeacherInvitePlainLine">학원명: ' + settingsEscapeHtml(info.academyName || '현재 학원') + '</div>'
     + '<div class="settingsTeacherInvitePlainLine">학원코드: <strong>' + settingsEscapeHtml(info.academyCode) + '</strong></div></div></div>'
-    + '<div class="settingsInfoCard settingsTeacherInviteQrCard"><img class="settingsInviteQrImage" src="' + settingsEscapeAttr(qrUrl) + '" alt="선생님 초대 QR"></div>'
+    + '<div class="settingsInfoCard"><div class="settingsInviteLinkBox">' + settingsEscapeHtml(inviteUrl) + '</div></div>'
     + '<div class="settingsInviteActionGrid settingsInviteActionGridOutside"><button class="settingsExportBtn" type="button" onclick="copyOlliTeacherInviteMessage(this)">초대 링크 복사</button></div>'
     + '<div id="settingsTeacherInviteApprovalWrap" class="settingsTeacherInviteApprovalMount">' + renderSettingsTeacherInviteApprovalInline() + '</div>';
 }
 
 async function copyOlliTeacherInviteMessage(btn) {
-  const text = buildOlliTeacherInviteMessage();
-  if (!text) { alert('초대 링크를 만들 수 없습니다. 학원코드를 확인해 주세요.'); return; }
+  const text = buildOlliTeacherInviteUrl();
   let copied = false;
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -254,3 +229,4 @@ function startOlliApprovalAutoCheck() {
 
 /* 2026-06-25: 샘플 학원 체험 기간 / 접속 차단 시스템 */
 const OLLI_ACADEMY_ACCESS_LOCAL_KEY = 'olli_academy_access_state_v1';
+
