@@ -50,7 +50,7 @@
         'warmAge=' + r.warmAgeMs + 'ms', 'pendingAtClick=' + r.pendingAtClick
       ].join(' | ');
     });
-    return [header, 'Version: deferred warm-roster load (experimental)', ...rows].join('\n');
+    return [header, 'Version: precomposed 92% rear-layer experiment', ...rows].join('\n');
   }
   function displaySlideDiag() {
     if (!slideDiagPanel) {
@@ -927,7 +927,9 @@
     // A retained rear page is already mounted at 100%. Snap to the opening
     // 92% state without animating backwards before revealing it to 100%.
     const originalAttendanceTransition = recordRoom.style.transition;
-    recordRoom.style.transition = 'none';
+    // Prepared rear has already painted at 92%; do not invalidate that
+    // transform layer or re-snapshot the same starting scale on a warm open.
+    if (!preparedRosterReady) recordRoom.style.transition = 'none';
     recordRoom.classList.add('olliMainDrawerSubpage');
 
     mainPage.style.zIndex = '120500';
@@ -953,8 +955,13 @@
     refreshRecordRoomSubpage({ localOnly: true, reuseRendered: true, deferLocalLoad: preparedRosterReady });
     if (slideDiag) slideDiag.localLoadMs = Math.round((performance.now() - slideLoadStart) * 10) / 10;
     const slideLayoutStart = slideDiag ? performance.now() : 0;
-    void recordRoom.offsetWidth;
-    recordRoom.style.transition = originalAttendanceTransition;
+    // Cold opens still require an explicit 92% initial-state flush.
+    // The already-painted rear has that state before the button is tapped.
+    if (!preparedRosterReady) {
+      void recordRoom.offsetWidth;
+      recordRoom.style.transition = originalAttendanceTransition;
+    }
+    // Preserve the foreground initial-state flush for reliable CSS transitions.
     void mainPage.offsetWidth;
     if (slideDiag) {
       slideDiag.forcedLayoutMs = Math.round((performance.now() - slideLayoutStart) * 10) / 10;
