@@ -55,7 +55,7 @@
       #kinderInfoModal #kinderPersonalityToggleRow{min-height:42px;width:100%;}
       #kinderInfoModal .phonePcPersonalityFallback{width:100%;height:42px;border:1px solid #e4e6e9;border-radius:12px;background:#fafbfc;display:flex;align-items:center;justify-content:center;padding:0 8px;box-sizing:border-box;color:#666;font-size:11.5px;font-weight:720;text-align:center;}
       #kinderInfoModal .phonePcPersonalityFallback.isEmpty{color:#aaa;font-weight:600;}
-      #kinderInfoModal .pcStudentInfoActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;padding-top:14px;border-top:1px solid #eceef1;}
+      #kinderInfoModal .pcStudentInfoActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:0;padding-top:14px;border-top:1px solid #eceef1;}
       #kinderInfoModal .pcStudentInfoActionBtn{height:44px;border:0;border-radius:13px;background:#f1f2f4;color:#4e535a;font:inherit;font-size:13px;font-weight:780;}
       #kinderInfoModal .pcStudentInfoActionBtn.primary{background:#24272b;color:#fff;}
       #kinderInfoModal .pcStudentInfoActionBtn:disabled{opacity:.55;}
@@ -92,6 +92,7 @@
         <div class="pcStudentInfoField"><div class="modalLabel">픽업</div><div id="kinderInfoPickupReadonly" class="pcStudentInfoTeacherReadonly isEmpty">등록된 픽업 없음</div></div>
         ${global.renderPhoneStudentInfoManagementControls ? global.renderPhoneStudentInfoManagementControls(student, 'kinder') : ''}
         <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeKinderInfoModal()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="phoneKinderInfoSaveBtn" onclick="saveKinderInfo()">저장</button></div>
+        ${global.renderPhoneStudentInfoDeleteControl ? global.renderPhoneStudentInfoDeleteControl('kinder') : ''}
       </div>
     </div></div>`;
   }
