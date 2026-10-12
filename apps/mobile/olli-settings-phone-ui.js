@@ -400,6 +400,8 @@
     if(!settings)return false;
 
     if(detail)detail.style.display='none';
+    const scrollBody=settings.querySelector('.settingsBody');
+    if(scrollBody)scrollBody.scrollTop=0;
     settings.style.display='flex';
     settings.style.position='fixed';
     settings.style.inset='0';
@@ -430,6 +432,9 @@
     const record=document.getElementById('recordRoomScreen');
     if(detail)detail.style.display='none';
     if(settings){
+      // Reset only the main settings page scroll, not any nested settings sheet.
+      const scrollBody=settings.querySelector('.settingsBody');
+      if(scrollBody)scrollBody.scrollTop=0;
       settings.style.display='none';
       settings.style.position='';
       settings.style.inset='';
