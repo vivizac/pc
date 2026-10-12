@@ -458,11 +458,12 @@
       #recordRoomScreen .pcStudentInfoCardIntro strong{font-size:16px;font-weight:820;color:#25282d;letter-spacing:-.035em;}
       #recordRoomScreen .pcStudentInfoCardIntro span{font-size:10.5px;font-weight:600;color:#a0a5ad;}
       #recordRoomScreen .pcStudentInfoForm{display:grid;gap:14px;}
-      #recordRoomScreen .pcStudentInfoGrid3{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(82px,.7fr) minmax(82px,.7fr);gap:9px;}
+      #recordRoomScreen .pcStudentInfoGrid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:40px;gap:9px;}
       #recordRoomScreen .pcStudentInfoGrid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px;}
       #recordRoomScreen .pcStudentInfoField{min-width:0;}
+      #recordRoomScreen .pcStudentInfoGrid3>.pcStudentInfoField{height:40px;min-height:0;margin:0;padding:0;}
       #recordRoomScreen .pcStudentInfoGrid3,#recordRoomScreen .pcStudentInfoGrid2{align-items:stretch;}
-      #recordRoomScreen .pcStudentInfoField .infoPersonalityToggleRow{min-height:40px;}
+      #recordRoomScreen .pcStudentInfoGrid3 .infoPersonalityToggleRow{width:100%;height:40px;min-height:40px;max-height:40px;margin:0;padding:0;display:flex;align-items:stretch;}
       #recordRoomScreen .pcStudentInfoField .modalInput{width:100%;height:40px;min-width:0;border:1px solid #e4e6e9;border-radius:12px;background:#fff;padding:0 11px;font-size:12px;box-sizing:border-box;outline:none;}
       #recordRoomScreen .pcStudentInfoField .modalInput:focus{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
       #recordRoomScreen .pcStudentInfoSchedule{padding:13px;border-radius:16px;background:#f8f9fb;border:1px solid #eef0f3;}
@@ -476,8 +477,10 @@
       #recordRoomScreen .pcStudentInfoScheduleTeacher{min-width:0;overflow:hidden;text-overflow:ellipsis;color:#8b9198;font-size:10.5px;font-weight:650;}
       #recordRoomScreen .pcStudentInfoScheduleClassBadge{display:flex;align-items:center;justify-content:center;height:24px;padding:0 8px;border-radius:999px;background:#f1f2f4;color:#60666e;font-size:10px;font-weight:800;white-space:nowrap;}
       #recordRoomScreen .pcStudentInfoScheduleEmpty{display:flex;align-items:center;justify-content:center;min-height:48px;border:1px dashed #dadde1;border-radius:12px;background:#fff;color:#9aa0a7;font-size:11px;}
-      #recordRoomScreen .pcStudentInfoCard #elementaryGroupToggleRow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;}
-      #recordRoomScreen .pcStudentInfoCard .infoToggleBtn.groupIconChoiceBtn{height:36px;border:0;border-radius:11px;background:#f0f2f4;color:#707780;font-size:11px;font-weight:720;cursor:pointer;}
+      #recordRoomScreen .pcStudentInfoCard #elementaryGroupToggleRow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;width:100%;}
+      #recordRoomScreen .pcStudentInfoFeedbackGroupTitle{margin:0 0 9px 2px;color:#626972;font-size:11px;font-weight:780;}
+      #recordRoomScreen .pcStudentInfoGrid3 .infoPersonalityToggleRow .infoTeacherSelectBox{width:100%;height:40px;min-height:40px;margin:0;box-sizing:border-box;}
+      #recordRoomScreen .pcStudentInfoCard .infoToggleBtn.groupIconChoiceBtn{width:100%;min-width:0;max-width:none;height:36px;margin:0;padding:0;box-sizing:border-box;border:0;border-radius:11px;background:#f0f2f4;color:#707780;font-size:11px;font-weight:720;cursor:pointer;}
       #recordRoomScreen .pcStudentInfoCard .infoToggleBtn.groupIconChoiceBtn.active{background:#23262a;color:#fff;}
       #recordRoomScreen .pcStudentInfoCard .infoTeacherSelectBox{height:40px;border-radius:12px;border-color:#e4e6e9;font-size:12px;}
       #recordRoomScreen .pcStudentInfoTeacherReadonly{height:40px;display:flex;align-items:center;padding:0 11px;border:1px solid #e4e6e9;border-radius:12px;background:#f6f7f8;color:#555c65;font-size:12px;font-weight:700;box-sizing:border-box;}
@@ -580,7 +583,7 @@
           <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoDayInput" aria-label="등록 일" placeholder="등록 일" type="number" min="1" max="31"></div>
         </div>
         <div class="pcStudentInfoSchedule" aria-label="수업시간 조회">${studentInfoScheduleHtml(student, student.__olli_authoritative_enrollments)}</div>
-        <div class="pcStudentInfoField"><div id="elementaryGroupToggleRow" class="infoToggleRow">${renderGroupButtons()}</div></div>
+        <div class="pcStudentInfoField"><div class="pcStudentInfoFeedbackGroupTitle">피드백 그룹</div><div id="elementaryGroupToggleRow" class="infoToggleRow">${renderGroupButtons()}</div></div>
         <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeOlliPcStudentInfoCard()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="pcStudentInfoSaveBtn" onclick="saveOlliPcStudentInfoCard()">저장</button></div>
       </div>
     </div></div>`;
