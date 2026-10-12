@@ -705,7 +705,7 @@
   min-height:68px;
   margin:0;
   padding:0;
-  border:1px solid #fff7f7;
+  border:1px solid #f0e5e6;
   border-radius:12px;
   box-sizing:border-box;
   background:#fff7f7;
@@ -716,11 +716,11 @@
   box-shadow:none;
   transition:background .14s ease, border-color .14s ease, color .14s ease, transform .08s ease;
 }
-.olliTtAbsenceBtn:hover { background:#fff0f1; border-color:#fff0f1; }
+.olliTtAbsenceBtn:hover { background:#fff0f1; border-color:#eddee0; }
 .olliTtAbsenceBtn:active { transform:translateY(1px); }
 .olliTtAbsenceBtn.active {
   background:#e5484d;
-  border-color:#e5484d;
+  border-color:#d94046;
   color:#fff;
   box-shadow:none;
 }
@@ -862,8 +862,8 @@
 #olliTtDialog .olliTtChoice.full small { color: inherit !important; }
 .olliTtChoice small { display: block; margin-top: 2px; font-size: calc(8px * var(--olli-text-scale)); font-weight: 700; }
 .olliTtEnrollmentList { display: grid; gap: 7px; }
-.olliTtEnrollmentChoice { min-height: 50px; padding: 0 14px; border: 1px solid #e1e5e9; border-radius: 14px; display: flex; align-items: center; justify-content: space-between; color: #4f5864; background: #fff; font: 720 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
-.olliTtEnrollmentChoice.active { border-color: #0A84FF; color: #0877df; background: #fff; }
+.olliTtEnrollmentChoice { min-height: 50px; padding: 0 14px; border: 1px solid #e1e5e9; border-radius: 14px; display: flex; align-items: center; justify-content: space-between; color: #aeb4bd; background: #fff; font: 720 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+.olliTtEnrollmentChoice.active { border-color: #111; color: #111; background: #fff; }
 .olliTtEnrollmentChoice span { color: #9aa1aa; font-size: calc(10px * var(--olli-text-scale)); }
 .olliTtDateMode { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .olliTtDateInput { width: 100%; height: 48px; padding: 0 13px; border: 1px solid #dfe4e9; border-radius: 14px; color: #3e4651; background: #fff; font: 680 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; }
@@ -1004,7 +1004,7 @@
 .olliTtModeTab:hover { border-color:#c7def3; color:#0877df; background:#f7fbff; }
 .olliTtModeTab.active { border-color:#0A84FF; color:#0877df; background:#edf6ff; }
 .olliTtCurrentLessons { margin-top:12px; padding:13px; border:1px solid #e6eaee; border-radius:14px; background:#fafbfc; }
-#olliTtDialog.olliTtMoveDialog .olliTtChoice.active:is([data-tt-target-day],[data-tt-target-time],[data-tt-kinder-time-class]) { border-color:#0A84FF !important; color:#0877df !important; background:#fff !important; }
+#olliTtDialog.olliTtMoveDialog .olliTtChoice.active:is([data-tt-target-day],[data-tt-target-time],[data-tt-kinder-time-class]) { border-color:#454c56 !important; color:#fff !important; background:#454c56 !important; }
 .olliTtCurrentLessonsHead { margin:0 2px 9px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .olliTtCurrentLessonsHead span { color:#343a43; font-size:calc(12px * var(--olli-text-scale)); font-weight:780; }
 .olliTtCurrentLessonsHead small { color:#9ba2ab; font-size:calc(9px * var(--olli-text-scale)); font-weight:600; }
@@ -1035,10 +1035,10 @@
 .olliTtSessionOrder button { min-width: 48px; padding: 0 8px; border: 0; border-radius: 10px; color: #7c8591; background: transparent; font: 780 calc(10px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; white-space: nowrap; }
 .olliTtSessionOrder button.active { color: #fff; background: #454c56; box-shadow: none; }
 .olliTtSessionOrder button:focus-visible { outline: 2px solid rgba(10,132,255,.24); outline-offset: 1px; }
-.olliTtEnrollmentDelete { min-width: 58px; height: 50px; padding: 0 11px; border: 1px solid #fff8f8; border-radius: 14px; color: #c34f58; background: #fff8f8; font: 780 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; transition: color .16s ease, background .16s ease, border-color .16s ease; }
-.olliTtEnrollmentDelete:hover:not(:disabled) { color: #fff; border-color: #df5d67; background: #df5d67; }
+.olliTtEnrollmentDelete { min-width: 58px; height: 50px; padding: 0 11px; border: 1px solid #f2e7e8; border-radius: 14px; color: #c34f58; background: #fff8f8; font: 780 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; transition: color .16s ease, background .16s ease, border-color .16s ease; }
+.olliTtEnrollmentDelete:hover:not(:disabled) { color: #fff; border-color: #d4515b; background: #df5d67; }
 .olliTtEnrollmentDelete:focus-visible { outline: 3px solid rgba(10,132,255,.2); outline-offset: 2px; }
-.olliTtEnrollmentDelete:disabled { color: #b6a7a9; border-color: #f4f1f1; background: #f4f1f1; cursor: default; }
+.olliTtEnrollmentDelete:disabled { color: #b6a7a9; border-color: #ece7e8; background: #f4f1f1; cursor: default; }
 .olliTtDialogActions { display: grid; grid-template-columns: 1fr 1.35fr; gap: 10px; margin: 24px -26px -26px; padding: 16px 26px 20px; border-top: 1px solid #eceff2; background: #fff; }
 .olliTtDialogActions button { height: 48px; border: 0; border-radius: 12px; font: 760 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 .olliTtDialogActions.olliTtMakeupManageActions { grid-template-columns: .82fr 1.08fr 1.08fr; }
