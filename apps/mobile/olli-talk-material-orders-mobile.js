@@ -378,6 +378,122 @@
 
   function filteredItems(){return state.items.filter(matchesFilter)}
 
+  function showArchiveView(){
+    const current=rootQuery('[data-material-current]');
+    const archive=rootQuery('[data-material-archive]');
+    if(current)current.hidden=state.archiveMode;
+    if(archive)archive.hidden=!state.archiveMode;
+  }
+
+  function renderArchive(){
+    showArchiveView();
+    const yearsHost=rootQuery('[data-material-archive-years]');
+    const list=rootQuery('[data-material-archive-list]');
+    if(!yearsHost||!list)return;
+    yearsHost.replaceChildren();
+    list.replaceChildren();
+    state.archiveYears.forEach(entry=>{
+      const year=Number(entry?.year);
+      if(!Number.isInteger(year))return;
+      const btn=create('button','olliMobileMatArchiveYear'+(year===state.archiveYear?' active':''),year+'년 · '+Number(entry.count||0)+'건');
+      btn.type='button';
+      btn.dataset.materialArchiveYear=String(year);
+      yearsHost.appendChild(btn);
+    });
+    if(state.archiveLoading){
+      list.appendChild(create('div','olliMobileMatArchiveEmpty','지난 주문내역을 불러오고 있습니다.'));
+      return;
+    }
+    if(!state.archiveYears.length){
+      list.appendChild(create('div','olliMobileMatArchiveEmpty','필요일이 지난 재료 요청이 없습니다.'));
+      return;
+    }
+    if(!state.archiveYear){
+      list.appendChild(create('div','olliMobileMatArchiveEmpty','연도를 선택해 주세요.'));
+      return;
+    }
+    if(!state.archiveItems.length){
+      list.appendChild(create('div','olliMobileMatArchiveEmpty','선택한 연도의 지난 요청이 없습니다.'));
+      return;
+    }
+    const months=new Map();
+    state.archiveItems.forEach(item=>{
+      const key=clean(item?.needed_on).slice(0,7);
+      if(!/^\d{4}-\d{2}$/.test(key))return;
+      if(!months.has(key))months.set(key,[]);
+      months.get(key).push(item);
+    });
+    [...months.keys()].sort((a,b)=>b.localeCompare(a)).forEach(key=>{
+      const section=create('section','olliMobileMatArchiveMonth');
+      section.appendChild(create('strong','olliMobileMatArchiveMonthTitle',Number(key.slice(5))+'월 · '+months.get(key).length+'건'));
+      months.get(key).forEach(item=>{
+        const card=create('article','olliMobileMatArchiveCard');
+        const head=create('div','olliMobileMatArchiveCardHead');
+        const meta=statusMeta(item?.status);
+        head.append(create('strong','',clean(item?.item_name)||'재료'),create('span','olliMobileMatStatusTag '+meta.className,meta.label));
+        card.append(head,create('div','olliMobileMatArchiveCardMeta',
+          ['필요일 '+formatDate(item?.needed_on),'수량 '+(clean(item?.quantity_text)||'-'),
+            '요청자 '+(clean(item?.requested_by_name)||'-')].join(' · ')));
+        if(item?.ordered_at)card.appendChild(create('div','olliMobileMatArchiveCardMeta','주문 '+formatDate(item.ordered_at)));
+        if(item?.arrived_at)card.appendChild(create('div','olliMobileMatArchiveCardMeta','도착 '+formatDate(item.arrived_at)));
+        if(clean(item?.use_context))card.appendChild(create('div','olliMobileMatArchiveCardMeta','사용수업 '+clean(item.use_context)));
+        if(clean(item?.memo))card.appendChild(create('p','olliMobileMatArchiveCardMemo',clean(item.memo)));
+        if(clean(item?.purchase_url)){
+          const link=create('a','olliMobileMatPurchaseLink','구매링크 열기 ↗');
+          link.href=item.purchase_url;
+          link.target='_blank';
+          link.rel='noopener noreferrer';
+          card.appendChild(link);
+        }
+        section.appendChild(card);
+      });
+      list.appendChild(section);
+    });
+  }
+
+  async function loadArchive(year=0){
+    const sequence=++state.archiveSequence;
+    const current=context();
+    if(!current.sessionToken||!current.academyId)return false;
+    state.archiveLoading=true;
+    renderArchive();
+    try{
+      const result=await rpc('olli_team_material_requests_archive',{
+        p_session_token:current.sessionToken,p_academy_id:current.academyId,p_year:year||null
+      });
+      if(sequence!==state.archiveSequence)return false;
+      if(!result?.ok)throw Error(result?.message||'지난 주문내역을 불러오지 못했습니다.');
+      state.archiveYears=Array.isArray(result.years)?result.years:[];
+      state.archiveYear=year;
+      state.archiveItems=year&&Array.isArray(result.items)?result.items:[];
+      return true;
+    }catch(error){
+      if(sequence===state.archiveSequence)showToast(error?.message||'지난 주문내역 조회 실패','error');
+      return false;
+    }finally{
+      if(sequence===state.archiveSequence){
+        state.archiveLoading=false;
+        renderArchive();
+      }
+    }
+  }
+
+  async function openArchive(){
+    state.archiveMode=true;
+    renderArchive();
+    if(!await loadArchive(0))return;
+    const year=Number(state.archiveYears[0]?.year||0);
+    if(year)await loadArchive(year);
+  }
+
+  function closeArchive(){
+    state.archiveMode=false;
+    state.archiveSequence++;
+    showArchiveView();
+    renderSummary();
+    renderList();
+  }
+
   function detailRow(label,valueNode){
     const row=create('div','olliMobileMatDetailRow');
     row.appendChild(create('dt','',label));
