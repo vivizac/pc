@@ -461,17 +461,21 @@
       #recordRoomScreen .pcStudentInfoGrid3{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(82px,.7fr) minmax(82px,.7fr);gap:9px;}
       #recordRoomScreen .pcStudentInfoGrid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px;}
       #recordRoomScreen .pcStudentInfoField{min-width:0;}
-      #recordRoomScreen .pcStudentInfoField>.modalLabel{display:block!important;margin:0 0 6px 2px!important;color:#7b8189;font-size:10.5px;font-weight:680;line-height:1.2;}
+      #recordRoomScreen .pcStudentInfoGrid3,#recordRoomScreen .pcStudentInfoGrid2{align-items:stretch;}
+      #recordRoomScreen .pcStudentInfoField .infoPersonalityToggleRow{min-height:40px;}
       #recordRoomScreen .pcStudentInfoField .modalInput{width:100%;height:40px;min-width:0;border:1px solid #e4e6e9;border-radius:12px;background:#fff;padding:0 11px;font-size:12px;box-sizing:border-box;outline:none;}
       #recordRoomScreen .pcStudentInfoField .modalInput:focus{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
-      #recordRoomScreen .pcStudentInfoSchedule{padding:14px;border-radius:16px;background:#fafbfc;border:1px solid #eef0f3;}
-      #recordRoomScreen .pcStudentInfoScheduleTitle{margin-bottom:9px;color:#5f6670;font-size:11px;font-weight:760;}
-      #recordRoomScreen .pcStudentInfoSchedule .infoDayToggleRow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;}
-      #recordRoomScreen .pcStudentInfoSchedule .infoTimeToggleRow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin-top:7px;}
-      #recordRoomScreen .pcStudentInfoSchedule .infoDayBtn,#recordRoomScreen .pcStudentInfoSchedule .infoTimeBtn{height:34px;min-width:0;border:0;border-radius:10px;background:#f0f2f4;color:#707780;font:inherit;font-size:10.5px;font-weight:680;cursor:pointer;}
-      #recordRoomScreen .pcStudentInfoSchedule .infoDayBtn.active,#recordRoomScreen .pcStudentInfoSchedule .infoTimeBtn.active{background:#23262a;color:#fff;}
-      #recordRoomScreen .pcStudentInfoSchedule .infoDayBtn.activeDayForTime{box-shadow:inset 0 0 0 2px #8cc4ff;}
-      #recordRoomScreen .pcStudentInfoSchedule .infoTimeHint{grid-column:1/-1;min-height:34px;border-radius:10px;background:#f3f4f5;color:#a1a6ad;font-size:10.5px;display:flex;align-items:center;justify-content:center;}
+      #recordRoomScreen .pcStudentInfoSchedule{padding:13px;border-radius:16px;background:#f8f9fb;border:1px solid #eef0f3;}
+      #recordRoomScreen .pcStudentInfoScheduleHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
+      #recordRoomScreen .pcStudentInfoScheduleTitle{color:#626972;font-size:11px;font-weight:780;}
+      #recordRoomScreen .pcStudentInfoScheduleList{display:grid;gap:7px;}
+      #recordRoomScreen .pcStudentInfoScheduleItem{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;min-height:43px;padding:8px 10px;border-radius:12px;background:#fff;border:1px solid #e9ebee;box-sizing:border-box;}
+      #recordRoomScreen .pcStudentInfoScheduleOrder{min-width:35px;color:#8f959c;font-size:10px;font-weight:750;}
+      #recordRoomScreen .pcStudentInfoScheduleMain{min-width:0;display:flex;align-items:baseline;gap:4px;overflow:hidden;white-space:nowrap;}
+      #recordRoomScreen .pcStudentInfoScheduleWhen{flex:0 0 auto;color:#25292e;font-size:12px;font-weight:500;}
+      #recordRoomScreen .pcStudentInfoScheduleTeacher{min-width:0;overflow:hidden;text-overflow:ellipsis;color:#8b9198;font-size:10.5px;font-weight:650;}
+      #recordRoomScreen .pcStudentInfoScheduleClassBadge{display:flex;align-items:center;justify-content:center;height:24px;padding:0 8px;border-radius:999px;background:#f1f2f4;color:#60666e;font-size:10px;font-weight:800;white-space:nowrap;}
+      #recordRoomScreen .pcStudentInfoScheduleEmpty{display:flex;align-items:center;justify-content:center;min-height:48px;border:1px dashed #dadde1;border-radius:12px;background:#fff;color:#9aa0a7;font-size:11px;}
       #recordRoomScreen .pcStudentInfoCard #elementaryGroupToggleRow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;}
       #recordRoomScreen .pcStudentInfoCard .infoToggleBtn.groupIconChoiceBtn{height:36px;border:0;border-radius:11px;background:#f0f2f4;color:#707780;font-size:11px;font-weight:720;cursor:pointer;}
       #recordRoomScreen .pcStudentInfoCard .infoToggleBtn.groupIconChoiceBtn.active{background:#23262a;color:#fff;}
