@@ -269,6 +269,8 @@
   height:24px;
   transform:none;
 }
+/* 모바일 터치 강조색도 남기지 않는다. */
+#recordRoomScreen .recordModeLabel{-webkit-tap-highlight-color:transparent;}
 /* 출석부 초등부/유치부 버튼은 터치/마우스 호버에도 선택 상태 이외의 시각 효과를 만들지 않는다. */
 #recordRoomScreen .recordModeLabel:hover,
 #recordRoomScreen .recordModeLabel:active {
