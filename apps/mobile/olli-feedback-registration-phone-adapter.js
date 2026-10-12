@@ -842,40 +842,11 @@ function decoratePhoneKcfLiveMessage(ui){
 
   const copyBtn = row.querySelector('.kcfLiveCopyBtn');
   if (copyBtn) {
-    // Keep the original copy action for the student-name icon and
-    // its safety/disabled state. It no longer occupies a footer slot.
-    copyBtn.classList.add('kcfLiveHiddenCopyAction');
-    const actions = row.querySelector('.kcfLiveActions');
-    if (actions && !actions.querySelector('.kcfLiveSaveBtn')) {
-      const saveBtn = document.createElement('button');
-      saveBtn.type = 'button';
-      saveBtn.className = 'kcfLiveActionBtn kcfLiveNormalAction kcfLivePhoneTextActionBtn kcfLiveSaveBtn';
-      saveBtn.textContent = '저장';
-      saveBtn.setAttribute('aria-label', '피드백 저장');
-      saveBtn.addEventListener('click', async function(event){
-        event.preventDefault();
-        event.stopPropagation();
-        if (saveBtn.disabled) return;
-        const jobId = String(row.dataset.kcfLiveFeedbackId || '');
-        if (!jobId || typeof window.saveKinderChatFeedbackLive !== 'function') return;
-        saveBtn.disabled = true;
-        try {
-          const item = typeof window.getKinderChatFeedbackLiveItem === 'function'
-            ? window.getKinderChatFeedbackLiveItem(jobId) : null;
-          if (item?.saved || item?.reviewed) {
-            try { showPushToast('이미 저장된 피드백이에요.'); } catch (_) {}
-            return;
-          }
-          const success = await window.saveKinderChatFeedbackLive(jobId);
-          if (success === true) {
-            try { showPushToast('피드백을 저장했어요.'); } catch (_) {}
-          }
-        } finally {
-          saveBtn.disabled = false;
-        }
-      });
-      actions.insertBefore(saveBtn, copyBtn);
-    }
+    // Supabase save is triggered as soon as the feedback completes.
+    // The existing copy handler now owns the footer action instead of a second save button.
+    copyBtn.classList.remove('kcfLiveHiddenCopyAction');
+    copyBtn.classList.add('kcfLivePhoneTextActionBtn');
+    row.querySelector('.kcfLiveSaveBtn')?.remove();
   }
 
   const bubble = row.querySelector('.kcfLiveBubble');
