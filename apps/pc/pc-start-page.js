@@ -6,7 +6,7 @@
   function installPcStudentInfoCardRuntime(){
     if (document.querySelector('script[data-olli-pc-student-info-card="1"]')) return;
     const script = document.createElement('script');
-    script.src = 'pc-student-info-card-runtime.js?v=20260907';
+    script.src = 'pc-student-info-card-runtime.js?v=20261012-archive-info-toggle-1';
     script.dataset.olliPcStudentInfoCard = '1';
     document.head.appendChild(script);
   }
@@ -21,7 +21,7 @@
         gap: 7px;
         margin: 11px 0 7px;
         color: #000;
-        font-size: 9.5px;
+        font-size: 12.5px;
         font-weight: 620;
         line-height: 1;
         letter-spacing: -.01em;
