@@ -779,6 +779,10 @@
     recordRoom.setAttribute('aria-hidden', 'false');
     recordRoom.removeAttribute('inert');
     recordRoom.classList.remove(REVEALED_CLASS, RETURNING_CLASS);
+    // A retained rear page is already mounted at 100%. Snap to the opening
+    // 92% state without animating backwards before revealing it to 100%.
+    const originalAttendanceTransition = recordRoom.style.transition;
+    recordRoom.style.transition = 'none';
     recordRoom.classList.add('olliMainDrawerSubpage');
 
     mainPage.style.zIndex = '120500';
@@ -800,6 +804,7 @@
     drawerState.attendanceOpening = true;
     refreshRecordRoomSubpage({ localOnly: true, reuseRendered: true });
     void recordRoom.offsetWidth;
+    recordRoom.style.transition = originalAttendanceTransition;
     void mainPage.offsetWidth;
     const openingState = drawerState;
     requestAnimationFrame(() => {
