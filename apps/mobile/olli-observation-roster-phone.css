@@ -146,6 +146,21 @@
   cursor:pointer;
 }
 
+/* 관찰노트 학생카드 탭 후 남는 hover/active 하이라이트만 제거한다. */
+#observationRosterScreen .memoBodyRosterRow:hover,
+#observationRosterScreen .memoBodyRosterRow:active {
+  background:#fff;
+  box-shadow:none;
+  transform:none;
+}
+#observationRosterScreen .memoBodyRosterStudentBtn:hover,
+#observationRosterScreen .memoBodyRosterStudentBtn:active {
+  background:transparent;
+  box-shadow:none;
+  transform:none;
+  filter:none;
+}
+
 /* 관찰노트 학생목록에서는 출석/그룹/상태 선행 아이콘을 사용하지 않는다. */
 #observationRosterScreen .memoBodyRosterStudentBtn::before,
 #observationRosterScreen .memoBodyRosterText::before,
