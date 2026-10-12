@@ -50,7 +50,7 @@
         'warmAge=' + r.warmAgeMs + 'ms', 'pendingAtClick=' + r.pendingAtClick
       ].join(' | ');
     });
-    return [header, 'Version: precomposed 92% rear-layer experiment', ...rows].join('\n');
+    return [header, 'Version: attendance entry work deferred (experiment)', ...rows].join('\n');
   }
   function displaySlideDiag() {
     if (!slideDiagPanel) {
@@ -979,6 +979,8 @@
         if (!mainPage.classList.contains(OPEN_CLASS)) return;
         openingState.attendanceOpening = false;
         flushDeferredAttendanceRender();
+        // Rebuild the hidden sort popup only after foreground motion completes.
+        window.refreshRecordSortPopup?.();
         if (document.body.classList.contains('olli-main-subpage-drawer-search-active')) return;
         // Preserve the mounted cards during motion; sync after the slide.
         refreshRecordRoomSubpage({ reuseRendered: true });
