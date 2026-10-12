@@ -925,6 +925,10 @@
     state.root.addEventListener('click',event=>{
       const action=event.target.closest('[data-material-action]')?.dataset.materialAction;
       if(action==='close-create'){closeCreate();return}
+      if(action==='open-archive'){openArchive().catch(()=>{});return}
+      if(action==='close-archive'){closeArchive();return}
+      const yearButton=event.target.closest('[data-material-archive-year]');
+      if(yearButton){loadArchive(Number(yearButton.dataset.materialArchiveYear)).catch(()=>{});return}
 
       const filter=event.target.closest('[data-material-filter]');
       if(filter){
@@ -966,7 +970,9 @@
     try{
       state.realtimeWatcher=global.OlliRealtime.watchDomain('chat',async()=>{
         if(!state.root?.isConnected)return true;
-        return refresh({showLoading:false});
+        const loaded=await refresh({showLoading:false});
+        if(state.archiveMode)await loadArchive(state.archiveYear);
+        return loaded;
       });
       global.OlliRealtime.ensureConnected?.({reason:'mobile_team_material_orders_start'}).catch(()=>{});
     }catch(error){
@@ -984,9 +990,16 @@
     state.currentRole='';
     state.canProcess=false;
     state.localSnapshotAvailable=false;
+    state.archiveMode=false;
+    state.archiveYears=[];
+    state.archiveYear=0;
+    state.archiveItems=[];
+    state.archiveLoading=false;
+    state.archiveSequence++;
     state.filter=['requested','ordered','arrived'].includes(clean(options.filter))?clean(options.filter):'all';
     state.root.innerHTML=shellHtml();
     bindEvents();
+    showArchiveView();
 
     const cached=readCache(context());
     const renderedLocal=!!cached;
@@ -1026,6 +1039,12 @@
     state.currentRole='';
     state.canProcess=false;
     state.localSnapshotAvailable=false;
+    state.archiveMode=false;
+    state.archiveYears=[];
+    state.archiveYear=0;
+    state.archiveItems=[];
+    state.archiveLoading=false;
+    state.archiveSequence++;
   }
 
   global.OlliMobileTeamTalkMaterialOrders=Object.freeze({
