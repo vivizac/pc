@@ -212,7 +212,7 @@
     const openAttendance = window.openRecordAttendanceDashboard
       || (typeof openRecordAttendanceDashboard === 'function' ? openRecordAttendanceDashboard : null);
     if (typeof openAttendance === 'function') {
-      await openAttendance({ localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true, deferLocalLoad: options.deferLocalLoad === true });
+      await openAttendance({ localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true, deferLocalLoad: options.deferLocalLoad === true, deferSortPopup: options.deferSortPopup === true });
       return true;
     }
 
@@ -425,7 +425,7 @@
       }
       return;
     }
-    prepareAttendanceState({ localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true, deferLocalLoad: options.deferLocalLoad === true }).catch(() => {});
+    prepareAttendanceState({ localOnly: options.localOnly === true, reuseRendered: options.reuseRendered === true, deferLocalLoad: options.deferLocalLoad === true, deferSortPopup: options.deferSortPopup === true }).catch(() => {});
   }
 
   function deferAttendanceRender(view, name){
@@ -953,7 +953,7 @@
     const slideLoadStart = slideDiag ? performance.now() : 0;
     // The rear roster was already rendered. Keep UI state in sync but defer
     // redundant local hydration until the existing post-slide refresh.
-    refreshRecordRoomSubpage({ localOnly: true, reuseRendered: true, deferLocalLoad: preparedRosterReady });
+    refreshRecordRoomSubpage({ localOnly: true, reuseRendered: true, deferLocalLoad: preparedRosterReady, deferSortPopup: true });
     if (slideDiag) slideDiag.localLoadMs = Math.round((performance.now() - slideLoadStart) * 10) / 10;
     const slideLayoutStart = slideDiag ? performance.now() : 0;
     // Cold opens still require an explicit 92% initial-state flush.
