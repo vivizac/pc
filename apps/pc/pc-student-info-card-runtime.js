@@ -775,6 +775,13 @@
         cardState.enrollments = context.enrollments;
         cardState.pickups = context.pickups;
         const teacher = resolveTimetableTeacherName(latest.type, context.enrollments, []);
+        const fields = lessonFieldsFromEnrollments(context.enrollments);
+        cardState.student = { ...cardState.student, ...fields,
+          class_time: fields.lesson_time,
+          __olli_timetable_teacher: teacher,
+          __olli_authoritative_enrollments: context.enrollments,
+          __olli_authoritative_pickups: context.pickups
+        };
         const scheduleBox = document.querySelector('#pcAttendanceDetailPanel .pcStudentInfoSchedule');
         if (scheduleBox) scheduleBox.innerHTML = studentInfoScheduleHtml({ ...latest, __olli_timetable_teacher: teacher }, context.enrollments);
         const teacherBox = document.querySelector('#pcAttendanceDetailPanel .pcStudentInfoTeacherReadonly');
@@ -820,6 +827,7 @@
       // 담임은 학생정보 저장 대상이 아닙니다. 시간표의 반 담당 정보만 원본으로 사용합니다.
       delete profileBase.__olli_timetable_teacher;
       delete profileBase.__olli_authoritative_enrollments;
+      delete profileBase.__olli_authoritative_pickups;
 
       let profile;
       if (division === 'elementary') {
