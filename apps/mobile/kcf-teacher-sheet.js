@@ -24,6 +24,8 @@
     inlineMinViewportHeight:0,
     inlineClosedViewportHeight:0,
     caretRevealTimer:0,
+    composerTouchStartX:null,
+    composerTouchStartY:null,
     suppressBlurSync:false,
     composerMode:'dialogue'
   };
@@ -195,15 +197,43 @@
 
   function teacherScrollableTarget(target){
     if (!target || !target.closest) return null;
-    return target.closest('.kcfTeacherSheetInput, .kcfAutoStudentRosterScroller');
+    return target.closest('#kcfInput, .kcfTeacherSheetInput, .kcfAutoStudentRosterScroller');
+  }
+
+  function trackTeacherComposerTouch(event){
+    var touch = event.touches?.[0];
+    state.composerTouchStartX = touch ? Number(touch.clientX) : null;
+    state.composerTouchStartY = touch ? Number(touch.clientY) : null;
+  }
+
+  function clearTeacherComposerTouch(){
+    state.composerTouchStartX = null;
+    state.composerTouchStartY = null;
   }
 
   function preventTeacherBackgroundTouchMove(event){
-    if (!document.body.classList.contains('kcfTeacherSheetOpen')) return;
+    var sheetOpen = document.body.classList.contains('kcfTeacherSheetOpen');
+    var inlineComposer = state.inlineOpen && event.target?.closest?.('#kinderChatFeedbackScreen .kcfComposer');
+    if (!sheetOpen && !inlineComposer) return;
+    var touch = event.touches?.[0];
+    var tracked = touch && state.composerTouchStartX !== null && state.composerTouchStartY !== null;
+    var deltaX = tracked ? Number(touch.clientX) - state.composerTouchStartX : 0;
+    var deltaY = tracked ? Number(touch.clientY) - state.composerTouchStartY : 0;
+    // Preserve taps, caret selection and horizontal student-card swipes.
+    if (inlineComposer && (!tracked || Math.abs(deltaY) < 6 || Math.abs(deltaY) <= Math.abs(deltaX))) return;
     var scrollable = teacherScrollableTarget(event.target);
     if (scrollable) {
-      if (scrollable.classList.contains('kcfAutoStudentRosterScroller')) return;
-      if (scrollable.scrollHeight > scrollable.clientHeight + 1) return;
+      if (scrollable.classList.contains('kcfAutoStudentRosterScroller')) {
+        if (inlineComposer && event.cancelable) event.preventDefault();
+        return;
+      }
+      if (scrollable.scrollHeight > scrollable.clientHeight + 1) {
+        // Long text owns its scroll; only block a drag escaping its edges.
+        if (!tracked || Math.abs(deltaY) <= Math.abs(deltaX)) return;
+        var atTop = scrollable.scrollTop <= 1;
+        var atBottom = scrollable.scrollTop + scrollable.clientHeight >= scrollable.scrollHeight - 1;
+        if (!(deltaY > 0 && atTop) && !(deltaY < 0 && atBottom)) return;
+      }
     }
     if (event.cancelable) event.preventDefault();
   }
@@ -849,7 +879,10 @@
     }, true);
     if (!global.__kcfTeacherSheetTouchLockBound) {
       global.__kcfTeacherSheetTouchLockBound = true;
+      document.addEventListener('touchstart', trackTeacherComposerTouch, { capture:true, passive:true });
       document.addEventListener('touchmove', preventTeacherBackgroundTouchMove, { capture:true, passive:false });
+      document.addEventListener('touchend', clearTeacherComposerTouch, { capture:true, passive:true });
+      document.addEventListener('touchcancel', clearTeacherComposerTouch, { capture:true, passive:true });
     }
   }
 
@@ -880,3 +913,4 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once:true });
   else init();
 })(window);
+

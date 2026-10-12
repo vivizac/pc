@@ -687,9 +687,13 @@ function runObservationMemoPageSlide(className, onComplete) {
   // Cancel the previous callback as well as its timer. Otherwise a stale
   // animationend listener can hide the newly opened roster or memo page.
   cancelObservationMemoPageSlide();
+  // Release the standby host's inline z-index before the memo animation
+  // chooses its foreground layer above the still-visible student roster.
+  window.releaseOlliMainDrawerAttendanceRearPage?.();
   clearObservationMemoSlideClasses();
   void screen.offsetWidth;
   screen.classList.add(className);
+  window.syncOlliMainDrawerAttendanceRearPage?.();
 
   let finished = false;
   const cleanup = () => {
@@ -1851,7 +1855,6 @@ function openObservationMemoStudentFromRoster(studentId) {
     memoScreen.removeAttribute('inert');
   }
 
-  window.syncOlliMainDrawerAttendanceRearPage?.();
   runObservationMemoPageSlide('observation-editor-slide-enter', () => {
     hideObservationRosterScreen();
     clearObservationMemoSlideClasses();
@@ -1915,3 +1918,4 @@ else initObservationRosterPhoneUi();
    conflicts; it never overwrites the current server draft. */
 import('./olli-observation-local-recovery-phone.js?v=20260909-local-recovery-1')
   .catch(error => console.warn('관찰노트 로컬 복구 모듈 로드 실패:', error?.message || error));
+
