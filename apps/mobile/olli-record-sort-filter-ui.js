@@ -134,7 +134,13 @@
     const chips = options.map(([key,label]) => '<button type="button" class="recordSortChip '+(selected===key?'active':'')+'" data-olli-sort-view="'+view+'" data-olli-sort-criteria="'+key+'">'+label+'</button>').join('');
     return '<div class="recordSortCriteriaTitle">'+(view === 'kinder' ? '유치부 정렬 기준' : '초등부 정렬 기준')+'</div><div class="recordSortCriteriaGrid">'+chips+'</div>';
   }
-  function refreshRecordSortPopup(){ const popup = document.getElementById('recordSortPopup'); if (popup) popup.innerHTML = renderSeparatedSortPopup(); }
+  function refreshRecordSortPopup(){
+    const popup = document.getElementById('recordSortPopup');
+    if (!popup) return;
+    const nextHtml = renderSeparatedSortPopup();
+    // Preserve the already-built dropdown when sort/division have not changed.
+    if (popup.innerHTML !== nextHtml) popup.innerHTML = nextHtml;
+  }
   window.refreshRecordSortPopup = refreshRecordSortPopup;
   function reloadRecordList(){ try { const input = document.getElementById('searchName'); if (typeof loadRecords === 'function') loadRecords(input ? input.value.trim() : ''); } catch(e) {} }
   document.addEventListener('click', function(event){
