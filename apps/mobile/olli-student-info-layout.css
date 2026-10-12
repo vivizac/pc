@@ -714,7 +714,8 @@
 .phonePcStudentInfoOverlay .pcStudentInfoDeleteBtn {
   align-self:center;
   padding:10px 18px;
-  border:0;
+  border:1px solid #d7dbe0;
+  border-radius:12px;
   background:transparent;
   color:#c84b4b;
   font:inherit;
