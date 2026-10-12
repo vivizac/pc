@@ -467,37 +467,10 @@
   cursor: pointer;
 }
 #olliPcShell .olliTtQuickStudent:hover { color: #0877df; background: #edf6ff; }
-#olliPcShell .olliTtQuickStudent { position: relative; padding: 7px 34px 7px 9px; justify-content: flex-start; }
+#olliPcShell .olliTtQuickStudent { position: relative; padding: 7px 9px; justify-content: flex-start; }
 #olliPcShell .olliTtQuickStudentMain { min-width: 0; display: flex; align-items: baseline; gap: 6px; overflow: hidden; }
 #olliPcShell .olliTtQuickStudentName { flex: 0 0 auto; color: inherit; white-space: nowrap; }
 #olliPcShell .olliTtQuickStudentSchedule { min-width: 0; max-width: none; overflow: hidden; color: #9aa1aa; text-overflow: ellipsis; white-space: nowrap; font-size: calc(9px * var(--olli-text-scale)); font-weight: 650; }
-#olliPcShell .olliTtQuickStudentMore {
-  position: absolute;
-  left: auto;
-  right: 7px;
-  top: 50%;
-  width: 24px;
-  height: 28px;
-  padding: 0;
-  border: 0;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #7f8791;
-  background: transparent;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-50%);
-  transition: opacity .14s ease, background .14s ease, color .14s ease;
-  cursor: pointer;
-}
-#olliPcShell .olliTtQuickStudent:hover .olliTtQuickStudentMore,
-#olliPcShell .olliTtQuickStudent:focus-within .olliTtQuickStudentMore,
-#olliPcShell .olliTtQuickStudentMore[aria-expanded="true"] { opacity: 1; pointer-events: auto; }
-#olliPcShell .olliTtQuickStudentMore:hover,
-#olliPcShell .olliTtQuickStudentMore:focus-visible { color: #20252c; background: rgba(0,0,0,.055); outline: none; }
-#olliPcShell .olliTtQuickStudentMore svg { width: 17px; height: 17px; fill: currentColor; stroke: none; }
 #olliPcShell .olliTtQuickEmpty { padding: 25px 8px; color: #a3a8b0; text-align: center; font-size: calc(11px * var(--olli-text-scale)); }
 
 .olliTtStudentActionOverlay {
