@@ -22,7 +22,13 @@
     search:'',
     realtimeWatcher:null,
     createRoot:null,
-    localSnapshotAvailable:false
+    localSnapshotAvailable:false,
+    archiveMode:false,
+    archiveYears:[],
+    archiveYear:0,
+    archiveItems:[],
+    archiveLoading:false,
+    archiveSequence:0
   };
 
   const clean=value=>String(value==null?'':value).trim();
@@ -280,6 +286,7 @@
   function shellHtml(){
     return `
       <section class="olliMobileMatRoot" aria-label="팀톡 재료주문">
+        <div data-material-current>
         <div class="olliMobileMatSummary" aria-label="재료 주문 현황">
           <button class="olliMobileMatSummaryCard requested" type="button" data-material-filter="requested">
             <span class="olliMobileMatSummaryIcon coffee" aria-hidden="true"><svg viewBox="0 0 86 99"><path d="M18 8h50v10H18z"></path><path d="M12 18h62"></path><path d="M17 22h52l-6 67H23l-6-67Z"></path><circle cx="43" cy="50" r="9"></circle></svg></span>
@@ -297,7 +304,17 @@
             <strong data-material-count="arrived">0</strong>
           </button>
         </div>
+        <button type="button" class="olliMobileMatArchiveEntry" data-material-action="open-archive">지난 주문내역 <span aria-hidden="true">›</span></button>
         <div class="olliMobileMatList" data-material-list></div>
+        </div>
+        <section class="olliMobileMatArchiveView" data-material-archive hidden>
+          <div class="olliMobileMatArchiveHead">
+            <button type="button" class="olliMobileMatArchiveBack" data-material-action="close-archive" aria-label="재료 목록으로 돌아가기">‹</button>
+            <strong>지난 주문내역</strong>
+          </div>
+          <div class="olliMobileMatArchiveYears" data-material-archive-years></div>
+          <div class="olliMobileMatArchiveItems" data-material-archive-list></div>
+        </section>
         <div class="olliMobileMatToast" data-material-toast hidden></div>
       </section>`;
   }
@@ -320,15 +337,23 @@
     showToast.timer=setTimeout(()=>{if(toast.isConnected)toast.hidden=true},2800);
   }
 
+  function localDateKey(date=new Date()){
+    return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+  }
+  function isExpiredMaterial(item){
+    const date=clean(item?.needed_on);
+    return /^\d{4}-\d{2}-\d{2}$/.test(date)&&date<localDateKey();
+  }
+  function currentItems(){return state.items.filter(item=>!isExpiredMaterial(item))}
   function requestCount(){
-    return Math.max(0,Number(state.summary?.requested||0))+Math.max(0,Number(state.summary?.on_hold||0));
+    return currentItems().filter(item=>['requested','on_hold'].includes(clean(item?.status))).length;
   }
 
   function renderSummary(){
     const values={
       requested:requestCount(),
-      ordered:Math.max(0,Number(state.summary?.ordered||0)),
-      arrived:Math.max(0,Number(state.summary?.arrived||0))
+      ordered:currentItems().filter(item=>clean(item?.status)==='ordered').length,
+      arrived:currentItems().filter(item=>clean(item?.status)==='arrived').length
     };
     Object.entries(values).forEach(([key,value])=>{
       const node=rootQuery(`[data-material-count="${key}"]`);
@@ -340,6 +365,7 @@
   }
 
   function matchesFilter(item){
+    if(isExpiredMaterial(item))return false;
     const status=clean(item?.status);
     if(state.filter==='requested'&&!['requested','on_hold'].includes(status))return false;
     if(state.filter==='ordered'&&status!=='ordered')return false;
