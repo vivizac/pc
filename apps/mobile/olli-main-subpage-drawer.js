@@ -26,6 +26,13 @@
     catch (_) { return false; }
   })();
   const slideDiagRuns = [];
+  // Diagnostic-only status markers. Never send records or student identifiers.
+  const rearWarmTrace = { scheduleCalls:0, warmRuns:0, state:'not-requested', at:0 };
+  function noteRearWarm(state){
+    if (!slideDiagEnabled) return;
+    rearWarmTrace.state = state;
+    rearWarmTrace.at = Math.round(performance.now());
+  }
   let slideDiagPanel = null;
   function printSlideDiag() {
     const header = 'OLLI mobile attendance slide diagnostic (ms)';
@@ -38,7 +45,9 @@
         'cards=' + r.cardCount, 'openWork=' + r.openWorkMs,
         'localLoad=' + r.localLoadMs, 'forcedLayout=' + r.forcedLayoutMs,
         'firstRAF=' + r.firstRAFMs, 'transformStart=' + r.transformStartMs,
-        'DOMchanges=' + r.mutations, 'frames>25ms=' + slowFrames, 'maxFrameGap=' + maxGap
+        'DOMchanges=' + r.mutations, 'frames>25ms=' + slowFrames, 'maxFrameGap=' + maxGap,
+        'warm=' + r.warmState, 'warmCalls=' + r.warmCalls, 'warmRuns=' + r.warmRuns,
+        'warmAge=' + r.warmAgeMs + 'ms', 'pendingAtClick=' + r.pendingAtClick
       ].join(' | ');
     });
     return [header, 'Version: deferred warm-roster load (experimental)', ...rows].join('\n');
@@ -81,7 +90,11 @@
       t, rearReady, reusable: window.canReusePhoneRecordList?.(getDrawerDivision(), '') === true,
       cardCount: list?.querySelectorAll('.elementaryStudentRow,.kinderStudentRow').length || 0,
       openWorkMs: 0, localLoadMs: 0, forcedLayoutMs: 0,
-      firstRAFMs: 'none', transformStartMs: 'none', mutations: 0, frames: []
+      firstRAFMs: 'none', transformStartMs: 'none', mutations: 0, frames: [],
+      warmState:rearWarmTrace.state, warmCalls:rearWarmTrace.scheduleCalls,
+      warmRuns:rearWarmTrace.warmRuns, warmAgeMs:rearWarmTrace.at
+        ? Math.round(t - rearWarmTrace.at) : 'never',
+      pendingAtClick: !!attendancePrewarmHandle
     };
     const observer = typeof MutationObserver === 'function' && list ? new MutationObserver(events => {
       run.mutations += events.reduce((n, e) => n + e.addedNodes.length + e.removedNodes.length, 0);
@@ -234,6 +247,7 @@
 
   function cancelAttendancePrewarm(){
     if (!attendancePrewarmHandle) return;
+    noteRearWarm('cancelled-before-idle-run');
     if (attendancePrewarmUsesIdle && typeof window.cancelIdleCallback === 'function') {
       window.cancelIdleCallback(attendancePrewarmHandle);
     } else {
@@ -271,11 +285,13 @@
     const room = document.getElementById('recordRoomScreen');
     if (!room) return;
     if (!canKeepPreparedRear()) {
+      noteRearWarm('released:foreground-or-context');
       releasePreparedRear();
       return;
     }
     // Never keep an old academy/division/search/sort roster underneath a new session.
     if (window.canReusePhoneRecordList?.(getDrawerDivision(), '') !== true) {
+      noteRearWarm('released:roster-key-changed');
       releasePreparedRear();
       scheduleAttendancePrewarm();
       return;
@@ -297,8 +313,12 @@
 
   function mountPreparedRear(){
     const room = document.getElementById('recordRoomScreen');
-    if (!room || !canKeepPreparedRear()
-        || window.canReusePhoneRecordList?.(getDrawerDivision(), '') !== true) return false;
+    if (!room) { noteRearWarm('mount-blocked:missing-screen'); return false; }
+    if (!canKeepPreparedRear()) { noteRearWarm('mount-blocked:no-foreground-or-boot'); return false; }
+    if (window.canReusePhoneRecordList?.(getDrawerDivision(), '') !== true) {
+      noteRearWarm('mount-blocked:roster-not-reusable');
+      return false;
+    }
     if (!preparedRearSaved) preparedRearSaved = captureInlineState(room);
     room.classList.add(PREPARED_REAR_CLASS);
     room.style.display = 'flex';
@@ -307,6 +327,7 @@
     room.setAttribute('aria-hidden', 'true');
     room.setAttribute('inert', '');
     observePreparedRearLifecycle();
+    noteRearWarm('rear-mounted');
     return true;
   }
 
@@ -317,12 +338,15 @@
   function prepareAttendanceBehindFromLocal(){
     const recordRoom = document.getElementById('recordRoomScreen');
     const bootScreen = document.getElementById('olliBootScreen');
-    if (bootScreen && isVisible(bootScreen)) return false;
+    if (bootScreen && isVisible(bootScreen)) { noteRearWarm('warm-blocked:boot-visible'); return false; }
     const list = document.getElementById('recordList');
     const contextKey = getAttendancePreparationKey();
     const division = getDrawerDivision();
     // Never render over an active page or an in-progress drawer navigation.
-    if (!recordRoom || !list || !contextKey || drawerState || navigationInFlight || isVisible(recordRoom)) return false;
+    if (!recordRoom || !list) { noteRearWarm('warm-blocked:missing-screen-or-list'); return false; }
+    if (!contextKey) { noteRearWarm('warm-blocked:no-academy-context'); return false; }
+    if (drawerState || navigationInFlight) { noteRearWarm('warm-blocked:navigation'); return false; }
+    if (isVisible(recordRoom)) { noteRearWarm('warm-blocked:record-room-already-visible'); return false; }
     if (window.canReusePhoneRecordList?.(division, '')) return mountPreparedRear();
     try {
       // This cache hydration reads no server data and must never paint by itself.
@@ -338,22 +362,29 @@
       }
       return mountPreparedRear();
     } catch (error) {
+      noteRearWarm('warm-blocked:local-render-error');
       console.warn('출석부 로컬 사전 준비 실패:', error?.message || error);
       return false;
     }
   }
 
   function scheduleAttendancePrewarm(){
-    if (attendancePrewarmHandle || drawerState || navigationInFlight) return false;
+    if (slideDiagEnabled) rearWarmTrace.scheduleCalls++;
+    if (attendancePrewarmHandle) { noteRearWarm('schedule-skip:already-pending'); return false; }
+    if (drawerState || navigationInFlight) { noteRearWarm('schedule-skip:navigation'); return false; }
     const bootScreen = document.getElementById('olliBootScreen');
-    if (bootScreen && isVisible(bootScreen)) return false;
+    if (bootScreen && isVisible(bootScreen)) { noteRearWarm('schedule-skip:boot-visible'); return false; }
     const recordRoom = document.getElementById('recordRoomScreen');
-    if (!recordRoom || isVisible(recordRoom) || !getAttendancePreparationKey()) return false;
+    if (!recordRoom) { noteRearWarm('schedule-skip:missing-screen'); return false; }
+    if (isVisible(recordRoom)) { noteRearWarm('schedule-skip:record-room-already-visible'); return false; }
+    if (!getAttendancePreparationKey()) { noteRearWarm('schedule-skip:no-academy-context'); return false; }
     const division = getDrawerDivision();
     if (window.canReusePhoneRecordList?.(division, '')) return mountPreparedRear();
     attendancePrewarmUsesIdle = typeof window.requestIdleCallback === 'function';
+    noteRearWarm('scheduled:idle-roster-preparation');
     const run = () => {
       attendancePrewarmHandle = 0;
+      if (slideDiagEnabled) rearWarmTrace.warmRuns++;
       prepareAttendanceBehindFromLocal();
     };
     attendancePrewarmHandle = attendancePrewarmUsesIdle
@@ -830,6 +861,8 @@
       event.stopPropagation();
     }
     if (navigationInFlight || drawerState) return false;
+    // Record whether a warm attempt was still queued at the first tap.
+    const pendingPrewarmAtClick = !!attendancePrewarmHandle;
     cancelAttendancePrewarm();
 
     const explicitMainPage = getMainPageFromExplicitSource(sourceKind);
@@ -849,6 +882,7 @@
     const preparedRosterReady = !!preparedRearSaved
       && window.canReusePhoneRecordList?.(getDrawerDivision(), '') === true;
     const slideDiag = beginSlideDiag(mainPage, recordRoom, !!preparedRearSaved);
+    if (slideDiag) slideDiag.pendingAtClick = pendingPrewarmAtClick;
     // Keep the prepared DOM displayed; do not hide/show it between frames.
     const recordSaved = preparedRearSaved || captureInlineState(recordRoom);
     releasePreparedRear(true);
