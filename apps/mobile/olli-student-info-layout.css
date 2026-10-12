@@ -712,9 +712,11 @@
   opacity:.55;
 }
 .phonePcStudentInfoOverlay .pcStudentInfoDeleteBtn {
+  justify-self:center;
   align-self:center;
+  margin-top:4px;
   padding:10px 18px;
-  border:1px solid #d7dbe0;
+  border:0;
   border-radius:12px;
   background:transparent;
   color:#c84b4b;
