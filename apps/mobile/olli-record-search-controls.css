@@ -348,8 +348,7 @@
 }
 /* Keep the existing roster out of view until the keyboard and header finish
    restoring. Fade it in instead of showing it halfway through a layout shift. */
-#recordRoomScreen:not([data-olli-drawer-rear-mounted]) #recordList,
-body.olli-main-subpage-drawer-open #recordRoomScreen #recordList {
+#recordRoomScreen #recordList {
   transition:opacity 170ms ease;
 }
 #recordRoomScreen.record-search-list-restoring #recordList {
@@ -363,8 +362,7 @@ body.olli-main-subpage-drawer-open #recordRoomScreen #recordList {
 /* 키보드가 실제로 열린 뒤에만 상단 4개 메뉴를 접는다.
    라인과 초등부/유치부 행은 숨기거나 위치를 강제 보정하지 않고,
    앞 요소의 실제 높이와 여백이 줄어드는 레이아웃 흐름을 따라 부드럽게 올라간다. */
-#recordRoomScreen:not([data-olli-drawer-rear-mounted]) .recordStickyArea > .recordUtilityRow,
-body.olli-main-subpage-drawer-open #recordRoomScreen .recordStickyArea > .recordUtilityRow {
+#recordRoomScreen .recordStickyArea > .recordUtilityRow {
   transition:max-height .22s cubic-bezier(.2,.8,.2,1),
              margin-top .22s cubic-bezier(.2,.8,.2,1),
              margin-bottom .22s cubic-bezier(.2,.8,.2,1),
@@ -424,6 +422,7 @@ body.olli-main-subpage-drawer-open #recordRoomScreen .recordStickyArea > .record
   visibility:hidden !important;
   pointer-events:none !important;
 }
+
 
 
 

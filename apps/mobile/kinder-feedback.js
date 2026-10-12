@@ -318,7 +318,6 @@ function openKinderChatFeedbackPage(options = {}) {
     const input = document.getElementById('kcfInput');
     if (input) autoResizeKinderChatFeedbackInput(input);
   }, 0);
-  if (!navigationManaged) window.syncOlliMainDrawerAttendanceRearPage?.();
 }
 async function closeKinderChatFeedbackPage() {
   saveKinderChatFeedbackDraft();
@@ -2844,3 +2843,4 @@ if (!window.__kcfLiveSessionLifecycleBound) {
 }
 window.restoreKinderChatFeedbackLiveSession = restoreKinderChatFeedbackLiveSession;
 window.persistKinderChatFeedbackLiveSessionNow = persistKinderChatFeedbackLiveSessionNow;
+
