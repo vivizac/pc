@@ -9,6 +9,24 @@ body.olliPcApp #recordRoomScreen .elementaryStudentRow,
 body.olliPcApp #recordRoomScreen .kinderStudentRow{
   width:100%;min-height:68px;margin:0 0 10px;border:1px solid transparent;border-radius:19px;background:#f7f7f8;padding:0 17px;box-shadow:none;
 }
+/* 학생 관리: 시간표에서 이전한 점 3개 메뉴 (동일한 hover/focus 표시) */
+body.olliPcApp #recordRoomScreen .elementaryStudentRow,
+body.olliPcApp #recordRoomScreen .kinderStudentRow{position:relative;padding-right:43px;}
+body.olliPcApp #recordRoomScreen .pcAttendanceRosterMore{
+  position:absolute;right:7px;top:50%;width:24px;height:28px;padding:0;border:0;border-radius:8px;
+  display:inline-flex;align-items:center;justify-content:center;color:#7f8791;background:transparent;
+  opacity:0;pointer-events:none;transform:translateY(-50%);
+  transition:opacity .14s ease,background .14s ease,color .14s ease;cursor:pointer;
+}
+body.olliPcApp #recordRoomScreen .elementaryStudentRow:hover .pcAttendanceRosterMore,
+body.olliPcApp #recordRoomScreen .kinderStudentRow:hover .pcAttendanceRosterMore,
+body.olliPcApp #recordRoomScreen .elementaryStudentRow:focus-within .pcAttendanceRosterMore,
+body.olliPcApp #recordRoomScreen .kinderStudentRow:focus-within .pcAttendanceRosterMore,
+body.olliPcApp #recordRoomScreen .pcAttendanceRosterMore[aria-expanded="true"]{opacity:1;pointer-events:auto;}
+body.olliPcApp #recordRoomScreen .pcAttendanceRosterMore:hover,
+body.olliPcApp #recordRoomScreen .pcAttendanceRosterMore:focus-visible{color:#20252c;background:rgba(0,0,0,.055);outline:none;}
+body.olliPcApp #recordRoomScreen .pcAttendanceRosterMore svg{width:17px;height:17px;fill:currentColor;stroke:none;}
+
 body.olliPcApp #recordRoomScreen .elementaryStudentRow:hover,
 body.olliPcApp #recordRoomScreen .kinderStudentRow:hover{background:#f0f2f5;transform:none;}
 body.olliPcApp #recordRoomScreen .elementaryStudentRow.pcAttendanceSelected,
