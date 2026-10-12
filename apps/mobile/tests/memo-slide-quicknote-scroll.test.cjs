@@ -70,8 +70,23 @@ test('memo entry and exit get a foreground layer before mounting the standby att
     vm.runInNewContext(source.slice(source.indexOf('function runObservationMemoPageSlide('),
       source.indexOf('\nfunction createObservationMemoSnapshot(')),context);
     context.runObservationMemoPageSlide(className,()=>completed++);
-    assert.equal(inlineZ,'120000');
+    assert.equal(inlineZ,'');
+    assert.equal(classes.has(className),true);
     assert.equal(completed,0);
     context.finish();assert.equal(completed,1);
+  }
+});
+
+test('idle attendance mounting waits until the memo animation finishes',()=>{
+  const source=read('olli-main-subpage-drawer.js');
+  const start=source.indexOf('  function mountAttendanceRearPage(){');
+  const end=source.indexOf('\n  function ',start+10);
+  const fn=source.slice(start,end);
+  for(const name of ['observation-editor-slide-enter','observation-editor-slide-leave']) {
+    const context={drawerState:null,navigationInFlight:false,
+      getVisibleMainPage:()=>({id:'studentMemoScreen',classList:{contains:key=>key===name}}),
+      document:{getElementById:()=>({})},hasReadyAttendanceBehindDrawer:()=>true};
+    vm.runInNewContext(fn,context);
+    assert.equal(context.mountAttendanceRearPage(),false);
   }
 });

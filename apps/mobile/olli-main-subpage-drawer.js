@@ -150,6 +150,11 @@
     const mainPage = getVisibleMainPage();
     const recordRoom = document.getElementById('recordRoomScreen');
     if (!mainPage || !recordRoom || !hasReadyAttendanceBehindDrawer(recordRoom)) return false;
+    // The memo slide reveals the student roster, so Attendance must stay
+    // below both pages until that navigation animation has completed.
+    if (mainPage.id === 'studentMemoScreen'
+      && (mainPage.classList.contains('observation-editor-slide-enter')
+        || mainPage.classList.contains('observation-editor-slide-leave'))) return false;
     if (attendanceRearMountState?.mainPage !== mainPage) {
       releaseAttendanceRearPage();
       const computedZIndex = Number.parseInt(getComputedStyle(mainPage).zIndex, 10);
@@ -898,6 +903,7 @@
   window.setOlliMainSubpageDrawerCompanionFaded = setOlliMainSubpageDrawerCompanionFaded;
   window.isOlliPhoneNavigationInFlight = () => navigationInFlight;
 })();
+
 
 
 

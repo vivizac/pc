@@ -693,7 +693,6 @@ function runObservationMemoPageSlide(className, onComplete) {
   clearObservationMemoSlideClasses();
   void screen.offsetWidth;
   screen.classList.add(className);
-  window.syncOlliMainDrawerAttendanceRearPage?.();
 
   let finished = false;
   const cleanup = () => {
@@ -1858,6 +1857,7 @@ function openObservationMemoStudentFromRoster(studentId) {
   runObservationMemoPageSlide('observation-editor-slide-enter', () => {
     hideObservationRosterScreen();
     clearObservationMemoSlideClasses();
+    window.syncOlliMainDrawerAttendanceRearPage?.();
     if (page) page.scrollTop = 0;
     scheduleObservationMemoEditorResize();
   });
