@@ -558,25 +558,25 @@
 
   function elementaryCardHtml(student) {
     return `<div class="pcStudentInfoCardViewport"><div class="pcStudentInfoCard" data-division="elementary">
-      <div class="pcStudentInfoCardIntro"><strong>${esc(student.name || '학생')} 학생정보</strong><span></span></div>
+      <div class="pcStudentInfoCardIntro"><strong>${esc(student.name || '학생')} 학생정보</strong></div>
       <div class="pcStudentInfoForm">
         <div class="pcStudentInfoGrid3">
-          <div class="pcStudentInfoField"><div class="modalLabel">이름</div><input class="modalInput" id="elementaryInfoNameInput"></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">성향</div><div id="elementaryPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">담임 · 시간표 1회차 기준</div><div class="pcStudentInfoTeacherReadonly ${clean(student.__olli_timetable_teacher) ? '' : 'isEmpty'}">${esc(student.__olli_timetable_teacher || '미지정')}</div></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoNameInput" aria-label="이름" placeholder="이름"></div>
+          <div class="pcStudentInfoField"><div id="elementaryPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
+          <div class="pcStudentInfoField"><div class="pcStudentInfoTeacherReadonly ${clean(student.__olli_timetable_teacher) ? '' : 'isEmpty'}">담임 : ${esc(student.__olli_timetable_teacher || '미지정')}</div></div>
         </div>
         <div class="pcStudentInfoGrid3">
-          <div class="pcStudentInfoField"><div class="modalLabel">학교</div><input class="modalInput" id="elementarySchoolInput"></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">학년</div><input class="modalInput" id="elementaryGradeInput" inputmode="numeric" onfocus="focusElementaryGradeInput(this)" oninput="syncElementaryInfoAgeFromGrade()" onblur="blurElementaryInfoGradeInput()"></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">나이</div><input class="modalInput" id="elementaryAgeInput" readonly></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="elementarySchoolInput" aria-label="학교" placeholder="학교"></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryGradeInput" aria-label="학년" placeholder="학년" inputmode="numeric" onfocus="focusElementaryGradeInput(this)" oninput="syncElementaryInfoAgeFromGrade()" onblur="blurElementaryInfoGradeInput()"></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryAgeInput" aria-label="나이" placeholder="나이" readonly></div>
         </div>
         <div class="pcStudentInfoGrid3">
-          <div class="pcStudentInfoField"><div class="modalLabel">등록 년</div><input class="modalInput" id="elementaryInfoYearInput" type="number" min="1900" max="2100"></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">월</div><input class="modalInput" id="elementaryInfoMonthInput" type="number" min="1" max="12"></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">일</div><input class="modalInput" id="elementaryInfoDayInput" type="number" min="1" max="31"></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoYearInput" aria-label="등록 연도" placeholder="등록 연도" type="number" min="1900" max="2100"></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoMonthInput" aria-label="등록 월" placeholder="등록 월" type="number" min="1" max="12"></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoDayInput" aria-label="등록 일" placeholder="등록 일" type="number" min="1" max="31"></div>
         </div>
         <div class="pcStudentInfoSchedule" aria-label="수업시간 조회">${studentInfoScheduleHtml(student, student.__olli_authoritative_enrollments)}</div>
-        <div class="pcStudentInfoField"><div class="modalLabel">그룹</div><div id="elementaryGroupToggleRow" class="infoToggleRow">${renderGroupButtons()}</div></div>
+        <div class="pcStudentInfoField"><div id="elementaryGroupToggleRow" class="infoToggleRow">${renderGroupButtons()}</div></div>
         <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeOlliPcStudentInfoCard()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="pcStudentInfoSaveBtn" onclick="saveOlliPcStudentInfoCard()">저장</button></div>
       </div>
     </div></div>`;
@@ -625,25 +625,25 @@
 
   function kinderCardHtml(student) {
     return `<div class="pcStudentInfoCardViewport"><div class="pcStudentInfoCard" data-division="kinder">
-      <div class="pcStudentInfoCardIntro"><strong>${esc(student.name || '학생')} 학생정보</strong><span></span></div>
+      <div class="pcStudentInfoCardIntro"><strong>${esc(student.name || '학생')} 학생정보</strong></div>
       <div class="pcStudentInfoForm">
         <div class="pcStudentInfoGrid3">
-          <div class="pcStudentInfoField"><div class="modalLabel">이름</div><input class="modalInput" id="kinderInfoNameInput"></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">성향</div><div id="kinderPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">담임 · 시간표 1회차 기준</div><div class="pcStudentInfoTeacherReadonly ${clean(student.__olli_timetable_teacher) ? '' : 'isEmpty'}">${esc(student.__olli_timetable_teacher || '미지정')}</div></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoNameInput" aria-label="이름" placeholder="이름"></div>
+          <div class="pcStudentInfoField"><div id="kinderPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
+          <div class="pcStudentInfoField"><div class="pcStudentInfoTeacherReadonly ${clean(student.__olli_timetable_teacher) ? '' : 'isEmpty'}">담임 : ${esc(student.__olli_timetable_teacher || '미지정')}</div></div>
         </div>
         <div class="pcStudentInfoGrid2">
-          <div class="pcStudentInfoField"><div class="modalLabel">유치원</div><input class="modalInput" id="kinderKindergartenInput"></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">나이</div><input class="modalInput" id="kinderAgeInput" type="number" min="1" max="8"></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="kinderKindergartenInput" aria-label="유치원" placeholder="유치원"></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="kinderAgeInput" aria-label="나이" placeholder="나이" type="number" min="1" max="8"></div>
         </div>
         <div class="pcStudentInfoGrid3">
-          <div class="pcStudentInfoField"><div class="modalLabel">등록 년</div><input class="modalInput" id="kinderInfoYearInput" type="number" min="1900" max="2100"></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">월</div><input class="modalInput" id="kinderInfoMonthInput" type="number" min="1" max="12"></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">일</div><input class="modalInput" id="kinderInfoDayInput" type="number" min="1" max="31"></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoYearInput" aria-label="등록 연도" placeholder="등록 연도" type="number" min="1900" max="2100"></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoMonthInput" aria-label="등록 월" placeholder="등록 월" type="number" min="1" max="12"></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoDayInput" aria-label="등록 일" placeholder="등록 일" type="number" min="1" max="31"></div>
         </div>
         <input id="kinderLessonDayInput" type="hidden">
         <div class="pcStudentInfoSchedule" aria-label="수업시간 조회">${studentInfoScheduleHtml(student, student.__olli_authoritative_enrollments)}</div>
-        <div class="pcStudentInfoField"><div class="modalLabel">픽업</div><div id="kinderInfoPickupReadonly" class="pcStudentInfoTeacherReadonly isEmpty">등록된 픽업 없음</div></div>
+        <div class="pcStudentInfoField"><div id="kinderInfoPickupReadonly" class="pcStudentInfoTeacherReadonly isEmpty">등록된 픽업 없음</div></div>
         <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeOlliPcStudentInfoCard()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="pcStudentInfoSaveBtn" onclick="saveOlliPcStudentInfoCard()">저장</button></div>
       </div>
     </div></div>`;
