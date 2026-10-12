@@ -572,11 +572,11 @@
       document.body.classList.remove(DRAWER_OPEN_CLASS);
       document.body.classList.remove('olli-main-subpage-drawer-search-active');
       drawerState = null;
-      mountPreparedRear();
       return true;
     } finally {
       navigationInFlight = false;
       attendanceTransitionInFlight = false;
+      mountPreparedRear();
       flushDeferredAttendanceRender();
     }
   }
@@ -682,7 +682,6 @@
       state.recordRoom.classList.remove('olliMainDrawerSubpage', REVEALED_CLASS, RETURNING_CLASS, 'vivizac-slide-under-fade');
       restoreInlineState(state.recordRoom, state.recordSaved);
     }
-    mountPreparedRear();
 
     restoreRecordUtilityOrder(state.utilityOrderSaved);
     const hit = document.getElementById('olliMainDrawerReturnHit');
@@ -725,6 +724,7 @@
     } finally {
       navigationInFlight = false;
       attendanceTransitionInFlight = false;
+      mountPreparedRear();
       flushDeferredAttendanceRender();
     }
   }
