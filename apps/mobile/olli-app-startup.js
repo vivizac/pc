@@ -70,7 +70,7 @@ function getOlliPhoneResumeStateKey() {
 }
 
 function isOlliPageVisibleForResume(screen) {
-  if (!screen) return false;
+  if (!screen || screen.classList?.contains('olliAttendanceRearPrepared')) return false;
   try { return getComputedStyle(screen).display !== 'none' && getComputedStyle(screen).visibility !== 'hidden'; }
   catch (_) { return screen.style.display !== 'none'; }
 }
