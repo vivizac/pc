@@ -669,11 +669,10 @@
 #elementaryInfoModal #elementaryLessonTimeToggleRow { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 #kinderInfoModal #kinderLessonTimeToggleRow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-/* Attendance lifecycle controls below the independent Cancel/Save action row. */
+/* Attendance lifecycle controls directly follow the student-information fields. */
 .phonePcStudentInfoOverlay .pcStudentInfoManagement {
-  margin-top:8px;
-  padding-top:14px;
-  border-top:1px solid #eceef1;
+  margin-top:0;
+  padding-top:0;
   display:flex;
   flex-direction:column;
   gap:10px;
@@ -722,5 +721,6 @@
   font-size:12px;
   font-weight:650;
 }
+
 
 

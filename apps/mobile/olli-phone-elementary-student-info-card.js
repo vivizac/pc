@@ -58,7 +58,7 @@
       #elementaryInfoModal #elementaryGroupToggleRow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;}
       #elementaryInfoModal .infoToggleBtn.groupIconChoiceBtn{height:36px;border:0;border-radius:11px;background:#f0f2f4;color:#707780;font:inherit;font-size:11px;font-weight:720;padding:0;}
       #elementaryInfoModal .infoToggleBtn.groupIconChoiceBtn.active{background:#24272b;color:#fff;}
-      #elementaryInfoModal .pcStudentInfoActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:1px;}
+      #elementaryInfoModal .pcStudentInfoActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:14px;border-top:1px solid #eceef1;}
       #elementaryInfoModal .pcStudentInfoActionBtn{height:44px;border:0;border-radius:13px;background:#f1f2f4;color:#4e535a;font:inherit;font-size:13px;font-weight:780;}
       #elementaryInfoModal .pcStudentInfoActionBtn.primary{background:#24272b;color:#fff;}
       #elementaryInfoModal .pcStudentInfoActionBtn:disabled{opacity:.55;}
@@ -359,5 +359,6 @@
 
   installStyle();
 })(window);
+
 
 
