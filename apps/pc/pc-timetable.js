@@ -1676,7 +1676,7 @@
     if (!overlay) return;
     overlay.classList.remove('show');
     overlay.setAttribute('aria-hidden', 'true');
-    document.querySelectorAll('[data-tt-sidebar-actions][aria-expanded="true"]').forEach((button) => button.setAttribute('aria-expanded', 'false'));
+    document.querySelectorAll('[data-tt-roster-actions][aria-expanded="true"]').forEach((button) => button.setAttribute('aria-expanded', 'false'));
   }
 
   function openSidebarStudentActionMenu(studentId, event) {
@@ -1689,8 +1689,8 @@
     resetSidebarStudentActionMenuView(overlay, student);
     overlay.classList.add('show');
     overlay.setAttribute('aria-hidden', 'false');
-    document.querySelectorAll('[data-tt-sidebar-actions]').forEach((button) => {
-      button.setAttribute('aria-expanded', clean(button.dataset.ttSidebarActions) === state.sidebarActionStudentId ? 'true' : 'false');
+    document.querySelectorAll('[data-tt-roster-actions]').forEach((button) => {
+      button.setAttribute('aria-expanded', clean(button.dataset.ttRosterActions) === state.sidebarActionStudentId ? 'true' : 'false');
     });
     requestAnimationFrame(() => overlay.querySelector('[data-tt-student-action]')?.focus?.());
   }
@@ -1717,6 +1717,13 @@
 
   async function removeStudentTimetableForPause(studentId) {
     const today = todayKey();
+    // The action may originate from the personality roster while the timetable is not mounted.
+    const currentWeek = dateKey(mondayOf(new Date()));
+    const freshWeek = await service.loadWeek(currentWeek);
+    if (freshWeek) {
+      state.data = freshWeek;
+      state.dataWeek = currentWeek;
+    }
     const rows = futureOrCurrentStudentEnrollments(studentId);
     if (!rows.length) return { removed: 0, cancelledChanges: 0 };
 
@@ -1773,9 +1780,12 @@
 
       state.sidebarInactiveOpen.paused = false;
       await refreshStudentsFromServer({ skipLifecycleSync: true });
-      renderSidebar();
-      if (state.pane === 'attendance') renderAttendanceRegister();
-      else renderTimetable();
+      if (global.OlliPcCore?.state?.section === 'attendance') global.OlliPcAttendance?.renderList?.();
+      else {
+        renderSidebar();
+        if (state.pane === 'attendance') renderAttendanceRegister();
+        else renderTimetable();
+      }
     } catch (error) {
       console.error('학생 휴원 처리 실패:', error);
       alert(error?.message || '학생 휴원 처리를 완료하지 못했습니다.');
@@ -1817,9 +1827,12 @@
         if (status === 'withdrawn') state.sidebarInactiveOpen.withdrawn = false;
       }
       await refreshStudentsFromServer({ skipLifecycleSync: true });
-      renderSidebar();
-      if (state.pane === 'attendance') renderAttendanceRegister();
-      else renderTimetable();
+      if (global.OlliPcCore?.state?.section === 'attendance') global.OlliPcAttendance?.renderList?.();
+      else {
+        renderSidebar();
+        if (state.pane === 'attendance') renderAttendanceRegister();
+        else renderTimetable();
+      }
     } catch (error) {
       console.error('사이드바 학생 관리 실패:', error);
       alert(error?.message || '학생 관리 작업을 완료하지 못했습니다.');
@@ -1844,7 +1857,7 @@
   }
 
   function sidebarStudentCardHtml(student, inactive = false) {
-    return `<div class="olliTtQuickStudent${inactive ? ' isInactive' : ''}" data-tt-sidebar-student="${esc(student.id)}" data-tt-sidebar-status="${esc(studentStatus(student))}" role="button" tabindex="0"><button type="button" class="olliTtQuickStudentMore" data-tt-sidebar-actions="${esc(student.id)}" aria-label="${esc(student.name)} 학생 관리" aria-haspopup="dialog" aria-expanded="false"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.55"></circle><circle cx="12" cy="12" r="1.55"></circle><circle cx="19" cy="12" r="1.55"></circle></svg></button><span class="olliTtQuickStudentMain"><span class="olliTtQuickStudentName">${esc(student.name)}</span><span class="olliTtQuickStudentSchedule">${esc(studentScheduleText(student.id))}</span></span></div>`;
+    return `<div class="olliTtQuickStudent${inactive ? ' isInactive' : ''}" data-tt-sidebar-student="${esc(student.id)}" data-tt-sidebar-status="${esc(studentStatus(student))}" role="button" tabindex="0"><span class="olliTtQuickStudentMain"><span class="olliTtQuickStudentName">${esc(student.name)}</span><span class="olliTtQuickStudentSchedule">${esc(studentScheduleText(student.id))}</span></span></div>`;
   }
 
   function sidebarInactiveSectionHtml(status, label, students) {
@@ -1892,16 +1905,13 @@
       state.sidebarInactiveOpen[status] = !state.sidebarInactiveOpen[status];
       renderSidebarResults(body);
     }));
-    results.querySelectorAll('[data-tt-sidebar-actions]').forEach((button) => button.addEventListener('click', (event) => {
-      openSidebarStudentActionMenu(button.dataset.ttSidebarActions, event);
-    }));
     results.querySelectorAll('[data-tt-sidebar-student]').forEach((card) => {
       card.addEventListener('click', (event) => {
-        if (event.target.closest('[data-tt-sidebar-actions]')) return;
+
         activateSidebarStudentCard(card);
       });
       card.addEventListener('keydown', (event) => {
-        if (event.target.closest('[data-tt-sidebar-actions]')) return;
+
         if (event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
         activateSidebarStudentCard(card);
@@ -3926,6 +3936,7 @@ ${combined.memoError}`);
     global.olliPcSetAttendanceView = setView;
     global.olliTtRenderScheduleHeader = renderWorkspaceHeader;
     global.olliTtOpenStudentSchedule = openMove;
+    global.olliTtOpenStudentActions = openSidebarStudentActionMenu;
     global.olliTtRefreshSchedule = refreshScheduleFromServer;
     syncAttendanceActive();
   }
