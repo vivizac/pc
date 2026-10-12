@@ -22,13 +22,22 @@ async function openRecordAttendanceDashboard(options = {}){
     : ((currentObservationView === 'kinder') ? 'kinder' : 'elementary');
   currentObservationView = targetView;
   currentRecordView = targetView;
-  setObservationButtonSide(targetView, false);
+  // Avoid forcing a synchronous layout for an already-correct, prewarmed tab.
+  const modeButton = document.getElementById('recordModeToggleBtn');
+  if (modeButton && modeButton.classList.contains('flipped') !== (targetView === 'kinder')) {
+    setObservationButtonSide(targetView, false);
+  }
   updateRecordHeaderUI();
   syncRecordAcademyPageState();
   if (typeof window.setOlliMainSubpageDrawerSearchActive === 'function') {
     window.setOlliMainSubpageDrawerSearchActive(false);
   }
-  if (typeof window.refreshRecordSortPopup === 'function') setTimeout(window.refreshRecordSortPopup, 0);
+  // A drawer-owned local open defers popup HTML work until the slide ends.
+  // Direct attendance navigation and division changes still refresh immediately.
+  const drawerOpening = options.localOnly === true && options.reuseRendered === true;
+  if (!drawerOpening && typeof window.refreshRecordSortPopup === 'function') {
+    setTimeout(window.refreshRecordSortPopup, 0);
+  }
   // The drawer's already-mounted roster is authoritative for this transition.
   // Its normal post-slide refresh will hydrate local state and check the server.
   if (!options.deferLocalLoad) {
