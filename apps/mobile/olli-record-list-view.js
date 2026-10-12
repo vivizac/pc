@@ -261,10 +261,12 @@ function renderElementaryRecords(name) {
   const withdrawnHtml = renderElementaryStudentRows(withdrawnStudents, searchMode);
   const hasInactiveSearchResult = searchMode && Boolean(pausedHtml || withdrawnHtml);
   const activeEmptyHtml = activeHtml || hasInactiveSearchResult ? '' : `<div class="recordEmpty">${searchMode ? '검색된 학생이 없습니다.' : '등록된 재원생이 없습니다.'}</div>`;
-  list.innerHTML = activeHtml
+  const nextHtml = activeHtml
     + activeEmptyHtml
     + renderPhoneRecordStatusSection('elementary', 'paused', '휴원', pausedHtml, '휴원생이 없습니다.', searchMode)
     + renderPhoneRecordStatusSection('elementary', 'withdrawn', '퇴원', withdrawnHtml, '최근 한 달 내 퇴원생이 없습니다.', searchMode);
+  // Do not detach and recreate identical student cards after deferred updates.
+  if (list.innerHTML !== nextHtml) list.innerHTML = nextHtml;
   syncPhoneRecordInitialSortLabel();
   notifyPhoneRecordListRendered('elementary', name);
 }
@@ -295,10 +297,11 @@ function renderKinderRecords(name) {
     : '';
   const hasInactiveSearchResult = searchMode && Boolean(pausedHtml || withdrawnHtml);
   const activeEmptyHtml = activeHtml || hasInactiveSearchResult ? '' : `<div class="recordEmpty">${searchMode ? '검색된 학생이 없습니다.' : '등록된 재원생이 없습니다.'}</div>`;
-  list.innerHTML = transferBannerHtml + activeHtml
+  const nextHtml = transferBannerHtml + activeHtml
     + activeEmptyHtml
     + renderPhoneRecordStatusSection('kinder', 'paused', '휴원', pausedHtml, '휴원생이 없습니다.', searchMode)
     + renderPhoneRecordStatusSection('kinder', 'withdrawn', '퇴원', withdrawnHtml, '최근 한 달 내 퇴원생이 없습니다.', searchMode);
+  if (list.innerHTML !== nextHtml) list.innerHTML = nextHtml;
   syncPhoneRecordInitialSortLabel();
   notifyPhoneRecordListRendered('kinder', name);
 }
