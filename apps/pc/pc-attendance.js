@@ -766,6 +766,22 @@ function recordModeTabsHtml() {
     list.insertBefore(header, list.firstChild);
   }
 
+  function installRosterStudentActionButtons(list) {
+    list.querySelectorAll('.elementaryStudentRow, .kinderStudentRow').forEach((row) => {
+      const studentId = extractRowStudentId(row);
+      if (!studentId || row.querySelector('[data-tt-roster-actions]')) return;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'pcAttendanceRosterMore';
+      button.dataset.ttRosterActions = studentId;
+      button.setAttribute('aria-label', '학생 관리');
+      button.setAttribute('aria-haspopup', 'dialog');
+      button.setAttribute('aria-expanded', 'false');
+      button.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.55"></circle><circle cx="12" cy="12" r="1.55"></circle><circle cx="19" cy="12" r="1.55"></circle></svg>';
+      row.appendChild(button);
+    });
+  }
+
   function bindRosterClicks() {
     const list = document.getElementById('recordList');
     if (!list || list.__olliPcAttendanceClickBound) return;
@@ -799,6 +815,16 @@ function recordModeTabsHtml() {
       if (!row) return;
       const studentId = extractRowStudentId(row);
       if (!studentId) return;
+      if (event.target.closest('[data-tt-roster-actions]')) {
+        pointerScroll = null;
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        if (typeof global.olliTtOpenStudentActions === 'function') {
+          global.olliTtOpenStudentActions(studentId, event);
+        }
+        return;
+      }
       const saved = pointerScroll || { top: list.scrollTop, left: list.scrollLeft };
       pointerScroll = null;
       event.preventDefault();
@@ -907,6 +933,7 @@ function recordModeTabsHtml() {
         : renderStudentsForSortMode(kinder, 'kinder');
     }
     list.innerHTML = html || '<div class="recordEmpty">조건에 맞는 학생이 없습니다.</div>';
+    installRosterStudentActionButtons(list);
     ensureRosterHeader();
     decorateRows();
     list.scrollTop = previousScrollTop;
