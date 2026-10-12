@@ -155,6 +155,8 @@
 
   function prepareAttendanceBehindFromLocal(){
     const recordRoom = document.getElementById('recordRoomScreen');
+    const bootScreen = document.getElementById('olliBootScreen');
+    if (bootScreen && isVisible(bootScreen)) return false;
     const list = document.getElementById('recordList');
     const contextKey = getAttendancePreparationKey();
     const division = getDrawerDivision();
@@ -182,6 +184,8 @@
 
   function scheduleAttendancePrewarm(){
     if (attendancePrewarmHandle || drawerState || navigationInFlight) return false;
+    const bootScreen = document.getElementById('olliBootScreen');
+    if (bootScreen && isVisible(bootScreen)) return false;
     const recordRoom = document.getElementById('recordRoomScreen');
     if (!recordRoom || isVisible(recordRoom) || !getAttendancePreparationKey()) return false;
     const division = getDrawerDivision();
