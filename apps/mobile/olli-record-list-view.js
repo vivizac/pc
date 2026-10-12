@@ -136,7 +136,34 @@ function getPhoneRecordStudentGuideText(student, view) {
   return [kindergarten, age].filter(Boolean).join(' ');
 }
 
-function notifyPhoneRecordListRendered(view) {
+// A mounted roster is reusable only for the same academy, division, search and sort state.
+// The DOM is never shared between academies, even while the drawer is hidden.
+function phoneRecordListRenderKey(view, name) {
+  const division = view === 'kinder' ? 'kinder' : view === 'elementary' ? 'elementary' : '';
+  const academyId = typeof getOlliCurrentAcademyId === 'function'
+    ? String(getOlliCurrentAcademyId() || '').trim() : '';
+  if (!division || !academyId) return '';
+  let sortState = '';
+  try { sortState = localStorage.getItem('olli_record_sort_settings_by_view_v3') || ''; } catch (_) {}
+  return JSON.stringify([academyId, division, String(name || '').trim(), sortState, new Date().toDateString()]);
+}
+function markPhoneRecordListRendered(view, name) {
+  const list = document.getElementById('recordList');
+  if (!list) return;
+  const key = phoneRecordListRenderKey(view, name);
+  if (key) list.dataset.olliRecordRenderKey = key;
+  else delete list.dataset.olliRecordRenderKey;
+}
+function canReusePhoneRecordList(view, name) {
+  const list = document.getElementById('recordList');
+  const key = phoneRecordListRenderKey(view, name);
+  return !!(key && list?.children.length && list.dataset.olliRecordRenderKey === key);
+}
+window.markPhoneRecordListRendered = markPhoneRecordListRendered;
+window.canReusePhoneRecordList = canReusePhoneRecordList;
+
+function notifyPhoneRecordListRendered(view, name) {
+  markPhoneRecordListRendered(view, name);
   try {
     window.dispatchEvent(new CustomEvent('olli:record-list-rendered', {
       detail: { view: view === 'kinder' ? 'kinder' : 'elementary' }
@@ -239,7 +266,7 @@ function renderElementaryRecords(name) {
     + renderPhoneRecordStatusSection('elementary', 'paused', '휴원', pausedHtml, '휴원생이 없습니다.', searchMode)
     + renderPhoneRecordStatusSection('elementary', 'withdrawn', '퇴원', withdrawnHtml, '최근 한 달 내 퇴원생이 없습니다.', searchMode);
   syncPhoneRecordInitialSortLabel();
-  notifyPhoneRecordListRendered('elementary');
+  notifyPhoneRecordListRendered('elementary', name);
 }
 
 function renderKinderRecords(name) {
@@ -273,6 +300,6 @@ function renderKinderRecords(name) {
     + renderPhoneRecordStatusSection('kinder', 'paused', '휴원', pausedHtml, '휴원생이 없습니다.', searchMode)
     + renderPhoneRecordStatusSection('kinder', 'withdrawn', '퇴원', withdrawnHtml, '최근 한 달 내 퇴원생이 없습니다.', searchMode);
   syncPhoneRecordInitialSortLabel();
-  notifyPhoneRecordListRendered('kinder');
+  notifyPhoneRecordListRendered('kinder', name);
 }
 
