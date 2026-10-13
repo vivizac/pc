@@ -1057,7 +1057,17 @@
     const dailyStudentIds = new Set(
       rows.filter((item) => pickupScope(item) === 'daily').map((item) => clean(item.student_id)).filter(Boolean)
     );
-    return rows.filter((item) => pickupScope(item) === 'daily' || !dailyStudentIds.has(clean(item.student_id)));
+    const effectiveRows = rows.filter((item) => pickupScope(item) === 'daily' || !dailyStudentIds.has(clean(item.student_id)));
+    // Group visible cards by pickup location within their date/time cell without changing saved rows.
+    // Dropoff-only cards use the dropoff location displayed on their card.
+    const locationKey = (item) => clean(item.is_dropoff === true
+      ? (clean(item.dropoff_label) || item.pickup_label) : item.pickup_label)
+      .replace(/\s+/g, ' ').toLocaleLowerCase('ko');
+    return effectiveRows.map((item, index) => ({ item, index, location: locationKey(item) }))
+      .sort((a, b) => (!a.location) - (!b.location)
+        || a.location.localeCompare(b.location, 'ko')
+        || a.index - b.index)
+      .map(({ item }) => item);
   }
   function recurringPickupTemplateForStudent(studentId, dialog) {
     const id = clean(studentId);
