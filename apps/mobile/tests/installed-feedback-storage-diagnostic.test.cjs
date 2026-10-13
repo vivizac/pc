@@ -49,7 +49,9 @@ function makeReport(options = {}) {
 
 test('installed QuickNote has a direct and accessible diagnostic entry', () => {
   assert.match(html, /class="kcfStorageDiagnosticBtn"[^>]*onclick="showOlliStorageDiagnostic\(\)"/);
-  assert.match(css, /html\.olli-installed-web-app #kcfPersistentTopLayer\.show \.kcfStorageDiagnosticBtn\s*\{/);
+  assert.match(css, /#kcfPersistentTopLayer\.show \.kcfStorageDiagnosticBtn\s*\{\s*display:inline-flex;/);
+  assert.doesNotMatch(css, /html\.olli-installed-web-app #kcfPersistentTopLayer\.show \.kcfStorageDiagnosticBtn/);
+  assert.match(html, /kinder-feedback\.css\?v=20261014-storage-check-visible-2/);
   assert.match(runtime, /window\.showOlliStorageDiagnostic = showOlliStorageDiagnostic;/);
   assert.match(html, /kinder-feedback\.css\?v=20261014-installed-storage-check-1/);
   assert.match(html, /kinder-feedback\.js\?v=20261014-installed-storage-check-1/);
