@@ -482,11 +482,33 @@ function buildTodayFeedbackIssueHtml(segments) {
   if (!list.length) return '';
   return `<div class="todayFeedbackIssueBox">확인이 필요한 문자가 포함되어 있어요. 수정 후 복사/저장할 수 있습니다.<div class="todayFeedbackIssueChars">${list.map(v => `<span class="todayFeedbackIssueChar">${escapeHtml(v)}</span>`).join('')}</div></div>`;
 }
+/* The chat API streams plain text. Detect high-confidence requests for more
+   information before treating the response as a finished parent-facing note.
+   Questions quoted *inside* a child's lesson narrative must remain valid feedback. */
+function isOlliFeedbackClarificationResponse(text) {
+  const source = String(text || '').replace(/^\s*(?:올리로그|올리)\s*\n?/, '').trim();
+  if (!source) return false;
+  const firstLine = source.split(/\n/).find(line => line.trim())?.trim() || '';
+  const hasQuestion = /[?？]/.test(source);
+  const explicitOpening = /^(?:몇\s*가지(?:만)?\s*(?:확인|질문|여쭤)|(?:한|두)\s*가지\s*(?:확인|질문|여쭤)|(?:먼저|우선|잠시)\s*(?:확인|질문|여쭤)|(?:확인|질문)\s*(?:해도|드려도))/.test(firstLine);
+  const userInputReference = /(?:입력(?:해)?\s*주셨|입력하신|작성(?:해)?\s*주셨|작성하신|말씀하신|적어\s*주신|적으신|쓰신|표현하신|뜻하신|어떤\s*의미인지|무슨\s*뜻인지|무엇을\s*뜻)/.test(source);
+  const asksTeacher = /(?:확인해도\s*될까요|질문(?:해도|드려도)\s*될까요|알려\s*주실\s*수\s*있나요|알려\s*주시면|알려\s*주세요|말씀해\s*주시면|말씀해\s*주세요|답해\s*주시면|확인해\s*주세요|의미인가요|뜻인가요|맞으신가요|뜻하신\s*건가요)/.test(source);
+  const asksBeforeFeedback = /(?:알려\s*주시면|말씀해\s*주시면|답해\s*주시면|확인해\s*주시면)[\s\S]{0,100}(?:피드백|학부모|부모님)[\s\S]{0,70}(?:정리|작성|전달|드리)/.test(source);
+  const numberedQuestions = (source.match(/(?:^|\n)\s*\d{1,2}[.)]\s*[^\n]*[?？]/g) || []).length;
+  return (explicitOpening && (hasQuestion || asksTeacher))
+    || (hasQuestion && userInputReference && asksTeacher)
+    || asksBeforeFeedback
+    || (numberedQuestions >= 2 && asksTeacher);
+}
 function isTodayFeedbackLoadFailItem(item) {
   const text = [item?.label, item?.sourceText, item?.resultText, item?.errorMessage].map(value => String(value || '').toLowerCase()).join(' ');
   return /로드\s*페일|로드페일|load\s*fail|load\s*failed|failed\s*to\s*load/.test(text);
 }
 function getTodayFeedbackExportBlockReason(item) {
+  if (item?.sourcePage === 'kinderChatFeedback'
+      && (item?.status === 'clarification' || isOlliFeedbackClarificationResponse(item?.resultText))) {
+    return '올리의 추가 질문은 수업 피드백으로 저장하지 않습니다.';
+  }
   if (isTodayFeedbackLoadFailItem(item)) return '로드페일 항목은 기록실에 저장하지 않습니다.';
   const segments = getSuspiciousFeedbackSegments(item?.resultText || '');
   if (!segments.length) return '';
@@ -786,6 +808,17 @@ function startTodayFeedbackRequest(options = {}) {
     if (!rawReply) throw new Error('응답 본문이 비어 있습니다.');
     const parsed = parseReplyType(rawReply);
     const restoredText = restoreFeedbackStudentAliases(parsed.cleanText, item.studentName);
+    if (item.sourcePage === 'kinderChatFeedback' && isOlliFeedbackClarificationResponse(restoredText)) {
+      updateTodayFeedbackItem(item.id, {
+        status:'clarification',
+        resultText:restoredText,
+        suspiciousSegments:[],
+        errorMessage:''
+      });
+      notifyKcfFeedbackRequestResult(item, 'clarification');
+      if (!options.silent) showPushToast('올리가 추가 정보를 요청했어요. 피드백으로 저장하지 않았습니다.');
+      return;
+    }
     const suspiciousSegments = getSuspiciousFeedbackSegments(restoredText);
     const completedStatus = suspiciousSegments.length ? 'review' : 'done';
     updateTodayFeedbackItem(item.id, {
