@@ -1253,7 +1253,9 @@
       return;
     }
 
-    if (status !== 'error') return;
+    // An AI follow-up question is not a completed student feedback.
+    // Return that student to the selectable roster, like a failed request.
+    if (status !== 'error' && status !== 'clarification') return;
     if (state.completedIds.has(studentId)) {
       state.completedIds.delete(studentId);
       renderAutoRoster();

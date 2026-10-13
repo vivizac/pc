@@ -1303,6 +1303,9 @@ function getKinderChatFeedbackLiveItem(id) {
 }
 function syncKinderChatFeedbackLiveItemToInbox(item) {
   if (!item || !item.id || typeof getTodayFeedbackItemsRaw !== 'function' || typeof setTodayFeedbackItemsRaw !== 'function') return false;
+  if (item.status === 'clarification'
+      || (typeof isOlliFeedbackClarificationResponse === 'function'
+          && isOlliFeedbackClarificationResponse(item.resultText))) return false;
   const mirror = {
     id:String(item.id || ''),
     status:String(item.status || 'done'),
@@ -1461,6 +1464,8 @@ function refreshKinderChatFeedbackLiveActions(item) {
     retryBtn.style.display = item.resultText && !item.saved && !item.reviewed
       && !kcfLiveSaveInFlight.has(String(item.id || ''))
       && item.status !== 'streaming' && item.status !== 'error' && item.status !== 'interrupted'
+      && item.status !== 'clarification'
+      && !(typeof isOlliFeedbackClarificationResponse === 'function' && isOlliFeedbackClarificationResponse(item.resultText))
       ? '' : 'none';
     retryBtn.disabled = !item.resultText || kcfLiveSaveInFlight.has(String(item.id || ''));
   }
@@ -1622,6 +1627,9 @@ function saveKinderChatFeedbackLive(id, selectedStudentId = '') {
 async function saveKinderChatFeedbackLiveOnce(id, selectedStudentId = '') {
   const item = getKinderChatFeedbackLiveItem(id);
   if (!item || !String(item.resultText || '').trim() || item.status === 'streaming') return false;
+  if (item.status === 'clarification'
+      || (typeof isOlliFeedbackClarificationResponse === 'function'
+          && isOlliFeedbackClarificationResponse(item.resultText))) return false;
   if (item.saved || item.reviewed) return true;
 
   if (item.trialSessionId) {
@@ -1833,6 +1841,37 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
 
       item.resultText = finalText;
       markKinderChatFeedbackPromptCacheTouched();
+      if (typeof isOlliFeedbackClarificationResponse === 'function'
+          && isOlliFeedbackClarificationResponse(finalText)) {
+        item.status = 'clarification';
+        item.suspiciousSegments = [];
+        item.updatedAt = new Date().toISOString();
+        persistKinderChatFeedbackLiveSessionNow();
+        const mode = getKinderChatFeedbackTeacherMode();
+        if (mode && typeof mode.onFeedbackRequestResult === 'function') {
+          mode.onFeedbackRequestResult({
+            id:item.id,
+            studentId:item.studentId || item.rosterSelectionId,
+            studentName:item.studentName,
+            studentDivision:item.studentDivision,
+            status:'clarification'
+          });
+        }
+        if (isKinderChatFeedbackLiveRequestDiscarded(item.id)) {
+          kcfLiveFeedbackItems.delete(item.id);
+          persistKinderChatFeedbackLiveSessionNow();
+          if (liveUi.row) liveUi.row.remove();
+          return;
+        }
+        if (liveUi.bubble) {
+          liveUi.bubble.textContent = finalText;
+          liveUi.bubble.setAttribute('aria-busy', 'false');
+        }
+        showKinderChatFeedbackLiveActions(item);
+        if (liveUi.area) liveUi.area.scrollTop = liveUi.area.scrollHeight;
+        try { showPushToast('올리가 추가 정보를 요청했어요. 피드백으로 저장하지 않았습니다.'); } catch (_) {}
+        return;
+      }
       item.suspiciousSegments = typeof getSuspiciousFeedbackSegments === 'function'
         ? getSuspiciousFeedbackSegments(finalText)
         : [];
