@@ -1301,7 +1301,13 @@ function syncKinderChatFeedbackLiveItemToInbox(item) {
   const index = safeList.findIndex(entry => entry && String(entry.id || '') === mirror.id);
   if (index >= 0) safeList[index] = { ...safeList[index], ...mirror };
   else safeList.unshift(mirror);
-  setTodayFeedbackItemsRaw(safeList);
+  try {
+    setTodayFeedbackItemsRaw(safeList);
+  } catch (error) {
+    // A full browser storage quota must not turn a completed AI response into a failure.
+    console.warn('[OLLI AI] feedback inbox local save failed:', error?.name || error, error?.message || '');
+    return false;
+  }
   try { updateKinderChatFeedbackBadge(); } catch(e) {}
   return true;
 }
