@@ -25,14 +25,14 @@ const FEEDBACK_GENERATION_PROMPT_TYPES = new Set([
 
 function resolveChatModel(promptType) {
   return FEEDBACK_GENERATION_PROMPT_TYPES.has(String(promptType || '').trim())
-    ? 'gpt-6-luna'
+    ? 'gpt-6.1-sol'
     : (process.env.OPENAI_MODEL || 'gpt-5-mini');
 }
 
 function resolveChatReasoningEffort(promptType) {
-  // Feedback generation may use a higher effort without changing Team Talk or voice cleanup.
+  // Feedback generation may use a separate effort without changing Team Talk or voice cleanup.
   return FEEDBACK_GENERATION_PROMPT_TYPES.has(String(promptType || '').trim())
-    ? 'high'
+    ? 'low'
     : 'medium';
 }
 
