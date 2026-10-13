@@ -1096,7 +1096,7 @@
       window.olliAttendancePaintDiagnostic?.onMotionTriggered();
       mainPage.classList.add(OPEN_CLASS);
       companion?.classList.add(OPEN_CLASS);
-      recordRoom.classList.add(REVEALED_CLASS);
+      // No changes to the prepared rear while the front is moving.
       void waitForTransition(mainPage, 'transform', null, 500).then(() => {
         if (drawerState !== openingState || navigationInFlight) return;
         if (!mainPage.classList.contains(OPEN_CLASS)) return;
