@@ -1030,13 +1030,15 @@
 
     hit.hidden = false;
     document.body.classList.add(DRAWER_OPEN_CLASS);
-    // Lock subsequent renders before the local-first preparation starts.
-    // An old academy/division roster still renders immediately via the reuse guard.
+    // Block redundant roster renders while the foreground slides away.
     drawerState.attendanceOpening = true;
     const slideLoadStart = slideDiag ? performance.now() : 0;
-    // The rear roster was already rendered. Keep UI state in sync but defer
-    // redundant local hydration until the existing post-slide refresh.
-    refreshRecordRoomSubpage({ localOnly: true, reuseRendered: true, deferLocalLoad: preparedRosterReady, deferSortPopup: true });
+    // A ready rear has already been rendered and visually verified.
+    // Do not call openRecordAttendanceDashboard (including header reset)
+    // until after the slide. Cold/stale rears keep the original local path.
+    if (!preparedRosterReady) {
+      refreshRecordRoomSubpage({ localOnly: true, reuseRendered: true, deferLocalLoad: false, deferSortPopup: true });
+    }
     if (slideDiag) slideDiag.localLoadMs = Math.round((performance.now() - slideLoadStart) * 10) / 10;
     const slideLayoutStart = slideDiag ? performance.now() : 0;
     // Cold opens still require an explicit 92% initial-state flush.
