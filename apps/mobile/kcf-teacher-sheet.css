@@ -22,7 +22,8 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   top:0;
   width:var(--kcf-teacher-vv-width, 100vw);
   height:var(--kcf-teacher-vv-height, 100vh);
-  z-index:9900;
+  /* Above the prepainted Attendance rear (119700) and QuickNote foreground (120500/120600). */
+  z-index:121000;
   display:flex;
   align-items:flex-end;
   justify-content:center;
@@ -203,7 +204,7 @@ body.kcfContinuousMode .kcfTeacherSheetCloseBtn {
 .kcfComposerModeBtn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:55px;height:33px;padding:0 9px;border:0;border-radius:11px;background:#fff;color:#535965;font:inherit;font-size:calc(13px * var(--olli-text-scale));font-weight:600;white-space:nowrap;position:relative;z-index:5;}
 .kcfModeChevron{flex:0 0 13px;width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;color:#777;}
 .kcfComposerModeMenu[hidden]{display:none;}
-.kcfComposerModeMenu{position:fixed;z-index:120800;min-width:116px;padding:4px;border:1px solid #e2e2e2;border-radius:12px;background:#fff;box-shadow:0 6px 20px rgba(0,0,0,.12);font-family:inherit;font-size:calc(13px * var(--olli-text-scale));color:#535965;}
+.kcfComposerModeMenu{position:fixed;z-index:121100;min-width:116px;padding:4px;border:1px solid #e2e2e2;border-radius:12px;background:#fff;box-shadow:0 6px 20px rgba(0,0,0,.12);font-family:inherit;font-size:calc(13px * var(--olli-text-scale));color:#535965;}
 .kcfComposerModeOption{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;height:32px;padding:0 9px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;font-weight:600;white-space:nowrap;touch-action:manipulation;}
 .kcfComposerModeOption[aria-checked="true"]{background:#f8f8f8;}
 .kcfModeSelectedMark{visibility:hidden;color:#0A84FF;}
