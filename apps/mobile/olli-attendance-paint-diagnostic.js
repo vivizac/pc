@@ -81,7 +81,7 @@
       }
       r.lastFrame = time;
       r.frameCount++;
-      const elapsed = time - r.t;
+      const elapsed = time - (r.slideT || r.t);
       if (elapsed >= 160 && !r.middleSnapshot) r.middleSnapshot = roomSnapshot(r.room);
       if (elapsed < SAMPLE_MS) requestAnimationFrame(sample);
     };
@@ -271,7 +271,12 @@
     if (!active) return;
     const r = active;
     r.phase = 'sliding';
+    r.slideT = now();
     timeline(r, 'foreground slide scheduled');
+    // If iOS never dispatches transitionend, still show the captured trace.
+    window.setTimeout(() => {
+      if (active === r && !r.finished) finish(r, 'transition-timeout');
+    }, 1400);
     const onStart = event => {
       if (event.target !== r.front || event.propertyName !== 'transform') return;
       if (r.transitionStartMs == null) r.transitionStartMs = since(r);
