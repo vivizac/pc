@@ -40,7 +40,7 @@ test('LIVE feedback edit uses a dedicated sheet with only cancel and done below 
   assert.doesNotMatch(adapter, /phoneKcfLiveEditSendBar/);
   assert.doesNotMatch(adapter, /phoneKcfLiveEditSendBtn/);
   assert.match(adapter, /submitPhoneKcfLiveEditSheet\(doneBtn\)/);
-  assert.match(phoneCss, /\.phoneKcfLiveEditOverlay \{[\s\S]*?z-index:10020;/);
+  assert.match(phoneCss, /\.phoneKcfLiveEditOverlay \{[\s\S]*?z-index:121010;/);
 });
 
 test('LIVE feedback edit focuses after the sheet becomes visible and puts the caret at the last character', () => {
@@ -61,7 +61,7 @@ test('submitted class record edit prepares data directly and opens its own sheet
   assert.doesNotMatch(installRecordBlock, /originalLiveEdit\.apply/);
   assert.doesNotMatch(installRecordBlock, /originalArchiveEdit\.apply/);
   assert.doesNotMatch(installRecordBlock, /restorePhoneKcfComposerAfterRecordEditSetup/);
-  assert.match(phoneCss, /\.phoneKcfRecordEditOverlay \{[\s\S]*?z-index:10030;/);
+  assert.match(phoneCss, /\.phoneKcfRecordEditOverlay \{[\s\S]*?z-index:121020;/);
 });
 
 test('dedicated edit overlays are sized and positioned from the actual visual viewport', () => {
@@ -183,8 +183,8 @@ test('write-command confirmation renders cancel and confirm buttons instead of r
 
 
 test('edit overlays are layered above the continuous composer and can receive focus immediately', () => {
-  assert.ok(phoneCss.includes('z-index:10020;'));
-  assert.ok(phoneCss.includes('z-index:10030;'));
+  assert.ok(phoneCss.includes('z-index:121010;'));
+  assert.ok(phoneCss.includes('z-index:121020;'));
   assert.ok(phoneCss.includes('transform:translate(-50%, 0);'));
   assert.ok(adapter.includes('closePhoneKcfUnderlyingSheetForEdit();'));
   assert.ok(adapter.includes('if (editing) cancelPhoneKcfRecordEditSheet();'));
