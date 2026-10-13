@@ -17,3 +17,15 @@ test('weekly schedule migration joins teacher id and name into regular and one-t
   assert.ok(sql.includes('from public.olli_schedule_one_time_sessions o'));
   assert.ok(sql.includes('left join public.olli_schedule_class_teachers ct'));
 });
+
+
+test('PC feedback homeroom is editable student profile data, not a timetable label', () => {
+  const card = fs.readFileSync('pc-student-info-card-runtime.js', 'utf8');
+  const ops = fs.readFileSync('olli-data-student-operations.js', 'utf8');
+  assert.match(card, /id="pcStudentInfoFeedbackTeacher"/);
+  assert.match(card, /피드백 담임/);
+  assert.match(card, /profile\.__olli_feedback_teacher_changed/);
+  assert.match(card, /studentInfoScheduleHtml\(student, student\.__olli_authoritative_enrollments\)/);
+  assert.match(ops, /payload\.feedback_teacher/);
+  assert.match(ops, /safeStudent\.__olli_feedback_teacher_changed/);
+});

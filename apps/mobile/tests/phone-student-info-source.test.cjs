@@ -77,10 +77,29 @@ test('student schedule UI stays bottom-sheet compatible and local-first', () => 
 test('changed student-info sources are cache-busted together', () => {
   const html = read('index.html');
   for (const token of [
-    'olli-student-schedule-runtime.js?v=20260915-single-source-1',
-    'olli-phone-student-schedule-editor.js?v=20260915-single-source-1',
-    'olli-phone-kinder-student-info-card.js?v=20260915-single-source-1',
-    'olli-phone-elementary-student-info-card.js?v=20260915-single-source-1',
-    'olli-record-sort-student-ui.js?v=20260915-single-source-1'
+    'olli-student-schedule-runtime.js?v=20261013-feedback-teacher-1',
+    'olli-phone-student-schedule-editor.js?v=20261013-feedback-teacher-1',
+    'olli-phone-kinder-student-info-card.js?v=20261013-feedback-teacher-1',
+    'olli-phone-elementary-student-info-card.js?v=20261013-feedback-teacher-1',
+    'olli-data-student-operations.js?v=20261013-feedback-teacher-1'
   ]) assert.ok(html.includes(token), `missing cache token: ${token}`);
+});
+
+
+test('mobile feedback homeroom reads the student profile and never overrides class teacher', () => {
+  const runtime = read('olli-student-schedule-runtime.js');
+  const operations = read('olli-data-student-operations.js');
+  for (const [file, id] of [
+    ['olli-phone-kinder-student-info-card.js', 'kinderInfoFeedbackTeacher'],
+    ['olli-phone-elementary-student-info-card.js', 'elementaryInfoFeedbackTeacher']
+  ]) {
+    const source = read(file);
+    assert.ok(source.includes(id));
+    assert.ok(source.includes('피드백 담임'));
+    assert.match(source, /profile\.__olli_feedback_teacher_changed/);
+  }
+  const contextBlock = block(runtime, 'async function fetchContext', 'function pendingKey');
+  assert.match(contextBlock, /olli_schedule_student_enrollments/);
+  assert.doesNotMatch(contextBlock, /olli_schedule_class_teacher_context/);
+  assert.match(operations, /payload\.feedback_teacher/);
 });

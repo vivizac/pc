@@ -6,7 +6,7 @@
   function installPcStudentInfoCardRuntime(){
     if (document.querySelector('script[data-olli-pc-student-info-card="1"]')) return;
     const script = document.createElement('script');
-    script.src = 'pc-student-info-card-runtime.js?v=20261012-inplace-refresh-3';
+    script.src = 'pc-student-info-card-runtime.js?v=20261013-feedback-teacher-1';
     script.dataset.olliPcStudentInfoCard = '1';
     document.head.appendChild(script);
   }
