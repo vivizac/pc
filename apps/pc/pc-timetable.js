@@ -1255,7 +1255,11 @@
       const dropoffMark = hasDropoff
         ? '<span class="olliTtPickupDropoffMark" aria-label="하원">하</span>'
         : '';
-      return `<div class="olliTtPickupCard" data-tt-pickup-manage="${esc(item.id)}" data-tt-pickup-date="${dateKey(date)}"><strong class="olliTtPickupStudentName"><span>${esc(item.student_name)}</span>${dropoffMark}</strong><span>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</span></div>`;
+      const onlyDropoff = item.is_dropoff === true;
+      const pickupPlace = onlyDropoff ? (clean(item.dropoff_label) || clean(item.pickup_label)) : clean(item.pickup_label);
+      const pickupTime = onlyDropoff ? pickupTimeLabel(item.dropoff_time) : pickupTimeLabel(item.pickup_time);
+      const pickupKind = onlyDropoff ? '하원 · ' : '';
+      return `<div class="olliTtPickupCard" data-tt-pickup-manage="${esc(item.id)}" data-tt-pickup-date="${dateKey(date)}"><strong class="olliTtPickupStudentName"><span>${esc(item.student_name)}</span>${dropoffMark}</strong><span>${esc(pickupKind + pickupPlace)} ${esc(pickupTime)}</span></div>`;
     }).join('');
     return `<div class="olliTtPickupCell${holiday ? ' holiday' : ''}" data-tt-pickup-cell="1" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-class-time="${classTime}"${holiday ? ' data-holiday="1" aria-disabled="true"' : ''}><div class="olliTtPickupEntries">${cards}</div></div>`;
   }

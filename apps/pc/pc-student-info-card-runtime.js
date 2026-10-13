@@ -472,6 +472,8 @@
       #recordRoomScreen .pcStudentInfoPickupDay{font-size:12px;color:#25292e;font-weight:600;}
       #recordRoomScreen .pcStudentInfoPickupTime{font-size:12px;color:#25292e;font-weight:600;white-space:nowrap;}
       #recordRoomScreen .pcStudentInfoPickupPlace{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#606771;font-size:12px;}
+      #recordRoomScreen .pcStudentInfoPickupMain{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;white-space:normal;}
+      #recordRoomScreen .pcStudentInfoPickupDetail{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#606771;font-size:12px;}
       #recordRoomScreen .pcStudentInfoDateRow{display:grid;grid-template-columns:auto repeat(3,minmax(0,1fr));gap:9px;align-items:center;}
       #recordRoomScreen .pcStudentInfoDateLabel{padding:0 2px;color:#626972;font-size:12px;font-weight:720;white-space:nowrap;}
       #recordRoomScreen .pcStudentInfoUnitField{position:relative;display:block;height:40px;min-width:0;}
@@ -631,21 +633,31 @@
       || Number(a?.class_time) - Number(b?.class_time)
       || clean(a?.pickup_time).localeCompare(clean(b?.pickup_time))
     );
+    function formatPickupTime(value) {
+      const raw = clean(value);
+      const match = raw.match(/^(\d{1,2}):(\d{2})/);
+      return match ? `${Number(match[1]) > 12 ? Number(match[1]) - 12 : Number(match[1])}:${match[2]}` : raw;
+    }
     const items = sorted.map((row) => {
       const day = NUM_DAY[Number(row?.weekday)] || '';
       const classTime = Number(row?.class_time);
       const classLabel = Number.isFinite(classTime) && classTime > 0
         ? (Number.isInteger(classTime) ? classTime + '시' : Math.floor(classTime) + ':30') : '';
-      const place = clean(row?.pickup_label);
-      const raw = clean(row?.pickup_time);
-      const match = raw.match(/^(\d{1,2}):(\d{2})/);
-      const time = match
-        ? `${Number(match[1]) > 12 ? Number(match[1]) - 12 : Number(match[1])}:${match[2]}`
-        : raw;
+      const dropoffOnly = row?.is_dropoff === true;
+      const arrivalPlace = clean(row?.pickup_label);
+      const arrivalTime = formatPickupTime(row?.pickup_time);
+      const dropoffPlace = clean(row?.dropoff_label) || (dropoffOnly ? arrivalPlace : '');
+      const dropoffTime = formatPickupTime(row?.dropoff_time);
+      const hasArrival = !dropoffOnly && Boolean(arrivalPlace || arrivalTime);
+      const hasDropoff = Boolean(dropoffPlace);
+      const scopeText = clean(row?.pickup_scope) === 'daily' ? ' · 당일' : '';
+      const lines = [
+        hasArrival ? `<span class="pcStudentInfoPickupDetail">등원 · ${esc(arrivalPlace || '장소 미지정')}${arrivalTime ? ' · ' + esc(arrivalTime) : ''}</span>` : '',
+        hasDropoff ? `<span class="pcStudentInfoPickupDetail">하원 · ${esc(dropoffPlace)}${dropoffTime ? ' · ' + esc(dropoffTime) : ''}</span>` : ''
+      ].filter(Boolean).join('');
       return `<div class="pcStudentInfoScheduleItem pcStudentInfoPickupItem">
         <span class="pcStudentInfoPickupDay">${esc(day ? day + '요일' : '요일 미정')}</span>
-        <span class="pcStudentInfoScheduleMain">${classLabel ? `<span class="pcStudentInfoScheduleWhen">${esc(classLabel)}</span>` : ''}<span class="pcStudentInfoPickupPlace">${esc(place || '장소 미지정')}</span></span>
-        <span class="pcStudentInfoPickupTime">${esc(time)}</span>
+        <span class="pcStudentInfoScheduleMain pcStudentInfoPickupMain"><span class="pcStudentInfoScheduleWhen">${esc(classLabel + scopeText)}</span>${lines || '<span class="pcStudentInfoPickupDetail">등록 정보 없음</span>'}</span>
       </div>`;
     }).join('');
     return '<div class="pcStudentInfoScheduleHead"><div class="pcStudentInfoScheduleTitle">픽업정보</div></div>'
