@@ -29,3 +29,37 @@ test('PC feedback homeroom is editable student profile data, not a timetable lab
   assert.match(ops, /payload\.feedback_teacher/);
   assert.match(ops, /safeStudent\.__olli_feedback_teacher_changed/);
 });
+
+test('PC student info renders weekly pickups as individual weekday cards', () => {
+  const source = fs.readFileSync('pc-student-info-card-runtime.js', 'utf8');
+  const begin = source.indexOf('  function studentInfoPickupHtml(rows) {');
+  const end = source.indexOf('  function syncPcSchoolUnit(', begin);
+  assert.ok(begin >= 0 && end > begin);
+  const render = new Function('NUM_DAY', 'clean', 'esc', source.slice(begin, end) + '; return studentInfoPickupHtml;')(
+    { 1: '월', 3: '수' }, value => String(value ?? '').trim(), value => String(value ?? '')
+  );
+  const html = render([
+    { weekday: 3, class_time: 5, pickup_label: '정문', pickup_time: '16:50' },
+    { weekday: 1, class_time: 4, pickup_label: '도서관', pickup_time: '15:50' }
+  ]);
+  assert.equal((html.match(/pcStudentInfoPickupItem/g) || []).length, 2);
+  assert.ok(html.indexOf('월요일') < html.indexOf('수요일'));
+  assert.ok(html.includes('도서관'));
+  assert.ok(html.includes('정문'));
+  assert.match(render([]), /등록된 픽업이 없습니다/);
+  assert.match(source, /previousPickup !== nextPickup/);
+});
+
+test('PC student info suffixes are visual only and raw saved fields remain unchanged', () => {
+  const source = fs.readFileSync('pc-student-info-card-runtime.js', 'utf8');
+  for (const id of ['elementarySchoolInput', 'kinderKindergartenInput']) {
+    assert.ok(source.includes(id));
+  }
+  for (const suffix of ['초등학교', '유치원', '등록일 :', '>년</span>', '>월</span>', '>일</span>', '>살</span>']) {
+    assert.ok(source.includes(suffix), suffix);
+  }
+  assert.match(source, /school: clean\(document\.getElementById\('elementarySchoolInput'\)\?\.value\)/);
+  assert.match(source, /kindergarten: clean\(document\.getElementById\('kinderKindergartenInput'\)\?\.value\)/);
+  assert.match(source, /const age = clean\(document\.getElementById\('kinderAgeInput'\)\?\.value\)/);
+  assert.match(source, /const y = Number\(document\.getElementById\(\x60\$\{prefix\}YearInput\x60\)\?\.value/);
+});

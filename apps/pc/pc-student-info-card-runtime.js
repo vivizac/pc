@@ -468,6 +468,17 @@
       #recordRoomScreen .pcStudentInfoScheduleTeacher{min-width:0;overflow:hidden;text-overflow:ellipsis;color:#8b9198;font-size:10.5px;font-weight:650;}
       #recordRoomScreen .pcStudentInfoScheduleClassBadge{display:flex;align-items:center;justify-content:center;height:24px;padding:0 8px;border-radius:999px;background:#f1f2f4;color:#60666e;font-size:10px;font-weight:800;white-space:nowrap;}
       #recordRoomScreen .pcStudentInfoScheduleEmpty{display:flex;align-items:center;justify-content:center;min-height:48px;border:1px dashed #dadde1;border-radius:12px;background:#fff;color:#9aa0a7;font-size:11px;}
+      #recordRoomScreen .pcStudentInfoPickupItem{grid-template-columns:65px minmax(0,1fr) auto;}
+      #recordRoomScreen .pcStudentInfoPickupDay{font-size:12px;color:#25292e;font-weight:600;}
+      #recordRoomScreen .pcStudentInfoPickupTime{font-size:12px;color:#25292e;font-weight:600;white-space:nowrap;}
+      #recordRoomScreen .pcStudentInfoPickupPlace{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#606771;font-size:12px;}
+      #recordRoomScreen .pcStudentInfoDateRow{display:grid;grid-template-columns:auto repeat(3,minmax(0,1fr));gap:9px;align-items:center;}
+      #recordRoomScreen .pcStudentInfoDateLabel{padding:0 2px;color:#626972;font-size:12px;font-weight:720;white-space:nowrap;}
+      #recordRoomScreen .pcStudentInfoUnitField{position:relative;display:block;height:40px;min-width:0;}
+      #recordRoomScreen .pcStudentInfoUnitField .modalInput{padding-right:32px;}
+      #recordRoomScreen .pcStudentInfoUnitField.isSchool .modalInput{padding-right:78px;}
+      #recordRoomScreen .pcStudentInfoUnitSuffix{position:absolute;right:11px;top:0;height:40px;display:flex;align-items:center;white-space:nowrap;pointer-events:none;color:#77808a;font-size:12px;}
+      #recordRoomScreen .pcStudentInfoUnitSuffix[hidden]{display:none;}
       #recordRoomScreen .pcStudentInfoCard #elementaryGroupToggleRow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;width:100%;}
       #recordRoomScreen .pcStudentInfoFeedbackGroupTitle{margin:0 0 9px 2px;color:#626972;font-size:11px;font-weight:780;}
       #recordRoomScreen .pcStudentInfoGrid3 .infoPersonalityToggleRow .infoTeacherSelectBox{width:100%;height:40px;min-height:40px;margin:0;box-sizing:border-box;}
@@ -569,16 +580,18 @@
           <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="pcStudentInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정" value="${esc(student.feedback_teacher || '')}"></label></div>
         </div>
         <div class="pcStudentInfoGrid3">
-          <div class="pcStudentInfoField"><input class="modalInput" id="elementarySchoolInput" aria-label="학교" placeholder="학교"></div>
+          <div class="pcStudentInfoField pcStudentInfoUnitField isSchool"><input class="modalInput" id="elementarySchoolInput" aria-label="학교" placeholder="학교"><span class="pcStudentInfoUnitSuffix" data-school-suffix>초등학교</span></div>
           <div class="pcStudentInfoField"><input class="modalInput" id="elementaryGradeInput" aria-label="학년" placeholder="학년" inputmode="numeric" onfocus="focusElementaryGradeInput(this)" oninput="syncElementaryInfoAgeFromGrade()" onblur="blurElementaryInfoGradeInput()"></div>
           <div class="pcStudentInfoField"><input class="modalInput" id="elementaryAgeInput" aria-label="나이" placeholder="나이" readonly></div>
         </div>
-        <div class="pcStudentInfoGrid3">
-          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoYearInput" aria-label="등록 연도" placeholder="등록 연도" type="number" min="1900" max="2100"></div>
-          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoMonthInput" aria-label="등록 월" placeholder="등록 월" type="number" min="1" max="12"></div>
-          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoDayInput" aria-label="등록 일" placeholder="등록 일" type="number" min="1" max="31"></div>
+        <div class="pcStudentInfoDateRow">
+          <span class="pcStudentInfoDateLabel">등록일 :</span>
+          <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="elementaryInfoYearInput" aria-label="등록 연도" placeholder="연도" type="number" min="1900" max="2100"><span class="pcStudentInfoUnitSuffix">년</span></div>
+          <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="elementaryInfoMonthInput" aria-label="등록 월" placeholder="월" type="number" min="1" max="12"><span class="pcStudentInfoUnitSuffix">월</span></div>
+          <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="elementaryInfoDayInput" aria-label="등록 일" placeholder="일" type="number" min="1" max="31"><span class="pcStudentInfoUnitSuffix">일</span></div>
         </div>
         <div class="pcStudentInfoSchedule" aria-label="수업시간 조회">${studentInfoScheduleHtml(student, student.__olli_authoritative_enrollments)}</div>
+        <div class="pcStudentInfoSchedule" aria-label="픽업정보">${studentInfoPickupHtml(student.__olli_authoritative_pickups)}</div>
         <div class="pcStudentInfoField"><div class="pcStudentInfoFeedbackGroupTitle">피드백 그룹</div><div id="elementaryGroupToggleRow" class="infoToggleRow">${renderGroupButtons()}</div></div>
         <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeOlliPcStudentInfoCard()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="pcStudentInfoSaveBtn" onclick="saveOlliPcStudentInfoCard()">저장</button></div>
       </div>
@@ -609,21 +622,40 @@
       + '<div class="pcStudentInfoScheduleList">' + items + '</div>';
   }
 
-  function pickupSummary(rows) {
-    return (Array.isArray(rows) ? rows : []).map((row) => {
-      const day = NUM_DAY[Number(row && row.weekday)] || '';
-      const label = clean(row && row.pickup_label);
-      const raw = clean(row && row.pickup_time);
+  function studentInfoPickupHtml(rows) {
+    const sorted = (Array.isArray(rows) ? rows : []).slice().sort((a, b) =>
+      Number(a?.weekday) - Number(b?.weekday)
+      || Number(a?.class_time) - Number(b?.class_time)
+      || clean(a?.pickup_time).localeCompare(clean(b?.pickup_time))
+    );
+    const items = sorted.map((row) => {
+      const day = NUM_DAY[Number(row?.weekday)] || '';
+      const classTime = Number(row?.class_time);
+      const classLabel = Number.isFinite(classTime) && classTime > 0
+        ? (Number.isInteger(classTime) ? classTime + '시' : Math.floor(classTime) + ':30') : '';
+      const place = clean(row?.pickup_label);
+      const raw = clean(row?.pickup_time);
       const match = raw.match(/^(\d{1,2}):(\d{2})/);
-      let time = raw;
-      if (match) {
-        const hour24 = Number(match[1]);
-        const hour12 = hour24 > 12 ? hour24 - 12 : hour24;
-        time = `${hour12}:${match[2]}`;
-      }
-      const classTime = Number(row && row.class_time);
-      return [day && `${day}요일`, classTime ? `${classTime}시` : '', label, time].filter(Boolean).join(' · ');
-    }).filter(Boolean).join(' / ');
+      const time = match
+        ? `${Number(match[1]) > 12 ? Number(match[1]) - 12 : Number(match[1])}:${match[2]}`
+        : raw;
+      return `<div class="pcStudentInfoScheduleItem pcStudentInfoPickupItem">
+        <span class="pcStudentInfoPickupDay">${esc(day ? day + '요일' : '요일 미정')}</span>
+        <span class="pcStudentInfoScheduleMain">${classLabel ? `<span class="pcStudentInfoScheduleWhen">${esc(classLabel)}</span>` : ''}<span class="pcStudentInfoPickupPlace">${esc(place || '장소 미지정')}</span></span>
+        <span class="pcStudentInfoPickupTime">${esc(time)}</span>
+      </div>`;
+    }).join('');
+    return '<div class="pcStudentInfoScheduleHead"><div class="pcStudentInfoScheduleTitle">픽업정보</div></div>'
+      + '<div class="pcStudentInfoScheduleList">'
+      + (items || '<div class="pcStudentInfoScheduleEmpty">등록된 픽업이 없습니다.</div>') + '</div>';
+  }
+
+  function syncPcSchoolUnit(inputId) {
+    const input = document.getElementById(inputId);
+    const suffix = input?.parentElement?.querySelector('[data-school-suffix]');
+    if (!suffix) return;
+    const fullUnit = clean(suffix.textContent).replace(/\s+/g, '');
+    suffix.hidden = !!fullUnit && clean(input.value).replace(/\s+/g, '').endsWith(fullUnit);
   }
 
   function kinderCardHtml(student) {
@@ -636,17 +668,18 @@
           <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="pcStudentInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정" value="${esc(student.feedback_teacher || '')}"></label></div>
         </div>
         <div class="pcStudentInfoGrid2">
-          <div class="pcStudentInfoField"><input class="modalInput" id="kinderKindergartenInput" aria-label="유치원" placeholder="유치원"></div>
-          <div class="pcStudentInfoField"><input class="modalInput" id="kinderAgeInput" aria-label="나이" placeholder="나이" type="number" min="1" max="8"></div>
+          <div class="pcStudentInfoField pcStudentInfoUnitField isSchool"><input class="modalInput" id="kinderKindergartenInput" aria-label="유치원" placeholder="유치원"><span class="pcStudentInfoUnitSuffix" data-school-suffix>유치원</span></div>
+          <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="kinderAgeInput" aria-label="나이" placeholder="나이" type="number" min="1" max="8"><span class="pcStudentInfoUnitSuffix">살</span></div>
         </div>
-        <div class="pcStudentInfoGrid3">
-          <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoYearInput" aria-label="등록 연도" placeholder="등록 연도" type="number" min="1900" max="2100"></div>
-          <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoMonthInput" aria-label="등록 월" placeholder="등록 월" type="number" min="1" max="12"></div>
-          <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoDayInput" aria-label="등록 일" placeholder="등록 일" type="number" min="1" max="31"></div>
+        <div class="pcStudentInfoDateRow">
+          <span class="pcStudentInfoDateLabel">등록일 :</span>
+          <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="kinderInfoYearInput" aria-label="등록 연도" placeholder="연도" type="number" min="1900" max="2100"><span class="pcStudentInfoUnitSuffix">년</span></div>
+          <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="kinderInfoMonthInput" aria-label="등록 월" placeholder="월" type="number" min="1" max="12"><span class="pcStudentInfoUnitSuffix">월</span></div>
+          <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="kinderInfoDayInput" aria-label="등록 일" placeholder="일" type="number" min="1" max="31"><span class="pcStudentInfoUnitSuffix">일</span></div>
         </div>
         <input id="kinderLessonDayInput" type="hidden">
         <div class="pcStudentInfoSchedule" aria-label="수업시간 조회">${studentInfoScheduleHtml(student, student.__olli_authoritative_enrollments)}</div>
-        <div class="pcStudentInfoField"><div id="kinderInfoPickupReadonly" class="pcStudentInfoTeacherReadonly isEmpty">등록된 픽업 없음</div></div>
+        <div class="pcStudentInfoSchedule" aria-label="픽업정보">${studentInfoPickupHtml(student.__olli_authoritative_pickups)}</div>
         <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeOlliPcStudentInfoCard()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="pcStudentInfoSaveBtn" onclick="saveOlliPcStudentInfoCard()">저장</button></div>
       </div>
     </div></div>`;
@@ -703,6 +736,7 @@
       const age = document.getElementById('elementaryAgeInput');
       if (name) name.value = authoritativeStudent.name || '';
       if (school) school.value = authoritativeStudent.school || '';
+      syncPcSchoolUnit('elementarySchoolInput');
       if (grade) grade.value = typeof global.formatElementaryGradeInputValue === 'function' ? global.formatElementaryGradeInputValue(authoritativeStudent.grade) : (authoritativeStudent.grade || '');
       if (age) age.value = typeof global.formatElementaryAgeInputValue === 'function'
         ? global.formatElementaryAgeInputValue((typeof global.getElementaryAgeFromGrade === 'function' ? global.getElementaryAgeFromGrade(authoritativeStudent.grade) : '') || authoritativeStudent.age || '')
@@ -718,15 +752,10 @@
       const hiddenDay = document.getElementById('kinderLessonDayInput');
       if (name) name.value = authoritativeStudent.name || '';
       if (kindergarten) kindergarten.value = authoritativeStudent.kindergarten || '';
+      syncPcSchoolUnit('kinderKindergartenInput');
       if (age) age.value = authoritativeStudent.age || '';
       if (hiddenDay) hiddenDay.value = fields.lesson_day;
       setDateInputs('kinderInfo', authoritativeStudent);
-      const pickupEl = document.getElementById('kinderInfoPickupReadonly');
-      if (pickupEl) {
-        const text = pickupSummary(pickups);
-        pickupEl.textContent = text || '등록된 픽업 없음';
-        pickupEl.classList.toggle('isEmpty', !text);
-      }
       if (typeof global.olliPrepareInfoExtra === 'function') global.olliPrepareInfoExtra('kinder', authoritativeStudent);
     }
     cardState.dirty = false;
@@ -754,6 +783,7 @@
     const previous = cardState.student || student;
     const previousEnrollments = cardState.enrollments;
     const previousSchedule = studentInfoScheduleHtml(previous, previousEnrollments);
+    const previousPickup = studentInfoPickupHtml(cardState.pickups);
     const fields = lessonFieldsFromEnrollments(enrollments);
     const timetableTeacher = resolveTimetableTeacherName(division, enrollments, teacherAssignments);
     const editing = cardState.dirty || cardState.saveInFlight;
@@ -774,6 +804,7 @@
       if (division === 'elementary') {
         syncStudentInfoInputValue('elementaryInfoNameInput', updatedStudent.name);
         syncStudentInfoInputValue('elementarySchoolInput', updatedStudent.school);
+        syncPcSchoolUnit('elementarySchoolInput');
         syncStudentInfoInputValue('elementaryGradeInput', typeof global.formatElementaryGradeInputValue === 'function'
           ? global.formatElementaryGradeInputValue(updatedStudent.grade) : updatedStudent.grade);
         syncStudentInfoInputValue('elementaryAgeInput', typeof global.formatElementaryAgeInputValue === 'function'
@@ -789,6 +820,7 @@
       } else {
         syncStudentInfoInputValue('kinderInfoNameInput', updatedStudent.name);
         syncStudentInfoInputValue('kinderKindergartenInput', updatedStudent.kindergarten);
+        syncPcSchoolUnit('kinderKindergartenInput');
         syncStudentInfoInputValue('kinderAgeInput', updatedStudent.age);
         syncStudentInfoInputValue('kinderLessonDayInput', fields.lesson_day);
         syncStudentInfoDateValues('kinderInfo', updatedStudent);
@@ -802,15 +834,9 @@
     const scheduleBox = card.querySelector('.pcStudentInfoSchedule');
     const nextSchedule = studentInfoScheduleHtml(updatedStudent, enrollments);
     if (scheduleBox && previousSchedule !== nextSchedule) scheduleBox.innerHTML = nextSchedule;
-    if (division === 'kinder') {
-      const pickupBox = card.querySelector('#kinderInfoPickupReadonly');
-      const pickupText = pickupSummary(pickups);
-      if (pickupBox) {
-        const nextText = pickupText || '등록된 픽업 없음';
-        if (pickupBox.textContent !== nextText) pickupBox.textContent = nextText;
-        pickupBox.classList.toggle('isEmpty', !pickupText);
-      }
-    }
+    const pickupBox = card.querySelector('[aria-label="픽업정보"]');
+    const nextPickup = studentInfoPickupHtml(pickups);
+    if (pickupBox && previousPickup !== nextPickup) pickupBox.innerHTML = nextPickup;
     return true;
   }
   async function openStudentInfoCard(studentId) {
@@ -1077,6 +1103,11 @@
     installStyles();
     installAuthoritativeScheduleEditor();
     bindStudentInfoDirtyTracking();
+    document.addEventListener('input', (event) => {
+      if (event.target?.id === 'elementarySchoolInput' || event.target?.id === 'kinderKindergartenInput') {
+        syncPcSchoolUnit(event.target.id);
+      }
+    }, true);
     if (!installStudentInfoRealtimeWatcher()) {
       global.addEventListener('olli:realtime-status', installStudentInfoRealtimeWatcher, { once: true });
       setTimeout(installStudentInfoRealtimeWatcher, 1000);
