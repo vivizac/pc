@@ -63,3 +63,23 @@ test('privacy stream rewriter keeps Unicode code points intact across carry boun
   assert.match(rewriter, /codePoints\.slice\(cut\)\.join\(''\)/);
   assert.doesNotMatch(rewriter, /combined\.slice\(0, cut\)/);
 });
+
+
+test('only feedback-generation requests use GPT-6 Luna medium', () => {
+  const vm = require('node:vm');
+  const start = chat.indexOf('const FEEDBACK_GENERATION_PROMPT_TYPES');
+  const end = chat.indexOf('function getServerKey()', start);
+  assert.ok(start >= 0 && end > start);
+  const resolve = vm.runInNewContext(chat.slice(start, end) + '\nresolveChatModel', {
+    process: { env: { OPENAI_MODEL: 'gpt-5-mini' } },
+  });
+  for (const type of ['class', 'fail', 'elementary', 'summary', 'kinder_one_month']) {
+    assert.equal(resolve(type), 'gpt-6-luna');
+  }
+  for (const type of ['talk', 'memo_voice_cleanup']) {
+    assert.equal(resolve(type), 'gpt-5-mini');
+  }
+  assert.match(chat, /model: resolveChatModel\(telemetry\.promptType\)/);
+  assert.match(chat, /const model = resolveChatModel\(promptType\);/);
+  assert.match(chat, /reasoning: \{\s*effort: 'medium'/);
+});

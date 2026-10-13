@@ -14,6 +14,21 @@ const ALLOWED_PROMPT_TYPES = new Set([
 ]);
 const AI_USAGE_LOG_URL = `${SUPABASE_URL}/rest/v1/olli_ai_usage_logs`;
 
+// Keep feedback-generation model independent from Team Talk and voice cleanup.
+const FEEDBACK_GENERATION_PROMPT_TYPES = new Set([
+  'class',
+  'fail',
+  'elementary',
+  'summary',
+  'kinder_one_month',
+]);
+
+function resolveChatModel(promptType) {
+  return FEEDBACK_GENERATION_PROMPT_TYPES.has(String(promptType || '').trim())
+    ? 'gpt-6-luna'
+    : (process.env.OPENAI_MODEL || 'gpt-5-mini');
+}
+
 function getServerKey() {
   return (
     process.env.SUPABASE_SECRET_KEY ||
@@ -500,7 +515,7 @@ export default async function handler(req, res) {
     usageLogged = true;
     await writeUsageLog({
       ...telemetry,
-      model: process.env.OPENAI_MODEL || 'gpt-5-mini',
+      model: resolveChatModel(telemetry.promptType),
       latencyMs: Date.now() - startedAt,
       ...result,
     });
@@ -566,7 +581,7 @@ export default async function handler(req, res) {
       throw error;
     }
 
-    const model = process.env.OPENAI_MODEL || 'gpt-5-mini';
+    const model = resolveChatModel(promptType);
     const isWarmup = warmup === true;
     const explicitPromptCache = supportsExplicitPromptCache(model);
     let privacyPrepared = null;
