@@ -634,6 +634,9 @@
     recordRoom.style.zIndex = '119700';
     recordRoom.style.pointerEvents = 'auto';
     recordRoom.setAttribute('aria-hidden', 'false');
+    // An early page switch can interrupt the opening animation. Promote
+    // before exposing Attendance as an independently navigable page.
+    recordRoom.classList.remove(PREPARED_REAR_CLASS);
     recordRoom.classList.toggle('olliMainDrawerSubpage', !fullWidth);
   }
 
@@ -768,7 +771,7 @@
         targetCompanion.style.pointerEvents = '';
       }
 
-      state.recordRoom.classList.remove('olliMainDrawerSubpage', REVEALED_CLASS, RETURNING_CLASS, 'vivizac-slide-under-fade');
+      state.recordRoom.classList.remove('olliMainDrawerSubpage', PREPARED_REAR_CLASS, REVEALED_CLASS, RETURNING_CLASS, 'vivizac-slide-under-fade');
       state.recordRoom.style.zIndex = state.recordSaved.zIndex;
       state.recordRoom.style.pointerEvents = state.recordSaved.pointerEvents;
       state.recordRoom.style.display = state.recordSaved.display;
@@ -887,7 +890,7 @@
     restoreInlineState(state.companion, state.companionSaved);
 
     if (state.recordRoom) {
-      state.recordRoom.classList.remove('olliMainDrawerSubpage', REVEALED_CLASS, RETURNING_CLASS, 'vivizac-slide-under-fade');
+      state.recordRoom.classList.remove('olliMainDrawerSubpage', PREPARED_REAR_CLASS, REVEALED_CLASS, RETURNING_CLASS, 'vivizac-slide-under-fade');
       restoreInlineState(state.recordRoom, state.recordSaved);
     }
 
@@ -1011,10 +1014,9 @@
     // Prepared rear has already painted at 92%; do not invalidate that
     // transform layer or re-snapshot the same starting scale on a warm open.
     if (!preparedRosterReady) recordRoom.style.transition = 'none';
-    // Apply the drawer role before removing the prepainted rear role so
-    // the same transform/background/compositing surface stays continuous.
-    recordRoom.classList.add('olliMainDrawerSubpage');
-    if (preparedRosterReady) recordRoom.classList.remove(PREPARED_REAR_CLASS);
+    // Leave the prepared rear's visual CSS role unchanged while the
+    // foreground moves. Cold opens still need the drawer class immediately.
+    if (!preparedRosterReady) recordRoom.classList.add('olliMainDrawerSubpage');
 
     if (!preparedRosterReady) mainPage.style.zIndex = '120500';
     mainPage.style.pointerEvents = 'none';
@@ -1062,6 +1064,12 @@
       void waitForTransition(mainPage, 'transform', null, 400).then(() => {
         if (drawerState !== openingState || navigationInFlight) return;
         if (!mainPage.classList.contains(OPEN_CLASS)) return;
+        if (preparedRosterReady) {
+          // The background remains at scale(1) throughout this experiment.
+          // Promote the reused screen only after foreground motion finishes.
+          recordRoom.classList.add('olliMainDrawerSubpage');
+          recordRoom.classList.remove(PREPARED_REAR_CLASS);
+        }
         openingState.attendanceOpening = false;
         flushDeferredAttendanceRender();
         // Rebuild the hidden sort popup only after foreground motion completes.
@@ -1105,7 +1113,7 @@
 
       const recordRoom = document.getElementById('recordRoomScreen');
       if (recordRoom) {
-        recordRoom.classList.remove('olliMainDrawerSubpage');
+        recordRoom.classList.remove('olliMainDrawerSubpage', PREPARED_REAR_CLASS);
         recordRoom.style.zIndex = '';
         recordRoom.style.pointerEvents = '';
       }
