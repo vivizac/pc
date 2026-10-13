@@ -147,6 +147,24 @@ body.kcfDedicatedEditViewportLocked {
   overscroll-behavior:none;
 }
 
+/* The dedicated editors also need a separate white background continuation
+   below visualViewport. Keep it underneath the edit sheets and transparent
+   to taps, so input/cancel/send behavior is unchanged. */
+.phoneKcfEditBottomFill {
+  position:fixed;
+  left:0;
+  right:0;
+  top:100vh;
+  bottom:0;
+  z-index:121005;
+  background:#fff;
+  visibility:hidden;
+  pointer-events:none;
+}
+body.kcfDedicatedEditSheetOpen .phoneKcfEditBottomFill {
+  visibility:visible;
+}
+
 /* 두 수정 시트는 layout viewport가 아니라 현재 실제로 보이는 visualViewport 사각형에 맞춘다. */
 .phoneKcfLiveEditOverlay,
 .phoneKcfRecordEditOverlay {
