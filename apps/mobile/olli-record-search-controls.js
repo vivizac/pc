@@ -90,12 +90,27 @@ function finishRecordSearchListReturn() {
 function prepareRecordSearchForDrawer() {
   const screen = getRecordSearchScreen();
   if (!screen) return;
-  // Keep a saved query, but release keyboard-only state before opening the drawer.
-  cancelRecordSearchListReturn();
-  screen.classList.remove('record-keyboard-open', 'record-keyboard-closing');
-  document.documentElement.style.setProperty('--record-keyboard-offset', '0px');
-  window.__olliRecordSearchViewportBottomBaseline = 0;
-  window.__olliRecordKeyboardLastOffset = 0;
+  // Normal attendance search state needs no reset on a drawer tap.
+  // In particular, avoid writing an unchanged root CSS variable and touching
+  // the prepainted attendance layer before the foreground begins moving.
+  const hasKeyboardClasses = screen.classList.contains('record-keyboard-open')
+    || screen.classList.contains('record-keyboard-closing');
+  const hasListRestore = !!recordSearchListReturnTimer || !!recordSearchListReturnFallback
+    || screen.classList.contains('record-search-list-restoring');
+  const rootStyle = document.documentElement.style;
+  const currentOffset = rootStyle.getPropertyValue('--record-keyboard-offset').trim();
+  const needsOffsetReset = !!currentOffset && currentOffset !== '0px';
+  const needsBaselineReset = !!Number(window.__olliRecordSearchViewportBottomBaseline || 0);
+  const needsLastOffsetReset = !!Number(window.__olliRecordKeyboardLastOffset || 0);
+  if (!hasKeyboardClasses && !hasListRestore && !needsOffsetReset
+      && !needsBaselineReset && !needsLastOffsetReset) return;
+
+  // Preserve the previous keyboard/search recovery only when it is active.
+  if (hasListRestore) cancelRecordSearchListReturn();
+  if (hasKeyboardClasses) screen.classList.remove('record-keyboard-open', 'record-keyboard-closing');
+  if (needsOffsetReset) rootStyle.setProperty('--record-keyboard-offset', '0px');
+  if (needsBaselineReset) window.__olliRecordSearchViewportBottomBaseline = 0;
+  if (needsLastOffsetReset) window.__olliRecordKeyboardLastOffset = 0;
 }
 function scheduleRecordSearchListReturn() {
   const screen = getRecordSearchScreen();
