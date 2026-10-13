@@ -2338,3 +2338,31 @@ body:not(.kcfContinuousMode) #kinderChatFeedbackScreen.kcfInlineDialogueActive .
   opacity:1;
   transform:translate(-50%, 0);
 }
+
+/* Temporary, read-only feedback storage inspection from the installed iOS web app.
+   Keep the existing QuickNote header alignment and input layout unchanged. */
+#kcfPersistentTopLayer .kcfStorageDiagnosticBtn {
+  display:none;
+  position:fixed;
+  top:calc(var(--olli-phone-guide-top) + 48px);
+  left:var(--olli-phone-guide-x);
+  z-index:5000;
+  width:auto;
+  height:28px;
+  padding:0 9px;
+  background:rgba(247,248,249,.96);
+  border:1px solid rgba(0,0,0,.07);
+  border-radius:999px;
+  font-size:11px;
+  font-weight:450;
+  line-height:1;
+  color:#555;
+  pointer-events:auto;
+  white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
+}
+html.olli-installed-web-app #kcfPersistentTopLayer.show .kcfStorageDiagnosticBtn {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
