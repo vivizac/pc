@@ -176,11 +176,11 @@ body.kcfDedicatedEditViewportLocked {
   transition:opacity .2s ease;
 }
 .phoneKcfLiveEditOverlay {
-  /* Above the original continuous-record teacher sheet (z-index:9900). */
-  z-index:10020;
+  /* Above both the prepainted QuickNote foreground and continuous teacher sheet. */
+  z-index:121010;
 }
-.phoneKcfRecordEditOverlay {
-  z-index:10030;
+ .phoneKcfRecordEditOverlay {
+  z-index:121020;
 }
 .phoneKcfLiveEditOverlay.show,
 .phoneKcfRecordEditOverlay.show {

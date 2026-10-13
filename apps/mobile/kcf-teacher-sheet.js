@@ -454,6 +454,12 @@
     if (state.inlineOpen && state.composerMode === 'continuous') {
       closeInline({ skipBlur:true });
       open(event);
+    } else if (!state.inlineOpen && !state.open && state.composerMode === 'continuous') {
+      // Selecting continuous recording from the idle composer is also a user gesture.
+      // Activate the roster before opening the detached sheet and iOS keyboard.
+      var teacherMode = global.KcfTeacherMode || global.KcfAutoMode;
+      teacherMode?.activateForComposer?.(event);
+      open(event);
     } else if (state.open && state.composerMode === 'dialogue') {
       close({ sync:true });
       openInline(event);
@@ -917,6 +923,13 @@
     document.addEventListener('pointerdown', function(event){
       if (!event.target?.closest?.('#kcfComposerModeMenu, #kcfModeSwitchBtn')) closeModeMenu();
     });
+    // Detached sheets are children of document.body, not the QuickNote screen.
+    // Close them while leaving QuickNote so Work Hub never exposes a stale modal.
+    document.addEventListener('click', function(event){
+      if (!state.open && !state.inlineOpen) return;
+      if (!event.target?.closest?.('.kcfTopWorkBtn, .observationTopWorkBtn, #olliTalkArchiveBtn')) return;
+      close({ sync:true });
+    }, true);
     document.addEventListener('keydown', function(event){
       if (event.key === 'Escape') closeModeMenu();
     });
