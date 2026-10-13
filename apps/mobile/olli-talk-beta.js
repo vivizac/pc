@@ -8537,6 +8537,10 @@
 
     const sourceScreen = Array.from(document.querySelectorAll('.pageScreen')).find((candidate) => {
       if (!candidate || candidate.id === 'olliTalkBetaScreen') return false;
+      // Prepainted attendance is an inert rear layer, not the page the user
+      // came from. Its display:flex otherwise wins because it is first in DOM.
+      if (candidate.id === 'recordRoomScreen'
+          && (candidate.classList.contains('olliAttendanceRearPrepared') || candidate.hasAttribute('inert'))) return false;
       try { return getComputedStyle(candidate).display !== 'none'; }
       catch (_) { return candidate.style.display !== 'none'; }
     });
