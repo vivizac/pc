@@ -8,9 +8,9 @@ const css = fs.readFileSync(path.join(root, 'olli-phone-base.css'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 function ancestorsOf(markup, targetId) {
-  const cleaned = markup.replace(/<script\\b[^>]*>[\\s\\S]*?<\\/script>/gi, '')
-    .replace(/<!--[\\s\\S]*?-->/g, '');
-  const tags = /<\\/?([a-z][\\w:-]*)\\b[^>]*>/gi;
+  const cleaned = markup.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '');
+  const tags = /<\/?([a-z][\w:-]*)\b[^>]*>/gi;
   const voidTags = new Set(['meta','link','input','img','br','hr','source','area','base','wbr','embed','param']);
   const stack = [];
   let match;
@@ -22,20 +22,20 @@ function ancestorsOf(markup, targetId) {
       if (i >= 0) stack.length = i;
       continue;
     }
-    const id = full.match(/\\bid=["']([^"']+)["']/i)?.[1];
+    const id = full.match(/\bid=["']([^"']+)["']/i)?.[1];
     if (id === targetId) return stack.filter(x => x.id).map(x => x.id);
     if (!voidTags.has(tag) && !full.endsWith('/>')) stack.push({tag, id});
   }
   return null;
 }
 
-test('observation feedback archive has viewport-level parent rather than transformed memo page', () => {
+test('observation feedback archive is outside the transformed memo page', () => {
   const ancestors = ancestorsOf(html, 'elementaryRecordsDropup');
   assert.ok(ancestors && !ancestors.includes('studentMemoScreen'));
   assert.equal(html.split('id="elementaryRecordsDropup"').length - 1, 1);
 });
 
-test('top-level modal/dialog layers are above prepainted rear and foreground', () => {
+test('global popups have a viewport overlay layer above the prepainted rear', () => {
   const section = css.slice(css.indexOf('/* Mobile modal ownership: attendance is prepainted'));
   assert.ok(section.includes('z-index: 180000'));
   for (const selector of [
@@ -48,7 +48,7 @@ test('top-level modal/dialog layers are above prepainted rear and foreground', (
   ]) assert.ok(section.includes(selector), selector + ' lacks overlay stacking');
 });
 
-test('Work Hub active layer is above a prepainted attendance rear', () => {
-  assert.match(css, /body > #olliTalkArchiveScreen\\[aria-hidden="false"\\]\\s*\\{\\s*z-index:\\s*130200;/);
-  assert.match(html, /olli-phone-base\\.css\\?v=20261013-popup-layer-ownership-1/);
+test('Work Hub renders above prepared attendance when it is the active route', () => {
+  assert.match(css, /body > #olliTalkArchiveScreen\[aria-hidden="false"\]\s*\{\s*z-index:\s*130200;/);
+  assert.match(html, /olli-phone-base\.css\?v=20261013-popup-layer-ownership-1/);
 });
