@@ -4215,12 +4215,12 @@ border-color: #F0F0F0;
     -4px 0 14px rgba(0,0,0,.055);
 }
 .olliMainDrawerMainPage.is-olli-main-drawer-open::after {
-  /* Hide at the same instant the slide opens, without a delayed fade. */
-  opacity:0;
+  /* Show immediately when opening the attendance drawer. */
+  opacity:1;
 }
 .olliMainDrawerMainPage.is-olli-main-drawer-returning::after {
-  /* Apply at the instant the return slide starts. */
-  opacity:1;
+  /* Hide immediately when closing starts, not after it finishes. */
+  opacity:0;
 }
 .olliMainDrawerCompanion.is-olli-main-drawer-open {
   transform:translate3d(75%,0,0) !important;
