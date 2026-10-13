@@ -289,6 +289,56 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 
 
+/* Feedback local-storage diagnostics: metadata only, never student or feedback content.
+   Keep a bounded in-memory/session log even when localStorage itself cannot be written. */
+const OLLI_FEEDBACK_STORAGE_CHECKS_KEY = 'olli_feedback_storage_checks_v1';
+const OLLI_FEEDBACK_STORAGE_CHECKS_LIMIT = 40;
+let olliFeedbackStorageChecks = [];
+try {
+  const previous = JSON.parse(sessionStorage.getItem(OLLI_FEEDBACK_STORAGE_CHECKS_KEY) || '[]');
+  if (Array.isArray(previous)) olliFeedbackStorageChecks = previous.slice(-OLLI_FEEDBACK_STORAGE_CHECKS_LIMIT);
+} catch (_) {}
+
+function getOlliFeedbackStorageErrorReason(error, phase) {
+  const name = String(error?.name || '');
+  if (name === 'QuotaExceededError' || error?.code === 22 || error?.code === 1014) return 'quota_exceeded';
+  if (name === 'SecurityError') return 'storage_access_blocked';
+  if (name === 'FeedbackStorageReadbackMismatch') return 'readback_mismatch';
+  if (name === 'SyntaxError') return 'invalid_json';
+  if (phase === 'prepare' || phase === 'serialize') return 'serialization_failed';
+  return 'storage_exception';
+}
+function recordOlliFeedbackStorageCheck(kind, operation, result, details = {}) {
+  try {
+    const entry = {
+      at:new Date().toISOString(),
+      kind:String(kind),
+      operation:String(operation),
+      result:String(result),
+      phase:String(details.phase || ''),
+      reason:String(details.reason || ''),
+      errorName:String(details.error?.name || ''),
+      count:Number.isFinite(details.count) ? details.count : null,
+      scope:details.scope === 'unscoped' ? 'unscoped' : 'academy'
+    };
+    const previous = olliFeedbackStorageChecks[olliFeedbackStorageChecks.length - 1];
+    if (previous && previous.kind === entry.kind && previous.operation === entry.operation
+      && previous.result === entry.result && previous.phase === entry.phase
+      && previous.reason === entry.reason && previous.scope === entry.scope
+      && Date.parse(entry.at) - Date.parse(previous.at) < 1500) return;
+    olliFeedbackStorageChecks.push(entry);
+    if (olliFeedbackStorageChecks.length > OLLI_FEEDBACK_STORAGE_CHECKS_LIMIT) {
+      olliFeedbackStorageChecks.splice(0, olliFeedbackStorageChecks.length - OLLI_FEEDBACK_STORAGE_CHECKS_LIMIT);
+    }
+    if (result === 'failed' || result === 'skipped') console.warn('[OLLI feedback storage]', entry);
+    try {
+      sessionStorage.setItem(OLLI_FEEDBACK_STORAGE_CHECKS_KEY, JSON.stringify(olliFeedbackStorageChecks));
+    } catch (_) { /* sessionStorage can also be unavailable; retain memory and console */ }
+  } catch (_) { /* diagnostics must never interfere with feedback */ }
+}
+window.getOlliFeedbackStorageChecks = () => olliFeedbackStorageChecks.map(entry => ({ ...entry }));
+window.recordOlliFeedbackStorageCheck = recordOlliFeedbackStorageCheck;
+
 /* ── 내부 피드백 작업 보관함: 화면용 '오늘 피드백' 기능은 사용하지 않음 ── */
 const FEEDBACK_JOB_QUEUE_KEY = 'olli_feedback_jobs_v2';
 const TODAY_FEEDBACK_QUEUE_KEY = FEEDBACK_JOB_QUEUE_KEY;
@@ -307,17 +357,55 @@ function getTodayFeedbackDateKey(dateValue) {
   return `${y}-${m}-${day}`;
 }
 function getTodayFeedbackItemsRaw() {
+  let phase = 'read';
+  const scope = getFeedbackJobQueueStorageKey().endsWith('_unscoped') ? 'unscoped' : 'academy';
   try {
     const raw = localStorage.getItem(getFeedbackJobQueueStorageKey());
-    const list = raw ? JSON.parse(raw) : [];
-    return Array.isArray(list) ? list : [];
-  } catch { return []; }
+    if (raw == null) {
+      recordOlliFeedbackStorageCheck('inbox_queue', 'read', 'missing', { scope, reason:'key_missing' });
+      return [];
+    }
+    phase = 'parse';
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list)) {
+      recordOlliFeedbackStorageCheck('inbox_queue', 'read', 'failed', { scope, phase, reason:'invalid_payload' });
+      return [];
+    }
+    return list;
+  } catch (error) {
+    recordOlliFeedbackStorageCheck('inbox_queue', 'read', 'failed', {
+      scope, phase, error, reason:getOlliFeedbackStorageErrorReason(error, phase)
+    });
+    return [];
+  }
 }
 function setTodayFeedbackItemsRaw(list) {
-  const filtered = window.KcfAutoMode && typeof window.KcfAutoMode.filterFeedbackItems === 'function'
-    ? window.KcfAutoMode.filterFeedbackItems(list)
-    : list;
-  localStorage.setItem(getFeedbackJobQueueStorageKey(), JSON.stringify(Array.isArray(filtered) ? filtered.slice(0, 300) : []));
+  const scope = getFeedbackJobQueueStorageKey().endsWith('_unscoped') ? 'unscoped' : 'academy';
+  let phase = 'prepare';
+  let count = null;
+  try {
+    const filtered = window.KcfAutoMode && typeof window.KcfAutoMode.filterFeedbackItems === 'function'
+      ? window.KcfAutoMode.filterFeedbackItems(list)
+      : list;
+    const items = Array.isArray(filtered) ? filtered.slice(0, 300) : [];
+    count = items.length;
+    const serialized = JSON.stringify(items);
+    const key = getFeedbackJobQueueStorageKey();
+    phase = 'write';
+    localStorage.setItem(key, serialized);
+    phase = 'verify';
+    if (localStorage.getItem(key) !== serialized) {
+      const error = new Error('Feedback local write could not be verified');
+      error.name = 'FeedbackStorageReadbackMismatch';
+      throw error;
+    }
+    recordOlliFeedbackStorageCheck('inbox_queue', 'save', 'ok', { scope, count });
+  } catch (error) {
+    recordOlliFeedbackStorageCheck('inbox_queue', 'save', 'failed', {
+      scope, phase, count, error, reason:getOlliFeedbackStorageErrorReason(error, phase)
+    });
+    throw error;
+  }
   try { updateKinderChatFeedbackBadge(); } catch(e) {}
   try { renderKinderChatFeedbackInbox(); } catch(e) {}
 }
