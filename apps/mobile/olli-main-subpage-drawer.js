@@ -1192,6 +1192,102 @@
   window.setOlliMainSubpageDrawerSearchActive = setOlliMainSubpageDrawerSearchActive;
   window.setOlliMainSubpageDrawerCompanionFaded = setOlliMainSubpageDrawerCompanionFaded;
   window.isOlliPhoneNavigationInFlight = () => navigationInFlight;
+  // Visual diagnostic only: ?olliRearPeek=1. It never fetches, routes,
+  // changes roster data, or claims that a GPU layer was already painted.
+  const rearPeekEnabled = (() => {
+    try { return new URLSearchParams(window.location.search).get('olliRearPeek') === '1'; }
+    catch (_) { return false; }
+  })();
+  let rearPeekState = null;
+  let rearPeekPanel = null;
+
+  function restoreRearPeek(){
+    const previous = rearPeekState;
+    rearPeekState = null;
+    if (!previous) return;
+    previous.front.style.opacity = previous.frontOpacity;
+    previous.front.style.pointerEvents = previous.frontPointer;
+    if (previous.companion) {
+      previous.companion.style.opacity = previous.companionOpacity;
+      previous.companion.style.pointerEvents = previous.companionPointer;
+    }
+  }
+
+  function installRearPeekDiagnostic(){
+    if (!rearPeekEnabled || rearPeekPanel || !document.body) return;
+    const panel = document.createElement('div');
+    panel.id = 'olliAttendanceRearPeekDiagnostic';
+    panel.style.cssText = 'position:fixed;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:2147483645;display:flex;flex-direction:column;gap:5px;align-items:stretch;padding:10px;background:rgba(255,255,255,.96);border:1px solid #dde1e5;border-radius:12px;box-shadow:0 2px 14px rgba(0,0,0,.15);color:#111;font:12px/1.4 sans-serif';
+    const status = document.createElement('div');
+    status.style.cssText = 'min-height:17px;white-space:pre-wrap;overflow-wrap:anywhere';
+    status.textContent = '퀵노트 또는 관찰노트에서 뒤쪽 출석부를 확인하세요.';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = '뒤쪽 출석부 보기';
+    button.style.cssText = 'border:1px solid #d5dadd;border-radius:9px;background:#fff;color:#111;padding:9px 12px;font:600 13px sans-serif;min-height:38px';
+    button.addEventListener('click', () => {
+      if (rearPeekState) {
+        restoreRearPeek();
+        button.textContent = '뒤쪽 출석부 보기';
+        status.textContent = '원래 화면으로 복원했습니다.';
+        return;
+      }
+      if (drawerState || navigationInFlight) {
+        status.textContent = '슬라이드를 닫은 상태에서 확인하세요.';
+        return;
+      }
+      const front = getVisibleMainPage();
+      if (!front || !['kinderChatFeedbackScreen','observationRosterScreen','studentMemoScreen'].includes(front.id)) {
+        status.textContent = '퀵노트 또는 관찰노트 페이지에서 확인하세요.';
+        return;
+      }
+      const rear = document.getElementById('recordRoomScreen');
+      if (!rear) { status.textContent = '출석부 화면 요소가 없습니다.'; return; }
+      const companion = getCompanionLayer(front);
+      const style = getComputedStyle(rear);
+      const rearRect = rear.getBoundingClientRect();
+      const warm = !!preparedRearSaved && rear.classList.contains(PREPARED_REAR_CLASS);
+      const reusable = window.canReusePhoneRecordList?.(getDrawerDivision(), '') === true;
+      // Read visibility and dimensions BEFORE changing opacity.
+      status.textContent =
+        (front.id === 'kinderChatFeedbackScreen' ? '퀵노트' : '관찰노트')
+        + ' 뒤 출석부 · 준비=' + (warm ? '예' : '아니오')
+        + ' · 목록 재사용=' + (reusable ? '예' : '아니오')
+        + ' · display=' + style.display + ' · visibility=' + style.visibility
+        + ' · 크기=' + Math.round(rearRect.width) + 'x' + Math.round(rearRect.height)
+        + ' · 뒤/앞 z=' + style.zIndex + '/' + getComputedStyle(front).zIndex
+        + '\n화면 뒤에 출석부 내용이 보이는지 확인하세요.';
+      rearPeekState = {
+        front, companion,
+        frontOpacity:front.style.opacity,
+        frontPointer:front.style.pointerEvents,
+        companionOpacity:companion?.style.opacity || '',
+        companionPointer:companion?.style.pointerEvents || ''
+      };
+      // Only change the current foreground opacity; do not open the rear route.
+      front.style.opacity = '0.15';
+      front.style.pointerEvents = 'none';
+      if (companion) {
+        companion.style.opacity = '0.15';
+        companion.style.pointerEvents = 'none';
+      }
+      button.textContent = '원래 화면으로 복원';
+    });
+    panel.append(status, button);
+    document.body.appendChild(panel);
+    rearPeekPanel = panel;
+    window.addEventListener('pagehide', restoreRearPeek);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        restoreRearPeek();
+        button.textContent = '뒤쪽 출석부 보기';
+      }
+    });
+  }
+  if (rearPeekEnabled) {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installRearPeekDiagnostic);
+    else installRearPeekDiagnostic();
+  }
 })();
 
 
