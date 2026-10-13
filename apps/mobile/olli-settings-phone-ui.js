@@ -412,6 +412,7 @@
     if(record)record.style.display='flex';
 
     try{if(typeof settingsApplyStateToUI==='function')settingsApplyStateToUI()}catch(_){}
+    try{global.OlliFeedbackStorageDiagnosticSettings?.sync?.()}catch(_){}
     try{updatePhoneSettingsTimetableModeValue()}catch(_){}
     setTimeout(()=>{try{if(typeof applySettingsPermissionUI==='function')applySettingsPermissionUI()}catch(_){}},80);
     setTimeout(()=>{try{if(typeof applySettingsPermissionUI==='function')applySettingsPermissionUI()}catch(_){}},600);
@@ -444,6 +445,18 @@
       settings.style.zIndex='';
     }
     if(record)record.style.display='flex';
+    return true;
+  }
+
+  function togglePhoneSettingsFeedbackDiagnostic(){
+    const diagnostics=global.OlliFeedbackStorageDiagnosticSettings;
+    if(!diagnostics||!diagnostics.isAllowed?.())return false;
+    const next=!diagnostics.isEnabled();
+    if(!diagnostics.setEnabled(next)){
+      try{global.showPushToast?.('진단 표시 설정을 이 기기에 저장하지 못했어요.')}catch(_){}
+      return false;
+    }
+    try{global.showPushToast?.(next?'퀵노트 저장 진단 버튼을 켰어요.':'퀵노트 저장 진단 버튼을 숨겼어요.')}catch(_){}
     return true;
   }
 
@@ -497,6 +510,7 @@
   global.savePhoneSettingsSheet=savePhoneSettingsSheet;
   global.closePhoneSettingsSheet=closePhoneSettingsSheet;
   global.togglePhoneSettingsNotification=togglePhoneSettingsNotification;
+  global.togglePhoneSettingsFeedbackDiagnostic=togglePhoneSettingsFeedbackDiagnostic;
 
   // Compatibility aliases for shared actions that still call the generic names.
   global.openSettingsPage=openPhoneSettingsPage;
