@@ -61,6 +61,7 @@ function makeContext({role = 'owner', academyId = 'academy-1', memberId = 'membe
 }
 
 test('administrative setting is a role-gated accessible switch, and assets are cache-busted', () => {
+  assert.match(index, /<section class="settingsSection" data-owner-manager-only="true"><div class="settingsCard"><button class="settingsRow settingsFeedbackDiagnosticRow"/);
   assert.match(index, /data-owner-manager-only="true" id="settingsFeedbackDiagnosticRow"/);
   assert.match(index, /id="settingsFeedbackDiagnosticRow"[^>]*onclick="togglePhoneSettingsFeedbackDiagnostic\(\)"/);
   assert.match(index, /id="settingsFeedbackDiagnosticToggle"/);
