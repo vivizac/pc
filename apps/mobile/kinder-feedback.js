@@ -2918,7 +2918,62 @@ window.restoreKinderChatFeedbackLiveSession = restoreKinderChatFeedbackLiveSessi
 window.persistKinderChatFeedbackLiveSessionNow = persistKinderChatFeedbackLiveSessionNow;
 
 
-/* Read-only on-device storage diagnostic. Open with ?olli_storage_diagnostic=1.
+/* PWA diagnostics inspect only metadata. This MUST NOT call the queue read
+   helper because the UI route prunes expired entries when it renders. */
+function getKinderChatFeedbackStorageStatusLines() {
+  const checks = typeof window.getOlliFeedbackStorageChecks === 'function'
+    ? window.getOlliFeedbackStorageChecks()
+    : [];
+  const latest = kind => checks.filter(entry => entry.kind === kind && entry.operation === 'save').slice(-1)[0];
+  const summary = entry => {
+    if (!entry) return '이번 실행에서 저장 검증 기록 없음';
+    const state = entry.result === 'ok' ? '성공'
+      : entry.result === 'failed' ? '실패'
+      : entry.result === 'skipped' ? '건너뜀' : '알 수 없음';
+    return state + (entry.reason ? ' (' + entry.reason + ')' : '')
+      + (entry.phase ? ' 단계:' + entry.phase : '') + ' ' + entry.at;
+  };
+  const lines = [
+    '환경: ' + ((navigator.standalone === true || window.matchMedia?.('(display-mode: standalone)')?.matches) ? '홈 화면 설치 앱' : '일반 브라우저'),
+    '대화 메모리에 있는 LIVE 기록: ' + kcfLiveFeedbackItems.size + '건',
+    'LIVE 최근 저장 결과: ' + summary(latest('live_session')),
+    '보관함 최근 저장 결과: ' + summary(latest('inbox_queue'))
+  ];
+  function inspect(key, label, mode) {
+    try {
+      if (!key || key.endsWith('_unscoped')) {
+        lines.push(label + ': 학원 정보가 준비되지 않음');
+        return;
+      }
+      const raw = localStorage.getItem(key);
+      if (raw == null) {
+        lines.push(label + ': 저장된 로컬 기록 없음');
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      const items = mode === 'live' ? parsed?.items : parsed;
+      lines.push(label + ': ' + (Array.isArray(items) ? items.length + '건' : '데이터 형식 오류'));
+    } catch(error) {
+      lines.push(label + ': 읽기 실패 (' + String(error?.name || 'StorageError') + ')');
+    }
+  }
+  inspect(getKinderChatFeedbackLiveSessionStorageKey(), 'LIVE 실제 저장 기록', 'live');
+  try {
+    inspect(typeof getFeedbackJobQueueStorageKey === 'function' ? getFeedbackJobQueueStorageKey() : '', '보관함 실제 저장 기록', 'queue');
+  } catch(error) {
+    lines.push('보관함 실제 저장 기록: 조회 키 오류 (' + String(error?.name || 'Error') + ')');
+  }
+  lines.push('※ 조회 전용: 로컬 저장 항목을 수정하거나 삭제하지 않습니다.');
+  lines.push('※ 진단 이력은 앱을 완전히 종료하면 사라질 수 있습니다.');
+  return lines;
+}
+
+if (navigator.standalone === true || window.matchMedia?.('(display-mode: standalone)')?.matches) {
+  document.documentElement.classList.add('olli-installed-web-app');
+}
+
+/* Read-only on-device storage diagnostic. Available within the installed
+   QuickNote screen and with ?olli_storage_diagnostic=1.
    Never include raw keys, student names, feedback text, or stored values. */
 async function showOlliStorageDiagnostic() {
   const bytes = text => new Blob([String(text)]).size;
@@ -2952,7 +3007,9 @@ async function showOlliStorageDiagnostic() {
     }
   } catch (_) { estimate = '조회 실패'; }
   const report = [
-    '올리 기기 저장공간 진단',
+    '올리 설치 앱 · 로컬 피드백 저장 진단',
+    ...getKinderChatFeedbackStorageStatusLines(),
+    '',
     'localStorage 항목 수: ' + entries.length,
     'localStorage 합계: ' + kib(total),
     '저장공간 추정: ' + estimate,
@@ -3001,6 +3058,7 @@ async function showOlliStorageDiagnostic() {
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 }
+window.showOlliStorageDiagnostic = showOlliStorageDiagnostic;
 if (new URLSearchParams(location.search).get('olli_storage_diagnostic') === '1') {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showOlliStorageDiagnostic, { once:true });
   else showOlliStorageDiagnostic();
