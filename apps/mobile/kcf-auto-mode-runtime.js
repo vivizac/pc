@@ -842,6 +842,10 @@
   }
 
   function activateTeacherRoster(teacherPrefill, event) {
+    if (state.editing?.phoneDedicatedSheet
+        && !document.getElementById('phoneKcfRecordEditOverlay')?.classList.contains('show')) {
+      state.editing = null;
+    }
     if (state.editing) return false;
     if (typeof global.clearKinderChatFeedbackManualSelection === 'function') {
       global.clearKinderChatFeedbackManualSelection();

@@ -40,7 +40,7 @@ test('LIVE feedback edit uses a dedicated sheet with only cancel and done below 
   assert.doesNotMatch(adapter, /phoneKcfLiveEditSendBar/);
   assert.doesNotMatch(adapter, /phoneKcfLiveEditSendBtn/);
   assert.match(adapter, /submitPhoneKcfLiveEditSheet\(doneBtn\)/);
-  assert.match(phoneCss, /\.phoneKcfLiveEditOverlay \{[\s\S]*?z-index:9800;/);
+  assert.match(phoneCss, /\.phoneKcfLiveEditOverlay \{[\s\S]*?z-index:10020;/);
 });
 
 test('LIVE feedback edit focuses after the sheet becomes visible and puts the caret at the last character', () => {
@@ -54,13 +54,14 @@ test('LIVE feedback edit focuses after the sheet becomes visible and puts the ca
 test('submitted class record edit prepares data directly and opens its own sheet without focusing the TODAY composer first', () => {
   assert.match(adapter, /function preparePhoneKcfRecordEdit\(modeName, jobId, row\)/);
   assert.match(adapter, /state\.editing = \{[\s\S]*?phoneDedicatedSheet:true/);
-  assert.match(adapter, /window\.editKinderChatLiveRecord = function\(jobId, row\)[\s\S]*?preparePhoneKcfRecordEdit\('live', jobId, row\)[\s\S]*?openPhoneKcfRecordEditSheet\(jobId\)/);
-  assert.match(adapter, /window\.editKinderChatSubmittedRecord = function\(jobId\)[\s\S]*?preparePhoneKcfRecordEdit\('archive', jobId, null\)[\s\S]*?openPhoneKcfRecordEditSheet\(jobId\)/);
+  assert.match(adapter, /function openRecordEditor\(modeName, jobId, row\)[\s\S]*?preparePhoneKcfRecordEdit\(modeName, jobId, row\)[\s\S]*?openPhoneKcfRecordEditSheet\(jobId\)/);
+  assert.match(adapter, /window\.editKinderChatLiveRecord = function\(jobId, row\)[\s\S]*?openRecordEditor\('live', jobId, row\)/);
+  assert.match(adapter, /window\.editKinderChatSubmittedRecord = function\(jobId\)[\s\S]*?openRecordEditor\('archive', jobId, null\)/);
   const installRecordBlock = adapter.match(/function installPhoneKcfRecordEditSheets\(\)[\s\S]*?\n\}/)?.[0] || '';
   assert.doesNotMatch(installRecordBlock, /originalLiveEdit\.apply/);
   assert.doesNotMatch(installRecordBlock, /originalArchiveEdit\.apply/);
   assert.doesNotMatch(installRecordBlock, /restorePhoneKcfComposerAfterRecordEditSetup/);
-  assert.match(phoneCss, /\.phoneKcfRecordEditOverlay \{[\s\S]*?z-index:9810;/);
+  assert.match(phoneCss, /\.phoneKcfRecordEditOverlay \{[\s\S]*?z-index:10030;/);
 });
 
 test('dedicated edit overlays are sized and positioned from the actual visual viewport', () => {
@@ -178,4 +179,23 @@ test('write-command confirmation renders cancel and confirm buttons instead of r
   assert.match(adapter, /cancelBtn\.textContent = '취소'/);
   assert.match(adapter, /confirmBtn\.textContent = '확인'/);
   assert.match(adapter, /submitKinderChatFeedbackCommandChoice\(choice\)/);
+});
+
+
+test('edit overlays are layered above the continuous composer and can receive focus immediately', () => {
+  assert.ok(phoneCss.includes('z-index:10020;'));
+  assert.ok(phoneCss.includes('z-index:10030;'));
+  assert.ok(phoneCss.includes('transform:translate(-50%, 0);'));
+  assert.ok(adapter.includes('closePhoneKcfUnderlyingSheetForEdit();'));
+  assert.ok(adapter.includes('if (editing) cancelPhoneKcfRecordEditSheet();'));
+});
+
+test('failed record editor activation clears only its own state and reports it', () => {
+  const start = adapter.indexOf('function openRecordEditor(modeName, jobId, row)');
+  const end = adapter.indexOf('window.editKinderChatLiveRecord = function', start);
+  const block = adapter.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.ok(block.indexOf('closePhoneKcfUnderlyingSheetForEdit()') < block.indexOf('preparePhoneKcfRecordEdit('));
+  assert.ok(block.includes('if (editing) cancelPhoneKcfRecordEditSheet();'));
+  assert.ok(adapter.includes('state?.editing?.phoneDedicatedSheet'));
 });

@@ -170,10 +170,11 @@ body.kcfDedicatedEditViewportLocked {
   transition:opacity .2s ease;
 }
 .phoneKcfLiveEditOverlay {
-  z-index:9800;
+  /* Above the original continuous-record teacher sheet (z-index:9900). */
+  z-index:10020;
 }
 .phoneKcfRecordEditOverlay {
-  z-index:9810;
+  z-index:10030;
 }
 .phoneKcfLiveEditOverlay.show,
 .phoneKcfRecordEditOverlay.show {
@@ -188,7 +189,8 @@ body.kcfDedicatedEditViewportLocked {
   left:50%;
   top:var(--olli-phone-guide-top);
   bottom:0;
-  transform:translate(-50%, 100%);
+  /* Native iOS focus must not target an offscreen, still-translating textarea. */
+  transform:translate(-50%, 0);
   width:100%;
   max-width:860px;
   min-height:0;
@@ -199,11 +201,7 @@ body.kcfDedicatedEditViewportLocked {
   background:#fff;
   border-radius:28px 28px 0 0;
   box-shadow:0 -18px 48px rgba(0,0,0,.14);
-  transition:transform .26s cubic-bezier(.22,.61,.36,1);
-}
-.phoneKcfLiveEditOverlay.show .phoneKcfLiveEditSheet,
-.phoneKcfRecordEditOverlay.show .phoneKcfRecordEditSheet {
-  transform:translate(-50%, 0);
+  /* The parent overlay still fades in, but the text input is immediately focusable. */
 }
 .phoneKcfLiveEditHandle,
 .phoneKcfRecordEditHandle {

@@ -475,7 +475,10 @@ window.autoResizeKinderChatFeedbackInput = autoResizeKinderChatFeedbackInput;
 function openKinderChatFeedbackComposerSheet(event) {
   const sheet = window.KcfTeacherSheet;
   if (!sheet || typeof sheet.open !== 'function') return false;
-  if (typeof sheet.isOpen === 'function' && sheet.isOpen()) return true;
+  if (typeof sheet.isOpen === 'function' && sheet.isOpen()) {
+    // Reopen the native keyboard on a new tap instead of silently returning.
+    return typeof sheet.focus === 'function' ? sheet.focus() : true;
+  }
   const mode = getKinderChatFeedbackTeacherMode();
   // In dialogue mode, open the native keyboard in the user's tap BEFORE
   // initializing/selecting students and redrawing the roster. Continuous
