@@ -197,5 +197,5 @@ test('failed record editor activation clears only its own state and reports it',
   assert.ok(start >= 0 && end > start);
   assert.ok(block.indexOf('closePhoneKcfUnderlyingSheetForEdit()') < block.indexOf('preparePhoneKcfRecordEdit('));
   assert.ok(block.includes('if (editing) cancelPhoneKcfRecordEditSheet();'));
-  assert.ok(adapter.includes('state.editing?.phoneDedicatedSheet'));
+  assert.ok(adapter.includes('state?.editing?.phoneDedicatedSheet'));
 });
