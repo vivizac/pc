@@ -2881,3 +2881,81 @@ if (!window.__kcfLiveSessionLifecycleBound) {
 window.restoreKinderChatFeedbackLiveSession = restoreKinderChatFeedbackLiveSession;
 window.persistKinderChatFeedbackLiveSessionNow = persistKinderChatFeedbackLiveSessionNow;
 
+
+/* Read-only on-device storage diagnostic. Open with ?olli_storage_diagnostic=1.
+   Never include raw keys, student names, feedback text, or stored values. */
+async function showOlliStorageDiagnostic() {
+  const bytes = text => new Blob([String(text)]).size;
+  const entries = [];
+  let readError = '';
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key == null) continue;
+      const value = localStorage.getItem(key) || '';
+      const category = /feedback|kcf|kinder|live_session/i.test(key) ? '피드백'
+        : /schedule|attendance|roster|student/i.test(key) ? '출석·학생'
+        : /chat|talk|message/i.test(key) ? '채팅'
+        : /cache|photo|image/i.test(key) ? '캐시·이미지'
+        : /setting|config|pref/i.test(key) ? '설정' : '기타';
+      entries.push({ category, bytes: bytes(key) + bytes(value) });
+    }
+  } catch (error) {
+    readError = String(error?.name || 'StorageReadError');
+  }
+  const groups = {};
+  entries.forEach(entry => { groups[entry.category] = (groups[entry.category] || 0) + entry.bytes; });
+  const total = entries.reduce((sum, entry) => sum + entry.bytes, 0);
+  const kib = n => (n / 1024).toFixed(1) + ' KiB';
+  let estimate = '지원하지 않음';
+  try {
+    if (navigator.storage?.estimate) {
+      const e = await navigator.storage.estimate();
+      estimate = '사용량 ' + kib(e.usage || 0) + ' / 할당량 ' + kib(e.quota || 0)
+        + ' (전체 origin 추정치, localStorage와 별도)';
+    }
+  } catch (_) { estimate = '조회 실패'; }
+  const report = [
+    '올리 기기 저장공간 진단',
+    'localStorage 항목 수: ' + entries.length,
+    'localStorage 합계: ' + kib(total),
+    '저장공간 추정: ' + estimate,
+    '분류별 사용량:',
+    ...Object.entries(groups).sort((a,b) => b[1]-a[1]).map(([name, size]) => '  ' + name + ': ' + kib(size)),
+    '가장 큰 항목 10개 (키/내용 비공개):',
+    ...entries.sort((a,b) => b.bytes-a.bytes).slice(0,10).map((entry,i) => '  ' + (i+1) + '. ' + entry.category + ' ' + kib(entry.bytes)),
+    readError ? '읽기 오류: ' + readError : '',
+    '※ 측정만 수행하며 기존 데이터를 수정하거나 삭제하지 않습니다.'
+  ].filter(Boolean).join('\n');
+  const old = document.getElementById('olliStorageDiagnosticOverlay');
+  if (old) old.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'olliStorageDiagnosticOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;';
+  const panel = document.createElement('div');
+  panel.style.cssText = 'width:100%;max-width:520px;max-height:85vh;overflow:auto;background:white;color:#222;border-radius:16px;padding:20px;box-sizing:border-box;';
+  const title = document.createElement('strong');
+  title.textContent = '저장공간 진단 (읽기 전용)';
+  const output = document.createElement('textarea');
+  output.readOnly = true;
+  output.value = report;
+  output.style.cssText = 'display:block;width:100%;height:48vh;margin:14px 0;font-size:13px;box-sizing:border-box;';
+  const copy = document.createElement('button');
+  copy.textContent = '결과 복사';
+  copy.style.cssText = 'padding:12px;margin-right:12px;';
+  copy.onclick = async () => {
+    try { await navigator.clipboard.writeText(report); copy.textContent = '복사됨'; }
+    catch (_) { output.focus(); output.select(); try { document.execCommand('copy'); copy.textContent = '복사 시도됨'; } catch (_) {} }
+  };
+  const close = document.createElement('button');
+  close.textContent = '닫기';
+  close.style.cssText = 'padding:12px;';
+  close.onclick = () => overlay.remove();
+  panel.append(title, output, copy, close);
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+}
+if (new URLSearchParams(location.search).get('olli_storage_diagnostic') === '1') {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showOlliStorageDiagnostic, { once:true });
+  else showOlliStorageDiagnostic();
+}
