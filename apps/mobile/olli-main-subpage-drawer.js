@@ -8,6 +8,8 @@
   const REVEALED_CLASS = 'is-olli-attendance-revealed';
   const RETURNING_CLASS = 'is-olli-main-drawer-returning';
   const PREPARED_REAR_CLASS = 'olliAttendanceRearPrepared';
+  const PREPARED_FRONT_CLASS = 'olliDrawerPreparedFront';
+  const PREPARED_COMPANION_CLASS = 'olliDrawerPreparedCompanion';
   const SWITCH_EXIT_CLASS = 'is-olli-main-drawer-switch-exit';
   const SWITCH_ENTER_CLASS = 'is-olli-main-drawer-switch-enter';
   const DRAWER_RETURN_FALLBACK_MS = 430;
@@ -50,7 +52,7 @@
         'warmAge=' + r.warmAgeMs + 'ms', 'pendingAtClick=' + r.pendingAtClick
       ].join(' | ');
     });
-    return [header, 'Version: prepared rear retained on opening (no zoom)', ...rows].join('\n');
+    return [header, 'Version: stable rear/foreground prepaint (no zoom)', ...rows].join('\n');
   }
   function displaySlideDiag() {
     if (!slideDiagPanel) {
@@ -276,6 +278,45 @@
   // The state is not a route; only the drawer may promote it to an interactive page.
   let preparedRearSaved = null;
   let preparedRearObserver = null;
+  let preparedFrontState = null;
+  let rearPrepaintEpoch = 0;
+
+  function restorePreparedFront(){
+    const state = preparedFrontState;
+    preparedFrontState = null;
+    if (!state) return;
+    state.mainPage.classList.remove(PREPARED_FRONT_CLASS);
+    state.mainPage.style.zIndex = state.mainZIndex;
+    if (state.companion) {
+      state.companion.classList.remove(PREPARED_COMPANION_CLASS);
+      state.companion.style.zIndex = state.companionZIndex;
+    }
+    restoreRecordUtilityOrder(state.utilityOrderSaved);
+  }
+
+  function prepareFrontAndUtilityOrder(){
+    const mainPage = getVisibleMainPage();
+    if (!mainPage) return false;
+    const companion = getCompanionLayer(mainPage);
+    if (!preparedFrontState || preparedFrontState.mainPage !== mainPage || preparedFrontState.companion !== companion) {
+      restorePreparedFront();
+      preparedFrontState = {
+        mainPage, companion,
+        mainZIndex:mainPage.style.zIndex,
+        companionZIndex:companion?.style.zIndex || '',
+        utilityOrderSaved:applyRecordUtilityOrder(mainPage)
+      };
+    }
+    // Apply the final stacking order before the tap instead of changing the
+    // z-index of three fullscreen surfaces in the first transition frame.
+    if (mainPage.style.zIndex !== '120500') mainPage.style.zIndex = '120500';
+    mainPage.classList.add(PREPARED_FRONT_CLASS);
+    if (companion) {
+      if (companion.style.zIndex !== '120600') companion.style.zIndex = '120600';
+      companion.classList.add(PREPARED_COMPANION_CLASS);
+    }
+    return true;
+  }
 
   function canKeepPreparedRear(){
     const boot = document.getElementById('olliBootScreen');
@@ -285,6 +326,8 @@
 
   function releasePreparedRear(keepDisplay = false){
     if (!preparedRearSaved) return false;
+    ++rearPrepaintEpoch;
+    restorePreparedFront();
     const recordRoom = document.getElementById('recordRoomScreen');
     const saved = preparedRearSaved;
     preparedRearSaved = null;
@@ -315,6 +358,8 @@
     // Route transitions can set display:none on all screens. Restore only this
     // non-interactive layer when a supported foreground page is visible.
     if (room.style.display !== 'flex') room.style.display = 'flex';
+    if (room.style.zIndex !== '119700') room.style.zIndex = '119700';
+    prepareFrontAndUtilityOrder();
   }
 
   function observePreparedRearLifecycle(){
@@ -335,14 +380,29 @@
       noteRearWarm('mount-blocked:roster-not-reusable');
       return false;
     }
-    if (!preparedRearSaved) preparedRearSaved = captureInlineState(room);
+    const newlyMounted = !preparedRearSaved;
+    if (newlyMounted) preparedRearSaved = captureInlineState(room);
     room.classList.add(PREPARED_REAR_CLASS);
     room.style.display = 'flex';
-    room.style.zIndex = '0';
+    room.style.zIndex = '119700';
     room.style.pointerEvents = 'none';
     room.setAttribute('aria-hidden', 'true');
     room.setAttribute('inert', '');
+    prepareFrontAndUtilityOrder();
     observePreparedRearLifecycle();
+    if (newlyMounted) {
+      // Let the browser see the final, mounted stacking order across two
+      // paint opportunities before a tap; neither frame changes page state.
+      const epoch = ++rearPrepaintEpoch;
+      requestAnimationFrame(() => {
+        if (epoch !== rearPrepaintEpoch || !preparedRearSaved) return;
+        void room.offsetWidth;
+        requestAnimationFrame(() => {
+          if (epoch !== rearPrepaintEpoch || !preparedRearSaved) return;
+          noteRearWarm('rear-prepaint-requested');
+        });
+      });
+    }
     noteRearWarm('rear-mounted');
     return true;
   }
@@ -715,6 +775,8 @@
       state.recordRoom.setAttribute('aria-hidden', 'true');
 
       restoreRecordUtilityOrder(state.utilityOrderSaved);
+      state.mainPage?.classList.remove(PREPARED_FRONT_CLASS);
+      state.companion?.classList.remove(PREPARED_COMPANION_CLASS);
       document.body.classList.remove(DRAWER_OPEN_CLASS);
       document.body.classList.remove('olli-main-subpage-drawer-search-active');
       drawerState = null;
@@ -819,8 +881,8 @@
     drawerState = null;
     document.body.classList.remove(DRAWER_OPEN_CLASS);
 
-    state.mainPage?.classList.remove(MAIN_PAGE_CLASS, OPEN_CLASS, RETURNING_CLASS, SWITCH_EXIT_CLASS, SWITCH_ENTER_CLASS);
-    state.companion?.classList.remove(COMPANION_CLASS, OPEN_CLASS, RETURNING_CLASS, SWITCH_EXIT_CLASS, SWITCH_ENTER_CLASS);
+    state.mainPage?.classList.remove(MAIN_PAGE_CLASS, OPEN_CLASS, RETURNING_CLASS, SWITCH_EXIT_CLASS, SWITCH_ENTER_CLASS, PREPARED_FRONT_CLASS);
+    state.companion?.classList.remove(COMPANION_CLASS, OPEN_CLASS, RETURNING_CLASS, SWITCH_EXIT_CLASS, SWITCH_ENTER_CLASS, PREPARED_COMPANION_CLASS);
     restoreInlineState(state.mainPage, state.mainSaved);
     restoreInlineState(state.companion, state.companionSaved);
 
@@ -897,11 +959,13 @@
 
     const companion = getCompanionLayer(mainPage);
     const hit = getReturnHit();
-    const utilityOrderSaved = applyRecordUtilityOrder(mainPage);
 
     const preparedRosterReady = !!preparedRearSaved
       && recordRoom.classList.contains(PREPARED_REAR_CLASS)
+      && preparedFrontState?.mainPage === mainPage
+      && preparedFrontState?.companion === companion
       && window.canReusePhoneRecordList?.(getDrawerDivision(), '') === true;
+    const warmFront = preparedRosterReady ? preparedFrontState : null;
     const slideDiag = beginSlideDiag(mainPage, recordRoom, !!preparedRearSaved);
     if (slideDiag) slideDiag.pendingAtClick = pendingPrewarmAtClick;
     // A warm rear already owns its display and transform layer. Do not
@@ -909,14 +973,25 @@
     // Retain the original snapshot for finishDrawerClose; stale/cold rear
     // preparation still takes the existing release-and-restore path.
     const recordSaved = preparedRearSaved || captureInlineState(recordRoom);
-    if (preparedRosterReady) preparedRearSaved = null;
-    else releasePreparedRear(true);
+    ++rearPrepaintEpoch;
+    if (preparedRosterReady) {
+      preparedRearSaved = null;
+      preparedFrontState = null; // transfer prepared layers to drawerState
+    } else releasePreparedRear(true);
+    // Opening an already-prepared drawer does not re-sort attendance buttons.
+    const utilityOrderSaved = warmFront ? warmFront.utilityOrderSaved : applyRecordUtilityOrder(mainPage);
+    const mainSaved = captureInlineState(mainPage);
+    const companionSaved = captureInlineState(companion);
+    if (warmFront) {
+      mainSaved.zIndex = warmFront.mainZIndex;
+      if (companionSaved) companionSaved.zIndex = warmFront.companionZIndex;
+    }
     drawerState = {
       mainPage,
       companion,
       recordRoom,
-      mainSaved: captureInlineState(mainPage),
-      companionSaved: captureInlineState(companion),
+      mainSaved,
+      companionSaved,
       recordSaved,
       utilityOrderSaved
     };
@@ -924,7 +999,7 @@
     window.prepareOlliRecordSearchForDrawer?.();
     // The warm surface remains flex-mounted at its prepainted transform.
     if (!preparedRosterReady) recordRoom.style.display = 'flex';
-    recordRoom.style.zIndex = '119700';
+    if (!preparedRosterReady) recordRoom.style.zIndex = '119700';
     if (!preparedRosterReady) recordRoom.style.transform = '';
     recordRoom.style.pointerEvents = 'auto';
     recordRoom.setAttribute('aria-hidden', 'false');
@@ -941,13 +1016,13 @@
     recordRoom.classList.add('olliMainDrawerSubpage');
     if (preparedRosterReady) recordRoom.classList.remove(PREPARED_REAR_CLASS);
 
-    mainPage.style.zIndex = '120500';
+    if (!preparedRosterReady) mainPage.style.zIndex = '120500';
     mainPage.style.pointerEvents = 'none';
     mainPage.removeAttribute('inert');
     mainPage.classList.add(MAIN_PAGE_CLASS);
 
     if (companion) {
-      companion.style.zIndex = '120600';
+      if (!preparedRosterReady) companion.style.zIndex = '120600';
       companion.style.pointerEvents = 'none';
       companion.removeAttribute('inert');
       companion.classList.add(COMPANION_CLASS);
@@ -1005,10 +1080,13 @@
     if (navigationInFlight) return false;
     navigationInFlight = true;
     try {
+      if (preparedRearSaved) releasePreparedRear();
       const previousState = drawerState;
       drawerState = null;
       document.body.classList.remove(DRAWER_OPEN_CLASS);
       if (previousState) {
+        previousState.mainPage?.classList.remove(PREPARED_FRONT_CLASS);
+        previousState.companion?.classList.remove(PREPARED_COMPANION_CLASS);
         restoreInlineState(previousState.mainPage, previousState.mainSaved);
         restoreInlineState(previousState.companion, previousState.companionSaved);
         restoreInlineState(previousState.recordRoom, previousState.recordSaved);
