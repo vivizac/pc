@@ -2361,7 +2361,7 @@ body:not(.kcfContinuousMode) #kinderChatFeedbackScreen.kcfInlineDialogueActive .
   white-space:nowrap;
   -webkit-tap-highlight-color:transparent;
 }
-html.olli-installed-web-app #kcfPersistentTopLayer.show .kcfStorageDiagnosticBtn {
+#kcfPersistentTopLayer.show .kcfStorageDiagnosticBtn {
   display:inline-flex;
   align-items:center;
   justify-content:center;
