@@ -973,6 +973,7 @@
     const mainPage = explicitMainPage || getVisibleMainPage();
     const recordRoom = document.getElementById('recordRoomScreen');
     if (!mainPage || !recordRoom) return false;
+    window.olliAttendancePaintDiagnostic?.onIntent(mainPage, recordRoom, sourceKind);
 
     try {
       const active = document.activeElement;
@@ -994,6 +995,7 @@
       if (preparedRearSaved) releasePreparedRear();
       const expectedContext = getAttendancePreparationKey();
       attendanceColdOpenPending = true;
+      window.olliAttendancePaintDiagnostic?.onColdStart();
       window.setTimeout(() => {
         const samePage = (getMainPageFromExplicitSource(sourceKind) || getVisibleMainPage()) === mainPage;
         if (!attendanceColdOpenPending || navigationInFlight || drawerState
@@ -1002,11 +1004,13 @@
           return;
         }
         if (!prepareAttendanceBehindFromLocal()) {
+          window.olliAttendancePaintDiagnostic?.onColdFailure();
           attendanceColdOpenPending = false;
           scheduleAttendancePrewarm();
           window.showPushToast?.('출석부 준비가 완료되지 않았어요. 다시 눌러주세요.');
           return;
         }
+        window.olliAttendancePaintDiagnostic?.onColdReady();
         requestAnimationFrame(() => requestAnimationFrame(() => {
           attendanceColdOpenPending = false;
           const readyForOpen = !!preparedRearSaved
@@ -1078,6 +1082,7 @@
     // No roster render, local load, or rear transform reset on the click frame.
     // The first local render must have finished before the slide is initiated.
     drawerState.attendanceOpening = true;
+    window.olliAttendancePaintDiagnostic?.onSlideStart(preparedRosterReady);
     const slideLayoutStart = slideDiag ? performance.now() : 0;
     // Preserve the foreground initial-state flush for reliable CSS transitions.
     void mainPage.offsetWidth;
@@ -1088,6 +1093,7 @@
     const openingState = drawerState;
     requestAnimationFrame(() => {
       if (drawerState !== openingState || navigationInFlight) return;
+      window.olliAttendancePaintDiagnostic?.onMotionTriggered();
       mainPage.classList.add(OPEN_CLASS);
       companion?.classList.add(OPEN_CLASS);
       recordRoom.classList.add(REVEALED_CLASS);
@@ -1097,6 +1103,7 @@
         // Promote the prepared surface only AFTER the foreground has finished
         // moving. No visual rear class swaps occur while it is being uncovered.
         recordRoom.classList.replace(PREPARED_REAR_CLASS, 'olliMainDrawerSubpage');
+        window.olliAttendancePaintDiagnostic?.onTransitionDone();
         openingState.attendanceOpening = false;
         flushDeferredAttendanceRender();
         // Rebuild the hidden sort popup only after foreground motion completes.
