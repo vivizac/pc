@@ -52,7 +52,7 @@
         'warmAge=' + r.warmAgeMs + 'ms', 'pendingAtClick=' + r.pendingAtClick
       ].join(' | ');
     });
-    return [header, 'Version: 1400ms linear foreground opening (browser + installed app), rear prepaint (no zoom)', ...rows].join('\n');
+    return [header, 'Version: 400ms near-linear gentle-end foreground opening (browser + installed app), rear prepaint (no zoom)', ...rows].join('\n');
   }
   function displaySlideDiag() {
     if (!slideDiagPanel) {
@@ -111,7 +111,7 @@
     const sample = ts => {
       if (run.firstRAFMs === 'none') run.firstRAFMs = Math.round((ts - t) * 10) / 10;
       run.frames.push(ts);
-      if (ts - t < 1530) requestAnimationFrame(sample);
+      if (ts - t < 430) requestAnimationFrame(sample);
     };
     requestAnimationFrame(sample);
     setTimeout(() => {
@@ -119,7 +119,7 @@
       mainPage.removeEventListener('transitionstart', onTransition);
       slideDiagRuns.push(run);
       displaySlideDiag();
-    }, 1660);
+    }, 560);
     return run;
   }
 
@@ -1087,7 +1087,7 @@
       mainPage.classList.add(OPEN_CLASS);
       companion?.classList.add(OPEN_CLASS);
       recordRoom.classList.add(REVEALED_CLASS);
-      void waitForTransition(mainPage, 'transform', null, 1600).then(() => {
+      void waitForTransition(mainPage, 'transform', null, 500).then(() => {
         if (drawerState !== openingState || navigationInFlight) return;
         if (!mainPage.classList.contains(OPEN_CLASS)) return;
         openingState.attendanceOpening = false;
