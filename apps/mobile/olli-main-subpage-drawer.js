@@ -50,7 +50,7 @@
         'warmAge=' + r.warmAgeMs + 'ms', 'pendingAtClick=' + r.pendingAtClick
       ].join(' | ');
     });
-    return [header, 'Version: attendance entry work deferred (experiment)', ...rows].join('\n');
+    return [header, 'Version: prepared rear retained on opening (no zoom)', ...rows].join('\n');
   }
   function displaySlideDiag() {
     if (!slideDiagPanel) {
@@ -904,9 +904,13 @@
       && window.canReusePhoneRecordList?.(getDrawerDivision(), '') === true;
     const slideDiag = beginSlideDiag(mainPage, recordRoom, !!preparedRearSaved);
     if (slideDiag) slideDiag.pendingAtClick = pendingPrewarmAtClick;
-    // Keep the prepared DOM displayed; do not hide/show it between frames.
+    // A warm rear already owns its display and transform layer. Do not
+    // restore the old hidden inline styles just to reapply them on this tap.
+    // Retain the original snapshot for finishDrawerClose; stale/cold rear
+    // preparation still takes the existing release-and-restore path.
     const recordSaved = preparedRearSaved || captureInlineState(recordRoom);
-    releasePreparedRear(true);
+    if (preparedRosterReady) preparedRearSaved = null;
+    else releasePreparedRear(true);
     drawerState = {
       mainPage,
       companion,
@@ -918,9 +922,10 @@
     };
 
     window.prepareOlliRecordSearchForDrawer?.();
-    recordRoom.style.display = 'flex';
+    // The warm surface remains flex-mounted at its prepainted transform.
+    if (!preparedRosterReady) recordRoom.style.display = 'flex';
     recordRoom.style.zIndex = '119700';
-    recordRoom.style.transform = '';
+    if (!preparedRosterReady) recordRoom.style.transform = '';
     recordRoom.style.pointerEvents = 'auto';
     recordRoom.setAttribute('aria-hidden', 'false');
     recordRoom.removeAttribute('inert');
@@ -931,7 +936,10 @@
     // Prepared rear has already painted at 92%; do not invalidate that
     // transform layer or re-snapshot the same starting scale on a warm open.
     if (!preparedRosterReady) recordRoom.style.transition = 'none';
+    // Apply the drawer role before removing the prepainted rear role so
+    // the same transform/background/compositing surface stays continuous.
     recordRoom.classList.add('olliMainDrawerSubpage');
+    if (preparedRosterReady) recordRoom.classList.remove(PREPARED_REAR_CLASS);
 
     mainPage.style.zIndex = '120500';
     mainPage.style.pointerEvents = 'none';
