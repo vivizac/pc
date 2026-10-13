@@ -40,7 +40,7 @@ test('LIVE feedback edit uses a dedicated sheet with only cancel and done below 
   assert.doesNotMatch(adapter, /phoneKcfLiveEditSendBar/);
   assert.doesNotMatch(adapter, /phoneKcfLiveEditSendBtn/);
   assert.match(adapter, /submitPhoneKcfLiveEditSheet\(doneBtn\)/);
-  assert.match(phoneCss, /\.phoneKcfLiveEditOverlay \{[\s\S]*?z-index:9800;/);
+  assert.match(phoneCss, /\.phoneKcfLiveEditOverlay \{[\s\S]*?z-index:10020;/);
 });
 
 test('LIVE feedback edit focuses after the sheet becomes visible and puts the caret at the last character', () => {
@@ -60,7 +60,7 @@ test('submitted class record edit prepares data directly and opens its own sheet
   assert.doesNotMatch(installRecordBlock, /originalLiveEdit\.apply/);
   assert.doesNotMatch(installRecordBlock, /originalArchiveEdit\.apply/);
   assert.doesNotMatch(installRecordBlock, /restorePhoneKcfComposerAfterRecordEditSetup/);
-  assert.match(phoneCss, /\.phoneKcfRecordEditOverlay \{[\s\S]*?z-index:9810;/);
+  assert.match(phoneCss, /\.phoneKcfRecordEditOverlay \{[\s\S]*?z-index:10030;/);
 });
 
 test('dedicated edit overlays are sized and positioned from the actual visual viewport', () => {
@@ -178,4 +178,15 @@ test('write-command confirmation renders cancel and confirm buttons instead of r
   assert.match(adapter, /cancelBtn\.textContent = '취소'/);
   assert.match(adapter, /confirmBtn\.textContent = '확인'/);
   assert.match(adapter, /submitKinderChatFeedbackCommandChoice\(choice\)/);
+});
+
+
+test('edit overlays are above the continuous-record sheet and focus without an offscreen translate', () => {
+  const teacherCss = fs.readFileSync('kcf-teacher-sheet.css', 'utf8');
+  assert.match(teacherCss, /\\.kcfTeacherSheetOverlay \\{/);
+  assert.match(phoneCss, /\\.phoneKcfLiveEditOverlay \\{[\\s\\S]*?z-index:10020;/);
+  assert.match(phoneCss, /\\.phoneKcfRecordEditOverlay \\{[\\s\\S]*?z-index:10030;/);
+  assert.match(phoneCss, /transform:translate\\(-50%, 0\\)/);
+  assert.match(adapter, /closePhoneKcfUnderlyingSheetForEdit\\(\\);/);
+  assert.match(adapter, /if \\(editing\\) cancelPhoneKcfRecordEditSheet\\(\\);/);
 });

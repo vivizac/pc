@@ -72,6 +72,13 @@ function applyPhoneKcfVisibleViewport(overlay){
   overlay.style.setProperty('--phone-kcf-vv-width', `${Math.round(rect.width)}px`);
   overlay.style.setProperty('--phone-kcf-vv-height', `${Math.round(rect.height)}px`);
 }
+function closePhoneKcfUnderlyingSheetForEdit(){
+  const sheet = window.KcfTeacherSheet;
+  if (sheet && typeof sheet.isSheetOpen === 'function' && sheet.isSheetOpen()) {
+    // Retain the unsent draft in kcfInput, but release the higher sheet and its keyboard focus.
+    sheet.close({ sync:true });
+  }
+}
 function resetPhoneKcfVisibleViewport(overlay){
   if (!overlay) return;
   overlay.style.removeProperty('--phone-kcf-vv-top');
@@ -249,6 +256,7 @@ function openPhoneKcfLiveEditSheet(id){
   const editArea = row?.querySelector?.('.kcfLiveEditArea') || null;
   if (!item || !row || !editArea || !String(item.resultText || '').trim()) return false;
 
+  closePhoneKcfUnderlyingSheetForEdit();
   const overlay = ensurePhoneKcfLiveEditSheet();
   const input = getPhoneKcfLiveEditInput();
   if (!overlay || !input) return false;
@@ -291,6 +299,10 @@ function preparePhoneKcfRecordEdit(modeName, jobId, row){
   const composerInput = document.getElementById('kcfInput');
   const id = cleanPhoneKcfRecordEditValue(jobId);
   const editMode = modeName === 'archive' ? 'archive' : 'live';
+  if (state?.editing?.phoneDedicatedSheet
+      && !getPhoneKcfRecordEditOverlay()?.classList.contains('show')) {
+    state.editing = null;
+  }
   if (!state || !composerInput || !id || state.editing) return null;
 
   let record = null;
@@ -446,6 +458,7 @@ function openPhoneKcfRecordEditSheet(sourceJobId){
   const record = editing && editing.record;
   if (!editing || !record || !String(record.body || '').trim()) return false;
 
+  closePhoneKcfUnderlyingSheetForEdit();
   const overlay = ensurePhoneKcfRecordEditSheet();
   const input = getPhoneKcfRecordEditInput();
   if (!overlay || !input) return false;
@@ -481,15 +494,19 @@ function installPhoneKcfRecordEditSheets(){
   if (!mode || typeof originalLiveEdit !== 'function' || typeof originalArchiveEdit !== 'function') return false;
   if (window.__olliPhoneRecordEditSheetsInstalled) return true;
 
+  function openRecordEditor(modeName, jobId, row){
+    const editing = preparePhoneKcfRecordEdit(modeName, jobId, row);
+    if (editing && openPhoneKcfRecordEditSheet(jobId)) return true;
+    // Only abandon the edit state prepared by this attempted opening.
+    if (editing) cancelPhoneKcfRecordEditSheet();
+    try { showPushToast('수업기록 수정창을 열지 못했어요. 다시 시도해 주세요.'); } catch(e) {}
+    return false;
+  }
   window.editKinderChatLiveRecord = function(jobId, row){
-    const editing = preparePhoneKcfRecordEdit('live', jobId, row);
-    if (!editing) return false;
-    return openPhoneKcfRecordEditSheet(jobId);
+    return openRecordEditor('live', jobId, row);
   };
   window.editKinderChatSubmittedRecord = function(jobId){
-    const editing = preparePhoneKcfRecordEdit('archive', jobId, null);
-    if (!editing) return false;
-    return openPhoneKcfRecordEditSheet(jobId);
+    return openRecordEditor('archive', jobId, null);
   };
   window.__olliPhoneRecordEditSheetsInstalled = true;
   return true;
@@ -873,7 +890,9 @@ function decoratePhoneKcfLiveMessage(ui){
     originalEditBtn.replaceWith(editBtn);
     editBtn.addEventListener('click', function(event){
       event.preventDefault();
-      openPhoneKcfLiveEditSheet(row.dataset.kcfLiveFeedbackId || '');
+      if (!openPhoneKcfLiveEditSheet(row.dataset.kcfLiveFeedbackId || '')) {
+        try { showPushToast('피드백 수정창을 열지 못했어요. 다시 시도해 주세요.'); } catch(e) {}
+      }
     });
   }
   syncPhoneKcfContinuousRecordUi();
