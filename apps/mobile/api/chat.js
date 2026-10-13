@@ -32,7 +32,7 @@ function resolveChatModel(promptType) {
 function resolveChatReasoningEffort(promptType) {
   // Feedback generation may use a separate effort without changing Team Talk or voice cleanup.
   return FEEDBACK_GENERATION_PROMPT_TYPES.has(String(promptType || '').trim())
-    ? 'low'
+    ? 'medium'
     : 'medium';
 }
 
