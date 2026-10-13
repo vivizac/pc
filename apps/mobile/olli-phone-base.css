@@ -6607,3 +6607,44 @@ body.olli-login-open {
 
 
 
+
+
+/* Mobile modal ownership: attendance is prepainted at 119700 and the active
+   foreground can be stacked at 120500/120600. Body-level dialogs must be
+   above BOTH surfaces, not under the already-mounted rear attendance page.
+   Keep anchored controls (record sort, student pickers, composer popups)
+   in their existing page stacking contexts. */
+body > :is(
+  .analysisSheetOverlay,
+  .analysisResultSheetOverlay,
+  .modalOverlay,
+  .memoRecordsDropup,
+  .attendanceFeedbackSheetOverlay,
+  .attendanceRecordDeleteOverlay,
+  .feedbackLoadingOverlay,
+  .memoFeedbackPopupOverlay,
+  .oneMinuteFeedbackPopupOverlay,
+  .sceneCardModalOverlay,
+  .recordSummaryPopupOverlay,
+  .recordBoardActionOverlay,
+  .settingsSheetOverlay,
+  .settingsRoleToggleOverlay,
+  .studentBulkApplyOverlay,
+  #kcfInboxOverlay,
+  .kcfGrowthOverlay,
+  #kcfSaveStudentPickerOverlay,
+  #olliAcademySwitchOverlay
+) {
+  z-index: 180000;
+}
+
+/* Toasts should remain readable above modal surfaces without blocking input. */
+body > .pushToast {
+  z-index: 180100;
+}
+
+/* Work Hub is a real route, not a covered drawer backing layer. When visible,
+   it must be above an attendance page still mounted for prepainting. */
+body > #olliTalkArchiveScreen[aria-hidden="false"] {
+  z-index: 130200;
+}
