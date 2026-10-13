@@ -185,7 +185,8 @@ test('write-command confirmation renders cancel and confirm buttons instead of r
 test('edit overlays are layered above the continuous composer and can receive focus immediately', () => {
   assert.ok(phoneCss.includes('z-index:121010;'));
   assert.ok(phoneCss.includes('z-index:121020;'));
-  assert.ok(phoneCss.includes('transform:translate(-50%, 0);'));
+  assert.ok(phoneCss.includes('position:relative;'));
+  assert.ok(phoneCss.includes('height:100%;'));
   assert.ok(adapter.includes('closePhoneKcfUnderlyingSheetForEdit();'));
   assert.ok(adapter.includes('if (editing) cancelPhoneKcfRecordEditSheet();'));
 });
