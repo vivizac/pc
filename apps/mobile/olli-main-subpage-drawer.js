@@ -27,15 +27,6 @@
     try { return new URLSearchParams(window.location.search).get('olliSlideDiag') === '1'; }
     catch (_) { return false; }
   })();
-  // Opt-in visual experiment: slow only the opening foreground transform.
-  // Closing motion, attendance rendering and normal URLs remain unchanged.
-  const slowAttendanceSlideEnabled = (() => {
-    try { return new URLSearchParams(window.location.search).get('olliSlowSlide') === '1'; }
-    catch (_) { return false; }
-  })();
-  if (slowAttendanceSlideEnabled) {
-    document.documentElement.classList.add('olli-slow-attendance-slide');
-  }
   const slideDiagRuns = [];
   // Diagnostic-only status markers. Never send records or student identifiers.
   const rearWarmTrace = { scheduleCalls:0, warmRuns:0, state:'not-requested', at:0 };
@@ -61,7 +52,7 @@
         'warmAge=' + r.warmAgeMs + 'ms', 'pendingAtClick=' + r.pendingAtClick
       ].join(' | ');
     });
-    return [header, 'Version: stable rear/foreground prepaint (no zoom)', ...rows].join('\n');
+    return [header, 'Version: 1400ms linear foreground opening (browser + installed app), rear prepaint (no zoom)', ...rows].join('\n');
   }
   function displaySlideDiag() {
     if (!slideDiagPanel) {
@@ -120,7 +111,7 @@
     const sample = ts => {
       if (run.firstRAFMs === 'none') run.firstRAFMs = Math.round((ts - t) * 10) / 10;
       run.frames.push(ts);
-      if (ts - t < 430) requestAnimationFrame(sample);
+      if (ts - t < 1530) requestAnimationFrame(sample);
     };
     requestAnimationFrame(sample);
     setTimeout(() => {
@@ -128,7 +119,7 @@
       mainPage.removeEventListener('transitionstart', onTransition);
       slideDiagRuns.push(run);
       displaySlideDiag();
-    }, 560);
+    }, 1660);
     return run;
   }
 
@@ -1096,7 +1087,7 @@
       mainPage.classList.add(OPEN_CLASS);
       companion?.classList.add(OPEN_CLASS);
       recordRoom.classList.add(REVEALED_CLASS);
-      void waitForTransition(mainPage, 'transform', null, slowAttendanceSlideEnabled ? 1600 : 500).then(() => {
+      void waitForTransition(mainPage, 'transform', null, 1600).then(() => {
         if (drawerState !== openingState || navigationInFlight) return;
         if (!mainPage.classList.contains(OPEN_CLASS)) return;
         openingState.attendanceOpening = false;
