@@ -586,14 +586,14 @@
       <div class="pcStudentInfoCardIntro"><strong>${esc(student.name || '학생')} 학생정보</strong></div>
       <div class="pcStudentInfoForm">
         <div class="pcStudentInfoGrid3">
-          <div class="pcStudentInfoField pcStudentInfoInlineField"><span class="pcStudentInfoInlineLabel">이름</span><input class="modalInput" id="elementaryInfoNameInput" aria-label="이름" placeholder="이름"></div>
+          <div class="pcStudentInfoField pcStudentInfoInlineField"><span class="pcStudentInfoInlineLabel">이름</span><input class="modalInput" id="elementaryInfoNameInput" aria-label="이름"></div>
           <div class="pcStudentInfoField"><div id="elementaryPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
           <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="pcStudentInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정" value="${esc(student.feedback_teacher || '')}"></label></div>
         </div>
         <div class="pcStudentInfoGrid3 pcStudentInfoProfileDetails">
-          <div class="pcStudentInfoField pcStudentInfoUnitField pcStudentInfoInlineField isSchool"><span class="pcStudentInfoInlineLabel">학교</span><input class="modalInput" id="elementarySchoolInput" aria-label="학교" placeholder="학교"><span class="pcStudentInfoUnitSuffix" data-school-suffix>초등학교</span></div>
-          <div class="pcStudentInfoField pcStudentInfoInlineField"><span class="pcStudentInfoInlineLabel">학년</span><input class="modalInput" id="elementaryGradeInput" aria-label="학년" placeholder="학년" inputmode="numeric" onfocus="focusElementaryGradeInput(this)" oninput="syncElementaryInfoAgeFromGrade()" onblur="blurElementaryInfoGradeInput()"></div>
-          <div class="pcStudentInfoField pcStudentInfoInlineField"><span class="pcStudentInfoInlineLabel">나이</span><input class="modalInput" id="elementaryAgeInput" aria-label="나이" placeholder="나이" readonly></div>
+          <div class="pcStudentInfoField pcStudentInfoUnitField pcStudentInfoInlineField isSchool"><span class="pcStudentInfoInlineLabel">학교</span><input class="modalInput" id="elementarySchoolInput" aria-label="학교"><span class="pcStudentInfoUnitSuffix" data-school-suffix>초등학교</span></div>
+          <div class="pcStudentInfoField pcStudentInfoInlineField"><span class="pcStudentInfoInlineLabel">학년</span><input class="modalInput" id="elementaryGradeInput" aria-label="학년" inputmode="numeric" onfocus="focusElementaryGradeInput(this)" oninput="syncElementaryInfoAgeFromGrade()" onblur="blurElementaryInfoGradeInput()"></div>
+          <div class="pcStudentInfoField pcStudentInfoInlineField"><span class="pcStudentInfoInlineLabel">나이</span><input class="modalInput" id="elementaryAgeInput" aria-label="나이" readonly></div>
         </div>
         <div class="pcStudentInfoDateRow">
           <span class="pcStudentInfoDateLabel">등록일 :</span>
@@ -675,13 +675,13 @@
       <div class="pcStudentInfoCardIntro"><strong>${esc(student.name || '학생')} 학생정보</strong></div>
       <div class="pcStudentInfoForm">
         <div class="pcStudentInfoGrid3">
-          <div class="pcStudentInfoField pcStudentInfoInlineField"><span class="pcStudentInfoInlineLabel">이름</span><input class="modalInput" id="kinderInfoNameInput" aria-label="이름" placeholder="이름"></div>
+          <div class="pcStudentInfoField pcStudentInfoInlineField"><span class="pcStudentInfoInlineLabel">이름</span><input class="modalInput" id="kinderInfoNameInput" aria-label="이름"></div>
           <div class="pcStudentInfoField"><div id="kinderPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
           <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="pcStudentInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정" value="${esc(student.feedback_teacher || '')}"></label></div>
         </div>
         <div class="pcStudentInfoGrid2 pcStudentInfoProfileDetailsKinder">
-          <div class="pcStudentInfoField pcStudentInfoUnitField pcStudentInfoInlineField isSchool"><span class="pcStudentInfoInlineLabel">유치원</span><input class="modalInput" id="kinderKindergartenInput" aria-label="유치원" placeholder="유치원"><span class="pcStudentInfoUnitSuffix" data-school-suffix>유치원</span></div>
-          <div class="pcStudentInfoField pcStudentInfoUnitField pcStudentInfoInlineField"><span class="pcStudentInfoInlineLabel">나이</span><input class="modalInput" id="kinderAgeInput" aria-label="나이" placeholder="나이" type="number" min="1" max="8"><span class="pcStudentInfoUnitSuffix">살</span></div>
+          <div class="pcStudentInfoField pcStudentInfoUnitField pcStudentInfoInlineField isSchool"><span class="pcStudentInfoInlineLabel">유치원</span><input class="modalInput" id="kinderKindergartenInput" aria-label="유치원"><span class="pcStudentInfoUnitSuffix" data-school-suffix>유치원</span></div>
+          <div class="pcStudentInfoField pcStudentInfoUnitField pcStudentInfoInlineField"><span class="pcStudentInfoInlineLabel">나이</span><input class="modalInput" id="kinderAgeInput" aria-label="나이" type="number" min="1" max="8"><span class="pcStudentInfoUnitSuffix">살</span></div>
         </div>
         <div class="pcStudentInfoDateRow">
           <span class="pcStudentInfoDateLabel">등록일 :</span>
