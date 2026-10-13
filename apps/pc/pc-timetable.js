@@ -1058,13 +1058,24 @@
       rows.filter((item) => pickupScope(item) === 'daily').map((item) => clean(item.student_id)).filter(Boolean)
     );
     const effectiveRows = rows.filter((item) => pickupScope(item) === 'daily' || !dailyStudentIds.has(clean(item.student_id)));
-    // Group visible cards by pickup location within their date/time cell without changing saved rows.
-    // Dropoff-only cards use the dropoff location displayed on their card.
+    // Order the visible cards by earliest pickup time, then group matching locations.
+    // Dropoff-only cards use their dropoff time/location; missing times appear last.
+    const pickupMinutes = (item) => {
+      const value = clean(item.is_dropoff === true ? item.dropoff_time : item.pickup_time);
+      const match = value.match(/^(\d{1,2}):(\d{2})/);
+      if (!match) return Infinity;
+      const hour = Number(match[1]);
+      const minute = Number(match[2]);
+      return hour < 24 && minute < 60 ? hour * 60 + minute : Infinity;
+    };
     const locationKey = (item) => clean(item.is_dropoff === true
       ? (clean(item.dropoff_label) || item.pickup_label) : item.pickup_label)
       .replace(/\s+/g, ' ').toLocaleLowerCase('ko');
-    return effectiveRows.map((item, index) => ({ item, index, location: locationKey(item) }))
-      .sort((a, b) => (!a.location) - (!b.location)
+    return effectiveRows.map((item, index) => ({
+      item, index, minutes: pickupMinutes(item), location: locationKey(item)
+    }))
+      .sort((a, b) => a.minutes - b.minutes
+        || (!a.location) - (!b.location)
         || a.location.localeCompare(b.location, 'ko')
         || a.index - b.index)
       .map(({ item }) => item);

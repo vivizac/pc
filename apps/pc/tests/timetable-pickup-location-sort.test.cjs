@@ -53,5 +53,31 @@ test('dropoff-only uses dropoff location; daily overrides recurring, keeping oth
 });
 
 test('PC timetable script gets its own cache-busted version', () => {
-  assert.match(html, /pc-timetable\.js\?v=20261013-pickup-location-1/);
+  assert.match(html, /pc-timetable\.js\?v=20261013-pickup-time-location-1/);
+});
+
+test('earlier pickup times sort first, with matching locations grouped at equal times', () => {
+  const rows = [
+    { id:'late', student_id:'1', weekday:2, class_time:5, pickup_label:'웅진', pickup_time:'16:50' },
+    { id:'firstA', student_id:'2', weekday:2, class_time:5, pickup_label:'웅진', pickup_time:'16:20' },
+    { id:'firstB', student_id:'3', weekday:2, class_time:5, pickup_label:'유치원', pickup_time:'16:20' },
+    { id:'middle', student_id:'4', weekday:2, class_time:5, pickup_label:'웅진', pickup_time:'16:35' },
+    { id:'firstC', student_id:'5', weekday:2, class_time:5, pickup_label:' 웅진  ', pickup_time:'16:20' },
+    { id:'earliest', student_id:'6', weekday:2, class_time:5, pickup_label:'유치원', pickup_time:'16:10' }
+  ];
+  const savedOrder = rows.map(item => item.id);
+  assert.deepEqual(renderSortedPickups(rows).map(item => item.id),
+    ['earliest', 'firstA', 'firstC', 'firstB', 'middle', 'late']);
+  assert.deepEqual(rows.map(item => item.id), savedOrder);
+});
+
+test('dropoff-only uses its dropoff time; missing/invalid times appear after timed cards', () => {
+  const rows = [
+    { id:'blank', student_id:'1', weekday:2, class_time:5, pickup_label:'웅진', pickup_time:null },
+    { id:'arrival', student_id:'2', weekday:2, class_time:5, pickup_label:'유치원', pickup_time:'16:45' },
+    { id:'dropoff', student_id:'3', weekday:2, class_time:5, pickup_label:'이전 장소', pickup_time:null, is_dropoff:true, dropoff_label:'집 앞', dropoff_time:'16:15' },
+    { id:'invalid', student_id:'4', weekday:2, class_time:5, pickup_label:'유치원', pickup_time:'25:99' }
+  ];
+  assert.deepEqual(renderSortedPickups(rows).map(item => item.id),
+    ['dropoff', 'arrival', 'blank', 'invalid']);
 });
