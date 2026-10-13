@@ -4185,6 +4185,12 @@ border-color: #F0F0F0;
   transform:scale(var(--olli-attendance-drawer-start-scale, .92));
   transform-origin:center center;
   will-change:transform;
+  /* Match the revealed rear's paint surface before the drawer opens.
+     Avoid first-frame clipping/background/isolation changes. */
+  clip-path:none;
+  -webkit-clip-path:none;
+  background:#fff;
+  isolation:isolate;
 }
 
 /* Main page / record-room subpage drawer. The main page stays visible as the right 25%. */
