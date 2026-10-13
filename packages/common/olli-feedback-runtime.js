@@ -319,7 +319,7 @@ function recordOlliFeedbackStorageCheck(kind, operation, result, details = {}) {
       reason:String(details.reason || ''),
       errorName:String(details.error?.name || ''),
       count:Number.isFinite(details.count) ? details.count : null,
-      scope:details.scope === 'unscoped' ? 'unscoped' : 'academy'
+      scope:details.scope === 'unscoped' ? 'unscoped' : (details.scope === 'unknown' ? 'unknown' : 'academy')
     };
     const previous = olliFeedbackStorageChecks[olliFeedbackStorageChecks.length - 1];
     if (previous && previous.kind === entry.kind && previous.operation === entry.operation
@@ -358,9 +358,11 @@ function getTodayFeedbackDateKey(dateValue) {
 }
 function getTodayFeedbackItemsRaw() {
   let phase = 'read';
-  const scope = getFeedbackJobQueueStorageKey().endsWith('_unscoped') ? 'unscoped' : 'academy';
+  let scope = 'unknown';
   try {
-    const raw = localStorage.getItem(getFeedbackJobQueueStorageKey());
+    const key = getFeedbackJobQueueStorageKey();
+    scope = key.endsWith('_unscoped') ? 'unscoped' : 'academy';
+    const raw = localStorage.getItem(key);
     if (raw == null) {
       recordOlliFeedbackStorageCheck('inbox_queue', 'read', 'missing', { scope, reason:'key_missing' });
       return [];
@@ -380,17 +382,18 @@ function getTodayFeedbackItemsRaw() {
   }
 }
 function setTodayFeedbackItemsRaw(list) {
-  const scope = getFeedbackJobQueueStorageKey().endsWith('_unscoped') ? 'unscoped' : 'academy';
+  let scope = 'unknown';
   let phase = 'prepare';
   let count = null;
   try {
+    const key = getFeedbackJobQueueStorageKey();
+    scope = key.endsWith('_unscoped') ? 'unscoped' : 'academy';
     const filtered = window.KcfAutoMode && typeof window.KcfAutoMode.filterFeedbackItems === 'function'
       ? window.KcfAutoMode.filterFeedbackItems(list)
       : list;
     const items = Array.isArray(filtered) ? filtered.slice(0, 300) : [];
     count = items.length;
     const serialized = JSON.stringify(items);
-    const key = getFeedbackJobQueueStorageKey();
     phase = 'write';
     localStorage.setItem(key, serialized);
     phase = 'verify';
