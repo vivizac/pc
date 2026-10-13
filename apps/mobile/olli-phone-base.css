@@ -4171,14 +4171,18 @@ border-color: #F0F0F0;
   transition: opacity 130ms ease 145ms, visibility 0s linear 275ms;
 }
 
-/* The retained rear surface is already at the drawer's 92% starting scale.
-   Prepare its transform layer before the tap; only the 92% -> 100%
-   transition runs when the foreground page slides aside. */
+/* Attendance zoom diagnostic: set to 1 to suspend 92% -> 100% zoom
+   on both open and close. Reset to .92 to restore the original effect.
+   Keep the prepared rear mounted and the foreground slide unchanged. */
+#recordRoomScreen { --olli-attendance-drawer-start-scale: 1; }
+
+/* The rear layer keeps its existing prepainted starting transform.
+   The original .92 starting scale remains the fallback below. */
 #recordRoomScreen.olliAttendanceRearPrepared {
   display:flex;
   z-index:0;
   pointer-events:none;
-  transform:scale(.92);
+  transform:scale(var(--olli-attendance-drawer-start-scale, .92));
   transform-origin:center center;
   will-change:transform;
 }
@@ -4251,7 +4255,7 @@ border-color: #F0F0F0;
 }
 #recordRoomScreen.olliMainDrawerSubpage {
   display:flex !important;
-  transform:scale(.92);
+  transform:scale(var(--olli-attendance-drawer-start-scale, .92));
   transform-origin:center center;
   transition:transform 320ms cubic-bezier(.22,.61,.36,1);
   will-change:transform;
