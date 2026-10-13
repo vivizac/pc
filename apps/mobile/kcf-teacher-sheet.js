@@ -852,12 +852,21 @@
     syncViewport();
 
     var keyboard = global.OlliMobileKeyboardActivation;
-    if (!keyboard) return false;
-    return !!keyboard.activate(event, {
+    if (!keyboard) {
+      close({ sync:true });
+      return false;
+    }
+    var focused = keyboard.activate(event, {
       input:editor,
       selectionEnd:true,
       afterFocus:function(){ scheduleViewportSync(); }
     });
+    if (!focused) {
+      // Do not leave an invisible-but-open composer that blocks the next tap.
+      close({ sync:true });
+      return false;
+    }
+    return true;
   }
 
   function close(options){
