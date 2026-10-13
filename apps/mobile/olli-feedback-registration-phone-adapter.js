@@ -234,6 +234,13 @@ function ensurePhoneKcfLiveEditSheet(){
       </div>
     </section>`;
   document.body.appendChild(overlay);
+  // The exposed top strip doubles as an escape hatch if the native keyboard
+  // was dismissed while the dedicated edit sheet remains open.
+  overlay.addEventListener('click', function(event){
+    if (event.target === overlay && !phoneKcfLiveEditContext?.submitting) {
+      closePhoneKcfLiveEditSheet();
+    }
+  });
 
   const input = overlay.querySelector('#phoneKcfLiveEditInput');
   const cancelBtn = overlay.querySelector('.phoneKcfLiveEditCancelBtn');
@@ -440,6 +447,11 @@ function ensurePhoneKcfRecordEditSheet(){
       </div>
     </section>`;
   document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(event){
+    if (event.target === overlay && !phoneKcfRecordEditContext?.submitting) {
+      cancelPhoneKcfRecordEditSheet();
+    }
+  });
 
   const input = overlay.querySelector('#phoneKcfRecordEditInput');
   const cancelBtn = overlay.querySelector('.phoneKcfRecordEditCancelBtn');
