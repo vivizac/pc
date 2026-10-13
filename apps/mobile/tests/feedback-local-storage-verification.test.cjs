@@ -57,7 +57,8 @@ function context(options = {}) {
   vm.createContext(sandbox);
   vm.runInContext(recorderSource + queueKeySource + queueSource +
     'window.__queue = { save:setTodayFeedbackItemsRaw, load:getTodayFeedbackItemsRaw };', sandbox);
-  return { ...sandbox, checks: () => window.getOlliFeedbackStorageChecks() };
+  sandbox.checks = () => window.getOlliFeedbackStorageChecks();
+  return sandbox;
 }
 
 function liveContext(options = {}) {
