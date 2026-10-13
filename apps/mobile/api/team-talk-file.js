@@ -22,6 +22,33 @@ function safeFileName(value){
   const cleaned=String(value||'').trim().replace(/[\\/]+/g,'_').replace(/[\u0000-\u001f\u007f]+/g,'');
   return (cleaned||'file').slice(0,180);
 }
+const SAFE_OBJECT_EXTENSIONS = new Set([
+  'pdf','txt','csv','rtf','zip','doc','docx','xls','xlsx','ppt','pptx','hwp','hwpx',
+  'pages','numbers','key','jpg','jpeg','png','gif','webp','bmp','heic','heif',
+  'avif','mp4','mov','m4v','webm','mp3','m4a','wav','aac','ogg'
+]);
+const MIME_OBJECT_EXTENSIONS = Object.freeze({
+  'application/pdf':'pdf',
+  'text/plain':'txt',
+  'text/csv':'csv',
+  'application/zip':'zip',
+  'image/jpeg':'jpg',
+  'image/png':'png',
+  'image/gif':'gif',
+  'image/webp':'webp',
+  'image/heic':'heic',
+  'video/mp4':'mp4',
+  'video/quicktime':'mov',
+  'audio/mpeg':'mp3',
+  'audio/mp4':'m4a'
+});
+function safeObjectExtension(fileName,mimeType){
+  const match=String(fileName||'').match(/\.([a-z0-9]{1,10})$/i);
+  const ext=match?match[1].toLowerCase():'';
+  if(SAFE_OBJECT_EXTENSIONS.has(ext))return ext;
+  const mime=String(mimeType||'').split(';',1)[0].trim().toLowerCase();
+  return MIME_OBJECT_EXTENSIONS[mime]||'bin';
+}
 function safeKind(value){
   return String(value||'').toLowerCase()==='media' ? 'media' : 'file';
 }
@@ -167,7 +194,7 @@ export default async function handler(req,res){
         const fileSize=assertUploadSize(body?.fileSize);
         const kind=safeKind(body?.kind);
         const assetId=randomUUID();
-        const objectPath=`${academyId}/${assetId}-${fileName}`;
+        const objectPath=`${academyId}/${assetId}.${safeObjectExtension(fileName,mimeType)}`;
         const uploadUrl=await createSignedUpload(objectPath,key);
 
         let thumbnailObjectPath=null;
