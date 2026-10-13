@@ -825,7 +825,7 @@
 <!-- 2026-04-30 patch v2: 선생님 비활성화 되돌아감 방지 + 그룹 SVG 데이터 URL # 보정 -->
 <link rel="stylesheet" href="olli-settings-teacher-management.css">
 <script src="olli-teacher-management-legacy-cleanup.js"></script>
-<link rel="stylesheet" href="kinder-feedback.css?v=20261011-inline-copy-glyph-1">
+<link rel="stylesheet" href="kinder-feedback.css?v=20261014-installed-storage-check-1">
 <link rel="stylesheet" href="olli-talk-beta.css?v=20261011-edge-fade-opacity-1">
 <link rel="stylesheet" href="olli-talk-material-orders-mobile.css?v=20261012-needed-date-archive-1">
 <!-- PAGE: 유치부 대화형 1분 피드백 -->
@@ -834,6 +834,7 @@
 <button aria-label="메뉴" class="kcfRoundBtn kcfRecordBtn" onclick="openOlliMainSubpageDrawer(event, 'quicknote')" title="메뉴" type="button">
 <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M5 7h14"></path><path d="M5 12h14"></path><path d="M5 17h10"></path></svg>
 </button>
+<button aria-label="피드백 로컬 저장 진단" class="kcfStorageDiagnosticBtn" onclick="showOlliStorageDiagnostic()" title="저장 진단" type="button">저장 진단</button>
 <button aria-label="임시 보관함 열기" class="kcfVivicotInboxBubble kcfTopInboxHidden" id="kcfVivicotInboxBubble" onclick="openKinderChatFeedbackInbox()" type="button">
 <span class="kcfVivicotInboxBubbleText">임시 보관함</span>
 <span aria-hidden="true" class="kcfVivicotInboxBadge" id="kcfVivicotInboxBadge"></span>
@@ -1136,7 +1137,7 @@
 </div>
 </div>
 <script src="olli-feedback-photo-storage-common.js"></script>
-<script src="kinder-feedback.js?v=20261013-feedback-storage-checks-1"></script>
+<script src="kinder-feedback.js?v=20261014-installed-storage-check-1"></script>
 <script src="olli-talk-material-orders-mobile.js?v=20261012-needed-date-archive-1"></script>
 <script src="olli-talk-attachment-cache-phone.js?v=20260929-link-preview-local-first-1"></script>
 <script src="olli-talk-image-thumbnail-phone.js?v=20260924-client-thumbnail-1"></script>
