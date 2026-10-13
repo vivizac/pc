@@ -310,10 +310,10 @@
     // Apply the final stacking order before the tap instead of changing the
     // z-index of three fullscreen surfaces in the first transition frame.
     if (mainPage.style.zIndex !== '120500') mainPage.style.zIndex = '120500';
-    mainPage.classList.add(PREPARED_FRONT_CLASS);
+    if (!mainPage.classList.contains(PREPARED_FRONT_CLASS)) mainPage.classList.add(PREPARED_FRONT_CLASS);
     if (companion) {
       if (companion.style.zIndex !== '120600') companion.style.zIndex = '120600';
-      companion.classList.add(PREPARED_COMPANION_CLASS);
+      if (!companion.classList.contains(PREPARED_COMPANION_CLASS)) companion.classList.add(PREPARED_COMPANION_CLASS);
     }
     return true;
   }
@@ -382,10 +382,10 @@
     }
     const newlyMounted = !preparedRearSaved;
     if (newlyMounted) preparedRearSaved = captureInlineState(room);
-    room.classList.add(PREPARED_REAR_CLASS);
-    room.style.display = 'flex';
-    room.style.zIndex = '119700';
-    room.style.pointerEvents = 'none';
+    if (!room.classList.contains(PREPARED_REAR_CLASS)) room.classList.add(PREPARED_REAR_CLASS);
+    if (room.style.display !== 'flex') room.style.display = 'flex';
+    if (room.style.zIndex !== '119700') room.style.zIndex = '119700';
+    if (room.style.pointerEvents !== 'none') room.style.pointerEvents = 'none';
     room.setAttribute('aria-hidden', 'true');
     room.setAttribute('inert', '');
     prepareFrontAndUtilityOrder();
