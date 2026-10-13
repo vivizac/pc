@@ -130,6 +130,11 @@
       if (!root) return;
       root.style.setProperty('--kcf-teacher-vv-width', Math.max(1, Math.round(width)) + 'px');
       root.style.setProperty('--kcf-teacher-vv-height', Math.max(1, Math.round(height)) + 'px');
+      var fill = document.getElementById('kcfTeacherSheetBottomFill');
+      if (fill) {
+        var viewportBottom = (viewport ? Number(viewport.offsetTop || 0) : 0) + height;
+        fill.style.top = Math.max(0, Math.round(viewportBottom)) + 'px';
+      }
     }
     if (state.inlineOpen) {
       var layer = document.getElementById('kcfComposerLayer');
@@ -558,6 +563,13 @@
       '  </div>',
       '</section>'
     ].join('');
+    // Independent of the keyboard-sized overlay so Safari cannot clip the
+    // sheet's white background below visualViewport.
+    var fill = document.createElement('div');
+    fill.id = 'kcfTeacherSheetBottomFill';
+    fill.className = 'kcfTeacherSheetBottomFill';
+    fill.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(fill);
     document.body.appendChild(root);
 
     var panel = root.querySelector('.kcfTeacherSheet');

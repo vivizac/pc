@@ -42,7 +42,7 @@ test('Work Hub keeps original navigation, and QuickNote closes detached sheet wh
 });
 
 test('updated detached sheet layers are cache-busted', () => {
-  assert.ok(html.includes('kcf-teacher-sheet.css?v=20261013-quicknote-layer-stack-1'));
-  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261013-quicknote-layer-stack-1'));
-  assert.ok(html.includes('kcf-auto-mode.css?v=20261013-quicknote-layer-stack-1'));
+  assert.ok(html.includes('kcf-teacher-sheet.css?v=20261013-sheet-bottom-fill-1'));
+  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261013-sheet-bottom-fill-1'));
+  assert.ok(html.includes('kcf-auto-mode.css?v=20261013-sheet-bottom-fill-1'));
 });

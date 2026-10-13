@@ -64,6 +64,17 @@ function getPhoneKcfVisibleViewportRect(){
     height:Math.max(1, Number(viewport.height || layoutHeight))
   };
 }
+function ensurePhoneKcfEditBottomFill(){
+  let fill = document.getElementById('phoneKcfEditBottomFill');
+  if (!fill) {
+    fill = document.createElement('div');
+    fill.id = 'phoneKcfEditBottomFill';
+    fill.className = 'phoneKcfEditBottomFill';
+    fill.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(fill);
+  }
+  return fill;
+}
 function applyPhoneKcfVisibleViewport(overlay){
   if (!overlay || !overlay.classList.contains('show')) return;
   const rect = getPhoneKcfVisibleViewportRect();
@@ -71,6 +82,8 @@ function applyPhoneKcfVisibleViewport(overlay){
   overlay.style.setProperty('--phone-kcf-vv-left', `${Math.round(rect.left)}px`);
   overlay.style.setProperty('--phone-kcf-vv-width', `${Math.round(rect.width)}px`);
   overlay.style.setProperty('--phone-kcf-vv-height', `${Math.round(rect.height)}px`);
+  const fill = ensurePhoneKcfEditBottomFill();
+  fill.style.top = `${Math.round(rect.top + rect.height)}px`;
 }
 function closePhoneKcfUnderlyingSheetForEdit(){
   const sheet = window.KcfTeacherSheet;
@@ -116,6 +129,7 @@ function syncPhoneKcfBasePageVisibility(){
   const liveOpen = !!getPhoneKcfLiveEditOverlay()?.classList.contains('show');
   const recordOpen = !!getPhoneKcfRecordEditOverlay()?.classList.contains('show');
   const open = liveOpen || recordOpen;
+  if (open) ensurePhoneKcfEditBottomFill();
   document.body.classList.toggle('kcfDedicatedEditSheetOpen', open);
 
   if (phoneKcfViewportUnlockTimer) {
