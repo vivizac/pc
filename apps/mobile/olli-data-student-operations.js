@@ -636,7 +636,7 @@ function studentToSupabasePayload(student) {
   const academyId = requireOlliAcademyId('학생 저장');
   const academyName = getOlliCurrentAcademyName();
   const academyRegion = getOlliCurrentAcademyRegion();
-  return {
+  const payload = {
     id: student.id,
     academy_id: academyId,
     academy_name: academyName || null,
@@ -664,6 +664,11 @@ function studentToSupabasePayload(student) {
     paused_at: student.paused_at || null,
     status_changed_at: student.status_changed_at || null,
   };
+  // Omitting this field on ordinary profile saves prevents stale clients from overwriting an assignment.
+  if (student.__olli_feedback_teacher_changed === true) {
+    payload.feedback_teacher = String(student.feedback_teacher || '').trim() || null;
+  }
+  return payload;
 }
 
 function supabaseRowToStudent(row) {
@@ -692,6 +697,7 @@ function supabaseRowToStudent(row) {
     group_months: row.group_months || row.feedback_months || '',
     feedback_months: row.feedback_months || row.group_months || '',
     personality: row.personality || '',
+    feedback_teacher: row.feedback_teacher || '',
     school: row.school || '',
     grade: row.grade || '',
     className: row.class_no || row.className || '',
@@ -924,6 +930,7 @@ function mergeStudentInfoPreservingLocal(local = {}, remote = {}) {
     group_months: mutableValue(remote, local, ['group_months','feedback_months','feedbackMonths','groupFeedbackMonths']),
     feedback_months: mutableValue(remote, local, ['feedback_months','group_months','feedbackMonths','groupFeedbackMonths']),
     personality: mutableValue(remote, local, ['personality','tendency','tendency_type','personality_type']),
+    feedback_teacher: mutableValue(remote, local, ['feedback_teacher']),
     school: mutableValue(remote, local, ['school','school_name','schoolName']),
     grade: mutableValue(remote, local, ['grade','school_grade','studentGrade']),
     className: mutableValue(remote, local, ['className','class_no','class','school_class']),
@@ -946,6 +953,7 @@ async function ensureStudentSavedToSupabase(student, options = {}) {
     academy_id: student.academy_id || academyId
   }, student.type || 'elementary');
 
+  safeStudent.__olli_feedback_teacher_changed = student.__olli_feedback_teacher_changed === true;
   const rows = await postStudentWithColumnFallback(safeStudent);
   const savedRow = Array.isArray(rows) && rows.length ? rows[0] : null;
   const pending = !!(savedRow && savedRow.__pending_sync);
@@ -968,6 +976,7 @@ async function ensureStudentSavedToSupabase(student, options = {}) {
       'name', 'enrolled_at', 'kindergarten', 'age', 'birth_year', 'school_entry_year',
       'group', 'group_months', 'feedback_months', 'personality', 'school', 'grade', 'className'
     ];
+    if (safeStudent.__olli_feedback_teacher_changed) comparableFields.push('feedback_teacher');
     const comparable = value => String(value == null ? '' : value).trim();
     for (const field of comparableFields) {
       if (comparable(remoteStudent[field]) === comparable(safeStudent[field])) continue;

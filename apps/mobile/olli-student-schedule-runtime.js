@@ -80,18 +80,9 @@
   }
 
   function teacherNameFor(division, enrollments, assignments) {
-    const first = primaryEnrollment(enrollments);
-    if (!first) return '';
-    const direct = clean(first.teacher_name);
-    if (direct) return direct;
-    const group = clean(first.class_group || 'A').toUpperCase() || 'A';
-    const match = (Array.isArray(assignments) ? assignments : []).find(row =>
-      clean(row && row.division) === division
-      && Number(row && row.weekday) === Number(first.weekday)
-      && Number(row && row.time_slot) === Number(first.time_slot)
-      && (clean(row && row.class_group).toUpperCase() || 'A') === group
-    );
-    return clean(match && match.teacher_name);
+    return typeof global.getOlliStudentScheduleTeacherName === 'function'
+      ? global.getOlliStudentScheduleTeacherName(enrollments)
+      : clean(primaryEnrollment(enrollments)?.teacher_name);
   }
 
   function cacheKey(studentId, division, academyId) {
@@ -177,19 +168,10 @@
     const schedule = await request('olli_schedule_student_enrollments', payload);
     const enrollments = Array.isArray(schedule.enrollments) ? schedule.enrollments.filter(Boolean) : [];
     const pickups = Array.isArray(schedule.pickups) ? schedule.pickups.filter(Boolean) : [];
-    let assignments = [];
-    let teachers = [];
-    let teacherName = teacherNameFor(division, enrollments, []);
-    if (!teacherName && enrollments.length) {
-      try {
-        const teacherContext = await request('olli_schedule_class_teacher_context', academyId ? { p_academy_id: academyId } : {});
-        assignments = Array.isArray(teacherContext.assignments) ? teacherContext.assignments.filter(Boolean) : [];
-        teachers = Array.isArray(teacherContext.teachers) ? teacherContext.teachers.filter(Boolean) : [];
-        teacherName = teacherNameFor(division, enrollments, assignments);
-      } catch (error) {
-        console.warn('폰 학생정보 담임 보조 조회 실패:', error && (error.message || error));
-      }
-    }
+    // The student enrollment RPC joins the class teacher; no separate fallback lookup.
+    const assignments = [];
+    const teachers = [];
+    const teacherName = teacherNameFor(division, enrollments, []);
     return {
       studentId,
       division,
@@ -304,21 +286,6 @@
     return { result, context };
   }
 
-  function setTeacherDisplay(division, teacherName, noSchedule) {
-    const id = division === 'kinder' ? 'kinderInfoTeacherReadonly' : 'elementaryInfoTeacherReadonly';
-    const el = document.getElementById(id);
-    if (!el) return;
-    const name = clean(teacherName);
-    if (!name) {
-      el.textContent = noSchedule ? '담임' : '담임 미지정';
-      el.classList.add('isEmpty');
-      return;
-    }
-    const label = typeof global.formatTeacherNameWithT === 'function' ? global.formatTeacherNameWithT(name) : name;
-    el.textContent = label;
-    el.classList.remove('isEmpty');
-  }
-
   function renderPickup(division, pickups) {
     if (division !== 'kinder') return;
     const el = document.getElementById('kinderInfoPickupReadonly');
@@ -346,7 +313,6 @@
 
   function applyCardContext(student, division, context) {
     if (!context) return false;
-    setTeacherDisplay(division, context.teacherName, !context.enrollments.length);
     renderPickup(division, context.pickups);
     const ui = editor();
     if (ui && typeof ui.applyContext === 'function') ui.applyContext(division, student, context);
@@ -361,7 +327,6 @@
       return false;
     }
     state.context = cached;
-    setTeacherDisplay(division, cached.teacherName, !cached.enrollments.length);
     renderPickup(division, cached.pickups);
     if (ui && typeof ui.mount === 'function') ui.mount(division, student, cached);
     return true;
@@ -451,6 +416,34 @@
 
   global.OlliPhoneStudentScheduleService = service;
   global.phoneStudentInfoScheduleRpc = request;
+  // Feedback homeroom is a student-profile field, never a timetable-teacher fallback.
+  global.phoneStudentInfoRefreshFeedbackTeacher = async function(student, division) {
+    const id = clean(student && student.id);
+    const kind = division === 'kinder' ? 'kinder' : 'elementary';
+    const modalId = kind === 'kinder' ? 'kinderInfoModal' : 'elementaryInfoModal';
+    const fieldId = kind === 'kinder' ? 'kinderInfoFeedbackTeacher' : 'elementaryInfoFeedbackTeacher';
+    const field = document.getElementById(fieldId);
+    if (!id || !field || typeof global.loadStudentsFromSupabase !== 'function') return false;
+    const initial = field.value;
+    try {
+      await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
+      const modal = document.getElementById(modalId);
+      const current = typeof global.getStudentInfoModalTarget === 'function'
+        ? global.getStudentInfoModalTarget(kind) : null;
+      const latest = typeof global.findStudentById === 'function' ? global.findStudentById(id) : null;
+      if (!modal || modal.style.display !== 'flex' || clean(current && current.id) !== id || !field.isConnected) return false;
+      if (latest && field.value === initial && document.activeElement !== field) {
+        const value = clean(latest.feedback_teacher);
+        if (field.value !== value) field.value = value;
+        field.dataset.savedValue = value;
+      }
+      return true;
+    } catch (error) {
+      console.warn('피드백 담임 최신 학생정보 조회 실패:', error && (error.message || error));
+      return false;
+    }
+  };
+
   global.phoneStudentInfoReadLocalContext = readLocal;
   global.phoneStudentInfoRememberLocalRows = rememberRows;
   global.phoneStudentInfoRenderLocal = renderLocal;

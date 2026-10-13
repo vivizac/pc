@@ -547,7 +547,7 @@ function studentToSupabasePayload(student) {
   const academyId = requireOlliAcademyId('학생 저장');
   const academyName = getOlliCurrentAcademyName();
   const academyRegion = getOlliCurrentAcademyRegion();
-  return {
+  const payload = {
     id: student.id,
     academy_id: academyId,
     academy_name: academyName || null,
@@ -570,13 +570,16 @@ function studentToSupabasePayload(student) {
     school: student.school || null,
     grade: student.grade ? Number(student.grade) : null,
     class_no: student.className ? Number(student.className) : null,
-    teacher: formatTeacherNameWithT(student.teacher || student.homeroom_teacher || '' ) || null,
-    homeroom_teacher: formatTeacherNameWithT(student.homeroom_teacher || student.teacher || '') || null,
     status: student.status || 'active',
     withdrawn_at: student.withdrawn_at || null,
     paused_at: student.paused_at || null,
     status_changed_at: student.status_changed_at || null,
   };
+  // Omitting this field on ordinary profile saves prevents stale clients from overwriting an assignment.
+  if (student.__olli_feedback_teacher_changed === true) {
+    payload.feedback_teacher = String(student.feedback_teacher || '').trim() || null;
+  }
+  return payload;
 }
 
 function supabaseRowToStudent(row) {
@@ -605,6 +608,7 @@ function supabaseRowToStudent(row) {
     group_months: row.group_months || row.feedback_months || '',
     feedback_months: row.feedback_months || row.group_months || '',
     personality: row.personality || '',
+    feedback_teacher: row.feedback_teacher || '',
     school: row.school || '',
     grade: row.grade || '',
     className: row.class_no || row.className || '',
@@ -817,6 +821,7 @@ function mergeStudentInfoPreservingLocal(localStudent, remoteStudent) {
     group_months: remote.group_months || local.group_months || remote.feedback_months || local.feedback_months,
     feedback_months: remote.feedback_months || local.feedback_months || remote.group_months || local.group_months,
     personality: remote.personality || local.personality,
+    feedback_teacher: remote.feedback_teacher ?? local.feedback_teacher ?? '',
     school: remote.school || local.school,
     grade: remote.grade || local.grade,
     className: remote.className || local.className,
@@ -839,8 +844,12 @@ async function ensureStudentSavedToSupabase(student) {
     academy_id: student.academy_id || academyId
   }, student.type || 'elementary');
 
+  safeStudent.__olli_feedback_teacher_changed = student.__olli_feedback_teacher_changed === true;
   const rows = await postStudentWithColumnFallback(safeStudent);
   const savedRow = Array.isArray(rows) && rows.length ? rows[0] : null;
+  if (safeStudent.__olli_feedback_teacher_changed && String(savedRow?.feedback_teacher || '').trim() !== String(safeStudent.feedback_teacher || '').trim()) {
+    throw new Error('피드백 담임 서버 저장 결과가 일치하지 않습니다.');
+  }
   const remoteStudent = savedRow ? supabaseRowToStudent(savedRow) : null;
   const savedStudent = mergeStudentInfoPreservingLocal(safeStudent, remoteStudent);
   savedStudent.id = savedStudent.id || safeStudent.id;

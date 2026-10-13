@@ -492,7 +492,9 @@
   function renderSummaryShell(division, bodyHtml) {
     const scheduleBox = scheduleBoxFor(division);
     if (!scheduleBox) return false;
-    scheduleBox.innerHTML = '<div class="olliPhoneScheduleSummaryHead"><div class="olliPhoneScheduleSummaryTitle">수업시간</div><button type="button" class="olliPhoneScheduleChangeBtn">시간표 변경</button></div>' + bodyHtml;
+    const nextHtml = '<div class="olliPhoneScheduleSummaryHead"><div class="olliPhoneScheduleSummaryTitle">수업시간</div><button type="button" class="olliPhoneScheduleChangeBtn">시간표 변경</button></div>' + bodyHtml;
+    if (scheduleBox.innerHTML === nextHtml) return true;
+    scheduleBox.innerHTML = nextHtml;
     scheduleBox.querySelector('.olliPhoneScheduleChangeBtn')?.addEventListener('click',() => openScheduleMode(division));
     return true;
   }

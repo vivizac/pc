@@ -106,6 +106,7 @@ function normalizeStudentObject(item, fallbackType = 'elementary') {
     group_months: elementaryGroupMonthsToText(item?.group_months || item?.feedback_months || item?.feedbackMonths || item?.groupFeedbackMonths || ''),
     feedback_months: elementaryGroupMonthsToText(item?.feedback_months || item?.group_months || item?.feedbackMonths || item?.groupFeedbackMonths || ''),
     personality: item?.personality || '',
+    feedback_teacher: item?.feedback_teacher || '',
     school: item?.school || '',
     grade: item?.grade || '',
     className: item?.className || item?.class_no || '',
@@ -121,6 +122,23 @@ function normalizeStudentObject(item, fallbackType = 'elementary') {
     updated_at: item?.updated_at || '',
     academy_id: item?.academy_id || (getOlliCurrentAcademyId ? getOlliCurrentAcademyId() : '')
   };
+}
+
+// Both platforms derive the displayed class teacher from the authoritative enrollment RPC.
+function getOlliStudentScheduleTeacherName(enrollments) {
+  const rows = Array.isArray(enrollments) ? enrollments : [];
+  const first = rows.slice().sort((a, b) => {
+    const aOrder = Number(a?.session_order);
+    const bOrder = Number(b?.session_order);
+    const aRank = aOrder === 1 ? 0 : (a?.session_order == null ? 1 : 2);
+    const bRank = bOrder === 1 ? 0 : (b?.session_order == null ? 1 : 2);
+    if (aRank !== bRank) return aRank - bRank;
+    if (aRank === 2 && aOrder !== bOrder) return aOrder - bOrder;
+    return Number(a?.weekday) - Number(b?.weekday)
+      || Number(a?.time_slot) - Number(b?.time_slot)
+      || String(a?.class_group || '').localeCompare(String(b?.class_group || ''));
+  })[0];
+  return String(first?.teacher_name || '').trim();
 }
 
 function getStudentsStorageKey() {

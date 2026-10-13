@@ -44,6 +44,11 @@
       #elementaryInfoModal .pcStudentInfoField .modalInput[readonly]{background:#fafbfc;color:#666;}
       #elementaryInfoModal .pcStudentInfoTeacherReadonly{width:100%;height:42px;min-height:42px;border:1px solid #e4e6e9;border-radius:12px;background:#fff;padding:0 10px;box-sizing:border-box;display:flex;align-items:center;justify-content:flex-start;color:#222;font-size:13px;font-weight:400;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
       #elementaryInfoModal .pcStudentInfoTeacherReadonly.isEmpty{color:#aaa;font-weight:400;}
+      #elementaryInfoModal .pcStudentInfoFeedbackTeacher{display:flex;align-items:center;gap:4px;width:100%;height:42px;padding:0 8px;border:1px solid #e4e6e9;border-radius:12px;background:#fff;box-sizing:border-box;min-width:0;}
+      #elementaryInfoModal .pcStudentInfoFeedbackTeacher:focus-within{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
+      #elementaryInfoModal .pcStudentInfoFeedbackTeacher span{flex:none;color:#777f88;font-size:10px;font-weight:650;white-space:nowrap;}
+      #elementaryInfoModal .pcStudentInfoFeedbackTeacher input{min-width:0;flex:1;width:100%;padding:0;border:0;outline:0;background:transparent;color:#222;font:inherit;font-size:12px;text-align:right;}
+      #elementaryInfoModal .pcStudentInfoFeedbackTeacher input::placeholder{color:#a0a5ad;}
       #elementaryInfoModal .pcStudentInfoSchedule{padding:13px;border-radius:16px;background:#fafbfc;border:1px solid #eef0f3;}
       #elementaryInfoModal .pcStudentInfoScheduleTitle{margin:0 0 9px 1px;color:#686e76;font-size:11px;font-weight:760;letter-spacing:-.03em;}
       #elementaryInfoModal .infoDayToggleRow,#elementaryInfoModal .infoTimeToggleRow{display:flex;flex-wrap:wrap;gap:6px;width:100%;}
@@ -87,7 +92,7 @@
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoNameInput" placeholder="학생이름"></div>
           <div class="pcStudentInfoField"><div id="elementaryPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><div id="elementaryInfoTeacherReadonly" class="pcStudentInfoTeacherReadonly isEmpty">담임</div></div>
+          <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="elementaryInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정"></label></div>
         </div>
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><input class="modalInput" id="elementarySchoolInput" placeholder="학교"></div>
@@ -200,6 +205,11 @@
     activeStudentId = clean(student.id);
     if (typeof global.olliStudentInfoResetDirty === 'function') global.olliStudentInfoResetDirty();
     const modal = ensureModal(student);
+    const feedbackField = document.getElementById('elementaryInfoFeedbackTeacher');
+    if (feedbackField) {
+      feedbackField.value = clean(student.feedback_teacher);
+      feedbackField.dataset.savedValue = feedbackField.value;
+    }
 
     try {
       elementaryInfoDraft = {
@@ -234,6 +244,9 @@
       try { global.olliSetPhoneInfoScheduleLoading('elementary'); } catch (_) {}
     }
 
+    if (typeof global.phoneStudentInfoRefreshFeedbackTeacher === 'function') {
+      global.phoneStudentInfoRefreshFeedbackTeacher(student, 'elementary').catch(() => {});
+    }
     if (typeof global.phoneStudentInfoRefreshAuthoritative === 'function') {
       try {
         const context = await global.phoneStudentInfoRefreshAuthoritative(student, 'elementary');
@@ -326,6 +339,10 @@
         profile.feedback_months = months;
       }
 
+      const feedbackTeacher = clean(document.getElementById('elementaryInfoFeedbackTeacher')?.value);
+      const feedbackField = document.getElementById('elementaryInfoFeedbackTeacher');
+      profile.feedback_teacher = feedbackTeacher;
+      profile.__olli_feedback_teacher_changed = feedbackTeacher !== clean(feedbackField?.dataset.savedValue ?? latestTarget.feedback_teacher);
       if (typeof global.ensureStudentSavedToSupabase !== 'function') throw new Error('학생정보 저장 기능을 찾지 못했습니다.');
 
       const saved = await global.ensureStudentSavedToSupabase(profile, { requireServer: true });

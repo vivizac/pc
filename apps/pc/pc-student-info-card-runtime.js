@@ -131,18 +131,9 @@
   }
 
   function resolveTimetableTeacherName(division, enrollments, assignments) {
-    const first = primaryEnrollmentForTeacher(enrollments);
-    if (!first) return '';
-    const directTeacher = clean(first.teacher_name);
-    if (directTeacher) return directTeacher;
-    const group = clean(first.class_group || 'A').toUpperCase() || 'A';
-    const matched = (Array.isArray(assignments) ? assignments : []).find((item) =>
-      clean(item && item.division) === clean(division)
-      && Number(item && item.weekday) === Number(first.weekday)
-      && Number(item && item.time_slot) === Number(first.time_slot)
-      && (clean(item && item.class_group).toUpperCase() || 'A') === group
-    );
-    return clean(matched && matched.teacher_name);
+    return typeof global.getOlliStudentScheduleTeacherName === 'function'
+      ? global.getOlliStudentScheduleTeacherName(enrollments)
+      : clean(primaryEnrollmentForTeacher(enrollments)?.teacher_name);
   }
 
   async function setAuthoritativeSchedule(studentId, pairs) {
@@ -485,6 +476,11 @@
       #recordRoomScreen .pcStudentInfoCard .infoTeacherSelectBox{height:40px;border-radius:12px;border-color:#e4e6e9;font-size:12px;}
       #recordRoomScreen .pcStudentInfoTeacherReadonly{height:40px;display:flex;align-items:center;padding:0 11px;border:1px solid #e4e6e9;border-radius:12px;background:#f6f7f8;color:#555c65;font-size:12px;font-weight:700;box-sizing:border-box;}
       #recordRoomScreen .pcStudentInfoTeacherReadonly.isEmpty{color:#a0a5ad;font-weight:600;}
+      #recordRoomScreen .pcStudentInfoFeedbackTeacher{display:flex;align-items:center;gap:5px;min-width:0;height:40px;padding:0 9px;border:1px solid #e4e6e9;border-radius:12px;background:#fff;box-sizing:border-box;}
+      #recordRoomScreen .pcStudentInfoFeedbackTeacher:focus-within{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
+      #recordRoomScreen .pcStudentInfoFeedbackTeacher span{flex:none;color:#777f88;font-size:10px;font-weight:650;white-space:nowrap;}
+      #recordRoomScreen .pcStudentInfoFeedbackTeacher input{flex:1;min-width:0;width:100%;padding:0;border:0;outline:0;background:transparent;color:#222;font:inherit;font-size:12px;text-align:right;}
+      #recordRoomScreen .pcStudentInfoFeedbackTeacher input::placeholder{color:#a0a5ad;}
       #recordRoomScreen .pcStudentInfoActions{display:flex;justify-content:flex-end;gap:8px;padding-top:4px;}
       #recordRoomScreen .pcStudentInfoActionBtn{height:38px;padding:0 16px;border:0;border-radius:12px;background:#f0f2f4;color:#555c65;font:inherit;font-size:11px;font-weight:760;cursor:pointer;}
       #recordRoomScreen .pcStudentInfoActionBtn.primary{background:#1687ff;color:#fff;}
@@ -570,7 +566,7 @@
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoNameInput" aria-label="이름" placeholder="이름"></div>
           <div class="pcStudentInfoField"><div id="elementaryPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><div class="pcStudentInfoTeacherReadonly ${clean(student.__olli_timetable_teacher) ? '' : 'isEmpty'}">담임 : ${esc(student.__olli_timetable_teacher || '미지정')}</div></div>
+          <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="pcStudentInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정" value="${esc(student.feedback_teacher || '')}"></label></div>
         </div>
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><input class="modalInput" id="elementarySchoolInput" aria-label="학교" placeholder="학교"></div>
@@ -637,7 +633,7 @@
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoNameInput" aria-label="이름" placeholder="이름"></div>
           <div class="pcStudentInfoField"><div id="kinderPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><div class="pcStudentInfoTeacherReadonly ${clean(student.__olli_timetable_teacher) ? '' : 'isEmpty'}">담임 : ${esc(student.__olli_timetable_teacher || '미지정')}</div></div>
+          <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="pcStudentInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정" value="${esc(student.feedback_teacher || '')}"></label></div>
         </div>
         <div class="pcStudentInfoGrid2">
           <div class="pcStudentInfoField"><input class="modalInput" id="kinderKindergartenInput" aria-label="유치원" placeholder="유치원"></div>
@@ -802,12 +798,7 @@
         }
       }
     }
-    const teacherBox = card.querySelector('.pcStudentInfoGrid3 .pcStudentInfoTeacherReadonly');
-    const teacherLabel = '담임 : ' + (timetableTeacher || '미지정');
-    if (teacherBox) {
-      if (teacherBox.textContent !== teacherLabel) teacherBox.textContent = teacherLabel;
-      teacherBox.classList.toggle('isEmpty', !timetableTeacher);
-    }
+    if (!editing) syncStudentInfoInputValue('pcStudentInfoFeedbackTeacher', updatedStudent.feedback_teacher);
     const scheduleBox = card.querySelector('.pcStudentInfoSchedule');
     const nextSchedule = studentInfoScheduleHtml(updatedStudent, enrollments);
     if (scheduleBox && previousSchedule !== nextSchedule) scheduleBox.innerHTML = nextSchedule;
@@ -944,6 +935,9 @@
         });
       }
 
+      const feedbackTeacher = clean(document.getElementById('pcStudentInfoFeedbackTeacher')?.value);
+      profile.feedback_teacher = feedbackTeacher;
+      profile.__olli_feedback_teacher_changed = feedbackTeacher !== clean(target.feedback_teacher);
       if (typeof global.ensureStudentSavedToSupabase !== 'function') throw new Error('학생정보 저장 함수를 찾지 못했습니다.');
       // Student profile saves never edit timetable enrollments.
       const savedStudent = await global.ensureStudentSavedToSupabase(profile);

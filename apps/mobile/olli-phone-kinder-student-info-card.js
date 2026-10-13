@@ -44,6 +44,11 @@
       #kinderInfoModal .pcStudentInfoField .modalInput:focus{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
       #kinderInfoModal .pcStudentInfoTeacherReadonly{width:100%;height:42px;min-height:42px;border:1px solid #e4e6e9;border-radius:12px;background:#fff;padding:0 10px;box-sizing:border-box;display:flex;align-items:center;justify-content:flex-start;color:#222;font-size:13px;font-weight:400;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
       #kinderInfoModal .pcStudentInfoTeacherReadonly.isEmpty{color:#aaa;font-weight:400;}
+      #kinderInfoModal .pcStudentInfoFeedbackTeacher{display:flex;align-items:center;gap:4px;width:100%;height:42px;padding:0 8px;border:1px solid #e4e6e9;border-radius:12px;background:#fff;box-sizing:border-box;min-width:0;}
+      #kinderInfoModal .pcStudentInfoFeedbackTeacher:focus-within{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
+      #kinderInfoModal .pcStudentInfoFeedbackTeacher span{flex:none;color:#777f88;font-size:10px;font-weight:650;white-space:nowrap;}
+      #kinderInfoModal .pcStudentInfoFeedbackTeacher input{min-width:0;flex:1;width:100%;padding:0;border:0;outline:0;background:transparent;color:#222;font:inherit;font-size:12px;text-align:right;}
+      #kinderInfoModal .pcStudentInfoFeedbackTeacher input::placeholder{color:#a0a5ad;}
       #kinderInfoModal .pcStudentInfoSchedule{padding:13px;border-radius:16px;background:#fafbfc;border:1px solid #eef0f3;}
       #kinderInfoModal .pcStudentInfoScheduleTitle{margin:0 0 9px 1px;color:#686e76;font-size:11px;font-weight:760;letter-spacing:-.03em;}
       #kinderInfoModal .infoDayToggleRow,#kinderInfoModal .infoTimeToggleRow{display:flex;flex-wrap:wrap;gap:6px;width:100%;}
@@ -77,7 +82,7 @@
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoNameInput" placeholder="학생이름"></div>
           <div class="pcStudentInfoField"><div id="kinderPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><div id="kinderInfoTeacherReadonly" class="pcStudentInfoTeacherReadonly isEmpty">담임</div></div>
+          <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="kinderInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정"></label></div>
         </div>
         <div class="pcStudentInfoGrid2">
           <div class="pcStudentInfoField"><input class="modalInput" id="kinderKindergartenInput" placeholder="유치원"></div>
@@ -170,6 +175,11 @@
     activeStudentId = clean(student.id);
     if (typeof global.olliStudentInfoResetDirty === 'function') global.olliStudentInfoResetDirty();
     const modal = ensureModal(student);
+    const feedbackField = document.getElementById('kinderInfoFeedbackTeacher');
+    if (feedbackField) {
+      feedbackField.value = clean(student.feedback_teacher);
+      feedbackField.dataset.savedValue = feedbackField.value;
+    }
     document.getElementById('kinderInfoNameInput').value = student.name || '';
     document.getElementById('kinderKindergartenInput').value = student.kindergarten || '';
     document.getElementById('kinderAgeInput').value = student.age || '';
@@ -189,6 +199,9 @@
       : false;
     if (!renderedLocalSchedule && typeof global.olliSetPhoneInfoScheduleLoading === 'function') {
       try { global.olliSetPhoneInfoScheduleLoading('kinder'); } catch (_) {}
+    }
+    if (typeof global.phoneStudentInfoRefreshFeedbackTeacher === 'function') {
+      global.phoneStudentInfoRefreshFeedbackTeacher(student, 'kinder').catch(() => {});
     }
     if (typeof global.phoneStudentInfoRefreshAuthoritative === 'function') {
       try {
@@ -257,6 +270,10 @@
         class_time: latestTarget.lesson_time || latestTarget.class_time || ''
       });
 
+      const feedbackTeacher = clean(document.getElementById('kinderInfoFeedbackTeacher')?.value);
+      const feedbackField = document.getElementById('kinderInfoFeedbackTeacher');
+      profile.feedback_teacher = feedbackTeacher;
+      profile.__olli_feedback_teacher_changed = feedbackTeacher !== clean(feedbackField?.dataset.savedValue ?? latestTarget.feedback_teacher);
       if (typeof global.ensureStudentSavedToSupabase !== 'function') throw new Error('학생정보 저장 기능을 찾지 못했습니다.');
 
       const saved = await global.ensureStudentSavedToSupabase(profile, { requireServer: true });
