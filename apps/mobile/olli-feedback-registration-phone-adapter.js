@@ -495,6 +495,8 @@ function installPhoneKcfRecordEditSheets(){
   if (window.__olliPhoneRecordEditSheetsInstalled) return true;
 
   function openRecordEditor(modeName, jobId, row){
+    // Save the current continuous-record draft before snapshotting resumeValue.
+    closePhoneKcfUnderlyingSheetForEdit();
     const editing = preparePhoneKcfRecordEdit(modeName, jobId, row);
     if (editing && openPhoneKcfRecordEditSheet(jobId)) return true;
     // Only abandon the edit state prepared by this attempted opening.
