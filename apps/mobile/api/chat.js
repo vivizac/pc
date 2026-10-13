@@ -602,7 +602,7 @@ export default async function handler(req, res) {
       model,
       input,
       reasoning: {
-        effort: 'minimal',
+        effort: 'medium',
       },
       prompt_cache_key: getPromptCacheKey(promptType),
     };
