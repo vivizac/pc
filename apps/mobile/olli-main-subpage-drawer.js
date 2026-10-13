@@ -1096,7 +1096,7 @@
       mainPage.classList.add(OPEN_CLASS);
       companion?.classList.add(OPEN_CLASS);
       recordRoom.classList.add(REVEALED_CLASS);
-      void waitForTransition(mainPage, 'transform', null, slowAttendanceSlideEnabled ? 1600 : 400).then(() => {
+      void waitForTransition(mainPage, 'transform', null, slowAttendanceSlideEnabled ? 1600 : 500).then(() => {
         if (drawerState !== openingState || navigationInFlight) return;
         if (!mainPage.classList.contains(OPEN_CLASS)) return;
         openingState.attendanceOpening = false;
