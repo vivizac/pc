@@ -54,8 +54,9 @@ test('LIVE feedback edit focuses after the sheet becomes visible and puts the ca
 test('submitted class record edit prepares data directly and opens its own sheet without focusing the TODAY composer first', () => {
   assert.match(adapter, /function preparePhoneKcfRecordEdit\(modeName, jobId, row\)/);
   assert.match(adapter, /state\.editing = \{[\s\S]*?phoneDedicatedSheet:true/);
-  assert.match(adapter, /window\.editKinderChatLiveRecord = function\(jobId, row\)[\s\S]*?preparePhoneKcfRecordEdit\('live', jobId, row\)[\s\S]*?openPhoneKcfRecordEditSheet\(jobId\)/);
-  assert.match(adapter, /window\.editKinderChatSubmittedRecord = function\(jobId\)[\s\S]*?preparePhoneKcfRecordEdit\('archive', jobId, null\)[\s\S]*?openPhoneKcfRecordEditSheet\(jobId\)/);
+  assert.match(adapter, /function openRecordEditor\(modeName, jobId, row\)[\s\S]*?preparePhoneKcfRecordEdit\(modeName, jobId, row\)[\s\S]*?openPhoneKcfRecordEditSheet\(jobId\)/);
+  assert.match(adapter, /window\.editKinderChatLiveRecord = function\(jobId, row\)[\s\S]*?openRecordEditor\('live', jobId, row\)/);
+  assert.match(adapter, /window\.editKinderChatSubmittedRecord = function\(jobId\)[\s\S]*?openRecordEditor\('archive', jobId, null\)/);
   const installRecordBlock = adapter.match(/function installPhoneKcfRecordEditSheets\(\)[\s\S]*?\n\}/)?.[0] || '';
   assert.doesNotMatch(installRecordBlock, /originalLiveEdit\.apply/);
   assert.doesNotMatch(installRecordBlock, /originalArchiveEdit\.apply/);
@@ -181,12 +182,18 @@ test('write-command confirmation renders cancel and confirm buttons instead of r
 });
 
 
-test('edit overlays are above the continuous-record sheet and focus without an offscreen translate', () => {
-  const teacherCss = fs.readFileSync('kcf-teacher-sheet.css', 'utf8');
-  assert.match(teacherCss, /\\.kcfTeacherSheetOverlay \\{/);
+test('edit overlays stay above the continuous-record sheet and start in the focusable position', () => {
   assert.match(phoneCss, /\\.phoneKcfLiveEditOverlay \\{[\\s\\S]*?z-index:10020;/);
   assert.match(phoneCss, /\\.phoneKcfRecordEditOverlay \\{[\\s\\S]*?z-index:10030;/);
   assert.match(phoneCss, /transform:translate\\(-50%, 0\\)/);
   assert.match(adapter, /closePhoneKcfUnderlyingSheetForEdit\\(\\);/);
   assert.match(adapter, /if \\(editing\\) cancelPhoneKcfRecordEditSheet\\(\\);/);
+});
+
+test('a failed editor activation clears only its own edit state and reports the problem', () => {
+  const block = adapter.match(/function openRecordEditor\\(modeName, jobId, row\\)[\\s\\S]*?\\n  \\}/)?.[0] || '';
+  assert.match(block, /closePhoneKcfUnderlyingSheetForEdit\\(\\)/);
+  assert.ok(block.indexOf('closePhoneKcfUnderlyingSheetForEdit()') < block.indexOf('preparePhoneKcfRecordEdit('));
+  assert.match(block, /if \\(editing\\) cancelPhoneKcfRecordEditSheet\\(\\)/);
+  assert.match(adapter, /state\\.editing\\?\\.phoneDedicatedSheet/);
 });
