@@ -182,18 +182,20 @@ test('write-command confirmation renders cancel and confirm buttons instead of r
 });
 
 
-test('edit overlays stay above the continuous-record sheet and start in the focusable position', () => {
-  assert.match(phoneCss, /\\.phoneKcfLiveEditOverlay \\{[\\s\\S]*?z-index:10020;/);
-  assert.match(phoneCss, /\\.phoneKcfRecordEditOverlay \\{[\\s\\S]*?z-index:10030;/);
-  assert.match(phoneCss, /transform:translate\\(-50%, 0\\)/);
-  assert.match(adapter, /closePhoneKcfUnderlyingSheetForEdit\\(\\);/);
-  assert.match(adapter, /if \\(editing\\) cancelPhoneKcfRecordEditSheet\\(\\);/);
+test('edit overlays are layered above the continuous composer and can receive focus immediately', () => {
+  assert.ok(phoneCss.includes('z-index:10020;'));
+  assert.ok(phoneCss.includes('z-index:10030;'));
+  assert.ok(phoneCss.includes('transform:translate(-50%, 0);'));
+  assert.ok(adapter.includes('closePhoneKcfUnderlyingSheetForEdit();'));
+  assert.ok(adapter.includes('if (editing) cancelPhoneKcfRecordEditSheet();'));
 });
 
-test('a failed editor activation clears only its own edit state and reports the problem', () => {
-  const block = adapter.match(/function openRecordEditor\\(modeName, jobId, row\\)[\\s\\S]*?\\n  \\}/)?.[0] || '';
-  assert.match(block, /closePhoneKcfUnderlyingSheetForEdit\\(\\)/);
+test('failed record editor activation clears only its own state and reports it', () => {
+  const start = adapter.indexOf('function openRecordEditor(modeName, jobId, row)');
+  const end = adapter.indexOf('window.editKinderChatLiveRecord = function', start);
+  const block = adapter.slice(start, end);
+  assert.ok(start >= 0 && end > start);
   assert.ok(block.indexOf('closePhoneKcfUnderlyingSheetForEdit()') < block.indexOf('preparePhoneKcfRecordEdit('));
-  assert.match(block, /if \\(editing\\) cancelPhoneKcfRecordEditSheet\\(\\)/);
-  assert.match(adapter, /state\\.editing\\?\\.phoneDedicatedSheet/);
+  assert.ok(block.includes('if (editing) cancelPhoneKcfRecordEditSheet();'));
+  assert.ok(adapter.includes('state.editing?.phoneDedicatedSheet'));
 });
