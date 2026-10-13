@@ -2361,8 +2361,23 @@ body:not(.kcfContinuousMode) #kinderChatFeedbackScreen.kcfInlineDialogueActive .
   white-space:nowrap;
   -webkit-tap-highlight-color:transparent;
 }
-#kcfPersistentTopLayer.show .kcfStorageDiagnosticBtn {
+#kcfPersistentTopLayer.show .kcfStorageDiagnosticBtn.is-enabled {
   display:inline-flex;
   align-items:center;
   justify-content:center;
+}
+
+/* Match standard settings rows while keeping the switch keyboard-accessible. */
+#settingsFeedbackDiagnosticRow.settingsFeedbackDiagnosticRow {
+  width:100%;
+  appearance:none;
+  -webkit-appearance:none;
+  box-sizing:border-box;
+  background:transparent;
+  border:0;
+  border-radius:0;
+  font:inherit;
+  color:inherit;
+  text-align:left;
+  cursor:pointer;
 }
