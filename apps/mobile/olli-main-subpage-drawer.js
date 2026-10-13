@@ -400,9 +400,9 @@
     syncPreparedRecordDivision();
     const newlyMounted = !preparedRearSaved;
     if (newlyMounted) preparedRearSaved = captureInlineState(room);
-    // The drawer surface gets its final layout/paint class BEFORE a user taps.
-    // Opening must not rebuild this layer by swapping prepared/drawer roles.
-    room.classList.add('olliMainDrawerSubpage', PREPARED_REAR_CLASS);
+    // Keep this already-composited rear surface unchanged during opening.
+    // The interactive drawer role is applied only AFTER the front finishes.
+    room.classList.add(PREPARED_REAR_CLASS);
     if (room.style.display !== 'flex') room.style.display = 'flex';
     if (room.style.zIndex !== '119700') room.style.zIndex = '119700';
     if (room.style.pointerEvents !== 'none') room.style.pointerEvents = 'none';
@@ -1009,7 +1009,12 @@
         }
         requestAnimationFrame(() => requestAnimationFrame(() => {
           attendanceColdOpenPending = false;
-          if (navigationInFlight || drawerState || document.hidden
+          const readyForOpen = !!preparedRearSaved
+            && recordRoom.classList.contains(PREPARED_REAR_CLASS)
+            && preparedFrontState?.mainPage === mainPage
+            && preparedFrontState?.companion === companion
+            && window.canReusePhoneRecordList?.(getDrawerDivision(), '') === true;
+          if (!readyForOpen || navigationInFlight || drawerState || document.hidden
               || (getMainPageFromExplicitSource(sourceKind) || getVisibleMainPage()) !== mainPage
               || getAttendancePreparationKey() !== expectedContext) return;
           openOlliMainSubpageDrawer(null, sourceKind);
@@ -1055,9 +1060,8 @@
     recordRoom.setAttribute('aria-hidden', 'false');
     recordRoom.removeAttribute('inert');
     recordRoom.classList.remove(REVEALED_CLASS, RETURNING_CLASS);
-    // Its final drawer visual class was mounted before the tap. Keep the
-    // prepared marker through motion; only clear it after the slide completes.
-    // This avoids a click-frame rear layer/class replacement.
+    // The prepared rear's painted surface stays unchanged on the click frame.
+    // The drawer role is applied only after the foreground slide has completed.
 
     mainPage.style.pointerEvents = 'none';
     mainPage.removeAttribute('inert');
@@ -1090,9 +1094,9 @@
       void waitForTransition(mainPage, 'transform', null, 500).then(() => {
         if (drawerState !== openingState || navigationInFlight) return;
         if (!mainPage.classList.contains(OPEN_CLASS)) return;
-        // Once the front finished moving, turn the prepared layer into the
-        // live attendance route without changing its pixels during motion.
-        recordRoom.classList.remove(PREPARED_REAR_CLASS);
+        // Promote the prepared surface only AFTER the foreground has finished
+        // moving. No visual rear class swaps occur while it is being uncovered.
+        recordRoom.classList.replace(PREPARED_REAR_CLASS, 'olliMainDrawerSubpage');
         openingState.attendanceOpening = false;
         flushDeferredAttendanceRender();
         // Rebuild the hidden sort popup only after foreground motion completes.
