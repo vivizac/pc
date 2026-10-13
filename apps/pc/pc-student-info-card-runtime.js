@@ -442,7 +442,6 @@
       #recordRoomScreen .pcAttendanceCombinedCard.pcAttendanceInfoOpen{background:#fff;}
       #recordRoomScreen .pcAttendanceCombinedCard.pcAttendanceInfoOpen>.pcAttendanceArchiveHead,
       #recordRoomScreen .pcAttendanceCombinedCard.pcAttendanceInfoOpen>.pcAttendanceCombinedBody{display:none;}
-      #recordRoomScreen .pcStudentInfoContent{display:flex;flex:1;min-height:0;flex-direction:column;background:#fff;}
       #recordRoomScreen .pcStudentInfoCardViewport{flex:1;min-height:0;overflow-y:auto;padding:18px 20px 22px;background:#fff;box-sizing:border-box;scrollbar-width:none;}
       #recordRoomScreen .pcStudentInfoCardViewport::-webkit-scrollbar{display:none;}
       #recordRoomScreen .pcStudentInfoCard{width:min(760px,100%);margin:0 auto;padding:4px 2px 12px;box-sizing:border-box;}
@@ -451,12 +450,6 @@
       #recordRoomScreen .pcStudentInfoCardIntro span{font-size:10.5px;font-weight:600;color:#a0a5ad;}
       #recordRoomScreen .pcStudentInfoForm{display:grid;gap:14px;}
       #recordRoomScreen .pcStudentInfoGrid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:40px;gap:9px;}
-      #recordRoomScreen .pcStudentInfoProfileDetails{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);}
-      #recordRoomScreen .pcStudentInfoProfileDetailsKinder{grid-template-columns:minmax(0,2fr) minmax(0,1fr);}
-      #recordRoomScreen .pcStudentInfoInlineField{position:relative;}
-      #recordRoomScreen .pcStudentInfoInlineLabel{position:absolute;z-index:1;left:11px;top:0;height:40px;display:flex;align-items:center;pointer-events:none;color:#8a9098;font-size:10.5px;font-weight:650;white-space:nowrap;}
-      #recordRoomScreen .pcStudentInfoInlineField .modalInput{padding-left:48px;}
-      #recordRoomScreen .pcStudentInfoInlineField.isSchool .modalInput{padding-left:48px;}
       #recordRoomScreen .pcStudentInfoGrid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px;}
       #recordRoomScreen .pcStudentInfoField{min-width:0;}
       #recordRoomScreen .pcStudentInfoGrid3>.pcStudentInfoField{height:40px;min-height:0;margin:0;padding:0;}
@@ -464,18 +457,17 @@
       #recordRoomScreen .pcStudentInfoGrid3 .infoPersonalityToggleRow{width:100%;height:40px;min-height:40px;max-height:40px;margin:0;padding:0;display:flex;align-items:stretch;}
       #recordRoomScreen .pcStudentInfoField .modalInput{width:100%;height:40px;min-width:0;border:1px solid #e4e6e9;border-radius:12px;background:#fff;padding:0 11px;font-size:12px;box-sizing:border-box;outline:none;}
       #recordRoomScreen .pcStudentInfoField .modalInput:focus{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
-      #recordRoomScreen .pcStudentInfoSchedule{padding:0;border:0;border-radius:0;background:transparent;}
-      #recordRoomScreen .pcStudentInfoScheduleHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding:0 2px;}
-      #recordRoomScreen .pcStudentInfoScheduleTitle{color:#626972;font-size:12px;font-weight:750;}
-      #recordRoomScreen .pcStudentInfoScheduleList{display:grid;gap:0;}
-      #recordRoomScreen .pcStudentInfoScheduleItem{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:10px;align-items:center;min-height:40px;padding:7px 10px;border:0;border-bottom:1px solid #edf0f3;border-radius:0;background:transparent;box-sizing:border-box;}
-      #recordRoomScreen .pcStudentInfoScheduleItem:last-child{border-bottom:0;}
-      #recordRoomScreen .pcStudentInfoScheduleOrder{min-width:0;color:#8f959c;font-size:11px;font-weight:700;text-align:left;}
-      #recordRoomScreen .pcStudentInfoScheduleMain{min-width:0;display:flex;align-items:baseline;justify-content:flex-start;gap:4px;overflow:hidden;white-space:nowrap;text-align:left;}
-      #recordRoomScreen .pcStudentInfoScheduleWhen{flex:0 0 auto;color:#25292e;font-size:12.5px;font-weight:500;text-align:left;}
-      #recordRoomScreen .pcStudentInfoScheduleTeacher{min-width:0;overflow:hidden;text-overflow:ellipsis;color:#8b9198;font-size:11.5px;font-weight:600;text-align:left;}
+      #recordRoomScreen .pcStudentInfoSchedule{padding:13px;border-radius:16px;background:#f8f9fb;border:1px solid #eef0f3;}
+      #recordRoomScreen .pcStudentInfoScheduleHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
+      #recordRoomScreen .pcStudentInfoScheduleTitle{color:#626972;font-size:11px;font-weight:780;}
+      #recordRoomScreen .pcStudentInfoScheduleList{display:grid;gap:7px;}
+      #recordRoomScreen .pcStudentInfoScheduleItem{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;min-height:43px;padding:8px 10px;border-radius:12px;background:#fff;border:1px solid #e9ebee;box-sizing:border-box;}
+      #recordRoomScreen .pcStudentInfoScheduleOrder{min-width:35px;color:#8f959c;font-size:10px;font-weight:750;}
+      #recordRoomScreen .pcStudentInfoScheduleMain{min-width:0;display:flex;align-items:baseline;gap:4px;overflow:hidden;white-space:nowrap;}
+      #recordRoomScreen .pcStudentInfoScheduleWhen{flex:0 0 auto;color:#25292e;font-size:12px;font-weight:500;}
+      #recordRoomScreen .pcStudentInfoScheduleTeacher{min-width:0;overflow:hidden;text-overflow:ellipsis;color:#8b9198;font-size:10.5px;font-weight:650;}
       #recordRoomScreen .pcStudentInfoScheduleClassBadge{display:flex;align-items:center;justify-content:center;height:24px;padding:0 8px;border-radius:999px;background:#f1f2f4;color:#60666e;font-size:10px;font-weight:800;white-space:nowrap;}
-      #recordRoomScreen .pcStudentInfoScheduleEmpty{display:flex;align-items:center;justify-content:flex-start;min-height:42px;padding:0 10px;border-bottom:1px solid #edf0f3;background:transparent;color:#9aa0a7;font-size:11.5px;}
+      #recordRoomScreen .pcStudentInfoScheduleEmpty{display:flex;align-items:center;justify-content:center;min-height:48px;border:1px dashed #dadde1;border-radius:12px;background:#fff;color:#9aa0a7;font-size:11px;}
       #recordRoomScreen .pcStudentInfoPickupItem{grid-template-columns:65px minmax(0,1fr) auto;}
       #recordRoomScreen .pcStudentInfoPickupDay{font-size:12px;color:#25292e;font-weight:600;}
       #recordRoomScreen .pcStudentInfoPickupTime{font-size:12px;color:#25292e;font-weight:600;white-space:nowrap;}
@@ -493,8 +485,8 @@
       #recordRoomScreen .pcStudentInfoCard #elementaryGroupToggleRow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;width:100%;}
       #recordRoomScreen .pcStudentInfoFeedbackGroupTitle{margin:0 0 9px 2px;color:#626972;font-size:11px;font-weight:780;}
       #recordRoomScreen .pcStudentInfoGrid3 .infoPersonalityToggleRow .infoTeacherSelectBox{width:100%;height:40px;min-height:40px;margin:0;box-sizing:border-box;}
-      #recordRoomScreen .pcStudentInfoCard .infoToggleBtn.groupIconChoiceBtn{width:100%;min-width:0;max-width:none;height:34px;margin:0;padding:0;box-sizing:border-box;border:0;border-radius:11px;background:#f3f4f6;color:#777f88;font-size:11px;font-weight:700;cursor:pointer;}
-      #recordRoomScreen .pcStudentInfoCard .infoToggleBtn.groupIconChoiceBtn.active{background:#353a40;color:#fff;}
+      #recordRoomScreen .pcStudentInfoCard .infoToggleBtn.groupIconChoiceBtn{width:100%;min-width:0;max-width:none;height:36px;margin:0;padding:0;box-sizing:border-box;border:0;border-radius:11px;background:#f0f2f4;color:#707780;font-size:11px;font-weight:720;cursor:pointer;}
+      #recordRoomScreen .pcStudentInfoCard .infoToggleBtn.groupIconChoiceBtn.active{background:#23262a;color:#fff;}
       #recordRoomScreen .pcStudentInfoCard .infoTeacherSelectBox{height:40px;border-radius:12px;border-color:#e4e6e9;font-size:12px;}
       #recordRoomScreen .pcStudentInfoTeacherReadonly{height:40px;display:flex;align-items:center;padding:0 11px;border:1px solid #e4e6e9;border-radius:12px;background:#f6f7f8;color:#555c65;font-size:12px;font-weight:700;box-sizing:border-box;}
       #recordRoomScreen .pcStudentInfoTeacherReadonly.isEmpty{color:#a0a5ad;font-weight:600;}
@@ -503,8 +495,8 @@
       #recordRoomScreen .pcStudentInfoFeedbackTeacher span{flex:none;color:#777f88;font-size:10px;font-weight:650;white-space:nowrap;}
       #recordRoomScreen .pcStudentInfoFeedbackTeacher input{flex:1;min-width:0;width:100%;padding:0;border:0;outline:0;background:transparent;color:#222;font:inherit;font-size:12px;text-align:right;}
       #recordRoomScreen .pcStudentInfoFeedbackTeacher input::placeholder{color:#a0a5ad;}
-      #recordRoomScreen .pcStudentInfoActions{flex:0 0 auto;display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:0;padding:12px 24px 14px;border-top:1px solid #edf0f3;background:#fff;box-sizing:border-box;}
-      #recordRoomScreen .pcStudentInfoActionBtn{height:38px;min-width:54px;padding:0 16px;border:0;border-radius:12px;background:#f0f2f4;color:#555c65;font:inherit;font-size:11px;font-weight:760;cursor:pointer;}
+      #recordRoomScreen .pcStudentInfoActions{display:flex;justify-content:flex-end;gap:8px;padding-top:4px;}
+      #recordRoomScreen .pcStudentInfoActionBtn{height:38px;padding:0 16px;border:0;border-radius:12px;background:#f0f2f4;color:#555c65;font:inherit;font-size:11px;font-weight:760;cursor:pointer;}
       #recordRoomScreen .pcStudentInfoActionBtn.primary{background:#1687ff;color:#fff;}
       #recordRoomScreen .pcStudentInfoActionBtn:disabled{opacity:.55;cursor:default;}
       #recordRoomScreen .pcStudentInfoLoading{flex:1;display:flex;align-items:center;justify-content:center;color:#9aa0a8;font-size:12px;}
@@ -545,7 +537,7 @@
   function showStudentInfoContent(html) {
     const card = document.querySelector('#pcAttendanceDetailPanel .pcAttendanceCombinedCard');
     if (!card) throw new Error('피드백 보관함 영역을 찾지 못했습니다.');
-    card.querySelector(':scope > .pcStudentInfoContent')?.remove();
+    card.querySelector(':scope > .pcStudentInfoCardViewport')?.remove();
     card.classList.add('pcAttendanceInfoOpen');
     card.setAttribute('aria-label', '학생정보');
     card.insertAdjacentHTML('beforeend', html);
@@ -556,7 +548,7 @@
     cardState.requestId += 1;
     document.querySelector('#pcAttendanceDetailPanel .pcAttendanceCombinedCard.pcAttendanceInfoOpen')?.classList.remove('pcAttendanceInfoOpen');
     const card = document.querySelector('#pcAttendanceDetailPanel .pcAttendanceCombinedCard');
-    card?.querySelector(':scope > .pcStudentInfoContent')?.remove();
+    card?.querySelector(':scope > .pcStudentInfoCardViewport')?.remove();
     card?.setAttribute('aria-label', '피드백 보관함');
     cardState.studentId = '';
     cardState.student = null;
@@ -582,18 +574,18 @@
   }
 
   function elementaryCardHtml(student) {
-    return `<div class="pcStudentInfoContent"><div class="pcStudentInfoCardViewport"><div class="pcStudentInfoCard" data-division="elementary">
+    return `<div class="pcStudentInfoCardViewport"><div class="pcStudentInfoCard" data-division="elementary">
       <div class="pcStudentInfoCardIntro"><strong>${esc(student.name || '학생')} 학생정보</strong></div>
       <div class="pcStudentInfoForm">
         <div class="pcStudentInfoGrid3">
-          <div class="pcStudentInfoField pcStudentInfoInlineField"><span class="pcStudentInfoInlineLabel">이름</span><input class="modalInput" id="elementaryInfoNameInput" aria-label="이름" placeholder="이름"></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoNameInput" aria-label="이름" placeholder="이름"></div>
           <div class="pcStudentInfoField"><div id="elementaryPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
           <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="pcStudentInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정" value="${esc(student.feedback_teacher || '')}"></label></div>
         </div>
-        <div class="pcStudentInfoGrid3 pcStudentInfoProfileDetails">
-          <div class="pcStudentInfoField pcStudentInfoUnitField pcStudentInfoInlineField isSchool"><span class="pcStudentInfoInlineLabel">학교</span><input class="modalInput" id="elementarySchoolInput" aria-label="학교" placeholder="학교"><span class="pcStudentInfoUnitSuffix" data-school-suffix>초등학교</span></div>
-          <div class="pcStudentInfoField pcStudentInfoInlineField"><span class="pcStudentInfoInlineLabel">학년</span><input class="modalInput" id="elementaryGradeInput" aria-label="학년" placeholder="학년" inputmode="numeric" onfocus="focusElementaryGradeInput(this)" oninput="syncElementaryInfoAgeFromGrade()" onblur="blurElementaryInfoGradeInput()"></div>
-          <div class="pcStudentInfoField pcStudentInfoInlineField"><span class="pcStudentInfoInlineLabel">나이</span><input class="modalInput" id="elementaryAgeInput" aria-label="나이" placeholder="나이" readonly></div>
+        <div class="pcStudentInfoGrid3">
+          <div class="pcStudentInfoField pcStudentInfoUnitField isSchool"><input class="modalInput" id="elementarySchoolInput" aria-label="학교" placeholder="학교"><span class="pcStudentInfoUnitSuffix" data-school-suffix>초등학교</span></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryGradeInput" aria-label="학년" placeholder="학년" inputmode="numeric" onfocus="focusElementaryGradeInput(this)" oninput="syncElementaryInfoAgeFromGrade()" onblur="blurElementaryInfoGradeInput()"></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryAgeInput" aria-label="나이" placeholder="나이" readonly></div>
         </div>
         <div class="pcStudentInfoDateRow">
           <span class="pcStudentInfoDateLabel">등록일 :</span>
@@ -604,10 +596,9 @@
         <div class="pcStudentInfoSchedule" aria-label="수업시간 조회">${studentInfoScheduleHtml(student, student.__olli_authoritative_enrollments)}</div>
         <div class="pcStudentInfoSchedule" aria-label="픽업정보">${studentInfoPickupHtml(student.__olli_authoritative_pickups)}</div>
         <div class="pcStudentInfoField"><div class="pcStudentInfoFeedbackGroupTitle">피드백 그룹</div><div id="elementaryGroupToggleRow" class="infoToggleRow">${renderGroupButtons()}</div></div>
+        <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeOlliPcStudentInfoCard()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="pcStudentInfoSaveBtn" onclick="saveOlliPcStudentInfoCard()">저장</button></div>
       </div>
-    </div></div>
-      <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeOlliPcStudentInfoCard()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="pcStudentInfoSaveBtn" onclick="saveOlliPcStudentInfoCard()">저장</button></div>
-    </div>`;
+    </div></div>`;
   }
 
   function studentInfoScheduleHtml(student, enrollments) {
@@ -671,17 +662,17 @@
   }
 
   function kinderCardHtml(student) {
-    return `<div class="pcStudentInfoContent"><div class="pcStudentInfoCardViewport"><div class="pcStudentInfoCard" data-division="kinder">
+    return `<div class="pcStudentInfoCardViewport"><div class="pcStudentInfoCard" data-division="kinder">
       <div class="pcStudentInfoCardIntro"><strong>${esc(student.name || '학생')} 학생정보</strong></div>
       <div class="pcStudentInfoForm">
         <div class="pcStudentInfoGrid3">
-          <div class="pcStudentInfoField pcStudentInfoInlineField"><span class="pcStudentInfoInlineLabel">이름</span><input class="modalInput" id="kinderInfoNameInput" aria-label="이름" placeholder="이름"></div>
+          <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoNameInput" aria-label="이름" placeholder="이름"></div>
           <div class="pcStudentInfoField"><div id="kinderPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
           <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="pcStudentInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정" value="${esc(student.feedback_teacher || '')}"></label></div>
         </div>
-        <div class="pcStudentInfoGrid2 pcStudentInfoProfileDetailsKinder">
-          <div class="pcStudentInfoField pcStudentInfoUnitField pcStudentInfoInlineField isSchool"><span class="pcStudentInfoInlineLabel">유치원</span><input class="modalInput" id="kinderKindergartenInput" aria-label="유치원" placeholder="유치원"><span class="pcStudentInfoUnitSuffix" data-school-suffix>유치원</span></div>
-          <div class="pcStudentInfoField pcStudentInfoUnitField pcStudentInfoInlineField"><span class="pcStudentInfoInlineLabel">나이</span><input class="modalInput" id="kinderAgeInput" aria-label="나이" placeholder="나이" type="number" min="1" max="8"><span class="pcStudentInfoUnitSuffix">살</span></div>
+        <div class="pcStudentInfoGrid2">
+          <div class="pcStudentInfoField pcStudentInfoUnitField isSchool"><input class="modalInput" id="kinderKindergartenInput" aria-label="유치원" placeholder="유치원"><span class="pcStudentInfoUnitSuffix" data-school-suffix>유치원</span></div>
+          <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="kinderAgeInput" aria-label="나이" placeholder="나이" type="number" min="1" max="8"><span class="pcStudentInfoUnitSuffix">살</span></div>
         </div>
         <div class="pcStudentInfoDateRow">
           <span class="pcStudentInfoDateLabel">등록일 :</span>
@@ -692,10 +683,9 @@
         <input id="kinderLessonDayInput" type="hidden">
         <div class="pcStudentInfoSchedule" aria-label="수업시간 조회">${studentInfoScheduleHtml(student, student.__olli_authoritative_enrollments)}</div>
         <div class="pcStudentInfoSchedule" aria-label="픽업정보">${studentInfoPickupHtml(student.__olli_authoritative_pickups)}</div>
+        <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeOlliPcStudentInfoCard()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="pcStudentInfoSaveBtn" onclick="saveOlliPcStudentInfoCard()">저장</button></div>
       </div>
-    </div></div>
-      <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeOlliPcStudentInfoCard()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="pcStudentInfoSaveBtn" onclick="saveOlliPcStudentInfoCard()">저장</button></div>
-    </div>`;
+    </div></div>`;
   }
 
   function setDateInputs(prefix, student) {

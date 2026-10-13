@@ -63,38 +63,3 @@ test('PC student info suffixes are visual only and raw saved fields remain uncha
   assert.match(source, /const age = clean\(document\.getElementById\('kinderAgeInput'\)\?\.value\)/);
   assert.match(source, /const y = Number\(document\.getElementById\(\x60\$\{prefix\}YearInput\x60\)\?\.value/);
 });
-
-test('PC schedule rows keep time and class teacher left aligned', () => {
-  const source = fs.readFileSync('pc-student-info-card-runtime.js', 'utf8');
-  assert.match(source, /pcStudentInfoScheduleMain[^\n]*justify-content:flex-start/);
-  assert.match(source, /pcStudentInfoScheduleTeacher[^\n]*text-align:left/);
-  assert.match(source, /pcStudentInfoScheduleWhen[^\n]*text-align:left/);
-  assert.match(source, /pcStudentInfoScheduleItem[^\n]*grid-template-columns:48px minmax\(0,1fr\) auto/);
-});
-
-test('PC student profile uses labeled fields and school has wider column', () => {
-  const source = fs.readFileSync('pc-student-info-card-runtime.js', 'utf8');
-  assert.match(source, /pcStudentInfoProfileDetails\{grid-template-columns:minmax\(0,2fr\) minmax\(0,1fr\) minmax\(0,1fr\)/);
-  assert.match(source, /pcStudentInfoProfileDetailsKinder\{grid-template-columns:minmax\(0,2fr\) minmax\(0,1fr\)/);
-  assert.match(source, /pcStudentInfoInlineLabel">학교/);
-  assert.match(source, /pcStudentInfoInlineLabel">나이/);
-  assert.match(source, /pcStudentInfoInlineLabel">학년/);
-  assert.match(source, /pcStudentInfoInlineLabel">유치원/);
-  assert.match(source, /pcStudentInfoDateLabel">등록일 :/);
-});
-
-test('PC student info actions are outside scroll viewport and removed with content', () => {
-  const source = fs.readFileSync('pc-student-info-card-runtime.js', 'utf8');
-  const elementary = source.slice(source.indexOf('  function elementaryCardHtml'), source.indexOf('  function studentInfoScheduleHtml'));
-  const kinder = source.slice(source.indexOf('  function kinderCardHtml'), source.indexOf('  function setDateInputs'));
-  for (const html of [elementary, kinder]) {
-    const afterScroll = html.indexOf('</div></div>\n      <div class="pcStudentInfoActions">');
-    assert.ok(afterScroll > 0, 'action bar must be a sibling after scroll content');
-    assert.match(html, /pcStudentInfoContent/);
-    assert.match(html, /pcStudentInfoCardViewport/);
-    assert.match(html, /id="pcStudentInfoSaveBtn"/);
-  }
-  assert.match(source, /pcStudentInfoContent\{display:flex;flex:1;min-height:0;flex-direction:column/);
-  assert.match(source, /pcStudentInfoActions\{flex:0 0 auto/);
-  assert.equal((source.match(/:scope > \.pcStudentInfoContent'\)\?\.remove\(\)/g) || []).length, 2);
-});
