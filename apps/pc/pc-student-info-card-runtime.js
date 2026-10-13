@@ -476,6 +476,9 @@
       #recordRoomScreen .pcStudentInfoDateLabel{padding:0 2px;color:#626972;font-size:12px;font-weight:720;white-space:nowrap;}
       #recordRoomScreen .pcStudentInfoUnitField{position:relative;display:block;height:40px;min-width:0;}
       #recordRoomScreen .pcStudentInfoUnitField .modalInput{padding-right:32px;}
+      #recordRoomScreen .pcStudentInfoUnitField input[type=number]{appearance:textfield;-moz-appearance:textfield;}
+      #recordRoomScreen .pcStudentInfoUnitField input[type=number]::-webkit-inner-spin-button,
+      #recordRoomScreen .pcStudentInfoUnitField input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
       #recordRoomScreen .pcStudentInfoUnitField.isSchool .modalInput{padding-right:78px;}
       #recordRoomScreen .pcStudentInfoUnitSuffix{position:absolute;right:11px;top:0;height:40px;display:flex;align-items:center;white-space:nowrap;pointer-events:none;color:#77808a;font-size:12px;}
       #recordRoomScreen .pcStudentInfoUnitSuffix[hidden]{display:none;}
