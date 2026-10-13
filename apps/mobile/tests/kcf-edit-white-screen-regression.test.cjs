@@ -36,5 +36,5 @@ test('both edit screens offer a cancellable top-strip escape hatch', () => {
 
 test('new visible editor styles are cache-busted together', () => {
   assert.match(html, /kcf-auto-mode\.css\?v=20261013-sheet-bottom-fill-1/);
-  assert.match(html, /olli-feedback-registration-phone-adapter\.js\?v=20261013-quicknote-edit-visible-sheet-1/);
+  assert.match(html, /olli-feedback-registration-phone-adapter\.js\?v=20261013-sheet-bottom-fill-1/);
 });
