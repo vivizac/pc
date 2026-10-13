@@ -9,7 +9,7 @@ const workJs = fs.readFileSync('olli-talk-beta.js', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
 
 function zIndexAfter(haystack, selector) {
-  const section = haystack.slice(haystack.indexOf(selector));
+  const section = haystack.slice(haystack.lastIndexOf(selector));
   const matched = section.match(/z-index:(\d+);/);
   return Number(matched?.[1] || 0);
 }
