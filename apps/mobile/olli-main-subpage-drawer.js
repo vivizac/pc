@@ -245,7 +245,7 @@
   // Stage 2: build the rear attendance roster once, after the first screen is stable.
   // Keep the page hidden; the drawer itself remains the only owner of its visibility.
   let attendancePrewarmHandle = 0;
-  let attendancePrewarmUsesIdle = false;
+  let attendanceColdOpenPending = false;
   let bootDismissPrewarmObserver = null;
 
   // The initial server refresh can request prewarming while the boot overlay
@@ -266,11 +266,7 @@
   function cancelAttendancePrewarm(){
     if (!attendancePrewarmHandle) return;
     noteRearWarm('cancelled-before-idle-run');
-    if (attendancePrewarmUsesIdle && typeof window.cancelIdleCallback === 'function') {
-      window.cancelIdleCallback(attendancePrewarmHandle);
-    } else {
-      clearTimeout(attendancePrewarmHandle);
-    }
+    clearTimeout(attendancePrewarmHandle);
     attendancePrewarmHandle = 0;
   }
 
@@ -333,7 +329,7 @@
     preparedRearSaved = null;
     if (!recordRoom) return false;
     const liveDisplay = recordRoom.style.display;
-    recordRoom.classList.remove(PREPARED_REAR_CLASS);
+    recordRoom.classList.remove(PREPARED_REAR_CLASS, 'olliMainDrawerSubpage');
     restoreInlineState(recordRoom, saved);
     if (keepDisplay) recordRoom.style.display = liveDisplay;
     return true;
@@ -404,7 +400,9 @@
     syncPreparedRecordDivision();
     const newlyMounted = !preparedRearSaved;
     if (newlyMounted) preparedRearSaved = captureInlineState(room);
-    if (!room.classList.contains(PREPARED_REAR_CLASS)) room.classList.add(PREPARED_REAR_CLASS);
+    // Keep this already-composited rear surface unchanged during opening.
+    // The interactive drawer role is applied only AFTER the front finishes.
+    room.classList.add(PREPARED_REAR_CLASS);
     if (room.style.display !== 'flex') room.style.display = 'flex';
     if (room.style.zIndex !== '119700') room.style.zIndex = '119700';
     if (room.style.pointerEvents !== 'none') room.style.pointerEvents = 'none';
@@ -482,16 +480,15 @@
     if (!getAttendancePreparationKey()) { noteRearWarm('schedule-skip:no-academy-context'); return false; }
     const division = getDrawerDivision();
     if (window.canReusePhoneRecordList?.(division, '')) return mountPreparedRear();
-    attendancePrewarmUsesIdle = typeof window.requestIdleCallback === 'function';
-    noteRearWarm('scheduled:idle-roster-preparation');
+    // Avoid idle callbacks being starved in home-screen WebKit apps.
+    // Prepare shortly after the foreground settles, not on the first tap.
+    noteRearWarm('scheduled:early-roster-preparation');
     const run = () => {
       attendancePrewarmHandle = 0;
       if (slideDiagEnabled) rearWarmTrace.warmRuns++;
       prepareAttendanceBehindFromLocal();
     };
-    attendancePrewarmHandle = attendancePrewarmUsesIdle
-      ? window.requestIdleCallback(run, { timeout:1800 })
-      : window.setTimeout(run, 240);
+    attendancePrewarmHandle = window.setTimeout(run, 32);
     return true;
   }
 
@@ -967,7 +964,7 @@
       event.preventDefault();
       event.stopPropagation();
     }
-    if (navigationInFlight || drawerState) return false;
+    if (navigationInFlight || drawerState || attendanceColdOpenPending) return false;
     // Record whether a warm attempt was still queued at the first tap.
     const pendingPrewarmAtClick = !!attendancePrewarmHandle;
     cancelAttendancePrewarm();
@@ -990,22 +987,55 @@
       && preparedFrontState?.mainPage === mainPage
       && preparedFrontState?.companion === companion
       && window.canReusePhoneRecordList?.(getDrawerDivision(), '') === true;
+    if (!preparedRosterReady) {
+      // Do not start moving the foreground over a missing/stale rear roster.
+      // Prepare the local snapshot under the still-opaque foreground in a
+      // separate task, then grant two paint opportunities BEFORE sliding.
+      if (preparedRearSaved) releasePreparedRear();
+      const expectedContext = getAttendancePreparationKey();
+      attendanceColdOpenPending = true;
+      window.setTimeout(() => {
+        const samePage = (getMainPageFromExplicitSource(sourceKind) || getVisibleMainPage()) === mainPage;
+        if (!attendanceColdOpenPending || navigationInFlight || drawerState
+            || document.hidden || !samePage || getAttendancePreparationKey() !== expectedContext) {
+          attendanceColdOpenPending = false;
+          return;
+        }
+        if (!prepareAttendanceBehindFromLocal()) {
+          attendanceColdOpenPending = false;
+          scheduleAttendancePrewarm();
+          window.showPushToast?.('출석부 준비가 완료되지 않았어요. 다시 눌러주세요.');
+          return;
+        }
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          attendanceColdOpenPending = false;
+          const readyForOpen = !!preparedRearSaved
+            && recordRoom.classList.contains(PREPARED_REAR_CLASS)
+            && preparedFrontState?.mainPage === mainPage
+            && preparedFrontState?.companion === companion
+            && window.canReusePhoneRecordList?.(getDrawerDivision(), '') === true;
+          if (!readyForOpen || navigationInFlight || drawerState || document.hidden
+              || (getMainPageFromExplicitSource(sourceKind) || getVisibleMainPage()) !== mainPage
+              || getAttendancePreparationKey() !== expectedContext) return;
+          openOlliMainSubpageDrawer(null, sourceKind);
+        }));
+      }, 0);
+      return true;
+    }
     // The cached list already represents the saved tab. Keep the live view
     // in sync even if an unrelated screen changed it after prewarming.
-    if (preparedRosterReady) syncPreparedRecordDivision();
-    const warmFront = preparedRosterReady ? preparedFrontState : null;
+    syncPreparedRecordDivision();
+    const warmFront = preparedFrontState;
     const slideDiag = beginSlideDiag(mainPage, recordRoom, !!preparedRearSaved);
     if (slideDiag) slideDiag.pendingAtClick = pendingPrewarmAtClick;
     // A warm rear already owns its display and transform layer. Do not
     // restore the old hidden inline styles just to reapply them on this tap.
     // Retain the original snapshot for finishDrawerClose; stale/cold rear
     // preparation still takes the existing release-and-restore path.
-    const recordSaved = preparedRearSaved || captureInlineState(recordRoom);
+    const recordSaved = preparedRearSaved;
     ++rearPrepaintEpoch;
-    if (preparedRosterReady) {
-      preparedRearSaved = null;
-      preparedFrontState = null; // transfer prepared layers to drawerState
-    } else releasePreparedRear(true);
+    preparedRearSaved = null;
+    preparedFrontState = null; // transfer prepared layers to drawerState
     // Opening an already-prepared drawer does not re-sort attendance buttons.
     const utilityOrderSaved = warmFront ? warmFront.utilityOrderSaved : applyRecordUtilityOrder(mainPage);
     const mainSaved = captureInlineState(mainPage);
@@ -1025,32 +1055,19 @@
     };
 
     window.prepareOlliRecordSearchForDrawer?.();
-    // The warm surface remains flex-mounted at its prepainted transform.
-    if (!preparedRosterReady) recordRoom.style.display = 'flex';
-    if (!preparedRosterReady) recordRoom.style.zIndex = '119700';
-    if (!preparedRosterReady) recordRoom.style.transform = '';
+    // The rear stays mounted at its prepared display, stacking and transform.
     recordRoom.style.pointerEvents = 'auto';
     recordRoom.setAttribute('aria-hidden', 'false');
     recordRoom.removeAttribute('inert');
     recordRoom.classList.remove(REVEALED_CLASS, RETURNING_CLASS);
-    // A cold rear page starts at 100% and must snap to the 92% state.
-    // An already prepared rear page was composited at 92% before the tap.
-    const originalAttendanceTransition = recordRoom.style.transition;
-    // Prepared rear has already painted at 92%; do not invalidate that
-    // transform layer or re-snapshot the same starting scale on a warm open.
-    if (!preparedRosterReady) recordRoom.style.transition = 'none';
-    // Restore the original immediate role handoff: delaying it did not fix
-    // the reveal problem and introduced a post-slide visual state change.
-    recordRoom.classList.add('olliMainDrawerSubpage');
-    if (preparedRosterReady) recordRoom.classList.remove(PREPARED_REAR_CLASS);
+    // The prepared rear's painted surface stays unchanged on the click frame.
+    // The drawer role is applied only after the foreground slide has completed.
 
-    if (!preparedRosterReady) mainPage.style.zIndex = '120500';
     mainPage.style.pointerEvents = 'none';
     mainPage.removeAttribute('inert');
     mainPage.classList.add(MAIN_PAGE_CLASS);
 
     if (companion) {
-      if (!preparedRosterReady) companion.style.zIndex = '120600';
       companion.style.pointerEvents = 'none';
       companion.removeAttribute('inert');
       companion.classList.add(COMPANION_CLASS);
@@ -1058,23 +1075,10 @@
 
     hit.hidden = false;
     document.body.classList.add(DRAWER_OPEN_CLASS);
-    // Block redundant roster renders while the foreground slides away.
+    // No roster render, local load, or rear transform reset on the click frame.
+    // The first local render must have finished before the slide is initiated.
     drawerState.attendanceOpening = true;
-    const slideLoadStart = slideDiag ? performance.now() : 0;
-    // A ready rear has already been rendered and visually verified.
-    // Do not call openRecordAttendanceDashboard (including header reset)
-    // until after the slide. Cold/stale rears keep the original local path.
-    if (!preparedRosterReady) {
-      refreshRecordRoomSubpage({ localOnly: true, reuseRendered: true, deferLocalLoad: false, deferSortPopup: true });
-    }
-    if (slideDiag) slideDiag.localLoadMs = Math.round((performance.now() - slideLoadStart) * 10) / 10;
     const slideLayoutStart = slideDiag ? performance.now() : 0;
-    // Cold opens still require an explicit 92% initial-state flush.
-    // The already-painted rear has that state before the button is tapped.
-    if (!preparedRosterReady) {
-      void recordRoom.offsetWidth;
-      recordRoom.style.transition = originalAttendanceTransition;
-    }
     // Preserve the foreground initial-state flush for reliable CSS transitions.
     void mainPage.offsetWidth;
     if (slideDiag) {
@@ -1090,6 +1094,9 @@
       void waitForTransition(mainPage, 'transform', null, 500).then(() => {
         if (drawerState !== openingState || navigationInFlight) return;
         if (!mainPage.classList.contains(OPEN_CLASS)) return;
+        // Promote the prepared surface only AFTER the foreground has finished
+        // moving. No visual rear class swaps occur while it is being uncovered.
+        recordRoom.classList.replace(PREPARED_REAR_CLASS, 'olliMainDrawerSubpage');
         openingState.attendanceOpening = false;
         flushDeferredAttendanceRender();
         // Rebuild the hidden sort popup only after foreground motion completes.
