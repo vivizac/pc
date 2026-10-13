@@ -4178,9 +4178,15 @@ border-color: #F0F0F0;
 
 /* The rear layer keeps its existing prepainted starting transform.
    The original .92 starting scale remains the fallback below. */
+/* Keep front page and its detached top controls composited in their final
+   z-order while the attendance page is still fully covered. */
+.olliDrawerPreparedFront,
+.olliDrawerPreparedCompanion {
+  will-change:transform,opacity;
+}
 #recordRoomScreen.olliAttendanceRearPrepared {
   display:flex;
-  z-index:0;
+  z-index:119700;
   pointer-events:none;
   transform:scale(var(--olli-attendance-drawer-start-scale, .92));
   transform-origin:center center;
@@ -4191,6 +4197,8 @@ border-color: #F0F0F0;
   -webkit-clip-path:none;
   background:#fff;
   isolation:isolate;
+  -webkit-backface-visibility:hidden;
+  backface-visibility:hidden;
 }
 
 /* Main page / record-room subpage drawer. The main page stays visible as the right 25%. */
@@ -4265,6 +4273,8 @@ border-color: #F0F0F0;
   transform-origin:center center;
   transition:transform 320ms cubic-bezier(.22,.61,.36,1);
   will-change:transform;
+  -webkit-backface-visibility:hidden;
+  backface-visibility:hidden;
 }
 #recordRoomScreen.olliMainDrawerSubpage.is-olli-attendance-revealed {
   transform:scale(1);
