@@ -4205,8 +4205,8 @@ border-color: #F0F0F0;
 .olliMainDrawerMainPage,
 .olliMainDrawerCompanion {
   transition:
-    /* Temporary visual test: use the same slow opening in Safari and home-screen PWA. */
-    transform 1400ms linear,
+    /* Nearly steady motion with a small slowdown near the end; same in Safari and installed PWA. */
+    transform 400ms cubic-bezier(.33,.33,.67,.74),
     opacity 320ms cubic-bezier(.22,.61,.36,1),
     box-shadow 115ms ease 105ms;
   will-change:transform,opacity;
