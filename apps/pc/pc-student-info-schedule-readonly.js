@@ -4,7 +4,7 @@
   global.__OLLI_PC_STUDENT_INFO_SCHEDULE_READONLY_V1__ = true;
 
   function applyReadonly(){
-    document.querySelectorAll('#recordRoomScreen .pcStudentInfoCard .pcStudentInfoSchedule').forEach((schedule) => {
+    document.querySelectorAll('#recordRoomScreen .pcStudentInfoCard .pcStudentInfoSchedule[aria-label="수업시간 조회"]').forEach((schedule) => {
       const title = schedule.querySelector('.pcStudentInfoScheduleTitle');
       if (title) title.textContent = '수업 시간 · 시간표에서 변경';
       schedule.querySelectorAll('button').forEach((button) => {
@@ -25,9 +25,9 @@
     const style = document.createElement('style');
     style.id = 'olliPcStudentInfoScheduleReadonlyStyle';
     style.textContent = `
-      #recordRoomScreen .pcStudentInfoCard .pcStudentInfoSchedule button:disabled{cursor:default;opacity:1;pointer-events:none;}
-      #recordRoomScreen .pcStudentInfoCard .pcStudentInfoSchedule .infoDayBtn:not(.active),
-      #recordRoomScreen .pcStudentInfoCard .pcStudentInfoSchedule .infoTimeBtn:not(.active){color:#a2a7ae;background:#f0f2f4;}
+      #recordRoomScreen .pcStudentInfoCard .pcStudentInfoSchedule[aria-label="수업시간 조회"] button:disabled{cursor:default;opacity:1;pointer-events:none;}
+      #recordRoomScreen .pcStudentInfoCard .pcStudentInfoSchedule[aria-label="수업시간 조회"] .infoDayBtn:not(.active),
+      #recordRoomScreen .pcStudentInfoCard .pcStudentInfoSchedule[aria-label="수업시간 조회"] .infoTimeBtn:not(.active){color:#a2a7ae;background:#f0f2f4;}
       #recordRoomScreen .pcStudentInfoScheduleReadonlyGuide{margin-top:9px;padding-top:8px;border-top:1px solid #eceef1;color:#9aa0a8;font-size:9.8px;font-weight:600;line-height:1.45;}
     `;
     document.head.appendChild(style);
