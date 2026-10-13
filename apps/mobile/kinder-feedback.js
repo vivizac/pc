@@ -233,6 +233,7 @@ function setKinderChatFeedbackPersistentTopVisible(visible) {
   const active = !!visible;
   layer.classList.toggle('show', active);
   layer.setAttribute('aria-hidden', active ? 'false' : 'true');
+  if(active) syncOlliFeedbackStorageDiagnosticVisibility();
 }
 function toggleKinderChatFeedbackModeMenu(event) {
   if (event) event.stopPropagation();
@@ -2918,6 +2919,74 @@ window.restoreKinderChatFeedbackLiveSession = restoreKinderChatFeedbackLiveSessi
 window.persistKinderChatFeedbackLiveSessionNow = persistKinderChatFeedbackLiveSessionNow;
 
 
+/* This is a display preference for the currently signed-in administrator's
+   device, not an academy-wide setting. It never modifies feedback records. */
+const OLLI_FEEDBACK_STORAGE_DIAG_PREF_PREFIX = 'olli_feedback_storage_diagnostic_visible_v1';
+
+function canUseOlliFeedbackStorageDiagnostic(){
+  try{
+    const role = typeof getOlliCurrentRole === 'function' ? String(getOlliCurrentRole() || '') : '';
+    return role === 'owner' || role === 'manager' || role === 'super_admin';
+  }catch(_){return false;}
+}
+
+function getOlliFeedbackStorageDiagnosticPreferenceKey(){
+  try{
+    const academyId = String((typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '')
+      || localStorage.getItem('olli_current_academy_id') || '').trim();
+    const memberId = String(localStorage.getItem('olli_current_member_id')
+      || localStorage.getItem('olli_current_user_id') || '').trim();
+    if(!academyId || !memberId)return '';
+    return OLLI_FEEDBACK_STORAGE_DIAG_PREF_PREFIX + '_' + academyId + '_' + memberId;
+  }catch(_){return '';}
+}
+
+function isOlliFeedbackStorageDiagnosticEnabled(){
+  if(!canUseOlliFeedbackStorageDiagnostic())return false;
+  const key=getOlliFeedbackStorageDiagnosticPreferenceKey();
+  if(!key)return false;
+  try{return localStorage.getItem(key)==='1';}catch(_){return false;}
+}
+
+function syncOlliFeedbackStorageDiagnosticVisibility(){
+  const enabled=isOlliFeedbackStorageDiagnosticEnabled();
+  const button=document.querySelector('#kcfPersistentTopLayer .kcfStorageDiagnosticBtn');
+  if(button){
+    button.classList.toggle('is-enabled', enabled);
+    button.setAttribute('aria-hidden', enabled ? 'false' : 'true');
+    button.tabIndex=enabled ? 0 : -1;
+  }
+  const settingsRow=document.getElementById('settingsFeedbackDiagnosticRow');
+  if(settingsRow){
+    settingsRow.setAttribute('aria-checked', enabled ? 'true' : 'false');
+    settingsRow.querySelector('.settingsToggle')?.classList.toggle('on', enabled);
+  }
+  return enabled;
+}
+
+function setOlliFeedbackStorageDiagnosticEnabled(enabled){
+  if(!canUseOlliFeedbackStorageDiagnostic())return false;
+  const key=getOlliFeedbackStorageDiagnosticPreferenceKey();
+  if(!key)return false;
+  const value=enabled ? '1' : '0';
+  try{
+    localStorage.setItem(key,value);
+    if(localStorage.getItem(key)!==value)return false;
+    syncOlliFeedbackStorageDiagnosticVisibility();
+    return true;
+  }catch(_){
+    syncOlliFeedbackStorageDiagnosticVisibility();
+    return false;
+  }
+}
+
+window.OlliFeedbackStorageDiagnosticSettings=Object.freeze({
+  isAllowed:canUseOlliFeedbackStorageDiagnostic,
+  isEnabled:isOlliFeedbackStorageDiagnosticEnabled,
+  setEnabled:setOlliFeedbackStorageDiagnosticEnabled,
+  sync:syncOlliFeedbackStorageDiagnosticVisibility
+});
+
 /* PWA diagnostics inspect only metadata. This MUST NOT call the queue read
    helper because the UI route prunes expired entries when it renders. */
 function getKinderChatFeedbackStorageStatusLines() {
@@ -2976,6 +3045,7 @@ if (navigator.standalone === true || window.matchMedia?.('(display-mode: standal
    QuickNote screen and with ?olli_storage_diagnostic=1.
    Never include raw keys, student names, feedback text, or stored values. */
 async function showOlliStorageDiagnostic() {
+  if(!canUseOlliFeedbackStorageDiagnostic())return;
   const bytes = text => new Blob([String(text)]).size;
   const entries = [];
   let readError = '';
