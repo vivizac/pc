@@ -9,7 +9,14 @@
   position:relative;
   z-index:4;
 }
+
 #kinderChatFeedbackScreen .kcfAutoStudentRoster[hidden] {
+  display:none;
+}
+/* The idle QuickNote roster returns here after the composer closes.
+   Hide only this home location; the live inline and continuous sheet
+   move the same roster node into their active composer hosts. */
+#kinderChatFeedbackScreen .kcfComposerWrap > .kcfAutoStudentRoster {
   display:none;
 }
 #kinderChatFeedbackScreen .kcfAutoStudentRoster {
