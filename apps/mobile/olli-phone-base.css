@@ -4205,18 +4205,11 @@ border-color: #F0F0F0;
 .olliMainDrawerMainPage,
 .olliMainDrawerCompanion {
   transition:
-    transform 400ms cubic-bezier(.25,.52,.36,1),
+    /* Temporary visual test: use the same slow opening in Safari and home-screen PWA. */
+    transform 1400ms linear,
     opacity 320ms cubic-bezier(.22,.61,.36,1),
     box-shadow 115ms ease 105ms;
   will-change:transform,opacity;
-}
-/* Diagnostic-only 1.4-second linear opening makes any sudden appearance of
-   the prepainted Attendance screen visible during the foreground reveal.
-   Does not affect close, switch, or the normal 400ms production animation. */
-html.olli-slow-attendance-slide .olliMainDrawerMainPage.is-olli-main-drawer-open:not(.is-olli-main-drawer-returning),
-html.olli-slow-attendance-slide .olliMainDrawerCompanion.is-olli-main-drawer-open:not(.is-olli-main-drawer-returning) {
-  transition-duration:1400ms, 320ms, 115ms;
-  transition-timing-function:linear, cubic-bezier(.22,.61,.36,1), ease;
 }
 .olliMainDrawerMainPage::after {
   content:'';
