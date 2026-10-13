@@ -1070,6 +1070,13 @@ function readKinderChatFeedbackLiveSession(){
     const items = Array.isArray(session.items) ? session.items : [];
     return { ...session, items:items.slice(-KCF_LIVE_SESSION_MAX_ITEMS) };
   } catch(e) {
+    if (typeof window.recordOlliFeedbackStorageCheck === 'function') {
+      window.recordOlliFeedbackStorageCheck('live_session', 'read', 'failed', {
+        phase:'read_or_parse', error:e,
+        reason:typeof getOlliFeedbackStorageErrorReason === 'function'
+          ? getOlliFeedbackStorageErrorReason(e, 'read') : 'storage_exception'
+      });
+    }
     try { localStorage.removeItem(key); } catch(ignore) {}
     return null;
   }
@@ -1080,25 +1087,41 @@ function persistKinderChatFeedbackLiveSessionNow(){
     kcfLiveSessionPersistTimer = null;
   }
   const academyId = getKinderChatFeedbackLiveAcademyId();
-  if (!academyId || academyId === 'unscoped') return;
+  const record = window.recordOlliFeedbackStorageCheck;
+  if (!academyId || academyId === 'unscoped') {
+    if (typeof record === 'function') record('live_session', 'save', 'skipped', { scope:'unscoped', reason:'academy_not_ready' });
+    return;
+  }
   const dateKey = getKinderChatFeedbackLiveDateKey();
   const key = `${KCF_LIVE_SESSION_KEY_PREFIX}_${academyId}`;
-  kcfLiveFeedbackItems.forEach(item => {
-    if (item && (!item.academyId || item.academyId === 'unscoped')) item.academyId = academyId;
-  });
-  const items = Array.from(kcfLiveFeedbackItems.values())
-    .filter(item => item && item.status !== 'discarded')
-    .filter(item => String(item.academyId || academyId) === academyId)
-    .map(serializeKinderChatFeedbackLiveItem)
-    .filter(Boolean)
-    .sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')))
-    .slice(-KCF_LIVE_SESSION_MAX_ITEMS);
+  let phase = 'prepare';
+  let count = null;
   try {
+    kcfLiveFeedbackItems.forEach(item => {
+      if (item && (!item.academyId || item.academyId === 'unscoped')) item.academyId = academyId;
+    });
+    const items = Array.from(kcfLiveFeedbackItems.values())
+      .filter(item => item && item.status !== 'discarded')
+      .filter(item => String(item.academyId || academyId) === academyId)
+      .map(serializeKinderChatFeedbackLiveItem)
+      .filter(Boolean)
+      .sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')))
+      .slice(-KCF_LIVE_SESSION_MAX_ITEMS);
+    count = items.length;
     if (!items.length) {
+      phase = 'remove';
       localStorage.removeItem(key);
+      phase = 'verify_remove';
+      if (localStorage.getItem(key) !== null) {
+        const error = new Error('Feedback local removal could not be verified');
+        error.name = 'FeedbackStorageReadbackMismatch';
+        throw error;
+      }
+      if (typeof record === 'function') record('live_session', 'remove', 'ok', { count });
       return;
     }
-    localStorage.setItem(key, JSON.stringify({
+    phase = 'serialize';
+    const serialized = JSON.stringify({
       version:KCF_LIVE_SESSION_VERSION,
       academyId,
       dateKey,
@@ -1106,9 +1129,22 @@ function persistKinderChatFeedbackLiveSessionNow(){
       updatedAt:new Date().toISOString(),
       expiresAt:getKinderChatFeedbackLiveSessionExpiryAt(),
       items
-    }));
+    });
+    phase = 'write';
+    localStorage.setItem(key, serialized);
+    phase = 'verify';
+    if (localStorage.getItem(key) !== serialized) {
+      const error = new Error('Feedback local write could not be verified');
+      error.name = 'FeedbackStorageReadbackMismatch';
+      throw error;
+    }
+    if (typeof record === 'function') record('live_session', 'save', 'ok', { count });
   } catch(e) {
-    console.warn('LIVE 대화 임시저장 실패:', e?.message || e);
+    if (typeof record === 'function') record('live_session', 'save', 'failed', {
+      phase, count, error:e,
+      reason:typeof getOlliFeedbackStorageErrorReason === 'function' ? getOlliFeedbackStorageErrorReason(e, phase) : 'storage_exception'
+    });
+    console.warn('LIVE 대화 임시저장 실패:', e?.name || 'StorageError');
   }
 }
 function scheduleKinderChatFeedbackLiveSessionPersist(){
@@ -2925,7 +2961,17 @@ async function showOlliStorageDiagnostic() {
     '가장 큰 항목 10개 (키/내용 비공개):',
     ...entries.sort((a,b) => b.bytes-a.bytes).slice(0,10).map((entry,i) => '  ' + (i+1) + '. ' + entry.category + ' ' + kib(entry.bytes)),
     readError ? '읽기 오류: ' + readError : '',
-    '※ 측정만 수행하며 기존 데이터를 수정하거나 삭제하지 않습니다.'
+    '피드백 로컬 저장 검증 (최근 20건, 개인정보 제외):',
+    ...(typeof window.getOlliFeedbackStorageChecks === 'function'
+      ? window.getOlliFeedbackStorageChecks().slice(-20).map(entry =>
+          '  ' + entry.at + ' ' + entry.kind + '/' + entry.operation + ' ' + entry.result
+          + (entry.phase ? ' 단계=' + entry.phase : '')
+          + (entry.reason ? ' 원인=' + entry.reason : '')
+          + (entry.errorName ? ' 오류=' + entry.errorName : '')
+          + (entry.count == null ? '' : ' 항목=' + entry.count)
+          + ' 범위=' + entry.scope)
+      : ['  기록 모듈을 불러오지 못했습니다.']),
+    '※ 저장공간은 읽기 전용으로 측정하며 기존 피드백을 수정하거나 삭제하지 않습니다.'
   ].filter(Boolean).join('\n');
   const old = document.getElementById('olliStorageDiagnosticOverlay');
   if (old) old.remove();
