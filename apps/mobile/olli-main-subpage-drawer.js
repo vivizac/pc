@@ -372,6 +372,25 @@
       });
   }
 
+  // The pre-rendered student list follows the saved division. The live
+  // currentRecordView must agree before any post-slide loadRecords() call,
+  // otherwise the first warm open repaints kindergarten as elementary.
+  function syncPreparedRecordDivision(){
+    const division = getDrawerDivision();
+    if (typeof currentRecordView === 'undefined' || typeof currentObservationView === 'undefined') return false;
+    if (currentRecordView === division && currentObservationView === division) return true;
+    currentRecordView = division;
+    currentObservationView = division;
+    const modeButton = document.getElementById('recordModeToggleBtn');
+    if (modeButton && modeButton.classList.contains('flipped') !== (division === 'kinder')
+        && typeof setObservationButtonSide === 'function') {
+      setObservationButtonSide(division, false);
+    }
+    if (typeof updateRecordHeaderUI === 'function') updateRecordHeaderUI();
+    if (typeof syncRecordAcademyPageState === 'function') syncRecordAcademyPageState();
+    return true;
+  }
+
   function mountPreparedRear(){
     const room = document.getElementById('recordRoomScreen');
     if (!room) { noteRearWarm('mount-blocked:missing-screen'); return false; }
@@ -380,6 +399,9 @@
       noteRearWarm('mount-blocked:roster-not-reusable');
       return false;
     }
+    // Align the underlying tab/header before the rear is displayed, not on
+    // the first open frame. This is a state correction, not a roster reload.
+    syncPreparedRecordDivision();
     const newlyMounted = !preparedRearSaved;
     if (newlyMounted) preparedRearSaved = captureInlineState(room);
     if (!room.classList.contains(PREPARED_REAR_CLASS)) room.classList.add(PREPARED_REAR_CLASS);
@@ -968,6 +990,9 @@
       && preparedFrontState?.mainPage === mainPage
       && preparedFrontState?.companion === companion
       && window.canReusePhoneRecordList?.(getDrawerDivision(), '') === true;
+    // The cached list already represents the saved tab. Keep the live view
+    // in sync even if an unrelated screen changed it after prewarming.
+    if (preparedRosterReady) syncPreparedRecordDivision();
     const warmFront = preparedRosterReady ? preparedFrontState : null;
     const slideDiag = beginSlideDiag(mainPage, recordRoom, !!preparedRearSaved);
     if (slideDiag) slideDiag.pendingAtClick = pendingPrewarmAtClick;
@@ -1014,9 +1039,10 @@
     // Prepared rear has already painted at 92%; do not invalidate that
     // transform layer or re-snapshot the same starting scale on a warm open.
     if (!preparedRosterReady) recordRoom.style.transition = 'none';
-    // Leave the prepared rear's visual CSS role unchanged while the
-    // foreground moves. Cold opens still need the drawer class immediately.
-    if (!preparedRosterReady) recordRoom.classList.add('olliMainDrawerSubpage');
+    // Restore the original immediate role handoff: delaying it did not fix
+    // the reveal problem and introduced a post-slide visual state change.
+    recordRoom.classList.add('olliMainDrawerSubpage');
+    if (preparedRosterReady) recordRoom.classList.remove(PREPARED_REAR_CLASS);
 
     if (!preparedRosterReady) mainPage.style.zIndex = '120500';
     mainPage.style.pointerEvents = 'none';
@@ -1064,12 +1090,6 @@
       void waitForTransition(mainPage, 'transform', null, 400).then(() => {
         if (drawerState !== openingState || navigationInFlight) return;
         if (!mainPage.classList.contains(OPEN_CLASS)) return;
-        if (preparedRosterReady) {
-          // The background remains at scale(1) throughout this experiment.
-          // Promote the reused screen only after foreground motion finishes.
-          recordRoom.classList.add('olliMainDrawerSubpage');
-          recordRoom.classList.remove(PREPARED_REAR_CLASS);
-        }
         openingState.attendanceOpening = false;
         flushDeferredAttendanceRender();
         // Rebuild the hidden sort popup only after foreground motion completes.
