@@ -1482,34 +1482,6 @@
   });
 
 
-  // A corrected QuickNote replaces exactly one previously stored feedback,
-  // never all feedbacks belonging to that student.
-  FeatureRegistry.register({
-    feature: 'general_feedback_by_id_delete',
-    label: '일반 피드백 개별 삭제',
-    version: 1,
-    scope: 'record',
-    identity: { requiresAcademyId: true, requiresRecordId: true },
-    persistence: 'server_source',
-    local: { enabled: false, defaultValue: null, legacyKeys: [], migrationPolicy: 'manual' },
-    server: {
-      kind: 'table_row',
-      table: 'feedbacks',
-      transport: 'session_rpc',
-      rpc: 'olli_general_feedback_data_access',
-      operation: 'soft_delete',
-      createIfMissing: false,
-      identityColumns: ['academy_id', 'id'],
-      valueColumns: ['is_deleted', 'deleted_at', 'deleted_by', 'delete_reason'],
-      requiredColumns: ['academy_id', 'id', 'is_deleted'],
-      selectColumns: ['id', 'academy_id', 'student_id', 'is_deleted', 'deleted_at', 'deleted_by', 'delete_reason']
-    },
-    verification: { mode: 'none', compareFields: [] },
-    conflict: { policy: 'delete_with_queue', protectPendingLocal: true },
-    permissions: { read: ['teacher', 'manager', 'owner'], write: ['teacher', 'manager', 'owner'] },
-    diagnostics: { serverRequired: true, adminVisible: true }
-  });
-
   FeatureRegistry.register({
     feature: 'summary_feedback_by_id_delete',
     label: '종합 피드백 개별 삭제',
