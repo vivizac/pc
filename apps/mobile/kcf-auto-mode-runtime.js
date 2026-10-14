@@ -893,6 +893,29 @@
     return state.discardedIds.has(clean(jobId));
   }
 
+  function captureSupersededQuickNoteFeedbacks(jobId, record) {
+    var id = clean(jobId);
+    var source = null;
+    try {
+      source = record && record.live
+        ? (typeof global.getKinderChatFeedbackLiveItem === 'function' ? global.getKinderChatFeedbackLiveItem(id) : null)
+        : (typeof global.getTodayFeedbackItemById === 'function' ? global.getTodayFeedbackItemById(id) : null);
+    } catch (_) {}
+    var inherited = source && Array.isArray(source.supersededFeedbacks)
+      ? source.supersededFeedbacks : (record && record.options && record.options.supersededFeedbacks);
+    var result = Array.isArray(inherited) ? inherited.slice() : [];
+    if (!id) return result;
+    result.push({
+      jobId: id,
+      recordId: clean(source && (source.savedRowId || (source.savedRow && source.savedRow.id))),
+      academyId: clean(source && (source.savedAcademyId || source.academyId))
+        || clean(typeof global.getOlliCurrentAcademyId === 'function' ? global.getOlliCurrentAcademyId() : ''),
+      studentId: clean(source && (source.savedStudentId || source.studentId)) || clean(record && record.studentId),
+      sourceTable: clean(source && source.savedSourceTable) || 'feedbacks'
+    });
+    return result;
+  }
+
   function discardFeedbackJob(jobId) {
     var id = clean(jobId);
     if (!id) return false;
@@ -1103,6 +1126,7 @@
     state.editing = {
       mode: 'live',
       record: record,
+      supersededFeedbacks: captureSupersededQuickNoteFeedbacks(id, record),
       resumeValue: input.value || '',
       resumeSelectedStudentId: clean(global.__kcfSelectedStudentId)
     };
@@ -1126,6 +1150,7 @@
     state.editing = {
       mode: 'archive',
       record: record,
+      supersededFeedbacks: captureSupersededQuickNoteFeedbacks(id, record),
       resumeValue: input.value || '',
       resumeSelectedStudentId: clean(global.__kcfSelectedStudentId)
     };
@@ -1163,6 +1188,9 @@
       studentId: record.studentId,
       sourcePage: 'kinderChatFeedback',
       silent: true,
+      supersededFeedbacks: Array.isArray(editing.supersededFeedbacks)
+        ? editing.supersededFeedbacks.slice()
+        : captureSupersededQuickNoteFeedbacks(oldId, record),
       attachments: Array.isArray(record.options && record.options.attachments) ? record.options.attachments.slice() : []
     });
 
