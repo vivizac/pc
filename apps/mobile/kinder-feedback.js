@@ -1050,6 +1050,7 @@ function serializeKinderChatFeedbackLiveItem(item){
     savedAcademyId:String(item.savedAcademyId || ''),
     savedRowId:String(item.savedRowId || ''),
     savedAt:String(item.savedAt || ''),
+    supersededFeedbacks:Array.isArray(item.supersededFeedbacks) ? item.supersededFeedbacks.slice() : [],
     savedRow
   };
 }
@@ -1627,6 +1628,7 @@ async function saveKcfTrialFeedbackOnServer(item, content, update = false) {
 }
 
 const kcfLiveSaveInFlight = new Map();
+window.getKinderChatFeedbackLiveSavePromise = id => kcfLiveSaveInFlight.get(String(id || '')) || null;
 function saveKinderChatFeedbackLive(id, selectedStudentId = '') {
   const key = String(id || '');
   if (kcfLiveSaveInFlight.has(key)) return kcfLiveSaveInFlight.get(key);
@@ -1646,7 +1648,13 @@ async function saveKinderChatFeedbackLiveOnce(id, selectedStudentId = '') {
   if (item.status === 'clarification'
       || (typeof isOlliFeedbackClarificationResponse === 'function'
           && isOlliFeedbackClarificationResponse(item.resultText))) return false;
-  if (item.saved || item.reviewed) return true;
+  if (item.saved || item.reviewed) {
+    if (Array.isArray(item.supersededFeedbacks) && item.supersededFeedbacks.length
+        && typeof retireSupersededQuickNoteFeedbacks === 'function') {
+      try { await retireSupersededQuickNoteFeedbacks(item); } catch (error) { console.warn('기존 피드백 삭제 재확인 실패:', error); }
+    }
+    return true;
+  }
 
   if (item.trialSessionId) {
     try {
@@ -1731,6 +1739,11 @@ async function saveKinderChatFeedbackLiveOnce(id, selectedStudentId = '') {
   item.savedAt = new Date().toISOString();
   item.updatedAt = item.savedAt;
   persistKinderChatFeedbackLiveSessionNow();
+  if (Array.isArray(item.supersededFeedbacks) && item.supersededFeedbacks.length
+      && typeof retireSupersededQuickNoteFeedbacks === 'function') {
+    try { await retireSupersededQuickNoteFeedbacks(item); }
+    catch (error) { console.error('재생성 이전 피드백 삭제 처리 실패:', error); }
+  }
   syncKinderChatFeedbackLiveItemToInbox(item);
   refreshKinderChatFeedbackLiveActions(item);
   return true;
@@ -1775,6 +1788,7 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
     sourcePage: 'kinderChatFeedback',
     sourceText: String(options.userText || ''),
     attachments: Array.isArray(options.attachments) ? options.attachments : [],
+    supersededFeedbacks: Array.isArray(options.supersededFeedbacks) ? options.supersededFeedbacks.slice() : [],
     resultText: '',
     apiModel: '',
     apiEffort: '',
