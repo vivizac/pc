@@ -682,7 +682,8 @@ async function retireSupersededQuickNoteFeedbacks(item = {}) {
     }
     const oldItem = (typeof getKinderChatFeedbackLiveItem === 'function' ? getKinderChatFeedbackLiveItem(jobId) : null)
       || getTodayFeedbackItemById(jobId);
-    const oldRecordId = String(source?.recordId || oldItem?.savedRow?.id || oldItem?.savedRowId || '').trim();
+    const rowIds = [oldItem?.savedRow?.id, oldItem?.savedRowId, source?.recordId].map(value => String(value || '').trim());
+    const oldRecordId = rowIds.find(value => /^\\d+$/.test(value)) || rowIds.find(Boolean) || '';
     // Unfinished/failed generation never created a server feedback to remove.
     if (!oldRecordId) continue;
     if (!/^\\d+$/.test(oldRecordId)) {
@@ -785,6 +786,17 @@ async function saveTodayFeedbackItem(id, btn, selectedStudentId = '') {
     savedAcademyId: (typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : ''),
     savedAt: new Date().toISOString()
   });
+  if (Array.isArray(item.supersededFeedbacks) && item.supersededFeedbacks.length) {
+    try {
+      await retireSupersededQuickNoteFeedbacks({
+        ...item, saved:true, savedRow, savedRowId,
+        savedSourceTable:sourceTable, savedStudentId:finalStudentId,
+        savedAcademyId:typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : ''
+      });
+    } catch (error) {
+      console.error('수업기록 재생성 이전 피드백 정리 실패:', error);
+    }
+  }
   const kcfCard = document.querySelector(`[data-kcf-feedback-id="${CSS.escape(id)}"]`);
   if (kcfCard) {
     kcfCard.classList.add('open');
