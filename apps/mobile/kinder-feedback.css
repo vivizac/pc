@@ -2200,17 +2200,6 @@ body:not(.kcfContinuousMode) #kinderChatFeedbackScreen.kcfInlineDialogueActive .
   line-height:1.35;
   letter-spacing:-0.025em;
 }
-#kinderChatFeedbackScreen .kcfLiveApiMeta {
-  margin:7px 2px 0;
-  color:#9299a1;
-  font-size:calc(11px * var(--olli-text-scale));
-  font-weight:400;
-  line-height:1.4;
-  letter-spacing:0;
-  user-select:none;
-}
-#kinderChatFeedbackScreen .kcfLiveApiMeta[hidden] { display:none; }
-#kinderChatFeedbackScreen .kcfLiveResponseRow.editing .kcfLiveApiMeta { display:none; }
 #kinderChatFeedbackScreen .kcfLiveEditArea {
   display:none;
   width:100%;

@@ -311,7 +311,8 @@ async function autoSaveGeneratedFeedback(text, options = {}, btn = null) {
       content,
       feedback_type: feedbackType,
       year,
-      date
+      date,
+      ...(options.clientRecordId ? { client_record_id: String(options.clientRecordId) } : {})
     }, tableName === 'fail_feedbacks' ? '실패·성장 피드백 저장' : '피드백 저장');
     const savedRow = await saveFeedbackRowVerified(tableName, feedbackPayload, tableName === 'fail_feedbacks' ? '실패·성장 피드백 저장' : '피드백 저장');
 

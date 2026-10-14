@@ -577,7 +577,8 @@ function createTodayFeedbackItem(options = {}) {
     feedbackMonth: String(options.feedbackMonth || getFeedbackMonthLabel(now)),
     feedbackMonthNumber: Number(options.feedbackMonthNumber || getFeedbackMonthNumber(now)),
     reviewed: false,
-    saved: false
+    saved: false,
+    supersededFeedbacks: Array.isArray(options.supersededFeedbacks) ? options.supersededFeedbacks.slice() : []
   };
   const list = getTodayFeedbackItemsRaw();
   list.unshift(item);
@@ -653,6 +654,88 @@ async function patchSavedTodayFeedbackItem(item = {}, nextText = '') {
   }
   return result.serverRow || (Array.isArray(result.serverRows) ? result.serverRows[0] : result.serverRows) || { ...patch, id: recordId, academy_id: academyId, student_id: studentId };
 }
+// A corrected class record must retire its previous SERVER feedback only after
+// the replacement row has been verified. Never bulk-delete by student or date.
+async function retireSupersededQuickNoteFeedbacks(item = {}) {
+  const sources = Array.isArray(item.supersededFeedbacks) ? item.supersededFeedbacks : [];
+  if (!sources.length) return true;
+  const newRowId = String(item.savedRow?.id || item.savedRowId || '').trim();
+  if (!/^\d+$/.test(newRowId) || item.savedRow?.__pending_sync) return false;
+  const academyId = String(item.savedAcademyId || item.academyId
+    || (typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '') || '').trim();
+  const studentId = String(item.savedStudentId || item.studentId || '').trim();
+  if (!academyId || !studentId || item.savedSourceTable !== 'feedbacks') return false;
+
+  const remaining = [];
+  const processed = new Set();
+  let changed = false;
+  for (const source of sources) {
+    const jobId = String(source?.jobId || '').trim();
+    if (jobId && jobId === String(item.id || '')) continue;
+    // A previous response can still be saving when the teacher corrects its record.
+    try {
+      const pending = typeof window.getKinderChatFeedbackLiveSavePromise === 'function'
+        ? window.getKinderChatFeedbackLiveSavePromise(jobId) : null;
+      if (pending) await pending;
+    } catch (error) {
+      console.warn('기존 피드백 저장 완료 확인 실패:', error);
+    }
+    const oldItem = (typeof getKinderChatFeedbackLiveItem === 'function' ? getKinderChatFeedbackLiveItem(jobId) : null)
+      || getTodayFeedbackItemById(jobId);
+    const rowIds = [oldItem?.savedRow?.id, oldItem?.savedRowId, source?.recordId].map(value => String(value || '').trim());
+    const oldRecordId = rowIds.find(value => /^\d+$/.test(value)) || rowIds.find(Boolean) || '';
+    // Unfinished/failed generation never created a server feedback to remove.
+    if (!oldRecordId) continue;
+    if (!/^\d+$/.test(oldRecordId)) {
+      remaining.push(source);
+      continue;
+    }
+    if (oldRecordId === newRowId || processed.has(oldRecordId)) continue;
+    const oldAcademyId = String(source?.academyId || oldItem?.savedAcademyId || oldItem?.academyId || '').trim();
+    const oldStudentId = String(source?.studentId || oldItem?.savedStudentId || oldItem?.studentId || '').trim();
+    const sourceTable = String(source?.sourceTable || oldItem?.savedSourceTable || 'feedbacks').trim();
+    if (sourceTable !== 'feedbacks' || oldAcademyId !== academyId || oldStudentId !== studentId) {
+      remaining.push({ ...source, recordId: oldRecordId });
+      continue;
+    }
+    if (typeof deleteOlliData !== 'function') {
+      remaining.push({ ...source, recordId: oldRecordId });
+      continue;
+    }
+    try {
+      const result = await deleteOlliData('general_feedback_by_id_delete', {
+        academyId, studentId, recordId: oldRecordId,
+        reason: 'quicknote_source_record_corrected'
+      });
+      if (!result?.ok || !result.deleted) {
+        remaining.push({ ...source, recordId: oldRecordId });
+        continue;
+      }
+      processed.add(oldRecordId);
+      changed = true;
+    } catch (error) {
+      console.error('잘못된 수업기록의 기존 피드백 삭제 실패:', error);
+      remaining.push({ ...source, recordId: oldRecordId });
+    }
+  }
+  item.supersededFeedbacks = remaining;
+  const liveItem = typeof getKinderChatFeedbackLiveItem === 'function'
+    ? getKinderChatFeedbackLiveItem(String(item.id || '')) : null;
+  if (liveItem === item && typeof persistKinderChatFeedbackLiveSessionNow === 'function') {
+    persistKinderChatFeedbackLiveSessionNow();
+  } else if (item.id && typeof updateTodayFeedbackItem === 'function') {
+    updateTodayFeedbackItem(item.id, { supersededFeedbacks: remaining });
+  }
+  if (changed && typeof refreshRecordsAfterFeedbackSave === 'function') {
+    try { await refreshRecordsAfterFeedbackSave(); } catch (error) { console.warn('피드백 삭제 후 목록 새로고침 실패:', error); }
+  }
+  if (remaining.length && typeof showPushToast === 'function') {
+    showPushToast('새 피드백은 저장됐지만 이전 피드백 삭제가 완료되지 않았어요. 네트워크 연결과 동기화를 확인해 주세요.');
+  }
+  return remaining.length === 0;
+}
+window.retireSupersededQuickNoteFeedbacks = retireSupersededQuickNoteFeedbacks;
+
 async function saveTodayFeedbackItem(id, btn, selectedStudentId = '') {
   const item = getTodayFeedbackItemById(id);
   if (!item || !item.resultText) return false;
@@ -703,6 +786,17 @@ async function saveTodayFeedbackItem(id, btn, selectedStudentId = '') {
     savedAcademyId: (typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : ''),
     savedAt: new Date().toISOString()
   });
+  if (Array.isArray(item.supersededFeedbacks) && item.supersededFeedbacks.length) {
+    try {
+      await retireSupersededQuickNoteFeedbacks({
+        ...item, saved:true, savedRow, savedRowId,
+        savedSourceTable:sourceTable, savedStudentId:finalStudentId,
+        savedAcademyId:typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : ''
+      });
+    } catch (error) {
+      console.error('수업기록 재생성 이전 피드백 정리 실패:', error);
+    }
+  }
   const kcfCard = document.querySelector(`[data-kcf-feedback-id="${CSS.escape(id)}"]`);
   if (kcfCard) {
     kcfCard.classList.add('open');
@@ -779,6 +873,7 @@ function startTodayFeedbackRequest(options = {}) {
     sourcePage: options.sourcePage,
     sourceText: options.userText,
     attachments: Array.isArray(options.attachments) ? options.attachments : [],
+    supersededFeedbacks: options.supersededFeedbacks,
     feedbackMonth,
     feedbackMonthNumber
   });

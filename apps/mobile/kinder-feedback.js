@@ -1050,6 +1050,8 @@ function serializeKinderChatFeedbackLiveItem(item){
     savedAcademyId:String(item.savedAcademyId || ''),
     savedRowId:String(item.savedRowId || ''),
     savedAt:String(item.savedAt || ''),
+    supersededFeedbacks:Array.isArray(item.supersededFeedbacks) ? item.supersededFeedbacks.slice() : [],
+    pendingCorrectionSave:!!item.pendingCorrectionSave,
     savedRow
   };
 }
@@ -1255,7 +1257,6 @@ function restoreKinderChatFeedbackLiveSession(){
       row = liveUi.row;
     }
     const bubble = row?.querySelector?.('.kcfLiveBubble') || liveUi?.bubble || null;
-    updateKinderChatFeedbackLiveApiLabel(row, item);
     if (bubble) {
       if (item.resultText) {
         item.suspiciousSegments = renderKinderChatFeedbackLiveResultText(bubble, item.resultText);
@@ -1275,6 +1276,9 @@ function restoreKinderChatFeedbackLiveSession(){
   if (intro) intro.classList.add('hidden');
   requestAnimationFrame(() => { area.scrollTop = area.scrollHeight; });
   if (changed) persistKinderChatFeedbackLiveSessionNow();
+  if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+    Promise.resolve().then(resumePendingCorrectedQuickNoteSaves);
+  }
   return true;
 }
 
@@ -1372,14 +1376,6 @@ function renderKinderChatFeedbackLiveResultText(bubble, text) {
   }
   return segments;
 }
-function updateKinderChatFeedbackLiveApiLabel(row, item) {
-  const info = row?.querySelector?.('.kcfLiveApiMeta');
-  if (!info) return;
-  const model = String(item?.apiModel || '').trim();
-  const effort = String(item?.apiEffort || '').trim();
-  info.textContent = model ? (effort ? `${model} · ${effort}` : model) : '';
-  info.hidden = !model;
-}
 function createKinderChatFeedbackLiveActionButton(label, className = '') {
   const btn = document.createElement('button');
   const text = String(label || '').trim();
@@ -1409,10 +1405,6 @@ function createKinderChatFeedbackLiveMessage(options = {}) {
   bubble.setAttribute('aria-live', 'polite');
   bubble.setAttribute('aria-busy', 'true');
   bubble.textContent = '…';
-
-  const apiMeta = document.createElement('div');
-  apiMeta.className = 'kcfLiveApiMeta';
-  apiMeta.hidden = true;
 
   const editArea = document.createElement('textarea');
   editArea.className = 'kcfLiveEditArea';
@@ -1445,8 +1437,7 @@ function createKinderChatFeedbackLiveMessage(options = {}) {
   doneBtn.addEventListener('click', () => confirmKinderChatFeedbackLiveEdit(options.id, doneBtn));
 
   actions.append(inboxBtn, copyBtn, editBtn, retryBtn, cancelBtn, doneBtn);
-  row.append(studentTitle, bubble, apiMeta, editArea, actions);
-  updateKinderChatFeedbackLiveApiLabel(row, options);
+  row.append(studentTitle, bubble, editArea, actions);
   area.appendChild(row);
   requestAnimationFrame(() => { area.scrollTop = area.scrollHeight; });
   return { row, studentTitle, bubble, editArea, actions, area };
@@ -1626,7 +1617,26 @@ async function saveKcfTrialFeedbackOnServer(item, content, update = false) {
   return { id:String(result.id), content:String(content || ''), academy_id:academyId, trial_session_id:trialId };
 }
 
+// Retry cleanup after a connection failure or app restart without touching unrelated records.
+function resumePendingCorrectedQuickNoteSaves() {
+  if (typeof window.autoSaveGeneratedFeedback !== 'function'
+      || typeof window.deleteOlliData !== 'function') return;
+  kcfLiveFeedbackItems.forEach(item => {
+    if (!item || !Array.isArray(item.supersededFeedbacks)
+        || !item.supersededFeedbacks.length) return;
+    if (item.pendingCorrectionSave && !item.saved && item.resultText) {
+      void saveKinderChatFeedbackLive(item.id, item.studentId);
+    } else if (item.saved && typeof window.retireSupersededQuickNoteFeedbacks === 'function') {
+      void window.retireSupersededQuickNoteFeedbacks(item).catch(error => {
+        console.warn('수업기록 수정 이전 피드백 삭제 재시도 실패:', error);
+      });
+    }
+  });
+}
+window.addEventListener('online', resumePendingCorrectedQuickNoteSaves);
+
 const kcfLiveSaveInFlight = new Map();
+window.getKinderChatFeedbackLiveSavePromise = id => kcfLiveSaveInFlight.get(String(id || '')) || null;
 function saveKinderChatFeedbackLive(id, selectedStudentId = '') {
   const key = String(id || '');
   if (kcfLiveSaveInFlight.has(key)) return kcfLiveSaveInFlight.get(key);
@@ -1646,7 +1656,13 @@ async function saveKinderChatFeedbackLiveOnce(id, selectedStudentId = '') {
   if (item.status === 'clarification'
       || (typeof isOlliFeedbackClarificationResponse === 'function'
           && isOlliFeedbackClarificationResponse(item.resultText))) return false;
-  if (item.saved || item.reviewed) return true;
+  if (item.saved || item.reviewed) {
+    if (Array.isArray(item.supersededFeedbacks) && item.supersededFeedbacks.length
+        && typeof retireSupersededQuickNoteFeedbacks === 'function') {
+      try { await retireSupersededQuickNoteFeedbacks(item); } catch (error) { console.warn('기존 피드백 삭제 재확인 실패:', error); }
+    }
+    return true;
+  }
 
   if (item.trialSessionId) {
     try {
@@ -1697,7 +1713,9 @@ async function saveKinderChatFeedbackLiveOnce(id, selectedStudentId = '') {
       feedbackType: item.feedbackType || 'class',
       studentDivision: item.studentDivision || 'elementary',
       studentName: item.studentName || '',
-      studentId: finalStudentId
+      studentId: finalStudentId,
+      ...(Array.isArray(item.supersededFeedbacks) && item.supersededFeedbacks.length
+        ? { clientRecordId: 'corrected_' + String(item.id || '') } : {})
     }, null);
   } catch (err) {
     console.error('LIVE 피드백 자동 저장 오류:', err);
@@ -1706,6 +1724,18 @@ async function saveKinderChatFeedbackLiveOnce(id, selectedStudentId = '') {
 
   if (!savedOk) {
     try { showPushToast('피드백이 서버에 저장되지 않았어요. 저장 재시도를 눌러 주세요.'); } catch(e) {}
+    return false;
+  }
+  if (savedOk && savedOk.__pending_sync && Array.isArray(item.supersededFeedbacks)
+      && item.supersededFeedbacks.length) {
+    // Do not present a locally queued replacement as server-verified.
+    // Both the original and replacement remain retryable under stable mutation IDs.
+    item.pendingCorrectionSave = true;
+    item.saved = false;
+    item.reviewed = false;
+    item.savedRow = savedOk;
+    persistKinderChatFeedbackLiveSessionNow();
+    try { showPushToast('수정 피드백의 서버 저장이 대기 중이에요. 기존 피드백은 아직 삭제하지 않았습니다.'); } catch(e) {}
     return false;
   }
 
@@ -1722,6 +1752,7 @@ async function saveKinderChatFeedbackLiveOnce(id, selectedStudentId = '') {
     : '';
   item.saved = true;
   item.reviewed = true;
+  item.pendingCorrectionSave = false;
   item.studentId = finalStudentId;
   item.savedStudentId = finalStudentId;
   item.savedSourceTable = sourceTable;
@@ -1731,6 +1762,11 @@ async function saveKinderChatFeedbackLiveOnce(id, selectedStudentId = '') {
   item.savedAt = new Date().toISOString();
   item.updatedAt = item.savedAt;
   persistKinderChatFeedbackLiveSessionNow();
+  if (Array.isArray(item.supersededFeedbacks) && item.supersededFeedbacks.length
+      && typeof retireSupersededQuickNoteFeedbacks === 'function') {
+    try { await retireSupersededQuickNoteFeedbacks(item); }
+    catch (error) { console.error('재생성 이전 피드백 삭제 처리 실패:', error); }
+  }
   syncKinderChatFeedbackLiveItemToInbox(item);
   refreshKinderChatFeedbackLiveActions(item);
   return true;
@@ -1775,6 +1811,7 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
     sourcePage: 'kinderChatFeedback',
     sourceText: String(options.userText || ''),
     attachments: Array.isArray(options.attachments) ? options.attachments : [],
+    supersededFeedbacks: Array.isArray(options.supersededFeedbacks) ? options.supersededFeedbacks.slice() : [],
     resultText: '',
     apiModel: '',
     apiEffort: '',
@@ -1782,6 +1819,7 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
     suspiciousSegments: [],
     saved: false,
     reviewed: false,
+    pendingCorrectionSave: false,
     createdAt: now,
     updatedAt: now,
     feedbackMonth: String(options.feedbackMonth || ''),
@@ -1826,7 +1864,6 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
       if (!response.ok) { failureStage = 'HTTP_RESPONSE'; throw new Error(await getKinderChatFeedbackLiveErrorMessage(response)); }
       item.apiModel = String(response.headers.get('X-Olli-AI-Model') || '').trim();
       item.apiEffort = String(response.headers.get('X-Olli-AI-Effort') || '').trim();
-      updateKinderChatFeedbackLiveApiLabel(liveUi.row, item);
       scheduleKinderChatFeedbackLiveSessionPersist();
       if (!response.body || typeof response.body.getReader !== 'function') {
         throw new Error('이 기기에서 스트리밍 응답을 읽을 수 없습니다.');
