@@ -1051,6 +1051,7 @@ function serializeKinderChatFeedbackLiveItem(item){
     savedRowId:String(item.savedRowId || ''),
     savedAt:String(item.savedAt || ''),
     supersededFeedbacks:Array.isArray(item.supersededFeedbacks) ? item.supersededFeedbacks.slice() : [],
+    pendingCorrectionSave:!!item.pendingCorrectionSave,
     savedRow
   };
 }
@@ -1705,7 +1706,9 @@ async function saveKinderChatFeedbackLiveOnce(id, selectedStudentId = '') {
       feedbackType: item.feedbackType || 'class',
       studentDivision: item.studentDivision || 'elementary',
       studentName: item.studentName || '',
-      studentId: finalStudentId
+      studentId: finalStudentId,
+      ...(Array.isArray(item.supersededFeedbacks) && item.supersededFeedbacks.length
+        ? { clientRecordId: 'corrected_' + String(item.id || '') } : {})
     }, null);
   } catch (err) {
     console.error('LIVE 피드백 자동 저장 오류:', err);
@@ -1714,6 +1717,18 @@ async function saveKinderChatFeedbackLiveOnce(id, selectedStudentId = '') {
 
   if (!savedOk) {
     try { showPushToast('피드백이 서버에 저장되지 않았어요. 저장 재시도를 눌러 주세요.'); } catch(e) {}
+    return false;
+  }
+  if (savedOk && savedOk.__pending_sync && Array.isArray(item.supersededFeedbacks)
+      && item.supersededFeedbacks.length) {
+    // Do not present a locally queued replacement as server-verified.
+    // Both the original and replacement remain retryable under stable mutation IDs.
+    item.pendingCorrectionSave = true;
+    item.saved = false;
+    item.reviewed = false;
+    item.savedRow = savedOk;
+    persistKinderChatFeedbackLiveSessionNow();
+    try { showPushToast('수정 피드백의 서버 저장이 대기 중이에요. 기존 피드백은 아직 삭제하지 않았습니다.'); } catch(e) {}
     return false;
   }
 
@@ -1730,6 +1745,7 @@ async function saveKinderChatFeedbackLiveOnce(id, selectedStudentId = '') {
     : '';
   item.saved = true;
   item.reviewed = true;
+  item.pendingCorrectionSave = false;
   item.studentId = finalStudentId;
   item.savedStudentId = finalStudentId;
   item.savedSourceTable = sourceTable;
@@ -1796,6 +1812,7 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
     suspiciousSegments: [],
     saved: false,
     reviewed: false,
+    pendingCorrectionSave: false,
     createdAt: now,
     updatedAt: now,
     feedbackMonth: String(options.feedbackMonth || ''),
