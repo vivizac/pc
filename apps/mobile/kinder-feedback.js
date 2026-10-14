@@ -1035,6 +1035,8 @@ function serializeKinderChatFeedbackLiveItem(item){
     sourceText:String(item.sourceText || ''),
     attachments:sanitizeKinderChatFeedbackLiveAttachments(item.attachments),
     resultText:String(item.resultText || ''),
+    apiModel:String(item.apiModel || ''),
+    apiEffort:String(item.apiEffort || ''),
     errorMessage:String(item.errorMessage || ''),
     suspiciousSegments:Array.isArray(item.suspiciousSegments) ? item.suspiciousSegments.slice(0, 20) : [],
     saved:!!item.saved,
@@ -1253,6 +1255,7 @@ function restoreKinderChatFeedbackLiveSession(){
       row = liveUi.row;
     }
     const bubble = row?.querySelector?.('.kcfLiveBubble') || liveUi?.bubble || null;
+    updateKinderChatFeedbackLiveApiLabel(row, item);
     if (bubble) {
       if (item.resultText) {
         item.suspiciousSegments = renderKinderChatFeedbackLiveResultText(bubble, item.resultText);
@@ -1369,6 +1372,14 @@ function renderKinderChatFeedbackLiveResultText(bubble, text) {
   }
   return segments;
 }
+function updateKinderChatFeedbackLiveApiLabel(row, item) {
+  const info = row?.querySelector?.('.kcfLiveApiMeta');
+  if (!info) return;
+  const model = String(item?.apiModel || '').trim();
+  const effort = String(item?.apiEffort || '').trim();
+  info.textContent = model ? (effort ? `${model} · ${effort}` : model) : '';
+  info.hidden = !model;
+}
 function createKinderChatFeedbackLiveActionButton(label, className = '') {
   const btn = document.createElement('button');
   const text = String(label || '').trim();
@@ -1398,6 +1409,10 @@ function createKinderChatFeedbackLiveMessage(options = {}) {
   bubble.setAttribute('aria-live', 'polite');
   bubble.setAttribute('aria-busy', 'true');
   bubble.textContent = '…';
+
+  const apiMeta = document.createElement('div');
+  apiMeta.className = 'kcfLiveApiMeta';
+  apiMeta.hidden = true;
 
   const editArea = document.createElement('textarea');
   editArea.className = 'kcfLiveEditArea';
@@ -1430,7 +1445,8 @@ function createKinderChatFeedbackLiveMessage(options = {}) {
   doneBtn.addEventListener('click', () => confirmKinderChatFeedbackLiveEdit(options.id, doneBtn));
 
   actions.append(inboxBtn, copyBtn, editBtn, retryBtn, cancelBtn, doneBtn);
-  row.append(studentTitle, bubble, editArea, actions);
+  row.append(studentTitle, bubble, apiMeta, editArea, actions);
+  updateKinderChatFeedbackLiveApiLabel(row, options);
   area.appendChild(row);
   requestAnimationFrame(() => { area.scrollTop = area.scrollHeight; });
   return { row, studentTitle, bubble, editArea, actions, area };
@@ -1735,6 +1751,8 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
     sourceText: String(options.userText || ''),
     attachments: Array.isArray(options.attachments) ? options.attachments : [],
     resultText: '',
+    apiModel: '',
+    apiEffort: '',
     errorMessage: '',
     suspiciousSegments: [],
     saved: false,
@@ -1777,6 +1795,10 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
       });
 
       if (!response.ok) throw new Error(await getKinderChatFeedbackLiveErrorMessage(response));
+      item.apiModel = String(response.headers.get('X-Olli-AI-Model') || '').trim();
+      item.apiEffort = String(response.headers.get('X-Olli-AI-Effort') || '').trim();
+      updateKinderChatFeedbackLiveApiLabel(liveUi.row, item);
+      scheduleKinderChatFeedbackLiveSessionPersist();
       if (!response.body || typeof response.body.getReader !== 'function') {
         throw new Error('이 기기에서 스트리밍 응답을 읽을 수 없습니다.');
       }

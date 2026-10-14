@@ -712,6 +712,8 @@ export default async function handler(req, res) {
         });
       }
 
+      res.setHeader('X-Olli-AI-Model', model);
+      res.setHeader('X-Olli-AI-Effort', resolveChatReasoningEffort(promptType));
       await streamOpenAiResponse(openaiRes, res, {
         studentName:responseStudentName,
       });

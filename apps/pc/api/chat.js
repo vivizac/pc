@@ -8,6 +8,10 @@ async function pipeResponse(upstream, res) {
 
   const cacheControl = upstream.headers.get('cache-control');
   if (cacheControl) res.setHeader('Cache-Control', cacheControl);
+  for (const name of ['X-Olli-AI-Model', 'X-Olli-AI-Effort']) {
+    const value = upstream.headers.get(name);
+    if (value) res.setHeader(name, value);
+  }
 
   if (!upstream.body || typeof upstream.body.getReader !== 'function') {
     const body = await upstream.text();
