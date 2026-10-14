@@ -1807,6 +1807,7 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           promptType: options.promptType || 'class',
+          academyId: item.academyId,
           jobId: item.id,
           studentId: item.studentId,
           studentName: item.studentName,
