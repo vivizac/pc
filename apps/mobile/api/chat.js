@@ -31,7 +31,7 @@ const QUICKNOTE_FEEDBACK_PROMPT_TYPES = new Set([
 
 function resolveChatModel(promptType) {
   const type = String(promptType || '').trim();
-  if (QUICKNOTE_FEEDBACK_PROMPT_TYPES.has(type)) return 'gpt-6-luna';
+  if (QUICKNOTE_FEEDBACK_PROMPT_TYPES.has(type)) return 'gpt-6.1-sol';
   return FEEDBACK_GENERATION_PROMPT_TYPES.has(type)
     ? 'gpt-5-mini'
     : (process.env.OPENAI_MODEL || 'gpt-5-mini');
@@ -40,7 +40,7 @@ function resolveChatModel(promptType) {
 function resolveChatReasoningEffort(promptType) {
   // QuickNote reasoning is configured separately from other feedback and Team Talk.
   return QUICKNOTE_FEEDBACK_PROMPT_TYPES.has(String(promptType || '').trim())
-    ? 'low'
+    ? 'medium'
     : 'medium';
 }
 
