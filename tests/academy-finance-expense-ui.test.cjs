@@ -50,7 +50,7 @@ test('operating expense UI loads through finance overview without replacing payr
   assert.match(common, /rpc\('olli_academy_expense_item_end'/);
   assert.doesNotMatch(common, /rpc\('olli_academy_expense_value_set'/);
   assert.doesNotMatch(common, /rpc\('olli_academy_expense_item_save'/);
-  assert.match(common, /rpc\('olli_teacher_payroll_setting_upsert_v2'/);
+  assert.match(common, /rpc\('olli_teacher_payroll_setting_upsert_v3'/);
 });
 
 test('monthly costs remain visibly missing until explicitly entered', () => {
@@ -89,13 +89,13 @@ test('finance summary shows operating expense, payroll, and combined monthly tot
   assert.match(common, /payload\.total_amount/);
   assert.match(common, />운영 지출</);
   assert.match(common, />선생님 급여</);
-  assert.match(common, /총 지출/);
+  assert.match(common, /예상 총지출/);
 });
 
 test('PC uses two finance columns while non-PC layout remains stacked', () => {
   assert.match(common, /class="olliFinanceColumns"/);
-  assert.match(common, /class="olliFinanceExpensesColumn"/);
-  assert.match(common, /class="olliFinancePayrollColumn"/);
+  assert.match(common, /class="olliFinanceExpensesColumn/);
+  assert.match(common, /class="olliFinancePayrollColumn/);
   assert.match(css, /\.olliFinanceColumns\{display:block\}/);
   assert.match(css, /body\.olliPcApp \.olliFinanceColumns\{display:grid;grid-template-columns:minmax\(0,\.47fr\) minmax\(0,\.53fr\)/);
   assert.match(css, /body\.olliPcApp \.olliPayrollPage\{width:100%;max-width:none/);
@@ -108,7 +108,7 @@ test('PC expense column adapts row actions without changing the shared mobile ro
 });
 
 test('mobile switches between operating expense and payroll tabs while keeping the shared summary above', () => {
-  assert.match(common, /financeTab: 'expenses'/);
+  assert.match(common, /financeTab: 'income'/);
   assert.match(common, /function financeTabHtml\(\)/);
   assert.match(common, /data-finance-tab="expenses">운영 지출/);
   assert.match(common, /data-finance-tab="payroll">선생님 급여/);
@@ -282,13 +282,13 @@ test('expense history UI is scoped and remains usable on mobile', () => {
   assert.match(css, /@media\(max-width:560px\)\{[\s\S]*\.olliExpenseHistoryHead\{display:block\}/);
 });
 
-test('finance summary distinguishes incomplete monthly expenses from a complete total', () => {
+test('finance summary distinguishes incomplete monthly expenses and unpriced students', () => {
   assert.match(common, /const missingMonthly=Math\.max\(0,Number\(expenses\.missing_monthly_count \|\| 0\)\)/);
-  assert.match(common, /future\?'현재 입력 기준 예상 총지출':'현재 입력 기준 총지출'/);
-  assert.match(common, /future\?'예상 총지출':'총지출'/);
-  assert.match(common, /'월별 지출 미입력 '\+missingMonthly\+'건'/);
-  assert.match(common, /'월별 지출 입력 완료'/);
-  assert.match(common, /class="olliFinanceSummary'\+\(missingMonthly>0\?' is-incomplete':' is-complete'\)/);
+  assert.match(common, /const unpriced=Math\.max\(0,Number\(revenue\?\.unpriced_students \|\| 0\)\)/);
+  assert.match(common, /const incomplete=missingMonthly>0 \|\| unpriced>0 \|\| !revenue/);
+  assert.match(common, /지출 미입력/);
+  assert.match(common, /수업 횟수 확인/);
+  assert.match(common, /class="olliFinanceSummary'\+\(incomplete\?' is-incomplete':' is-complete'\)/);
 });
 
 test('missing monthly expenses explicitly state that they are excluded from the current total', () => {
