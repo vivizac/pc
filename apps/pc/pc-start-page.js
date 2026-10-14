@@ -6,7 +6,7 @@
   function installPcStudentInfoCardRuntime(){
     if (document.querySelector('script[data-olli-pc-student-info-card="1"]')) return;
     const script = document.createElement('script');
-    script.src = 'pc-student-info-card-runtime.js?v=20261013-dropoff-display-2';
+    script.src = 'pc-student-info-card-runtime.js?v=20261014-kinder-info-two-row-1';
     script.dataset.olliPcStudentInfoCard = '1';
     document.head.appendChild(script);
   }

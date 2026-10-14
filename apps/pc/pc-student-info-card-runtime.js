@@ -450,11 +450,12 @@
       #recordRoomScreen .pcStudentInfoCardIntro span{font-size:10.5px;font-weight:600;color:#a0a5ad;}
       #recordRoomScreen .pcStudentInfoForm{display:grid;gap:14px;}
       #recordRoomScreen .pcStudentInfoGrid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:40px;gap:9px;}
+      #recordRoomScreen .pcStudentInfoGrid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:40px;gap:9px;}
       #recordRoomScreen .pcStudentInfoGrid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px;}
       #recordRoomScreen .pcStudentInfoField{min-width:0;}
-      #recordRoomScreen .pcStudentInfoGrid3>.pcStudentInfoField{height:40px;min-height:0;margin:0;padding:0;}
-      #recordRoomScreen .pcStudentInfoGrid3,#recordRoomScreen .pcStudentInfoGrid2{align-items:stretch;}
-      #recordRoomScreen .pcStudentInfoGrid3 .infoPersonalityToggleRow{width:100%;height:40px;min-height:40px;max-height:40px;margin:0;padding:0;display:flex;align-items:stretch;}
+      #recordRoomScreen .pcStudentInfoGrid3>.pcStudentInfoField,#recordRoomScreen .pcStudentInfoGrid4>.pcStudentInfoField{height:40px;min-height:0;margin:0;padding:0;}
+      #recordRoomScreen .pcStudentInfoGrid3,#recordRoomScreen .pcStudentInfoGrid2,#recordRoomScreen .pcStudentInfoGrid4{align-items:stretch;}
+      #recordRoomScreen .pcStudentInfoGrid3 .infoPersonalityToggleRow,#recordRoomScreen .pcStudentInfoGrid4 .infoPersonalityToggleRow{width:100%;height:40px;min-height:40px;max-height:40px;margin:0;padding:0;display:flex;align-items:stretch;}
       #recordRoomScreen .pcStudentInfoField .modalInput{width:100%;height:40px;min-width:0;border:1px solid #e4e6e9;border-radius:12px;background:#fff;padding:0 11px;font-size:12px;box-sizing:border-box;outline:none;}
       #recordRoomScreen .pcStudentInfoField .modalInput:focus{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
       #recordRoomScreen .pcStudentInfoSchedule{padding:13px;border-radius:16px;background:#f8f9fb;border:1px solid #eef0f3;}
@@ -478,6 +479,8 @@
       #recordRoomScreen .pcStudentInfoDateLabel{padding:0 2px;color:#626972;font-size:12px;font-weight:720;white-space:nowrap;}
       #recordRoomScreen .pcStudentInfoUnitField{position:relative;display:block;height:40px;min-width:0;}
       #recordRoomScreen .pcStudentInfoUnitField .modalInput{padding-right:32px;}
+      #recordRoomScreen .pcStudentInfoDateYearField .modalInput{padding-left:51px;text-align:left;}
+      #recordRoomScreen .pcStudentInfoInlineDateLabel{position:absolute;left:10px;top:0;height:40px;display:flex;align-items:center;color:#626972;font-size:10.5px;font-weight:720;white-space:nowrap;pointer-events:none;}
       #recordRoomScreen .pcStudentInfoUnitField input[type=number]{appearance:textfield;-moz-appearance:textfield;}
       #recordRoomScreen .pcStudentInfoUnitField input[type=number]::-webkit-inner-spin-button,
       #recordRoomScreen .pcStudentInfoUnitField input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
@@ -486,7 +489,7 @@
       #recordRoomScreen .pcStudentInfoUnitSuffix[hidden]{display:none;}
       #recordRoomScreen .pcStudentInfoCard #elementaryGroupToggleRow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;width:100%;}
       #recordRoomScreen .pcStudentInfoFeedbackGroupTitle{margin:0 0 9px 2px;color:#626972;font-size:11px;font-weight:780;}
-      #recordRoomScreen .pcStudentInfoGrid3 .infoPersonalityToggleRow .infoTeacherSelectBox{width:100%;height:40px;min-height:40px;margin:0;box-sizing:border-box;}
+      #recordRoomScreen .pcStudentInfoGrid3 .infoPersonalityToggleRow .infoTeacherSelectBox,#recordRoomScreen .pcStudentInfoGrid4 .infoPersonalityToggleRow .infoTeacherSelectBox{width:100%;height:40px;min-height:40px;margin:0;box-sizing:border-box;}
       #recordRoomScreen .pcStudentInfoCard .infoToggleBtn.groupIconChoiceBtn{width:100%;min-width:0;max-width:none;height:36px;margin:0;padding:0;box-sizing:border-box;border:0;border-radius:11px;background:#f0f2f4;color:#707780;font-size:11px;font-weight:720;cursor:pointer;}
       #recordRoomScreen .pcStudentInfoCard .infoToggleBtn.groupIconChoiceBtn.active{background:#23262a;color:#fff;}
       #recordRoomScreen .pcStudentInfoCard .infoTeacherSelectBox{height:40px;border-radius:12px;border-color:#e4e6e9;font-size:12px;}
@@ -677,20 +680,17 @@
     return `<div class="pcStudentInfoCardViewport"><div class="pcStudentInfoCard" data-division="kinder">
       <div class="pcStudentInfoCardIntro"><strong>${esc(student.name || '학생')} 학생정보</strong></div>
       <div class="pcStudentInfoForm">
-        <div class="pcStudentInfoGrid3">
+        <div class="pcStudentInfoGrid4">
           <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoNameInput" aria-label="이름" placeholder="이름"></div>
-          <div class="pcStudentInfoField"><div id="kinderPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="pcStudentInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정" value="${esc(student.feedback_teacher || '')}"></label></div>
-        </div>
-        <div class="pcStudentInfoGrid2">
           <div class="pcStudentInfoField pcStudentInfoUnitField isSchool"><input class="modalInput" id="kinderKindergartenInput" aria-label="유치원" placeholder="유치원"><span class="pcStudentInfoUnitSuffix" data-school-suffix>유치원</span></div>
           <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="kinderAgeInput" aria-label="나이" placeholder="나이" type="number" min="1" max="8"><span class="pcStudentInfoUnitSuffix">살</span></div>
+          <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="pcStudentInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정" value="${esc(student.feedback_teacher || '')}"></label></div>
         </div>
-        <div class="pcStudentInfoDateRow">
-          <span class="pcStudentInfoDateLabel">등록일 :</span>
-          <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="kinderInfoYearInput" aria-label="등록 연도" placeholder="연도" type="number" min="1900" max="2100"><span class="pcStudentInfoUnitSuffix">년</span></div>
+        <div class="pcStudentInfoGrid4">
+          <div class="pcStudentInfoField pcStudentInfoUnitField pcStudentInfoDateYearField"><span class="pcStudentInfoInlineDateLabel" aria-hidden="true">등록일</span><input class="modalInput" id="kinderInfoYearInput" aria-label="등록 연도" placeholder="연도" type="number" min="1900" max="2100"><span class="pcStudentInfoUnitSuffix">년</span></div>
           <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="kinderInfoMonthInput" aria-label="등록 월" placeholder="월" type="number" min="1" max="12"><span class="pcStudentInfoUnitSuffix">월</span></div>
           <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="kinderInfoDayInput" aria-label="등록 일" placeholder="일" type="number" min="1" max="31"><span class="pcStudentInfoUnitSuffix">일</span></div>
+          <div class="pcStudentInfoField"><div id="kinderPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
         </div>
         <input id="kinderLessonDayInput" type="hidden">
         <div class="pcStudentInfoSchedule" aria-label="수업시간 조회">${studentInfoScheduleHtml(student, student.__olli_authoritative_enrollments)}</div>
