@@ -196,11 +196,13 @@ async function loadSystemPrompt(promptType) {
   }
 
   if (!promptRes.ok) {
-    throw new Error(
-      data?.message ||
-      data?.error ||
-      '공용 프롬프트를 불러오지 못했습니다.'
-    );
+    // Preserve the upstream service and HTTP code, without storing provider messages
+    // that might contain credential or request data.
+    const error = new Error('Supabase 공용 프롬프트 인증 또는 호출 실패');
+    error.statusCode = promptRes.status;
+    error.logCode = `SUPABASE_PROMPT_HTTP_${promptRes.status}`;
+    error.providerCode = String(data?.code || data?.error?.code || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0,60);
+    throw error;
   }
 
   if (!data?.ok || !data?.prompt) {
@@ -778,8 +780,8 @@ export default async function handler(req, res) {
   } catch (error) {
     await logUsage({
       success: false,
-      errorCode: safeLogText(failureStage + '_' + (error?.code || error?.name || 'ERROR'), 80),
-      errorMessage: String(error?.name || 'Error').slice(0, 80),
+      errorCode: safeLogText(error?.logCode || (failureStage + '_' + (error?.code || error?.name || 'ERROR')), 80),
+      errorMessage: safeLogText(error?.providerCode || error?.name || 'Error', 80),
     });
     if (res.writableEnded) return;
     if (res.headersSent) { try { res.end(); } catch (_) {} return; }
