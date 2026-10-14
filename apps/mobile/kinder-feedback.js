@@ -1277,6 +1277,9 @@ function restoreKinderChatFeedbackLiveSession(){
   if (intro) intro.classList.add('hidden');
   requestAnimationFrame(() => { area.scrollTop = area.scrollHeight; });
   if (changed) persistKinderChatFeedbackLiveSessionNow();
+  if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+    Promise.resolve().then(resumePendingCorrectedQuickNoteSaves);
+  }
   return true;
 }
 
@@ -1627,6 +1630,24 @@ async function saveKcfTrialFeedbackOnServer(item, content, update = false) {
   }
   return { id:String(result.id), content:String(content || ''), academy_id:academyId, trial_session_id:trialId };
 }
+
+// Retry cleanup after a connection failure or app restart without touching unrelated records.
+function resumePendingCorrectedQuickNoteSaves() {
+  if (typeof window.autoSaveGeneratedFeedback !== 'function'
+      || typeof window.deleteOlliData !== 'function') return;
+  kcfLiveFeedbackItems.forEach(item => {
+    if (!item || !Array.isArray(item.supersededFeedbacks)
+        || !item.supersededFeedbacks.length) return;
+    if (item.pendingCorrectionSave && !item.saved && item.resultText) {
+      void saveKinderChatFeedbackLive(item.id, item.studentId);
+    } else if (item.saved && typeof window.retireSupersededQuickNoteFeedbacks === 'function') {
+      void window.retireSupersededQuickNoteFeedbacks(item).catch(error => {
+        console.warn('수업기록 수정 이전 피드백 삭제 재시도 실패:', error);
+      });
+    }
+  });
+}
+window.addEventListener('online', resumePendingCorrectedQuickNoteSaves);
 
 const kcfLiveSaveInFlight = new Map();
 window.getKinderChatFeedbackLiveSavePromise = id => kcfLiveSaveInFlight.get(String(id || '')) || null;
