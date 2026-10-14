@@ -65,7 +65,7 @@ test('privacy stream rewriter keeps Unicode code points intact across carry boun
 });
 
 
-test('only feedback-generation requests use GPT-5.6 Terra medium', () => {
+test('only feedback-generation requests use GPT-5 mini medium', () => {
   const vm = require('node:vm');
   const start = chat.indexOf('const FEEDBACK_GENERATION_PROMPT_TYPES');
   const end = chat.indexOf('function getServerKey()', start);
@@ -74,7 +74,7 @@ test('only feedback-generation requests use GPT-5.6 Terra medium', () => {
     process: { env: { OPENAI_MODEL: 'gpt-5-mini' } },
   });
   for (const type of ['class', 'fail', 'elementary', 'summary', 'kinder_one_month']) {
-    assert.equal(resolve(type), 'gpt-5.6-terra');
+    assert.equal(resolve(type), 'gpt-5-mini');
   }
   for (const type of ['talk', 'memo_voice_cleanup']) {
     assert.equal(resolve(type), 'gpt-5-mini');

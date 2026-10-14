@@ -25,7 +25,7 @@ const FEEDBACK_GENERATION_PROMPT_TYPES = new Set([
 
 function resolveChatModel(promptType) {
   return FEEDBACK_GENERATION_PROMPT_TYPES.has(String(promptType || '').trim())
-    ? 'gpt-5.6-terra'
+    ? 'gpt-5-mini'
     : (process.env.OPENAI_MODEL || 'gpt-5-mini');
 }
 
