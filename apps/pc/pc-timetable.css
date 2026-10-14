@@ -276,7 +276,6 @@
 }
 #recordRoomScreen .olliTtStudentMore { width: 23px; min-width: 23px; margin-right: -4px; padding: 0 0 1px 0; border: 0; color: #b4bac2; background: transparent; font: 500 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 #recordRoomScreen .olliTtStudentMore:hover { color: #7f8792; }
-#recordRoomScreen .olliTtStudent.scheduled { grid-column: 1 / -1; }
 #recordRoomScreen .olliTtStudent.regular.elementary { border-color: #bfdcf3; background: #eaf5ff; }
 #recordRoomScreen .olliTtStudent.regular.kinder { border-color: #f5c7d4; background: #ffe4eb; }
 #recordRoomScreen .olliTtStudent.wait { border: 1px dashed #c8bceb; color: #8373ac; background: #f8f6ff; }
@@ -326,7 +325,7 @@
 #recordRoomScreen .olliTtStudent.wait .olliTtStudentTag { background: #b7a8df; }
 #recordRoomScreen .olliTtStudent.makeup .olliTtStudentTag { background: #338d74; }
 #recordRoomScreen .olliTtStudent.trial .olliTtStudentTag { background: #d98b28; }
-#recordRoomScreen .olliTtReservation { display: block; margin-top: 3px; color: #0A73DC; font-size: calc(8px * var(--olli-text-scale)); font-weight: 780; }
+#recordRoomScreen .olliTtReservation { display: block; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #0A73DC; font-size: calc(8px * var(--olli-text-scale)); font-weight: 780; }
 #recordRoomScreen .olliTtPickupGrid {
   width: 100%;
   height: 258px;

@@ -70,3 +70,12 @@ test('two-column default uses the same split padding and student menu position a
   assert.doesNotMatch(css, /threeStudentColumns[^\n{]*\{[^}]*padding:\s*4px 6px/);
   assert.doesNotMatch(css, /threeStudentColumns[^\n{]*\{[^}]*margin-right:\s*-4px/);
 });
+
+test('reserved move cards keep configured student columns without stretching across the row', () => {
+  assert.match(ui, /scheduled \? ' scheduled' : ''/);
+  assert.match(ui, /class=\\"olliTtReservation\\"/);
+  assert.doesNotMatch(css, /\\.olliTtStudent\\.scheduled\\s*\\{[^}]*grid-column\\s*:/);
+  assert.match(css, /\\.olliTtEntries \\{ display: grid; grid-template-columns: repeat\\(var\\(--olli-tt-student-columns\\), minmax\\(0, 1fr\\)\\)/);
+  assert.match(css, /\\.olliTtReservation \\{[^}]*overflow: hidden; text-overflow: ellipsis; white-space: nowrap;/);
+  assert.match(fs.readFileSync('apps/pc/index.html', 'utf8'), /pc-timetable\\.css\\?v=20261014-reserved-card-grid-1/);
+});
