@@ -1735,11 +1735,36 @@ async function saveKinderChatFeedbackLiveOnce(id, selectedStudentId = '') {
   refreshKinderChatFeedbackLiveActions(item);
   return true;
 }
+function reportKinderChatFeedbackFailure(item, stage, httpStatus) {
+  const academyId = String(item?.academyId || '').trim();
+  const sessionToken = typeof window.getOlliPhoneWritableAccountSessionToken === 'function'
+    ? String(window.getOlliPhoneWritableAccountSessionToken() || '').trim() : '';
+  if (!academyId || academyId === 'unscoped' || !sessionToken) return;
+  const data = {
+    academyId,
+    sessionToken,
+    requestId: String(item?.id || '').slice(0,100),
+    promptType: String(item?.promptType || 'class'),
+    stage: String(stage || 'CLIENT_FAILURE'),
+    httpStatus: Number(httpStatus || 0),
+    model: String(item?.apiModel || '').slice(0,60),
+    effort: String(item?.apiEffort || '').slice(0,20)
+  };
+  try {
+    fetch('/api/feedback-client-error', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      keepalive:true,
+      body:JSON.stringify(data)
+    }).catch(() => {});
+  } catch (_) {}
+}
 function startKinderChatFeedbackLiveRequest(options = {}) {
   const now = new Date().toISOString();
   const item = {
     id: String(options.id || `live_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`),
     status: 'streaming',
+    promptType: String(options.promptType || 'class'),
     studentName: normalizeTodayFeedbackStudentName(options.studentName || '') || '학생',
     studentDivision: options.studentDivision === 'kinder' ? 'kinder' : 'elementary',
     studentId: String(options.studentId || ''),
@@ -1770,6 +1795,8 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
   const liveUi = createKinderChatFeedbackLiveMessage(item);
 
   (async () => {
+    let failureStage = 'NETWORK_REQUEST';
+    let httpStatus = 0;
     try {
       const requestStartedAt = (typeof performance !== 'undefined' && performance.now)
         ? performance.now()
@@ -1794,7 +1821,8 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
         })
       });
 
-      if (!response.ok) throw new Error(await getKinderChatFeedbackLiveErrorMessage(response));
+      httpStatus = response.status;
+      if (!response.ok) { failureStage = 'HTTP_RESPONSE'; throw new Error(await getKinderChatFeedbackLiveErrorMessage(response)); }
       item.apiModel = String(response.headers.get('X-Olli-AI-Model') || '').trim();
       item.apiEffort = String(response.headers.get('X-Olli-AI-Effort') || '').trim();
       updateKinderChatFeedbackLiveApiLabel(liveUi.row, item);
@@ -1803,6 +1831,7 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
         throw new Error('이 기기에서 스트리밍 응답을 읽을 수 없습니다.');
       }
 
+      failureStage = 'STREAM_RECEIVE';
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullText = '';
@@ -1859,7 +1888,7 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
         stripKinderChatFeedbackLivePrefix(fullText),
         item.studentName
       ).trim();
-      if (!finalText) throw new Error('응답 본문이 비어 있습니다.');
+      if (!finalText) { failureStage = 'EMPTY_RESPONSE'; throw new Error('응답 본문이 비어 있습니다.'); }
 
       item.resultText = finalText;
       markKinderChatFeedbackPromptCacheTouched();
@@ -1927,6 +1956,7 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
       // Any failure leaves the original result locally available with a retry action.
       void saveKinderChatFeedbackLive(item.id, item.studentId).then((saved) => {
         if (kcfLiveFeedbackItems.get(item.id) !== item) return;
+        if (saved !== true) reportKinderChatFeedbackFailure(item, 'SAVE_FAILED', 0);
         if (item.trialSessionId && saved !== true && successTeacherMode) {
           successTeacherMode.onFeedbackRequestResult({
             id:item.id, studentId:item.rosterSelectionId, status:'error'
@@ -1936,11 +1966,13 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
         refreshKinderChatFeedbackLiveActions(item);
       }).catch((error) => {
         console.warn('퀵노트 피드백 백그라운드 저장 실패:', error);
+        reportKinderChatFeedbackFailure(item, 'SAVE_FAILED', 0);
         if (kcfLiveFeedbackItems.get(item.id) !== item) return;
         try { showPushToast('피드백이 서버에 저장되지 않았어요. 저장 재시도를 눌러 주세요.'); } catch (_) {}
         refreshKinderChatFeedbackLiveActions(item);
       });
     } catch(err) {
+      reportKinderChatFeedbackFailure(item, failureStage, httpStatus);
       if (isKinderChatFeedbackLiveRequestDiscarded(item.id)) {
         item.status = 'discarded';
         kcfLiveFeedbackItems.delete(item.id);

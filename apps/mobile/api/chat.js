@@ -52,7 +52,7 @@ function getTelemetryContext(req, body = {}) {
   const academyId = safeLogText(body.academyId || body.academy_id, 100);
   const academyName = safeLogText(body.academyName || body.academy_name, 120);
   const promptType = safeLogText(body.promptType || 'class', 40) || 'class';
-  const requestId = safeLogText(req.headers['x-vercel-id'] || req.headers['x-request-id'], 160);
+  const requestId = safeLogText(body.jobId || req.headers['x-vercel-id'] || req.headers['x-request-id'], 160);
   return { academyId, academyName, promptType, requestId };
 }
 
@@ -456,6 +456,8 @@ async function streamOpenAiResponse(openaiRes, res, options = {}) {
   const decoder = new TextDecoder();
   const responseRewriter = createPrivacyStreamRewriter(options.studentName || '');
   let buffer = '';
+  let receivedDelta = false;
+  let completed = false;
 
   while (true) {
     const { value, done } = await reader.read();
@@ -475,8 +477,15 @@ async function streamOpenAiResponse(openaiRes, res, options = {}) {
         .map((line) => line.slice(5).trim());
 
       if (dataLines.length > 0) {
-        const delta = extractDeltaFromSsePayload(dataLines.join('\n'));
+        const payload = dataLines.join('\n');
+        try {
+          const event = JSON.parse(payload);
+          if (event.type === 'response.completed') completed = true;
+          if (event.type === 'response.failed' || event.type === 'error') throw new Error('OPENAI_STREAM_FAILED');
+        } catch (error) { if (error.message === 'OPENAI_STREAM_FAILED') throw error; }
+        const delta = extractDeltaFromSsePayload(payload);
         if (delta) {
+          receivedDelta = true;
           const visibleDelta = responseRewriter.push(delta);
           if (visibleDelta) res.write(visibleDelta);
         }
@@ -502,6 +511,7 @@ async function streamOpenAiResponse(openaiRes, res, options = {}) {
     }
   }
 
+  if (!receivedDelta && !completed) throw new Error('OPENAI_STREAM_INCOMPLETE');
   const finalVisibleText = responseRewriter.flush();
   if (finalVisibleText) res.write(finalVisibleText);
   res.end();
@@ -516,6 +526,7 @@ export default async function handler(req, res) {
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   let telemetry = getTelemetryContext(req, body);
   let usageLogged = false;
+  let failureStage = 'VALIDATION';
 
   async function logUsage(result = {}) {
     if (usageLogged) return;
@@ -572,6 +583,7 @@ export default async function handler(req, res) {
     }
 
     let systemPrompt;
+    failureStage = 'PROMPT_LOAD';
     try {
       systemPrompt = await loadSystemPrompt(promptType);
     } catch (error) {
@@ -603,6 +615,7 @@ export default async function handler(req, res) {
       : messages;
 
     if (!isWarmup) {
+      failureStage = 'PRIVACY_GATEWAY';
       const privacyResult = await preparePrivacyMessages(body, promptType, requestMessages);
       privacyPrepared = privacyResult.prepared;
       privacyGateway = privacyResult.privacyGateway;
@@ -643,6 +656,7 @@ export default async function handler(req, res) {
 
     if (!isWarmup && stream === true) openAiBody.stream = true;
 
+    failureStage = 'OPENAI_REQUEST';
     const openaiRes = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
@@ -714,6 +728,7 @@ export default async function handler(req, res) {
 
       res.setHeader('X-Olli-AI-Model', model);
       res.setHeader('X-Olli-AI-Effort', resolveChatReasoningEffort(promptType));
+      failureStage = 'STREAM_RECEIVE';
       await streamOpenAiResponse(openaiRes, res, {
         studentName:responseStudentName,
       });
@@ -721,6 +736,7 @@ export default async function handler(req, res) {
       return;
     }
 
+    failureStage = 'OPENAI_RESPONSE_PARSE';
     const rawText = await openaiRes.text();
     let data;
     try {
@@ -762,10 +778,11 @@ export default async function handler(req, res) {
   } catch (error) {
     await logUsage({
       success: false,
-      errorCode: safeLogText(error?.code || error?.name || 'SERVER_ERROR', 80),
-      errorMessage: error?.message || '서버 오류가 발생했습니다.',
+      errorCode: safeLogText(failureStage + '_' + (error?.code || error?.name || 'ERROR'), 80),
+      errorMessage: String(error?.name || 'Error').slice(0, 80),
     });
     if (res.writableEnded) return;
+    if (res.headersSent) { try { res.end(); } catch (_) {} return; }
     return res.status(Number(error?.statusCode || 500)).json({
       error: error.message || '서버 오류가 발생했습니다.',
     });
