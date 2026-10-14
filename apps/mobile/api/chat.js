@@ -22,17 +22,25 @@ const FEEDBACK_GENERATION_PROMPT_TYPES = new Set([
   'summary',
   'kinder_one_month',
 ]);
+// QuickNote lesson and growth feedback; other feedback tools keep their model settings.
+const QUICKNOTE_FEEDBACK_PROMPT_TYPES = new Set([
+  'class',
+  'fail',
+  'elementary',
+]);
 
 function resolveChatModel(promptType) {
-  return FEEDBACK_GENERATION_PROMPT_TYPES.has(String(promptType || '').trim())
+  const type = String(promptType || '').trim();
+  if (QUICKNOTE_FEEDBACK_PROMPT_TYPES.has(type)) return 'gpt-6-luna';
+  return FEEDBACK_GENERATION_PROMPT_TYPES.has(type)
     ? 'gpt-5-mini'
     : (process.env.OPENAI_MODEL || 'gpt-5-mini');
 }
 
 function resolveChatReasoningEffort(promptType) {
-  // Feedback generation may use a separate effort without changing Team Talk or voice cleanup.
-  return FEEDBACK_GENERATION_PROMPT_TYPES.has(String(promptType || '').trim())
-    ? 'medium'
+  // QuickNote reasoning is configured separately from other feedback and Team Talk.
+  return QUICKNOTE_FEEDBACK_PROMPT_TYPES.has(String(promptType || '').trim())
+    ? 'low'
     : 'medium';
 }
 
