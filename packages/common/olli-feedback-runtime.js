@@ -660,7 +660,7 @@ async function retireSupersededQuickNoteFeedbacks(item = {}) {
   const sources = Array.isArray(item.supersededFeedbacks) ? item.supersededFeedbacks : [];
   if (!sources.length) return true;
   const newRowId = String(item.savedRow?.id || item.savedRowId || '').trim();
-  if (!/^\\d+$/.test(newRowId) || item.savedRow?.__pending_sync) return false;
+  if (!/^\d+$/.test(newRowId) || item.savedRow?.__pending_sync) return false;
   const academyId = String(item.savedAcademyId || item.academyId
     || (typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '') || '').trim();
   const studentId = String(item.savedStudentId || item.studentId || '').trim();
@@ -683,10 +683,10 @@ async function retireSupersededQuickNoteFeedbacks(item = {}) {
     const oldItem = (typeof getKinderChatFeedbackLiveItem === 'function' ? getKinderChatFeedbackLiveItem(jobId) : null)
       || getTodayFeedbackItemById(jobId);
     const rowIds = [oldItem?.savedRow?.id, oldItem?.savedRowId, source?.recordId].map(value => String(value || '').trim());
-    const oldRecordId = rowIds.find(value => /^\\d+$/.test(value)) || rowIds.find(Boolean) || '';
+    const oldRecordId = rowIds.find(value => /^\d+$/.test(value)) || rowIds.find(Boolean) || '';
     // Unfinished/failed generation never created a server feedback to remove.
     if (!oldRecordId) continue;
-    if (!/^\\d+$/.test(oldRecordId)) {
+    if (!/^\d+$/.test(oldRecordId)) {
       remaining.push(source);
       continue;
     }
