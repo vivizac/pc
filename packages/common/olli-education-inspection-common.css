@@ -1,0 +1,96 @@
+/* Olli owner-only education inspection ledger. Scoped to this page. */
+.olliInspectPage{max-width:1040px;margin:0 auto;padding:6px 2px 40px;font-family:inherit;color:#202020}
+.olliInspectTop{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.olliInspectMonth{display:flex;align-items:center;gap:10px;color:#777;font-size:12px;font-weight:700}
+.olliInspectMonth input{height:38px;padding:0 10px;border:1px solid #e5e5e5;border-radius:12px;background:#fff;font:inherit;color:#252525}
+.olliInspectGhost{height:38px;padding:0 13px;border:1px solid #e5e5e5;border-radius:12px;background:#fff;color:#444;font-size:12px;font-weight:700;cursor:pointer}
+.olliInspectStats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:13px}
+.olliInspectStats>div{background:#fff;border:1px solid #e9e9e9;border-radius:17px;padding:15px 14px;min-width:0}
+.olliInspectStats span{display:block;font-size:11px;color:#888;font-weight:700}
+.olliInspectStats strong{display:block;font-size:19px;line-height:1.3;margin-top:8px;color:#171717;letter-spacing:-.035em;word-break:break-word}
+.olliInspectWarning{padding:11px 13px;border-radius:13px;background:#f6f7f7;color:#7b7b7b;font-size:11px;line-height:1.55;margin-bottom:14px}
+.olliInspectTabs{display:flex;gap:5px;background:#f1f2f3;padding:5px;border-radius:15px;margin:0 0 17px}
+.olliInspectTabs button{flex:1;min-width:0;border:0;background:none;color:#898989;font:inherit;font-size:12px;font-weight:750;border-radius:11px;min-height:42px;cursor:pointer;padding:6px}
+.olliInspectTabs button.active{background:#fff;color:#191919;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.olliInspectSectionIntro{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+.olliInspectSectionIntro>strong{font-size:19px;letter-spacing:-.045em;font-weight:780}
+.olliInspectSectionIntro>span{font-size:12px;line-height:1.5;color:#8c8c8c}
+.olliInspectActions{display:flex;align-items:center;gap:9px;margin:0 0 15px}
+.olliInspectActions button,.olliInspectUpload{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 17px;box-sizing:border-box;border:1px solid #e1e4e2;background:#fff;color:#26322e;border-radius:12px;font:inherit;font-size:12px;font-weight:750;cursor:pointer}
+.olliInspectUpload{background:#f2f8f5;border-color:#e4eee8}
+.olliInspectUpload input{display:none}
+.olliInspectList{overflow:hidden;border:1px solid #e9e9e9;border-radius:17px;background:#fff}
+.olliInspectTableHead,.olliInspectDay summary{display:grid;grid-template-columns:82px minmax(0,1fr) 125px;align-items:center;gap:10px;padding:12px 16px}
+.olliInspectTableHead{background:#fafafa;color:#9b9b9b;font-size:11px;font-weight:750}
+.olliInspectTableHead span:last-child{text-align:right}
+.olliInspectDay{border-top:1px solid #f0f0f0}
+.olliInspectDay summary{cursor:pointer;list-style:none;font-size:12px}
+.olliInspectDay summary::-webkit-details-marker{display:none}
+.olliInspectDay summary>span:first-child{color:#8e8e8e}
+.olliInspectDay summary>span:nth-child(2){font-weight:700;overflow-wrap:anywhere}
+.olliInspectDay summary small{display:block;font-weight:500;color:#aaa;margin-top:4px;font-size:10px}
+.olliInspectDay summary strong{text-align:right;font-size:13px;white-space:nowrap}
+.olliInspectDetails{padding:4px 16px 12px 104px;background:#fafafa}
+.olliInspectDetails>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 110px;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid #efefef;font-size:11px}
+.olliInspectDetails>div:last-child{border-bottom:0}
+.olliInspectDetails small{color:#9b9b9b}
+.olliInspectDetails strong{text-align:right;font-size:11px}
+.olliInspectEmpty{padding:30px 16px;color:#979797;font-size:12px;line-height:1.65;text-align:center}
+.olliInspectFootnote{color:#989898;font-size:11px;line-height:1.6;margin-top:14px}
+.olliInspectStudentSummary{padding:15px 17px;border-radius:15px;background:#f6f8f7;color:#394a44;font-size:13px;font-weight:750;margin-bottom:13px}
+.olliInspectStudentSummary span{color:#b8c0bd;margin:0 7px}
+.olliInspectStudentHead,.olliInspectStudentRow{display:grid;grid-template-columns:120px 1fr 75px;gap:12px;align-items:center;padding:13px 16px}
+.olliInspectStudentHead{background:#fafafa;font-size:11px;color:#999}
+.olliInspectStudentRow{border-top:1px solid #eee;font-size:12px}
+.olliInspectStudentRow span:nth-child(2){font-weight:750}
+.olliInspectStudentRow small{color:#aaa;font-size:10px;font-weight:450;margin-left:5px}
+.olliInspectStudentRow strong{font-size:11px;color:#4a6c5a;text-align:right}
+.olliInspectReceiptList{display:grid;gap:9px}
+.olliInspectReceipt{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 17px;border-radius:15px;border:1px solid #ebebeb;background:#fff}
+.olliInspectReceipt>div:first-child{min-width:0;display:grid;gap:5px}
+.olliInspectReceipt strong{font-size:13px;color:#222}
+.olliInspectReceipt span,.olliInspectReceipt small{font-size:11px;color:#999;line-height:1.45}
+.olliInspectReceiptAside{display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex-shrink:0}
+.olliInspectReceiptAside span.ready{color:#6c8a76}
+.olliInspectReceiptAside span.review{color:#a18455}
+.olliInspectMapping,.olliInspectManual{padding:16px;border:1px solid #e4e8e5;border-radius:18px;background:#fff;margin-bottom:15px}
+.olliInspectMapGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.olliInspectMapGrid label{display:grid;gap:7px;font-size:11px;font-weight:750;color:#707070}
+.olliInspectMapGrid select,.olliInspectMapGrid input{width:100%;min-width:0;height:39px;box-sizing:border-box;border:1px solid #e6e6e6;border-radius:10px;padding:0 10px;font:inherit;font-size:12px;background:#fff;color:#222}
+.olliInspectMapToolbar{display:flex;gap:8px;margin-top:13px}
+.olliInspectMapToolbar button{padding:0 15px;min-height:39px;border:0;border-radius:11px;background:#263b32;color:#fff;font:inherit;font-size:12px;font-weight:750;cursor:pointer}
+.olliInspectMapToolbar button.light{border:1px solid #e5e5e5;background:#fff;color:#777}
+.olliInspectMapToolbar button:disabled{opacity:.55}
+.olliInspectPreview{margin-top:15px;padding:15px;background:#f9faf9;border-radius:14px}
+.olliInspectPreviewTable{display:grid;gap:7px;max-height:300px;overflow-y:auto}
+.olliInspectPreviewTable>div{display:grid;grid-template-columns:90px minmax(0,1fr) 90px 75px;gap:7px;align-items:center;font-size:11px;padding:7px 0;border-bottom:1px solid #e9ebe9}
+.olliInspectPreviewTable strong{text-align:right}
+.olliInspectPreviewTable select{min-width:0;border:1px solid #e4e4e4;border-radius:8px;background:#fff;height:32px}
+.olliInspectPreview>small{display:block;margin-top:10px;color:#999;font-size:10px}
+.olliInspectMessage{padding:7px 1px;font-size:12px;color:#8a6421;line-height:1.5}
+.olliInspectMessage:empty{display:none}
+@media(max-width:650px){
+  .olliInspectPage{padding:2px 0 30px}
+  .olliInspectStats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .olliInspectStats>div{padding:12px}
+  .olliInspectStats strong{font-size:17px}
+  .olliInspectTabs button{font-size:10.5px;line-height:1.2}
+  .olliInspectTableHead,.olliInspectDay summary{grid-template-columns:58px minmax(0,1fr) 95px;padding:12px;gap:5px}
+  .olliInspectDetails{padding:4px 12px}
+  .olliInspectDetails>div{grid-template-columns:minmax(0,1fr) 1fr 70px}
+  .olliInspectStudentHead,.olliInspectStudentRow{grid-template-columns:85px minmax(0,1fr) 50px;gap:6px;padding:12px}
+  .olliInspectMapGrid{grid-template-columns:1fr}
+  .olliInspectPreviewTable>div{grid-template-columns:75px minmax(0,1fr) 80px 65px;gap:4px}
+  .olliInspectReceipt{padding:13px}
+}
+
+/* Multi-page review keeps all imported rows inspectable before server save. */
+.olliInspectPreviewTable>div{grid-template-columns:82px minmax(0,1fr) 95px 72px 118px}
+.olliInspectPreviewRow span small{display:block;color:#a2a2a2;font-size:10px;margin-top:2px}
+.olliInspectPreviewPager{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;color:#898989;font-size:11px}
+.olliInspectPreviewPager button{height:32px;border:1px solid #e1e1e1;border-radius:9px;background:white;padding:0 12px;font:inherit;color:#555}
+.olliInspectPreviewPager button:disabled{opacity:.35}
+@media(max-width:650px){
+  .olliInspectPreviewTable{overflow-x:auto}
+  .olliInspectPreviewTable>div{min-width:490px;grid-template-columns:79px minmax(100px,1fr) 85px 64px 112px}
+}
