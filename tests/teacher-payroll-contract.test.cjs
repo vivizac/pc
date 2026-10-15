@@ -316,8 +316,8 @@ test('payroll statement stays centered and keeps work totals on the same row on 
 test('payroll statement body text follows Team Chat bubble sizing while guide text stays compact', () => {
   assert.match(commonCss, /--olli-payroll-statement-body-font:calc\(13\.6px \* var\(--olli-text-scale,1\)\)/);
   assert.match(commonCss, /--olli-payroll-statement-body-font:calc\(13\.6px \* var\(--olli-text-scale,1\)\)/);
-  assert.match(commonCss, /\.olliPayrollStatementDate\{[^}]*font-size:var\(--olli-payroll-statement-body-font\)/);
-  assert.match(commonCss, /\.olliPayrollStatementWorkTotal\{[^}]*font-size:var\(--olli-payroll-statement-body-font\)/);
-  assert.match(commonCss, /\.olliPayrollStatementCalcLine\{[^}]*font-size:var\(--olli-payroll-statement-body-font\)/);
-  assert.match(commonCss, /\.olliPayrollStatementGuide\{[^}]*font-size:11px/);
+  assert.match(commonCss, /\.olliPayrollStatementDate\{[^}]*font-size:13\.6px/);
+  assert.match(commonCss, /\.olliPayrollStatementWorkTotal\{[^}]*font-size:13\.6px/);
+  assert.match(commonCss, /\.olliPayrollStatementCalcLine\{[^}]*font-size:13\.6px/);
+  assert.match(commonCss, /\.olliPayrollStatementGuide\{[^}]*font-size:11\.2px/);
 });
