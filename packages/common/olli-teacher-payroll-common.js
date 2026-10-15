@@ -15,7 +15,7 @@
     payload: null,
     loading: false,
     syncingDue: false,
-    financeTab: 'expenses',
+    financeTab: 'income',
     expenseHistoryOpen: false,
     expenseHistoryLoading: false,
     expenseHistoryRequestSeq: 0
@@ -64,6 +64,11 @@
 
   function money(value){
     return Math.max(0,Math.round(Number(value || 0))).toLocaleString('ko-KR') + '원';
+  }
+
+  function signedMoney(value){
+    const amount=Math.round(Number(value || 0));
+    return (amount < 0 ? '- ' : '')+money(Math.abs(amount));
   }
 
   function currencyInputValue(value){
@@ -135,7 +140,7 @@
       try{ global.olliPcSettingsLayoutBeforeOpenDetail('teacherPayroll'); }catch(_){}
     }
     if(els.settings) els.settings.style.display='flex';
-    if(els.title) els.title.textContent='급여 및 지출 관리';
+    if(els.title) els.title.textContent='학원 수입·지출 관리';
     els.detail.style.display='flex';
     els.detail.style.position='fixed';
     els.detail.style.inset='0';
@@ -312,6 +317,31 @@
     return payload.expenses && typeof payload.expenses==='object'
       ? payload.expenses
       : {items:[],total_amount:0,missing_monthly_count:0};
+  }
+
+  function financeRevenuePayload(){
+    const payload=state.payload || {};
+    return payload.revenue && typeof payload.revenue==='object' ? payload.revenue : null;
+  }
+
+  function renderRevenueSection(){
+    const revenue=financeRevenuePayload();
+    if(!revenue) return '<section class="olliIncomeSection"><div class="olliIncomeWarning">예상 수입 정보를 불러오지 못했습니다. 서버 수입 계산 기능을 확인해 주세요.</div></section>';
+    const once=Math.max(0,Number(revenue.weekly_once_students || 0));
+    const twice=Math.max(0,Number(revenue.weekly_twice_students || 0));
+    const newly=Math.max(0,Number(revenue.new_students || 0));
+    const unpriced=Math.max(0,Number(revenue.unpriced_students || 0));
+    return '<section class="olliIncomeSection" data-income-section>'
+      + '<div class="olliIncomeHeader"><div><strong>예상 수입</strong><p>시간표 수업 횟수와 최초 등록일을 기준으로 자동 계산합니다.</p></div>'
+      + '<div class="olliIncomeTotal"><span>예상 월수입</span><strong>'+money(revenue.total_amount)+'</strong></div></div>'
+      + '<div class="olliIncomeRows">'
+      + '<div class="olliIncomeRow"><span>주 1회 교육비 <small>'+once+'명 × 110,000원</small></span><strong>'+money(revenue.tuition_once_amount)+'</strong></div>'
+      + '<div class="olliIncomeRow"><span>주 2회 교육비 <small>'+twice+'명 × 150,000원</small></span><strong>'+money(revenue.tuition_twice_amount)+'</strong></div>'
+      + '<div class="olliIncomeRow"><span>워크북 교환비 <small>첫 등록 '+newly+'명 × 70,000원</small></span><strong>'+money(revenue.workbook_amount)+'</strong></div>'
+      + '</div>'
+      + (unpriced ? '<div class="olliIncomeWarning">정기 수업 횟수가 없거나 3회 이상인 학생 '+unpriced+'명의 교육비는 계산에서 제외했습니다. 시간표를 확인해 주세요.</div>' : '')
+      + '<div class="olliIncomeGuide">실제 입금 확인 전의 예상 매출입니다. 할인·미납·환불 및 4주 단위 결제일은 반영되지 않습니다. 조회 월 말일의 등록 시간표를 기준으로 합니다.</div>'
+      + '</section>';
   }
 
   function expenseCategoryLabel(value){
@@ -788,27 +818,32 @@
   function renderFinanceSummary(){
     const payload=state.payload || {};
     const expenses=financeExpensePayload();
-    const expenseTotal=Math.max(0,Number(payload.expense_total_amount || expenses.total_amount || 0));
-    const payrollTotal=Math.max(0,Number(payload.payroll_total_amount || 0));
-    const total=Math.max(0,Number(payload.total_amount || (expenseTotal+payrollTotal)));
+    const revenue=financeRevenuePayload();
+    const operatingTotal=Math.max(0,Number(payload.expense_total_amount ?? expenses.total_amount ?? 0));
+    const payrollNet=Math.max(0,Number(payload.payroll_total_amount || 0));
+    const legacyExpenseTotal=Math.max(0,Number(payload.total_amount || (operatingTotal+payrollNet)));
+    const totalExpense=Math.max(0,Number(payload.estimated_expense_total_amount ?? legacyExpenseTotal));
+    const totalIncome=Math.max(0,Number(revenue?.total_amount || 0));
+    const totalProfit=Number(payload.estimated_profit_amount ?? (totalIncome-totalExpense));
     const missingMonthly=Math.max(0,Number(expenses.missing_monthly_count || 0));
+    const unpriced=Math.max(0,Number(revenue?.unpriced_students || 0));
+    const incomplete=missingMonthly>0 || unpriced>0 || !revenue;
     const parts=String(state.month || '').split('-');
     const monthLabel=parts.length===2 ? Number(parts[0])+'년 '+Number(parts[1])+'월' : '이번 달';
     const future=selectedMonthIsFuture();
-    const totalLabel=missingMonthly>0
-      ? (future?'현재 입력 기준 예상 총지출':'현재 입력 기준 총지출')
-      : (future?'예상 총지출':'총지출');
-    const completionText=missingMonthly>0
-      ? '월별 지출 미입력 '+missingMonthly+'건'
-      : (future?'현재 설정 기준 예상 금액':'월별 지출 입력 완료');
-
-    return '<section class="olliFinanceSummary'+(missingMonthly>0?' is-incomplete':' is-complete')+'" data-finance-summary>'
-      + '<div class="olliFinanceSummaryHero"><span>'+esc(monthLabel)+' '+totalLabel+'</span><strong>'+money(total)+'</strong>'
+    const completionText=!revenue ? '수입 계산 미연결'
+      : incomplete ? ('지출 미입력 '+missingMonthly+'건 · 수업 횟수 확인 '+unpriced+'명')
+      : (future?'예정 시간표 기준':'시간표 및 입력된 지출 기준');
+    return '<section class="olliFinanceSummary'+(incomplete?' is-incomplete':' is-complete')+'" data-finance-summary>'
+      + '<div class="olliFinanceSummaryHero"><span>'+esc(monthLabel)+' 예상 수익</span>'
+      + '<strong>'+signedMoney(totalProfit)+'</strong>'
       + '<div class="olliFinanceSummaryStatus">'+esc(completionText)+'</div></div>'
       + '<div class="olliFinanceSummaryBreakdown">'
-      + '<div><span>운영 지출'+(future?' · 예상':'')+'</span><strong>'+money(expenseTotal)+'</strong></div>'
-      + '<div><span>선생님 급여'+(future?' · 예상':'')+'</span><strong>'+money(payrollTotal)+'</strong></div>'
-      + '</div></section>';
+      + '<div><span>예상 총수입</span><strong>'+money(totalIncome)+'</strong></div>'
+      + '<div><span>예상 총지출</span><strong>'+money(totalExpense)+'</strong></div>'
+      + '</div>'
+      + '<div class="olliFinanceSummaryNote">운영 지출 '+money(operatingTotal)+' + 선생님 급여(공제 전) '+money(payload.payroll_gross_total_amount ?? payrollNet)+' · 실제 수납 및 세금·기타 미입력 비용은 별도</div>'
+      + '</section>';
   }
 
   function renderPayrollWarnings(payroll){
@@ -830,15 +865,16 @@
   }
 
   function financeTabHtml(){
-    const active=state.financeTab==='payroll' ? 'payroll' : 'expenses';
-    return '<div class="olliFinanceTabs" role="tablist" aria-label="급여 및 지출 보기">'
+    const active=['income','expenses','payroll'].includes(state.financeTab) ? state.financeTab : 'income';
+    return '<div class="olliFinanceTabs" role="tablist" aria-label="수입 및 지출 보기">'
+      + '<button type="button" role="tab" class="'+(active==='income'?'is-active':'')+'" aria-selected="'+(active==='income'?'true':'false')+'" data-finance-tab="income">예상 수입</button>'
       + '<button type="button" role="tab" class="'+(active==='expenses'?'is-active':'')+'" aria-selected="'+(active==='expenses'?'true':'false')+'" data-finance-tab="expenses">운영 지출</button>'
       + '<button type="button" role="tab" class="'+(active==='payroll'?'is-active':'')+'" aria-selected="'+(active==='payroll'?'true':'false')+'" data-finance-tab="payroll">선생님 급여</button>'
       + '</div>';
   }
 
   function setFinanceTab(tab,body){
-    const next=tab==='payroll' ? 'payroll' : 'expenses';
+    const next=['income','expenses','payroll'].includes(tab) ? tab : 'income';
     state.financeTab=next;
     const root=body || detailElements().body;
     if(!root) return;
@@ -847,6 +883,7 @@
       button.classList.toggle('is-active',active);
       button.setAttribute('aria-selected',active?'true':'false');
     });
+    root.querySelector('.olliFinanceIncomeColumn')?.classList.toggle('is-active',next==='income');
     root.querySelector('.olliFinanceExpensesColumn')?.classList.toggle('is-active',next==='expenses');
     root.querySelector('.olliFinancePayrollColumn')?.classList.toggle('is-active',next==='payroll');
   }
@@ -927,6 +964,7 @@
       + '</div>'
       + financeTabHtml()
       + '<div class="olliFinanceColumns">'
+      + '<div class="olliFinanceIncomeColumn'+(state.financeTab==='income'?' is-active':'')+'">'+renderRevenueSection()+'</div>'
       + '<div class="olliFinanceExpensesColumn'+(state.financeTab==='expenses'?' is-active':'')+'">'+renderExpenseSection()+'</div>'
       + '<div class="olliFinancePayrollColumn'+(state.financeTab==='payroll'?' is-active':'')+'">'+renderPayrollSection(payroll,teachers)+'</div>'
       + '</div>'
@@ -960,7 +998,7 @@
     const els = openDetailShell();
     if(!els || state.loading) return false;
     if(!isOwner()){
-      els.body.innerHTML='<div class="olliPayrollEmpty">급여 및 지출 관리는 원장만 확인할 수 있습니다.</div>';
+      els.body.innerHTML='<div class="olliPayrollEmpty">학원 수입·지출 관리는 원장만 확인할 수 있습니다.</div>';
       return false;
     }
     const academy = academyId();
@@ -970,19 +1008,19 @@
       return false;
     }
     state.loading=true;
-    els.body.innerHTML='<div class="settingsLoadingText">급여와 지출 정보를 불러오고 있습니다...</div>';
+    els.body.innerHTML='<div class="settingsLoadingText">수입·급여·지출 정보를 불러오고 있습니다...</div>';
     try{
       const payload=await rpc('olli_academy_finance_overview',{
         p_session_token:token,
         p_academy_id:academy,
         p_month:monthDateValue(state.month)
       });
-      if(!payload?.ok) throw new Error(payload?.message || '급여와 지출 정보를 불러오지 못했습니다.');
+      if(!payload?.ok) throw new Error(payload?.message || '수입·급여·지출 정보를 불러오지 못했습니다.');
       state.payload=payload;
       render();
       return true;
     }catch(error){
-      els.body.innerHTML='<div class="olliPayrollEmpty">급여와 지출 정보를 불러오지 못했습니다.<br><small>'+esc(error?.message || error)+'</small></div>';
+      els.body.innerHTML='<div class="olliPayrollEmpty">수입·급여·지출 정보를 불러오지 못했습니다.<br><small>'+esc(error?.message || error)+'</small></div>';
       return false;
     }finally{
       state.loading=false;
