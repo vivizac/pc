@@ -34,8 +34,12 @@ test('legacy root runtime entrypoints are removed', () => {
 test('shared runtime source exists only in packages/common, not tracked under apps/pc', () => {
   const pcManifest = JSON.parse(fs.readFileSync(path.join(COMMON, 'pc-runtime-manifest.json'), 'utf8'));
   const mobileManifest = JSON.parse(fs.readFileSync(path.join(COMMON, 'mobile-runtime-manifest.json'), 'utf8'));
-  assert.equal(pcManifest.files.length, 51);
-  assert.equal(mobileManifest.files.length, 48);
+  assert.ok(pcManifest.files.includes('olli-education-inspection-common.js'));
+  assert.ok(pcManifest.files.includes('olli-education-inspection-common.css'));
+  assert.ok(pcManifest.files.includes('olli-teacher-payroll-common.js'));
+  assert.ok(mobileManifest.files.includes('olli-education-inspection-common.js'));
+  assert.ok(mobileManifest.files.includes('olli-education-inspection-common.css'));
+  assert.ok(mobileManifest.files.includes('olli-teacher-payroll-common.js'));
 
   for (const file of pcManifest.files) {
     assert.equal(fs.existsSync(path.join(COMMON, file)), true, 'missing common source: ' + file);

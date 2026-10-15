@@ -28,6 +28,6 @@ test('PC and mobile payroll statement text is consistently 20% smaller',()=>{
   assert.match(statement,/\.olliPayrollStatementPay strong\{[^}]*font-size:21\.6px/);
 
   for(const html of [pcHtml,mobileHtml]){
-    assert.ok(html.includes('olli-teacher-payroll-common.css?v=20261008-statement-font80-1'));
+    assert.ok(html.includes('olli-teacher-payroll-common.css?v=20261015-finance-income-phase1'));
   }
 });

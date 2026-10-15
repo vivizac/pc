@@ -60,10 +60,10 @@ test('payday sync refreshes the amount snapshot without creating duplicate chat 
 
 test('settings entry and shared runtime are wired on PC and mobile', () => {
   for (const html of [pcHtml, mobileHtml]) {
-    assert.match(html, /급여 및 지출 관리/);
+    assert.match(html, /학원 수입·지출 관리/);
     assert.match(html, /openOlliTeacherPayrollSettings\(\)/);
-    assert.match(html, /olli-teacher-payroll-common\.js\?v=20261008-payroll-preview-1/);
-    assert.match(html, /olli-teacher-payroll-common\.css\?v=20261008-statement-font80-1/);
+    assert.match(html, /olli-teacher-payroll-common\.js\?v=20261015-finance-income-phase1/);
+    assert.match(html, /olli-teacher-payroll-common\.css\?v=20261015-finance-income-phase1/);
   }
 });
 
@@ -101,8 +101,8 @@ test('payday date calculation clamps 29-31 to the actual last day of short month
 });
 
 test('settings row is hidden by the existing owner-only permission contract', () => {
-  assert.match(pcHtml, /data-owner-only="true"[^>]*>[\s\S]{0,900}급여 및 지출 관리/);
-  assert.match(mobileHtml, /data-owner-only="true"[^>]*>[\s\S]{0,900}급여 및 지출 관리/);
+  assert.match(pcHtml, /data-owner-only="true"[^>]*>[\s\S]{0,900}학원 수입·지출 관리/);
+  assert.match(mobileHtml, /data-owner-only="true"[^>]*>[\s\S]{0,900}학원 수입·지출 관리/);
 });
 
 test('owner login sync is fallback protection in addition to database cron', () => {
@@ -314,8 +314,8 @@ test('payroll statement stays centered and keeps work totals on the same row on 
 });
 
 test('payroll statement body text follows Team Chat bubble sizing while guide text stays compact', () => {
-  assert.match(commonCss, /--olli-payroll-statement-body-font:calc\(14\.5px \* var\(--olli-text-scale,1\)\)/);
-  assert.match(commonCss, /--olli-payroll-statement-body-font:calc\(14px \* var\(--olli-text-scale,1\)\)/);
+  assert.match(commonCss, /--olli-payroll-statement-body-font:calc\(13\.6px \* var\(--olli-text-scale,1\)\)/);
+  assert.match(commonCss, /--olli-payroll-statement-body-font:calc\(13\.6px \* var\(--olli-text-scale,1\)\)/);
   assert.match(commonCss, /\.olliPayrollStatementDate\{[^}]*font-size:var\(--olli-payroll-statement-body-font\)/);
   assert.match(commonCss, /\.olliPayrollStatementWorkTotal\{[^}]*font-size:var\(--olli-payroll-statement-body-font\)/);
   assert.match(commonCss, /\.olliPayrollStatementCalcLine\{[^}]*font-size:var\(--olli-payroll-statement-body-font\)/);
