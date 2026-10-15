@@ -242,3 +242,36 @@ body.olliPcApp .olliFinancePayrollColumn{display:block}
   .olliExpenseHistoryRow{align-items:flex-start}
   .olliExpenseRestoreButton{max-width:112px}
 }
+
+
+/* 2026-10: estimated tuition and workbook revenue (finance phase 1) */
+.olliFinanceSummary{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)}
+.olliFinanceSummaryNote{grid-column:1 / -1;color:#8a8a8a;font-size:11px;line-height:1.55;padding:1px 4px}
+.olliFinanceIncomeColumn{min-width:0}
+.olliIncomeSection{margin-bottom:20px;padding:18px;border:1px solid #e8e8e8;border-radius:22px;background:#fff}
+.olliIncomeHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.olliIncomeHeader>div:first-child>strong{font-size:19px;font-weight:780;letter-spacing:-.045em;color:#151515}
+.olliIncomeHeader p{margin:6px 0 0;color:#858585;font-size:12px;line-height:1.5}
+.olliIncomeTotal{display:flex;flex-direction:column;text-align:right;flex-shrink:0}
+.olliIncomeTotal span{color:#8a8a8a;font-size:11px;font-weight:700}
+.olliIncomeTotal strong{margin-top:5px;font-size:20px;color:#151515;white-space:nowrap}
+.olliIncomeRows{margin-top:14px;border-top:1px solid #ededed}
+.olliIncomeRow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 2px;border-bottom:1px solid #f2f2f2}
+.olliIncomeRow span{font-size:13px;color:#222;font-weight:700}
+.olliIncomeRow small{display:block;margin-top:4px;color:#999;font-size:11px;font-weight:500}
+.olliIncomeRow strong{color:#242424;font-size:14px;white-space:nowrap}
+.olliIncomeGuide{padding-top:13px;color:#8c8c8c;font-size:11px;line-height:1.65}
+.olliIncomeWarning{margin-top:12px;padding:11px 12px;border-radius:13px;background:#fff6e8;color:#8a641f;font-size:11px;line-height:1.55}
+.olliFinanceIncomeColumn{display:none}
+.olliFinanceIncomeColumn.is-active{display:block}
+body.olliPcApp .olliFinanceIncomeColumn{display:block;grid-column:1 / -1}
+body.olliPcApp .olliFinanceIncomeColumn .olliIncomeSection{margin-bottom:0}
+@media(max-width:720px){
+  .olliFinanceSummary{grid-template-columns:1fr}
+  .olliFinanceSummaryNote{grid-column:auto}
+}
+@media(max-width:560px){
+  .olliIncomeHeader{display:block}
+  .olliIncomeTotal{margin-top:12px;text-align:left}
+  .olliIncomeSection{padding:16px}
+}
