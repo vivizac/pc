@@ -62,7 +62,7 @@ test('settings entry and shared runtime are wired on PC and mobile', () => {
   for (const html of [pcHtml, mobileHtml]) {
     assert.match(html, /학원 수입·지출 관리/);
     assert.match(html, /openOlliTeacherPayrollSettings\(\)/);
-    assert.match(html, /olli-teacher-payroll-common\.js\?v=20261015-finance-income-phase1/);
+    assert.match(html, /olli-teacher-payroll-common\.js\?v=20261015-inline-statement/);
     assert.match(html, /olli-teacher-payroll-common\.css\?v=20261015-finance-income-phase1/);
   }
 });
@@ -278,15 +278,18 @@ test('payday edits remain live through the pay date and freeze on the following 
 });
 
 
-test('owner can create a Team Chat payroll statement preview without marking a real statement sent', () => {
+test('owner salary preview opens the existing dialog directly without Team Chat or auto-save', () => {
   assert.match(common, /data-payroll-preview/);
-  assert.match(common, /명세서 미리보기/);
-  assert.match(common, /olli_teacher_payroll_statement_preview_send/);
-  assert.match(common, /if\(card\.dataset\.payrollFinalized!=='1'\)[\s\S]*saveTeacher\(card\)/);
-  assert.match(common, /openTeamChatAfterPayrollPreview/);
-  assert.match(payrollPreviewMigration, /create table if not exists private\.olli_teacher_payroll_statement_previews/);
-  assert.match(payrollPreviewMigration, /실제 선생님에게는 전송되지 않습니다/);
-  assert.doesNotMatch(payrollPreviewMigration, /statement_message_version=1/);
+  assert.match(common, /olli_teacher_payroll_statement_inline_preview/);
+  assert.match(common, /renderPayrollStatementModal\(payload\)/);
+  const start=common.indexOf('async function previewTeacherStatement(card)');
+  const end=common.indexOf('async function open()',start);
+  assert.ok(start>=0 && end>start);
+  const flow=common.slice(start,end);
+  assert.doesNotMatch(flow, /openTeamChatAfterPayrollPreview|olli_teacher_payroll_statement_preview_send|saveTeacher\(card\)/);
+  assert.doesNotMatch(common, /async function openTeamChatAfterPayrollPreview/);
+  assert.match(common, /payrollStatementRows\(statement\.regular_days,'regular',payType==='monthly'\)/);
+  assert.match(common, /hideRegularTotals && type==='regular'/);
 });
 
 test('preview Team Chat message is visible only to the owner who created it', () => {

@@ -1072,51 +1072,32 @@
     }
   }
 
-  async function openTeamChatAfterPayrollPreview(){
-    if(global.OlliPcTeamTalk?.open){
-      await global.OlliPcTeamTalk.open();
-      return true;
-    }
-    if(typeof global.openOlliTalkBetaPage==='function'){
-      await global.openOlliTalkBetaPage();
-      return true;
-    }
-    return false;
-  }
-
   async function previewTeacherStatement(card){
     if(!card || !isOwner()) return false;
     const teacherId=String(card.dataset.teacherId || '').trim();
     if(!teacherId) return false;
     const previewButton=card.querySelector('[data-payroll-preview]');
     const original=previewButton?.textContent || '명세서 확인';
-
     if(previewButton){
       previewButton.disabled=true;
-      previewButton.textContent='준비 중';
+      previewButton.textContent='불러오는 중';
     }
 
     try{
-      // 미확정 월은 현재 입력값을 먼저 저장한 뒤 저장된 값으로 미리보기를 만듭니다.
-      if(card.dataset.payrollFinalized!=='1'){
-        const saved=await saveTeacher(card);
-        if(!saved) return false;
-      }
-
-      const payload=await rpc('olli_teacher_payroll_statement_preview_send',{
+      // Read-only owner preview: never create a Team Chat message or alter payroll settings.
+      // Any unsaved edits are excluded; the statement uses the server's saved settings.
+      const payload=await rpc('olli_teacher_payroll_statement_inline_preview',{
         p_session_token:sessionToken(),
         p_academy_id:academyId(),
         p_teacher_member_id:teacherId,
         p_month:monthDateValue(state.month)
       });
-      if(!payload?.ok) throw new Error(payload?.message || '급여명세서 미리보기를 만들지 못했습니다.');
-
-      const opened=await openTeamChatAfterPayrollPreview();
-      if(!opened) alert('팀챗에 급여명세서 미리보기를 만들었습니다.');
+      if(!payload?.ok) throw new Error(payload?.message || '급여명세서를 불러오지 못했습니다.');
+      renderPayrollStatementModal(payload);
       return true;
     }catch(error){
-      console.warn('급여명세서 미리보기 생성 실패:',error);
-      alert('급여명세서 미리보기 생성 실패\n'+(error?.message || error));
+      console.warn('급여명세서 확인 실패:',error);
+      alert('급여명세서 확인 실패\n'+(error?.message || error));
       return false;
     }finally{
       if(previewButton?.isConnected){
@@ -1160,7 +1141,7 @@
     return (Math.round(n*100)/100).toLocaleString('ko-KR');
   }
 
-  function payrollStatementRows(days,type){
+  function payrollStatementRows(days,type,hideRegularTotals=false){
     const source=Array.isArray(days) ? days : [];
     const groups=WEEKDAYS.map(day=>{
       const rows=source.filter(item=>Number(item?.weekday)===Number(day.key))
@@ -1184,7 +1165,7 @@
       return '<div class="olliPayrollStatementWorkRow">'
         + '<strong>'+day.label+'요일</strong>'
         + '<div class="olliPayrollStatementDates">'+dateHtml+'</div>'
-        + '<span class="olliPayrollStatementWorkTotal">'+workedRows.length+'회 · '+statementHours(totalHours)+'시간</span>'
+        + (hideRegularTotals && type==='regular' ? '' : '<span class="olliPayrollStatementWorkTotal">'+workedRows.length+'회 · '+statementHours(totalHours)+'시간</span>')
         + '</div>';
     }).filter(Boolean).join('');
     return groups || '<div class="olliPayrollStatementEmpty">해당 근무가 없습니다.</div>';
@@ -1222,7 +1203,7 @@
       + '<button type="button" class="olliPayrollStatementClose" aria-label="닫기">×</button></div>'
       + '<div class="olliPayrollStatementScroll">'
       + '<div class="olliPayrollStatementSection"><h3>정기근무</h3>'
-      + payrollStatementRows(statement.regular_days,'regular')+'</div>'
+      + payrollStatementRows(statement.regular_days,'regular',payType==='monthly')+'</div>'
       + '<div class="olliPayrollStatementSection"><h3>대체근무</h3>'
       + payrollStatementRows(statement.substitute_days,'substitute')+'</div>'
       + '<div class="olliPayrollStatementSection totals"><h3>급여 계산</h3>'

@@ -1,0 +1,33 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.join(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const sql=read('supabase/migrations/20261015170000_teacher_payroll_inline_statement_preview.sql');
+const js=read('packages/common/olli-teacher-payroll-common.js');
+test('owner-only inline statement preview performs no writes and validates teacher academy',()=>{
+  assert.match(sql,/private\.olli_academy_finance_owner_member\(p_session_token,p_academy_id\)/);
+  assert.match(sql,/m\.academy_id=p_academy_id/);
+  assert.match(sql,/private\.olli_teacher_payroll_statement_payload/);
+  assert.match(sql,/v_finalized_snapshot/);
+  assert.match(sql,/n\.statement_snapshot/);
+  assert.match(sql,/grant execute on function public\.olli_teacher_payroll_statement_inline_preview/);
+  const body=sql.slice(sql.indexOf('as $function$'),sql.indexOf('$function$;'));
+  assert.doesNotMatch(body,/\b(insert\s+into|update\s+|delete\s+from|perform\s+private\.olli_realtime_send_signal)\b/i);
+  assert.doesNotMatch(body,/olli_team_chat_messages|olli_team_chat_mentions|statement_previews/);
+});
+test('settings preview opens popup in place and never triggers team-chat preview send',()=>{
+  const start=js.indexOf('async function previewTeacherStatement(card)');
+  const end=js.indexOf('async function open()',start);
+  const flow=js.slice(start,end);
+  assert.ok(start>=0&&end>start);
+  assert.match(flow,/olli_teacher_payroll_statement_inline_preview/);
+  assert.match(flow,/renderPayrollStatementModal\(payload\)/);
+  assert.doesNotMatch(flow,/openTeamChat|preview_send|saveTeacher\(card\)/);
+  assert.match(js,/payrollStatementRows\(statement\.regular_days,'regular',payType==='monthly'\)/);
+  assert.match(js,/hideRegularTotals && type==='regular'/);
+  assert.match(js,/payrollStatementRows\(statement\.substitute_days,'substitute'\)/);
+  assert.match(js,/payType==='monthly'[\s\S]*?월급/);
+  assert.match(js,/deductionMode==='freelancer_33'/);
+});
