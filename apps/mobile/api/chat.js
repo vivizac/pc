@@ -395,7 +395,38 @@ function getFeedbackDisplayStudentName(name) {
 function restorePrivacyResponseAliases(text, studentName) {
   let output = String(text || '');
   const displayName = getFeedbackDisplayStudentName(studentName);
-  if (displayName) output = output.replace(/학생\s*A/g, displayName);
+  if (displayName) {
+    // Request-scoped identity remains on this server, never in the AI payload.
+    // Recover from legacy full-name responses before restoring a pseudonym.
+    const fullName = String(studentName || '').replace(/\s+/g, '');
+    if (fullName !== displayName && /^[가-힣]+$/.test(fullName)) {
+      output = output.replaceAll(fullName, '학생A');
+    }
+
+    // Hangul syllables encode final consonants in 28 variants.
+    const last = displayName.charCodeAt(displayName.length - 1);
+    const hasBatchim = last >= 0xAC00 && last <= 0xD7A3 && (last - 0xAC00) % 28 !== 0;
+    const familiarName = hasBatchim ? displayName + '이' : displayName;
+    output = output.replace(
+      /학생[ \t]*A(?:[ \t]*(에게서|에게|한테|이지만|이면서|이라면|이라고|이라서|이랑|이는|이가|이를|이와|이도|이의|은|는|을|를|과|와|가|랑|도|의|이(?=$|[\s.,!?。，！])))?/g,
+      (matched, particle = '') => {
+        switch (particle) {
+          case '은': case '는': case '이는': return familiarName + '는';
+          case '가': case '이가': return familiarName + '가';
+          case '을': case '를': case '이를': return familiarName + '를';
+          case '과': case '와': case '이와': return familiarName + '와';
+          case '랑': case '이랑': return familiarName + '랑';
+          case '도': case '이도': return familiarName + '도';
+          case '의': case '이의': return familiarName + '의';
+          case '이': return hasBatchim ? familiarName : displayName + '가';
+          case '에게': case '에게서': case '한테': return familiarName + particle;
+          case '이지만': case '이면서': case '이라면': case '이라고': case '이라서':
+            return displayName + (hasBatchim ? particle : particle.slice(1));
+          default: return displayName;
+        }
+      }
+    );
+  }
   output = output.replace(/학생\s*[B-Z]/g, '다른 친구');
   return output;
 }
@@ -410,7 +441,19 @@ function createPrivacyStreamRewriter(studentName) {
         carry = combined;
         return '';
       }
-      const cut = codePoints.length - 8;
+      let cut = codePoints.length - 8;
+      // Keep an alias and its particle in the same output chunk.
+      // This prevents "학생A는" becoming "민준는" during streaming.
+      const placeholderPattern = /학생[ \t]*[A-Z]/g;
+      let match;
+      while ((match = placeholderPattern.exec(combined)) !== null) {
+        const start = Array.from(combined.slice(0, match.index)).length;
+        const end = start + Array.from(match[0]).length;
+        if (start < cut && cut <= end + 4) {
+          cut = start;
+          break;
+        }
+      }
       const ready = codePoints.slice(0, cut).join('');
       carry = codePoints.slice(cut).join('');
       return restorePrivacyResponseAliases(ready, studentName);
