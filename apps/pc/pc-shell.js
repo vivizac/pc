@@ -442,7 +442,11 @@
       expand.setAttribute('aria-expanded', String(!collapsed));
       (collapsed ? expand : collapse).focus({ preventScroll: true });
     };
-    collapse.addEventListener('click', () => setCollapsed(true));
+    collapse.addEventListener('click', async () => {
+      await openSection(SECTION.SCHEDULE);
+      global.olliTtShowSchedulePane?.();
+      setCollapsed(true);
+    });
     expand.addEventListener('click', () => setCollapsed(false));
     global.addEventListener('resize', alignToggle);
     if (typeof ResizeObserver !== 'undefined') {
