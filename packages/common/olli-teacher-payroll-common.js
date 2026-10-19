@@ -856,9 +856,13 @@
   }
 
   function renderPayrollSection(payroll,teachers){
+    const teacherTotal=teachers.reduce((sum,teacher)=>sum+Math.max(0,Number(teacher?.gross_amount
+      ?? (Number(teacher?.total_amount || 0)+Number(teacher?.deduction_amount || 0)))),0);
+    const payrollTotal=Math.max(0,Number(state.payload?.payroll_gross_total_amount ?? teacherTotal));
     return '<section class="olliFinancePayrollSection">'
       + '<div class="olliPayrollIntro"><div class="olliPayrollIntroTitle">선생님 급여</div>'
-      + '<div class="olliPayrollIntroText">선택한 달에 실제 지급되는 급여를 보여줍니다. 지급 전에는 예상 금액, 지급 후에는 고정된 금액을 표시합니다.</div></div>'
+      + '<div class="olliPayrollIntroText">선택한 달에 실제 지급되는 급여를 보여줍니다. 지급 전에는 예상 금액, 지급 후에는 고정된 금액을 표시합니다.</div>'
+      + '<div class="olliExpenseTotal olliPayrollExpenseTotal" data-payroll-expense-total><span>급여 지출 총액 · 공제 전</span><strong>'+money(payrollTotal)+'</strong></div></div>'
       + renderPayrollWarnings(payroll)
       + (teachers.length ? teachers.map(renderTeacherCard).join('') : '<div class="olliPayrollEmpty">급여를 설정할 선생님이 없습니다.</div>')
       + '</section>';
