@@ -6,6 +6,7 @@ const root=path.join(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const migration=read('supabase/migrations/20261015100000_academy_finance_estimated_income.sql');
 const js=read('packages/common/olli-teacher-payroll-common.js');
+const pricingMigration=read('supabase/migrations/20261019062648_academy_tuition_policies.sql');
 const css=read('packages/common/olli-teacher-payroll-common.css');
 
 test('only the owner-gated finance overview reveals aggregated tuition',()=>{
@@ -33,7 +34,8 @@ test('workbook fee is separate and applies only in first enrollment month',()=>{
   assert.match(migration,/tuition_once_amount.*110000/);
   assert.match(migration,/tuition_twice_amount.*150000/);
   assert.match(migration,/workbook_amount.*70000/);
-  assert.match(js,/워크북 교환비/);
+  assert.match(pricingMigration,/워크북 교환비/);
+  assert.match(js,/재료비·교재비 등 별도 비용/);
   assert.match(js,/실제 입금 확인 전의 예상 매출/);
 });
 

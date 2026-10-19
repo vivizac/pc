@@ -297,10 +297,16 @@
   }
 
   async function executeScheduleAction(action, params) {
-    return rpc('olli_schedule_execute', contextPayload({
+    const result = await rpc('olli_schedule_execute', contextPayload({
       p_action: action,
       p_params: params || {}
     }));
+    if (params?.student_id && ['change','remove_enrollment','add_enrollment'].includes(action)) {
+      try { global.dispatchEvent(new CustomEvent('olli:schedule-changed', { detail: {
+        studentId: params.student_id, effectiveDate: params.effective_date, source: 'pc_timetable'
+      } })); } catch (_) {}
+    }
+    return result;
   }
 
   async function setSessionOrder(studentId, enrollmentId, sessionOrder, effectiveDate) {

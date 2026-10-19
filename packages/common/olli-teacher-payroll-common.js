@@ -327,20 +327,17 @@
   function renderRevenueSection(){
     const revenue=financeRevenuePayload();
     if(!revenue) return '<section class="olliIncomeSection"><div class="olliIncomeWarning">예상 수입 정보를 불러오지 못했습니다. 서버 수입 계산 기능을 확인해 주세요.</div></section>';
-    const once=Math.max(0,Number(revenue.weekly_once_students || 0));
-    const twice=Math.max(0,Number(revenue.weekly_twice_students || 0));
-    const newly=Math.max(0,Number(revenue.new_students || 0));
     const unpriced=Math.max(0,Number(revenue.unpriced_students || 0));
+    const tuition=Math.max(0,Number(revenue.tuition_total_amount || 0));
+    const fees=Math.max(0,Number(revenue.additional_fee_amount ?? revenue.workbook_amount ?? 0));
     return '<section class="olliIncomeSection" data-income-section>'
-      + '<div class="olliIncomeHeader"><div><strong>예상 수입</strong><p>시간표 수업 횟수와 최초 등록일을 기준으로 자동 계산합니다.</p></div>'
+      + '<div class="olliIncomeHeader"><div><strong>예상 수입</strong><p>학생별 적용 교육비와 예상 납부일을 기준으로 계산합니다.</p></div>'
       + '<div class="olliIncomeTotal"><span>예상 월수입</span><strong>'+money(revenue.total_amount)+'</strong></div></div>'
-      + '<div class="olliIncomeRows">'
-      + '<div class="olliIncomeRow"><span>주 1회 교육비 <small>'+once+'명 × 110,000원</small></span><strong>'+money(revenue.tuition_once_amount)+'</strong></div>'
-      + '<div class="olliIncomeRow"><span>주 2회 교육비 <small>'+twice+'명 × 150,000원</small></span><strong>'+money(revenue.tuition_twice_amount)+'</strong></div>'
-      + '<div class="olliIncomeRow"><span>워크북 교환비 <small>첫 등록 '+newly+'명 × 70,000원</small></span><strong>'+money(revenue.workbook_amount)+'</strong></div>'
-      + '</div>'
-      + (unpriced ? '<div class="olliIncomeWarning">정기 수업 횟수가 없거나 3회 이상인 학생 '+unpriced+'명의 교육비는 계산에서 제외했습니다. 시간표를 확인해 주세요.</div>' : '')
-      + '<div class="olliIncomeGuide">실제 입금 확인 전의 예상 매출입니다. 할인·미납·환불 및 4주 단위 결제일은 반영되지 않습니다. 조회 월 말일의 등록 시간표를 기준으로 합니다.</div>'
+      + '<div class="olliIncomeRows"><div class="olliIncomeRow"><span>교육비</span><strong>'+money(tuition)+'</strong></div>'
+      + '<div class="olliIncomeRow"><span>재료비·교재비 등 별도 비용</span><strong>'+money(fees)+'</strong></div></div>'
+      + (revenue.configured===false?'<div class="olliIncomeWarning">이 학원의 기본 교육비를 먼저 설정해 주세요.</div>':'')
+      + (unpriced?'<div class="olliIncomeWarning">교육비가 미설정이거나 개별 금액 확인이 필요한 학생 '+unpriced+'명이 있습니다. 미확정 교육비는 총액에서 제외합니다.</div>':'')
+      + '<div class="olliIncomeGuide">실제 입금 확인 전의 예상 매출입니다. 등록일 기준 예상 납부일(매월 또는 4주)을 사용하며 미납·환불·실제 결제일은 별도입니다.</div>'
       + '</section>';
   }
 
@@ -827,11 +824,12 @@
     const totalProfit=Number(payload.estimated_profit_amount ?? (totalIncome-totalExpense));
     const missingMonthly=Math.max(0,Number(expenses.missing_monthly_count || 0));
     const unpriced=Math.max(0,Number(revenue?.unpriced_students || 0));
-    const incomplete=missingMonthly>0 || unpriced>0 || !revenue;
+    const incomplete=missingMonthly>0 || unpriced>0 || !revenue || revenue.configured===false;
     const parts=String(state.month || '').split('-');
     const monthLabel=parts.length===2 ? Number(parts[0])+'년 '+Number(parts[1])+'월' : '이번 달';
     const future=selectedMonthIsFuture();
     const completionText=!revenue ? '수입 계산 미연결'
+      : revenue.configured===false ? '교육비 설정 필요'
       : incomplete ? ('지출 미입력 '+missingMonthly+'건 · 수업 횟수 확인 '+unpriced+'명')
       : (future?'예정 시간표 기준':'시간표 및 입력된 지출 기준');
     return '<section class="olliFinanceSummary'+(incomplete?' is-incomplete':' is-complete')+'" data-finance-summary>'
@@ -966,6 +964,9 @@
       + '</div>'
       + renderFinanceSummary()
       + '</div>'
+      + '<div class="olliTuitionFinanceTools"><button type="button" data-tuition-settings>교육비 설정</button>'
+      + '<button type="button" data-tuition-list="individual">개별 교육비 적용 학생</button>'
+      + '<button type="button" data-tuition-list="review">교육비 확인 필요 '+Math.max(0,Number(financeRevenuePayload()?.unpriced_students || 0))+'명</button></div>'
       + financeTabHtml()
       + '<div class="olliFinanceColumns">'
       + '<div class="olliFinanceIncomeColumn'+(state.financeTab==='income'?' is-active':'')+'">'+renderRevenueSection()+'</div>'
@@ -982,6 +983,8 @@
       }
     });
 
+    els.body.querySelector('[data-tuition-settings]')?.addEventListener('click',()=>global.OlliTuition?.openSettings());
+    els.body.querySelectorAll('[data-tuition-list]').forEach(button=>button.addEventListener('click',()=>global.OlliTuition?.openStudentList(financeRevenuePayload()?.students || [],button.dataset.tuitionList)));
     bindMonthPicker(els.body);
     bindFinanceTabs(els.body);
     bindExpenseEvents(els.body);

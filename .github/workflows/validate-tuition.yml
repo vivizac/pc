@@ -1,0 +1,32 @@
+name: Validate tuition policies
+on:
+  pull_request:
+    paths:
+      - 'packages/common/olli-tuition-*'
+      - 'packages/common/olli-teacher-payroll-common.js'
+      - 'supabase/migrations/*_academy_tuition_policies.sql'
+      - 'apps/pc/pc-student-info*'
+      - 'apps/pc/pc-start-page.js'
+      - 'apps/pc/pc-timetable-service.js'
+      - 'apps/mobile/olli-phone-*student-info-card.js'
+      - 'apps/*/index.html'
+      - 'packages/common/*manifest.json'
+      - 'tests/tuition*'
+      - 'tests/tuition/**'
+      - '.github/workflows/validate-tuition.yml'
+permissions:
+  contents: read
+jobs:
+  tuition:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix tests/tuition --ignore-scripts
+      - run: node apps/pc/scripts/stage-common.cjs
+      - run: node apps/mobile/scripts/stage-common.cjs
+      - run: npm test --prefix tests/tuition

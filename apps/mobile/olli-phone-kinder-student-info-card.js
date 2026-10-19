@@ -117,6 +117,7 @@
       document.body.appendChild(modal);
     }
     modal.innerHTML = cardHtml(student || {});
+    global.OlliTuition?.mountStudent(modal.querySelector('.pcStudentInfoCard'), student);
     return modal;
   }
 
@@ -159,6 +160,7 @@
 
   function applyStudentProfile(student) {
     if (!student) return;
+    global.OlliTuition?.mountStudent(document.querySelector('#kinderInfoModal .pcStudentInfoCard'), student);
     const name = document.getElementById('kinderInfoNameInput');
     const kindergarten = document.getElementById('kinderKindergartenInput');
     const age = document.getElementById('kinderAgeInput');

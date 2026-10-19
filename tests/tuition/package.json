@@ -1,0 +1,11 @@
+{
+  "name": "olli-tuition-regression",
+  "private": true,
+  "scripts": {
+    "test": "node --test ../tuition-policy.integration.test.cjs ../tuition-ui.test.cjs ../teacher-payroll-expense-total.test.cjs ../academy-finance-estimated-income.test.cjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
+    "jsdom": "26.1.0"
+  }
+}

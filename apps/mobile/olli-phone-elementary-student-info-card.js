@@ -128,6 +128,7 @@
       document.body.appendChild(modal);
     }
     modal.innerHTML = cardHtml(student || {});
+    global.OlliTuition?.mountStudent(modal.querySelector('.pcStudentInfoCard'), student);
     return modal;
   }
 
@@ -183,6 +184,7 @@
 
   function applyStudentProfile(student) {
     if (!student) return;
+    global.OlliTuition?.mountStudent(document.querySelector('#elementaryInfoModal .pcStudentInfoCard'), student);
     try {
       elementaryInfoDraft = { group: student.group || '', personality: student.personality || '' };
     } catch (_) {}
