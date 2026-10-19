@@ -6,7 +6,7 @@ const root=path.join(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const migration=read('supabase/migrations/20261015100000_academy_finance_estimated_income.sql');
 const js=read('packages/common/olli-teacher-payroll-common.js');
-const pricingMigration=read('supabase/migrations/20261019062648_academy_tuition_policies.sql');
+const pricingMigration=read('supabase/migrations/20261019075624_academy_tuition_policies.sql');
 const css=read('packages/common/olli-teacher-payroll-common.css');
 
 test('only the owner-gated finance overview reveals aggregated tuition',()=>{

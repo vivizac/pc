@@ -14,7 +14,7 @@
 
 ## 데이터와 영향 범위
 
-Migration: `supabase/migrations/20261019062648_academy_tuition_policies.sql`
+Migration: `supabase/migrations/20261019075624_academy_tuition_policies.sql`
 
 추가되는 private 테이블은 학원별 설정/revision, 교육비표, 개별 약정 이력, 최초 등록일, 재시도 receipt이다. RLS를 켜고 anon/authenticated의 직접 접근을 차단한다. public RPC 3개는 기존 세션·원장 검증 함수를 사용하고 빈 search_path를 고정한다.
 
@@ -24,7 +24,7 @@ Migration: `supabase/migrations/20261019062648_academy_tuition_policies.sql`
 
 ## 적용 순서
 
-이 브랜치에서는 운영 DB에 migration을 적용하거나 배포하지 않았다. 출시할 때는 DB 적용과 두 클라이언트 배포를 같은 변경 묶음으로 준비해야 한다. 기존 브라우저도 공유된 public finance 응답 필드를 계속 읽을 수 있다.
+운영 DB에 migration을 적용했으며, 실제 적용 이력 버전과 이 파일의 버전을 일치시켰다. PC와 모바일은 동일한 메인 커밋으로 함께 배포한다. 기존 브라우저도 공유된 public finance 응답 필드를 계속 읽을 수 있다.
 
 납부 기준(매월/4주)은 최초 설정 후 고정한다. 기존 납부 주기 변경, 실제 수납·미납·환불·일할 계산, 영수증 재발행은 이 예상 수입 기능에서 처리하지 않는다. 최초 등록일/정기 시간표를 기준으로 한 예상액이며 실제 결제 기록이 아니다.
 
@@ -39,4 +39,4 @@ node apps/mobile/scripts/stage-common.cjs
 
 PostgreSQL(PGlite)에서 migration을 실행하고 신규·기존생 인상, 개인 금액 우선순위, 기간 종료, 횟수 변경, 반복 청구, 4주·말일, 권한 차단, stale revision, 재시도 중복 방지를 검사한다. DOM 검사에서는 기본/추가 카드, 재료비 주기, 적용 전 미리보기, 저장 실패 입력 보존, 미래 예약 안내, 학원 전환 시 늦은 응답 폐기를 검사한다.
 
-실제 운영 DB migration, 브라우저/iPhone 시각 검증 및 운영 결제 대사는 별도 출시 검증으로 남아 있다.
+운영 DB 적용과 데이터 보존 검증을 완료했다. 브라우저/iPhone 시각 검증 및 운영 결제 대사는 별도 검증으로 남아 있다.

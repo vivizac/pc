@@ -76,7 +76,7 @@ create function private.olli_academy_finance_owner_member(token text,academy uui
     fs.readFileSync(
       path.join(
         __dirname,
-        "../supabase/migrations/20261019062648_academy_tuition_policies.sql",
+        "../supabase/migrations/20261019075624_academy_tuition_policies.sql",
       ),
       "utf8",
     ),
