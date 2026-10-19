@@ -420,8 +420,44 @@
     document.getElementById('olliPcTopArchiveBtn')?.remove();
   }
 
+  function bindSidebarToggle() {
+    const shell = document.getElementById('olliPcShell');
+    const row = document.getElementById('olliPcScheduleNavRow');
+    const collapse = document.getElementById('olliPcSidebarCollapse');
+    const expand = document.getElementById('olliPcSidebarExpand');
+    if (!shell || !row || !collapse || !expand) return;
+
+    const alignToggle = () => {
+      const rect = row.getBoundingClientRect();
+      if (!rect.height) return;
+      expand.style.setProperty('--pc-sidebar-toggle-top', rect.top + 'px');
+      expand.style.setProperty('--pc-sidebar-toggle-height', rect.height + 'px');
+    };
+    const setCollapsed = (collapsed) => {
+      alignToggle();
+      document.body.classList.toggle('olliPcSidebarCollapsed', collapsed);
+      shell.inert = collapsed;
+      shell.setAttribute('aria-hidden', String(collapsed));
+      collapse.setAttribute('aria-expanded', String(!collapsed));
+      expand.setAttribute('aria-expanded', String(!collapsed));
+      (collapsed ? expand : collapse).focus({ preventScroll: true });
+    };
+    collapse.addEventListener('click', () => setCollapsed(true));
+    expand.addEventListener('click', () => setCollapsed(false));
+    global.addEventListener('resize', alignToggle);
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(alignToggle);
+      observer.observe(shell);
+      observer.observe(row);
+      const brand = shell.querySelector('.olliPcBrand');
+      if (brand) observer.observe(brand);
+    }
+    alignToggle();
+  }
+
   function start() {
     normalizeSidebarChrome();
+    bindSidebarToggle();
     installLegacyObservationRedirects();
     installStudentAddDivisionTabs();
     feature('OlliPcStudentManagement')?.start();
@@ -434,3 +470,4 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
   else start();
 })(window);
+
