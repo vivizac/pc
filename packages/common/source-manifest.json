@@ -61,7 +61,9 @@
     "scene-card-model-common.js",
     "scene-card-ui-common.js",
     "scene-feedback-text-common.js",
-    "olli-text-size-common.css"
+    "olli-text-size-common.css",
+    "olli-tuition-common.js",
+    "olli-tuition-common.css"
   ],
   "intentionally_not_imported": [
     "observation-memo-request-guard-common.js (not present in current PC source)",

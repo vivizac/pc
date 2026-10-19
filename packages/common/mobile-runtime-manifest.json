@@ -71,6 +71,8 @@
     "team-talk-avatars/avatar-15.webp",
     "olli-text-size-common.css",
     "olli-education-inspection-common.css",
-    "olli-education-inspection-common.js"
+    "olli-education-inspection-common.js",
+    "olli-tuition-common.js",
+    "olli-tuition-common.css"
   ]
 }

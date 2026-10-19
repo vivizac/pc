@@ -1,0 +1,225 @@
+.olliTuitionOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 240000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(20, 27, 35, 0.28);
+}
+.olliTuitionDialog {
+  width: min(820px, 100%);
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  padding: 24px;
+  background: #fff;
+  border: 1px solid #e7e9ec;
+  border-radius: 24px;
+  color: #20252b;
+  font-family: inherit;
+}
+.olliTuitionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.olliTuitionHead h2 {
+  margin: 0;
+  font-size: 21px;
+}
+.olliTuitionDialog button,
+.olliTuitionStudent button,
+.olliTuitionOpen {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid #e0e5e8;
+  border-radius: 11px;
+  background: #fff;
+  color: #28343c;
+  font: inherit;
+  cursor: pointer;
+}
+.olliTuitionDialog button.primary,
+.olliTuitionStudent button.primary {
+  background: #172c29;
+  color: #fff;
+  border-color: #172c29;
+}
+.olliTuitionDialog button:disabled,
+.olliTuitionStudent button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.olliTuitionHelp {
+  font-size: 12px;
+  color: #77818b;
+  line-height: 1.6;
+}
+.olliTuitionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.olliTuitionDialog label,
+.olliTuitionStudent label {
+  display: block;
+  font-size: 12px;
+  color: #66717b;
+}
+.olliTuitionDialog input,
+.olliTuitionDialog select,
+.olliTuitionStudent input {
+  width: 100%;
+  min-height: 40px;
+  margin: 6px 0 12px;
+  padding: 8px 10px;
+  border: 1px solid #dfe4e8;
+  border-radius: 10px;
+  background: #fff;
+  color: #242b30;
+  font: inherit;
+  box-sizing: border-box;
+}
+.olliTuitionBlock {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #eceff1;
+}
+.olliTuitionActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.olliTuitionRate {
+  padding: 12px;
+  background: #f6f8f8;
+  border-radius: 14px;
+}
+.olliTuitionRate strong {
+  display: block;
+  margin-bottom: 4px;
+}
+.olliTuitionFee {
+  padding: 12px;
+  margin: 10px 0;
+  border: 1px solid #e7ebed;
+  border-radius: 14px;
+}
+.olliTuitionFee .olliTuitionGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.olliTuitionNotice {
+  padding: 12px;
+  margin: 12px 0;
+  background: #fff8e9;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #7b5d20;
+}
+.olliTuitionError {
+  color: #b54436;
+  white-space: pre-wrap;
+  font-size: 13px;
+}
+.olliTuitionTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.olliTuitionTable th,
+.olliTuitionTable td {
+  padding: 10px 6px;
+  border-bottom: 1px solid #eef0f2;
+  text-align: left;
+  word-break: keep-all;
+}
+.olliTuitionHistory {
+  padding: 12px 0;
+  border-bottom: 1px solid #eceff1;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.olliTuitionStudent {
+  margin: 14px 0;
+  padding: 15px;
+  border: 1px solid #e3e8e8;
+  border-radius: 15px;
+  background: #fff;
+}
+.olliTuitionStudentTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.olliTuitionStudentTitle strong {
+  font-size: 15px;
+}
+.olliTuitionStudent p {
+  margin: 8px 0;
+  font-size: 13px;
+  color: #66717b;
+}
+.olliTuitionPriceList {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.olliTuitionPriceList span {
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: #f1f5f4;
+  font-size: 11px;
+}
+.olliTuitionStudentForm {
+  margin-top: 12px;
+}
+.olliTuitionStudentForm .olliTuitionGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.olliTuitionStudent [hidden],
+.olliTuitionOverlay [hidden] {
+  display: none;
+}
+.olliTuitionFinanceTools {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+}
+.olliTuitionFinanceTools button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #e3e7e7;
+  border-radius: 10px;
+  background: #fff;
+  color: #52655d;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+@media (max-width: 600px) {
+  .olliTuitionOverlay {
+    padding: 10px;
+  }
+  .olliTuitionDialog {
+    padding: 18px;
+    max-height: calc(100dvh - 20px);
+    border-radius: 20px;
+  }
+  .olliTuitionGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .olliTuitionTable th,
+  .olliTuitionTable td {
+    padding: 8px 4px;
+    font-size: 11px;
+  }
+}

@@ -484,6 +484,11 @@ body.olliPcSidebarCollapsed #recordRoomScreen .olliTtSection { --olli-tt-student
   background: linear-gradient(to right, transparent 0 var(--pc-content-left), rgba(0,0,0,.20) var(--pc-content-left) 100%);
 }
 .olliTtStudentActionOverlay.show { display: flex; }
+.olliTtStudentActionOverlay.anchored .olliTtStudentActionCard {
+  position: fixed;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
 .olliTtStudentActionCard {
   width: min(292px, calc(100vw - var(--pc-content-left) - 44px));
   padding: 6px 0;

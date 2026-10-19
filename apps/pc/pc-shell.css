@@ -48,11 +48,15 @@ body.olliPcSidebarCollapsed .olliPcShell{transform:translateX(-100%);visibility:
 .olliPcScheduleNavRow .olliPcNavBtn{padding-right:32px;gap:8px;font-size:14px;white-space:nowrap;}
 .olliPcSidebarToggle{border:0;padding:0;display:grid;place-items:center;background:transparent;color:#89929d;cursor:pointer;}
 .olliPcSidebarTriangle{width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:6px solid currentColor;}
+.olliPcSidebarCollapse .olliPcSidebarTriangle{position:relative;z-index:1;border-left:0;border-right:6px solid currentColor;}
 .olliPcSidebarCollapse{position:absolute;top:0;right:0;width:28px;height:100%;border-radius:0 12px 12px 0;opacity:0;pointer-events:none;}
+.olliPcSidebarCollapse::before{content:'';position:absolute;top:50%;left:50%;width:24px;height:24px;border-radius:50%;transform:translate(-50%,-50%);background:#eef2f5;}
 .olliPcScheduleNavRow:hover .olliPcSidebarCollapse,.olliPcScheduleNavRow:focus-within .olliPcSidebarCollapse{opacity:1;pointer-events:auto;}
-.olliPcSidebarToggle:hover{color:var(--pc-blue);background:var(--pc-blue-soft);}
+.olliPcSidebarToggle:hover{color:var(--pc-blue);}
+.olliPcSidebarCollapse:hover::before{background:#d9eaff;}
+.olliPcSidebarExpand:hover{background:var(--pc-blue-soft);}
 .olliPcSidebarToggle:focus-visible{outline:2px solid var(--pc-blue);outline-offset:-2px;}
-.olliPcSidebarExpand{display:none;position:fixed;top:var(--pc-sidebar-toggle-top,232px);right:0;width:30px;height:var(--pc-sidebar-toggle-height,44px);z-index:86000;border:1px solid var(--pc-line);border-right:0;border-radius:12px 0 0 12px;background:#fff;box-shadow:0 3px 12px rgba(0,0,0,.06);}
+.olliPcSidebarExpand{display:none;position:fixed;top:var(--pc-sidebar-toggle-top,232px);left:0;width:30px;height:var(--pc-sidebar-toggle-height,44px);z-index:86000;border:1px solid var(--pc-line);border-left:0;border-radius:0 12px 12px 0;background:#fff;box-shadow:0 3px 12px rgba(0,0,0,.06);}
 body.olliPcSidebarCollapsed .olliPcShell.visible ~ .olliPcSidebarExpand{display:grid;}
 @media(hover:none){.olliPcSidebarCollapse{opacity:1;pointer-events:auto;}}
 @media(prefers-reduced-motion:reduce){.olliPcShell,body.olliPcSidebarCollapsed .olliPcShell{transition:none;}}

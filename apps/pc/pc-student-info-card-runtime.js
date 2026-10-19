@@ -740,6 +740,7 @@
     try { studentInfoModalTarget = authoritativeStudent; } catch (_) {}
 
     showStudentInfoContent(division === 'kinder' ? kinderCardHtml(authoritativeStudent) : elementaryCardHtml(authoritativeStudent));
+    global.OlliTuition?.mountStudent(document.querySelector('#pcAttendanceDetailPanel .pcStudentInfoCard'), authoritativeStudent);
 
     if (division === 'elementary') {
       try {
@@ -846,6 +847,7 @@
       }
     }
     if (!editing) syncStudentInfoInputValue('pcStudentInfoFeedbackTeacher', updatedStudent.feedback_teacher);
+    global.OlliTuition?.mountStudent(card.querySelector('.pcStudentInfoCard'), updatedStudent);
     const scheduleBox = card.querySelector('.pcStudentInfoSchedule');
     const nextSchedule = studentInfoScheduleHtml(updatedStudent, enrollments);
     if (scheduleBox && previousSchedule !== nextSchedule) scheduleBox.innerHTML = nextSchedule;
@@ -1007,6 +1009,7 @@
 
   function isStudentInfoEditEvent(event) {
     const target = event && event.target;
+    if (target?.closest?.('[data-tuition-student]')) return false;
     const card = target && target.closest ? target.closest('.pcStudentInfoCard') : null;
     if (!card || !cardState.studentId || cardState.loading || cardState.saveInFlight) return false;
     if (event.type === 'click') {
