@@ -83,7 +83,7 @@ create function private.olli_academy_finance_owner_member(token text,academy uui
   );
   // Simulate an existing 4-week academy, then upgrade its settings in place.
   await db.exec(`insert into private.olli_tuition_settings(academy_id,billing_cycle) values('${B}','four_weeks')`);
-  await db.exec(fs.readFileSync(path.join(__dirname, '../supabase/migrations/20261019082137_tuition_monthly_deleted_filter.sql'), 'utf8'));
+  await db.exec(fs.readFileSync(path.join(__dirname, '../supabase/migrations/20261019093240_tuition_monthly_deleted_filter.sql'), 'utf8'));
   await write("policy", basic);
 });
 after(async () => db?.close());
