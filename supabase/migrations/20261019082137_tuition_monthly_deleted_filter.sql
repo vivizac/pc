@@ -1,4 +1,4 @@
--- Monthly tuition; deleted students never appear in estimated income or review lists.
+-- Monthly tuition; current/future estimates include current active students only.
 begin;
 update private.olli_tuition_settings set billing_cycle='monthly',revision=revision+1
  where billing_cycle<>'monthly';
@@ -19,9 +19,20 @@ begin
  for s in select st.*,coalesce(fr.registered_on,st.enrolled_at) first_date
   from public.students st left join private.olli_tuition_first_registration fr on fr.academy_id=st.academy_id and fr.student_id=st.id
   where st.academy_id=p_academy_id and st.enrolled_at<=end_date
-  and not coalesce(st.is_deleted,false) and st.deleted_at is null and st.status<>'deleted' 
-  and (st.withdrawn_at is null or (st.withdrawn_at at time zone 'Asia/Seoul')::date>=start_date)
-  and (st.deleted_at is null or (st.deleted_at at time zone 'Asia/Seoul')::date>=start_date)
+  and (
+   -- Apply the current roster before quoting or counting missing tuition.
+   (end_date>=(now() at time zone 'Asia/Seoul')::date
+    and st.status='active' and not coalesce(st.is_deleted,false) and st.deleted_at is null)
+   or
+   -- Past estimates use dated enrollment boundaries, not today's roster.
+   (end_date<(now() at time zone 'Asia/Seoul')::date
+    and (not coalesce(st.is_deleted,false) or st.deleted_at is not null)
+    and (st.status='active' or (st.status='paused' and st.paused_at is not null)
+     or (st.status='withdrawn' and st.withdrawn_at is not null) or st.deleted_at is not null)
+    and (st.withdrawn_at is null or (st.withdrawn_at at time zone 'Asia/Seoul')::date>start_date)
+    and (st.deleted_at is null or (st.deleted_at at time zone 'Asia/Seoul')::date>start_date)
+    and (st.status='active' or st.paused_at is null or (st.paused_at at time zone 'Asia/Seoul')::date>start_date))
+  )
  loop
   student_total:=0;student_fees:=0;unknown:=false;billing_rows:='[]';
   first_date:=s.first_date;
@@ -31,8 +42,6 @@ begin
    if d<s.enrolled_at or (s.withdrawn_at is not null and d>=(s.withdrawn_at at time zone 'Asia/Seoul')::date)
     or (s.deleted_at is not null and d>=(s.deleted_at at time zone 'Asia/Seoul')::date)
     or (s.paused_at is not null and d>=(s.paused_at at time zone 'Asia/Seoul')::date and s.status<>'active') then continue; end if;
-   -- Also ignore currently inactive rows without historical timestamps (legacy data).
-   if end_date>=(now() at time zone 'Asia/Seoul')::date and (s.status not in ('active','paused') or coalesce(s.is_deleted,false)) then continue; end if;
    q:=private.olli_tuition_quote(p_academy_id,s.id,d);
    due:=d=private.olli_tuition_month_day(s.enrolled_at,d);
    if due then

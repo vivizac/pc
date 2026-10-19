@@ -310,7 +310,7 @@ test("calendar material schedule charges only the configured month and registrat
 });
 
 
-test("deleted students are excluded before missing tuition, totals and review counts for every month", async () => {
+test("deleted students are excluded from current and future missing tuition, totals and review counts", async () => {
   const baseline = await revenue('2095-03-01');
   const ids = ['00000000-0000-0000-0000-000000000031','00000000-0000-0000-0000-000000000032','00000000-0000-0000-0000-000000000033'];
   for (const [i,id] of ids.entries()) {
@@ -325,4 +325,48 @@ test("deleted students are excluded before missing tuition, totals and review co
   }
   const preview=await write('policy',{...basic,new_from:'2096-01-01'},{preview:true});
   assert(!preview.preview.some(s=>ids.includes(s.student_id)));
+});
+
+test("current estimates and review lists use active roster; past months retain dated enrollment periods", async () => {
+  const cases = [
+    ['active', false, null, null, null, true],
+    ['active', false, null, null, null, false],
+    ['paused', false, '2020-06-20', null, null, true],
+    ['paused', false, null, null, null, true],
+    ['withdrawn', false, null, '2020-06-20', null, true],
+    ['withdrawn', false, null, null, null, true],
+    ['active', true, null, null, '2020-06-20', true],
+    ['active', true, null, null, null, true],
+    ['active', false, null, null, '2020-06-20', true],
+  ];
+  const ids = [];
+  for (const [i, [status, deleted, pausedAt, withdrawnAt, deletedAt, scheduled]] of cases.entries()) {
+    const id = `00000000-0000-0000-0000-${String(41+i).padStart(12,'0')}`;
+    ids.push(id);
+    await db.query("insert into students(id,academy_id,name,enrolled_at,status,is_deleted,paused_at,withdrawn_at,deleted_at) values($1,$2,$3,'2019-01-10',$4,$5,$6,$7,$8)", [id,A,`상태 ${i}`,status,deleted,pausedAt,withdrawnAt,deletedAt]);
+    if (scheduled) await db.query("insert into olli_schedule_enrollments(academy_id,student_id,weekday,time_slot,effective_from) values($1,$2,1,4,'2019-01-10')", [A,id]);
+  }
+  const currentMonth = (await db.query("select date_trunc('month',now() at time zone 'Asia/Seoul')::date::text as report_month")).rows[0].report_month;
+  await db.query("insert into private.olli_tuition_student_terms(academy_id,student_id,amount,weekly_sessions,effective_from) values($1,$2,90000,2,$3)", [A,ids[2],currentMonth]);
+  for (const month of [currentMonth, '2099-01-01']) {
+    const result = await revenue(month);
+    const rows = result.students.filter(s=>ids.includes(s.student_id));
+    assert.deepEqual(rows.map(s=>s.student_id).sort(), ids.slice(0,2).sort());
+    assert.deepEqual(rows.filter(s=>s.needs_review).map(s=>s.student_id), [ids[1]]);
+    assert.equal(result.students.some(s=>ids.slice(2).includes(s.student_id)), false);
+    assert.equal(result.fee_items.some(s=>ids.slice(2).includes(s.student_id)), false);
+    if (month===currentMonth) {
+      assert.equal(result.unpriced_students, 1);
+      assert.equal(result.review_students, 0);
+      assert.equal(result.individual_students, 0);
+      assert.equal(result.tuition_total_amount, 110000);
+    }
+  }
+  const before = await revenue('2020-05-01');
+  assert.deepEqual(before.students.filter(s=>ids.includes(s.student_id)).map(s=>s.student_id).sort(), [0,1,2,4,6,8].map(i=>ids[i]).sort());
+  const after = await revenue('2020-07-01');
+  assert.deepEqual(after.students.filter(s=>ids.includes(s.student_id)).map(s=>s.student_id).sort(), ids.slice(0,2).sort());
+  assert.equal(before.tuition_total_amount-after.tuition_total_amount, 440000);
+  const preview=await write('policy',{...basic,new_from:'2099-01-01'},{preview:true});
+  assert(!preview.preview.some(s=>ids.slice(2).includes(s.student_id)));
 });
