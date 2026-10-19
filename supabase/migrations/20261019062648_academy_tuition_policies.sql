@@ -210,7 +210,7 @@ declare
  preview_rows jsonb:='[]'; r record; q jsonb; amount bigint;
 begin
  owner_id:=private.olli_academy_finance_owner_member(p_session_token,p_academy_id);
- if p_request_id is null or jsonb_typeof(p_data) is distinct from 'object' then raise exception 'INVALID_REQUEST'; end if;
+ if p_request_id is null or p_expected_revision is null or p_expected_revision<0 or jsonb_typeof(p_data) is distinct from 'object' then raise exception 'INVALID_REQUEST'; end if;
  if p_preview and p_action<>'policy' then raise exception 'INVALID_PREVIEW'; end if;
  perform pg_advisory_xact_lock(hashtextextended(p_academy_id::text,627));
  select * into req from private.olli_tuition_mutations where academy_id=p_academy_id and request_id=p_request_id;

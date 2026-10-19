@@ -146,6 +146,19 @@ test("expired override returns to policy and never revives an older individual p
   assert.equal((await quote(OLD, "2091-07-10")).amount, 170000);
 });
 test("stale writes reject and retrying the same receipt is idempotent", async () => {
+  await assert.rejects(
+    () =>
+      db.query("select public.olli_tuition_write($1,$2,$3,$4,$5,$6,$7)", [
+        "owner",
+        A,
+        null,
+        randomUUID(),
+        "individual",
+        { student_id: OLD, amount: 1, effective_from: "2091-08-01" },
+        false,
+      ]),
+    /INVALID_REQUEST/,
+  );
   const id = randomUUID(),
     data = { student_id: OLD, amount: 125000, effective_from: "2091-08-01" };
   const before = revision;
