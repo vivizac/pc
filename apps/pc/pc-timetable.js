@@ -1624,6 +1624,29 @@
     renderSidebarResults(body);
   }
 
+  let sidebarStudentActionAnchor = null;
+
+  function positionSidebarStudentActionMenu() {
+    const overlay = document.getElementById('olliTtStudentActionOverlay');
+    if (!overlay?.classList.contains('show') || !sidebarStudentActionAnchor) return;
+    if (!sidebarStudentActionAnchor.isConnected) {
+      closeSidebarStudentActionMenu();
+      return;
+    }
+    const card = overlay.querySelector('.olliTtStudentActionCard');
+    if (!card) return;
+    const anchor = sidebarStudentActionAnchor.getBoundingClientRect();
+    const rect = card.getBoundingClientRect();
+    const margin = 8;
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = document.documentElement.clientHeight;
+    const top = anchor.top + rect.height <= viewportHeight - margin
+      ? anchor.top : anchor.bottom - rect.height;
+    const left = Math.max(margin, Math.min(anchor.right + margin, viewportWidth - rect.width - margin));
+    card.style.left = left + 'px';
+    card.style.top = Math.max(margin, Math.min(top, viewportHeight - rect.height - margin)) + 'px';
+  }
+
   function ensureSidebarStudentActionMenu() {
     let overlay = document.getElementById('olliTtStudentActionOverlay');
     if (overlay) return overlay;
@@ -1682,6 +1705,14 @@
       if (event.key === 'Escape') closeSidebarStudentActionMenu();
     });
     document.body.appendChild(overlay);
+    global.addEventListener('resize', positionSidebarStudentActionMenu);
+    document.addEventListener('scroll', (event) => {
+      if (!overlay.contains(event.target)) positionSidebarStudentActionMenu();
+    }, true);
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(positionSidebarStudentActionMenu);
+      observer.observe(overlay.querySelector('.olliTtStudentActionCard'));
+    }
     return overlay;
   }
 
@@ -1697,9 +1728,10 @@
 
   function closeSidebarStudentActionMenu() {
     state.sidebarActionStudentId = '';
+    sidebarStudentActionAnchor = null;
     const overlay = document.getElementById('olliTtStudentActionOverlay');
     if (!overlay) return;
-    overlay.classList.remove('show');
+    overlay.classList.remove('show', 'anchored');
     overlay.setAttribute('aria-hidden', 'true');
     document.querySelectorAll('[data-tt-roster-actions][aria-expanded="true"]').forEach((button) => button.setAttribute('aria-expanded', 'false'));
   }
@@ -1712,12 +1744,17 @@
     state.sidebarActionStudentId = clean(studentId);
     const overlay = ensureSidebarStudentActionMenu();
     resetSidebarStudentActionMenuView(overlay, student);
+    sidebarStudentActionAnchor = event?.target?.closest?.('[data-tt-roster-actions]')
+      || Array.from(document.querySelectorAll('[data-tt-roster-actions]')).find((button) => clean(button.dataset.ttRosterActions) === state.sidebarActionStudentId)
+      || null;
+    overlay.classList.toggle('anchored', !!sidebarStudentActionAnchor);
     overlay.classList.add('show');
     overlay.setAttribute('aria-hidden', 'false');
+    positionSidebarStudentActionMenu();
     document.querySelectorAll('[data-tt-roster-actions]').forEach((button) => {
       button.setAttribute('aria-expanded', clean(button.dataset.ttRosterActions) === state.sidebarActionStudentId ? 'true' : 'false');
     });
-    requestAnimationFrame(() => overlay.querySelector('[data-tt-student-action]')?.focus?.());
+    requestAnimationFrame(() => overlay.querySelector('[data-tt-student-action]')?.focus?.({ preventScroll: true }));
   }
 
   function openPauseScheduleChoice(student) {
@@ -1728,7 +1765,8 @@
     if (choice) choice.hidden = false;
     const title = overlay.querySelector('[data-tt-pause-title]');
     if (title) title.textContent = `${clean(student && student.name) || '학생'} 휴원`;
-    requestAnimationFrame(() => overlay.querySelector('[data-tt-pause-schedule="keep"]')?.focus?.());
+    positionSidebarStudentActionMenu();
+    requestAnimationFrame(() => overlay.querySelector('[data-tt-pause-schedule="keep"]')?.focus?.({ preventScroll: true }));
   }
 
   function futureOrCurrentStudentEnrollments(studentId) {
@@ -3962,6 +4000,7 @@ ${combined.memoError}`);
     global.olliTtRenderScheduleHeader = renderWorkspaceHeader;
     global.olliTtOpenStudentSchedule = openMove;
     global.olliTtOpenStudentActions = openSidebarStudentActionMenu;
+    global.olliTtShowSchedulePane = () => setPane('schedule');
     global.olliTtRefreshSchedule = refreshScheduleFromServer;
     syncAttendanceActive();
   }
