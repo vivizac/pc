@@ -146,7 +146,7 @@
       (mode === "months" ? "selected" : "") +
       '>몇 개월마다</option><option value="cycle" ' +
       (mode === "cycle" ? "selected" : "") +
-      ">교육비 납부 주기마다</option></select></label><label data-months-label " +
+      ">매월</option></select></label><label data-months-label " +
       (mode === "months" ? "" : "hidden") +
       '>부과 간격 (매월은 1)<input data-fee-months type="number" min="1" max="60" value="' +
       esc(f.months || 1) +
@@ -208,7 +208,7 @@
     const initial = !c.policies.length;
     const data = {
       title: body.querySelector("[data-policy-title]").value.trim(),
-      billing_cycle: body.querySelector("[data-cycle]").value,
+      billing_cycle: "monthly",
       prices,
       fees,
       new_from: initial
@@ -257,13 +257,7 @@
     body.innerHTML =
       '<p class="olliTuitionHelp">교육비표는 이력으로 보존됩니다. 새 금액을 만들 때 신규생 적용일과 기존 재원생 적용 여부를 함께 정하세요. 개별 교육비 학생은 별도 설정을 유지합니다.</p><div class="olliTuitionGrid"><label>교육비표 이름<input maxlength="80" data-policy-title value="' +
       (initial ? "기본 교육비" : "새 교육비") +
-      '"></label><label>납부 기준<select data-cycle ' +
-      (c.billing_cycle ? "disabled" : "") +
-      '><option value="monthly" ' +
-      (c.billing_cycle !== "four_weeks" ? "selected" : "") +
-      '>매월</option><option value="four_weeks" ' +
-      (c.billing_cycle === "four_weeks" ? "selected" : "") +
-      '>4주마다</option></select></label></div><p class="olliTuitionHelp">최초 설정 후 납부 주기는 유지됩니다. 예상 납부일은 등록일을 기준으로 계산합니다.</p><div class="olliTuitionGrid" data-rates>' +
+      '"></label></div><p class="olliTuitionHelp">교육비는 한 달 기준입니다. 예상 납부일은 매월 등록일을 기준으로 계산합니다.</p><div class="olliTuitionGrid" data-rates>' +
       Object.entries(base.prices)
         .map(([n, v]) => rateCard(n, v))
         .join("") +
@@ -460,7 +454,7 @@
       '회</strong><button type="button" data-edit-tuition>개별 교육비 설정</button></div><p>' +
       money(q.amount) +
       " / " +
-      (result.catalog.billing_cycle === "four_weeks" ? "4주" : "매월") +
+      "매월" +
       " · " +
       esc(
         q.basis === "individual"

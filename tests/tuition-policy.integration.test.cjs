@@ -81,6 +81,9 @@ create function private.olli_academy_finance_owner_member(token text,academy uui
       "utf8",
     ),
   );
+  // Simulate an existing 4-week academy, then upgrade its settings in place.
+  await db.exec(`insert into private.olli_tuition_settings(academy_id,billing_cycle) values('${B}','four_weeks')`);
+  await db.exec(fs.readFileSync(path.join(__dirname, '../supabase/migrations/20261019093240_tuition_monthly_deleted_filter.sql'), 'utf8'));
   await write("policy", basic);
 });
 after(async () => db?.close());
@@ -94,7 +97,7 @@ test("catalog is owner and academy gated and starts with 1/2/3 prices", async ()
     /FORBIDDEN/,
   );
   assert.equal((await quote(OLD, "2090-02-10")).amount, 110000);
-  assert.equal((await revenue("2090-02-01", B)).configured, false);
+  assert.equal((await revenue("2090-02-01", '00000000-0000-0000-0000-000000000003')).configured, false);
 });
 test("preview does not write and old/new cohorts split until scheduled existing date", async () => {
   const policy = {
@@ -259,29 +262,25 @@ test("private tables and helper functions cannot be called as authenticated", as
     await db.exec("reset role");
   }
 });
-test("four-week billing counts real 28-day cycles and calendar billing clamps month ends", async () => {
+test("existing four-week settings become monthly and each month has one tuition date", async () => {
   await db.exec(
-    `insert into private.olli_tuition_settings(academy_id,billing_cycle) values('${B}','four_weeks');insert into private.olli_tuition_policies(academy_id,title,new_from,prices) values('${B}','4주','1900-01-01','{"1":100000,"2":150000,"3":190000}');insert into students(id,academy_id,name,enrolled_at) values('00000000-0000-0000-0000-000000000021','${B}','4주 학생','2095-01-01');insert into olli_schedule_enrollments(academy_id,student_id,weekday,time_slot,effective_from) values('${B}','00000000-0000-0000-0000-000000000021',1,4,'2095-01-01')`,
+    `insert into private.olli_tuition_policies(academy_id,title,new_from,prices) values('${B}','4주','1900-01-01','{"1":100000,"2":150000,"3":190000}');insert into students(id,academy_id,name,enrolled_at) values('00000000-0000-0000-0000-000000000021','${B}','4주 학생','2095-01-01');insert into olli_schedule_enrollments(academy_id,student_id,weekday,time_slot,effective_from) values('${B}','00000000-0000-0000-0000-000000000021',1,4,'2095-01-01')`,
   );
   const r = await revenue("2095-01-01", B);
-  assert.equal(r.tuition_total_amount, 200000);
+  assert.equal(r.billing_cycle, "monthly");
+  assert.equal(r.tuition_total_amount, 100000);
   assert.deepEqual(
     r.students[0].billing.map((x) => x.date),
-    ["2095-01-01", "2095-01-29"],
+    ["2095-01-01"],
   );
   const dates = await db.query(
     "select private.olli_tuition_month_day('2095-01-31','2095-02-01')::text normal,private.olli_tuition_month_day('2096-01-31','2096-02-01')::text leap",
   );
   assert.deepEqual(dates.rows[0], { normal: "2095-02-28", leap: "2096-02-29" });
-  await assert.rejects(
-    () =>
-      write("policy", {
-        ...basic,
-        new_from: "2095-01-01",
-        billing_cycle: "four_weeks",
-      }),
-    /BILLING_CYCLE_LOCKED/,
-  );
+  await write("policy", {
+    ...basic, new_from: "2095-01-01", billing_cycle: "four_weeks",
+  });
+  assert.equal((await db.query("select billing_cycle from private.olli_tuition_settings where academy_id=$1", [A])).rows[0].billing_cycle, "monthly");
 });
 test("calendar material schedule charges only the configured month and registration date is retained", async () => {
   await write("policy", {
@@ -308,4 +307,66 @@ test("calendar material schedule charges only the configured month and registrat
     (await quote(NEW, "2094-02-20")).first_registered_on,
     "2091-01-10",
   );
+});
+
+
+test("deleted students are excluded from current and future missing tuition, totals and review counts", async () => {
+  const baseline = await revenue('2095-03-01');
+  const ids = ['00000000-0000-0000-0000-000000000031','00000000-0000-0000-0000-000000000032','00000000-0000-0000-0000-000000000033'];
+  for (const [i,id] of ids.entries()) {
+    await db.query("insert into students(id,academy_id,name,enrolled_at,is_deleted,deleted_at) values($1,$2,'삭제 학생','2095-01-01',$3,$4)", [id,A,i!==1,i!==0?'2095-03-20':null]);
+  }
+  const result = await revenue('2095-03-01');
+  assert.deepEqual(result, baseline);
+  for (const month of ['2020-01-01','2095-01-01','2095-03-01','2096-01-01']) {
+    const r=await revenue(month);
+    assert(!r.students.some(s=>ids.includes(s.student_id)));
+    assert(!r.fee_items.some(s=>ids.includes(s.student_id)));
+  }
+  const preview=await write('policy',{...basic,new_from:'2096-01-01'},{preview:true});
+  assert(!preview.preview.some(s=>ids.includes(s.student_id)));
+});
+
+test("current estimates and review lists use active roster; past months retain dated enrollment periods", async () => {
+  const cases = [
+    ['active', false, null, null, null, true],
+    ['active', false, null, null, null, false],
+    ['paused', false, '2020-06-20', null, null, true],
+    ['paused', false, null, null, null, true],
+    ['withdrawn', false, null, '2020-06-20', null, true],
+    ['withdrawn', false, null, null, null, true],
+    ['active', true, null, null, '2020-06-20', true],
+    ['active', true, null, null, null, true],
+    ['active', false, null, null, '2020-06-20', true],
+  ];
+  const ids = [];
+  for (const [i, [status, deleted, pausedAt, withdrawnAt, deletedAt, scheduled]] of cases.entries()) {
+    const id = `00000000-0000-0000-0000-${String(41+i).padStart(12,'0')}`;
+    ids.push(id);
+    await db.query("insert into students(id,academy_id,name,enrolled_at,status,is_deleted,paused_at,withdrawn_at,deleted_at) values($1,$2,$3,'2019-01-10',$4,$5,$6,$7,$8)", [id,A,`상태 ${i}`,status,deleted,pausedAt,withdrawnAt,deletedAt]);
+    if (scheduled) await db.query("insert into olli_schedule_enrollments(academy_id,student_id,weekday,time_slot,effective_from) values($1,$2,1,4,'2019-01-10')", [A,id]);
+  }
+  const currentMonth = (await db.query("select date_trunc('month',now() at time zone 'Asia/Seoul')::date::text as report_month")).rows[0].report_month;
+  await db.query("insert into private.olli_tuition_student_terms(academy_id,student_id,amount,weekly_sessions,effective_from) values($1,$2,90000,2,$3)", [A,ids[2],currentMonth]);
+  for (const month of [currentMonth, '2099-01-01']) {
+    const result = await revenue(month);
+    const rows = result.students.filter(s=>ids.includes(s.student_id));
+    assert.deepEqual(rows.map(s=>s.student_id).sort(), ids.slice(0,2).sort());
+    assert.deepEqual(rows.filter(s=>s.needs_review).map(s=>s.student_id), [ids[1]]);
+    assert.equal(result.students.some(s=>ids.slice(2).includes(s.student_id)), false);
+    assert.equal(result.fee_items.some(s=>ids.slice(2).includes(s.student_id)), false);
+    if (month===currentMonth) {
+      assert.equal(result.unpriced_students, 1);
+      assert.equal(result.review_students, 0);
+      assert.equal(result.individual_students, 0);
+      assert.equal(result.tuition_total_amount, 110000);
+    }
+  }
+  const before = await revenue('2020-05-01');
+  assert.deepEqual(before.students.filter(s=>ids.includes(s.student_id)).map(s=>s.student_id).sort(), [0,1,2,4,6,8].map(i=>ids[i]).sort());
+  const after = await revenue('2020-07-01');
+  assert.deepEqual(after.students.filter(s=>ids.includes(s.student_id)).map(s=>s.student_id).sort(), ids.slice(0,2).sort());
+  assert.equal(before.tuition_total_amount-after.tuition_total_amount, 440000);
+  const preview=await write('policy',{...basic,new_from:'2099-01-01'},{preview:true});
+  assert(!preview.preview.some(s=>ids.slice(2).includes(s.student_id)));
 });
