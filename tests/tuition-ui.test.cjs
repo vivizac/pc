@@ -80,6 +80,8 @@ test("settings show three defaults, only add four/five, and separate material ca
   const t = ui();
   await t.w.OlliTuition.openSettings();
   assert.equal(t.doc.querySelectorAll("[data-rate]").length, 3);
+  assert.equal(t.doc.querySelector('[data-cycle]'), null);
+  assert.match(t.doc.body.textContent, /교육비는 한 달 기준/);
   const add = t.doc.querySelector("[data-add-rate]");
   add.click();
   add.click();
@@ -101,6 +103,7 @@ test("a changed draft invalidates the reviewed save action and no write occurs o
   t.doc.querySelector("[data-preview]").click();
   await wait();
   assert(t.doc.querySelector("[data-save-policy]"));
+  assert.equal(t.requests.find(r=>r.name==='olli_tuition_write').data.p_data.billing_cycle, 'monthly');
   assert.equal(
     t.requests.find((r) => r.name === "olli_tuition_write").data.p_preview,
     true,

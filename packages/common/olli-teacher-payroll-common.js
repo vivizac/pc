@@ -337,7 +337,7 @@
       + '<div class="olliIncomeRow"><span>재료비·교재비 등 별도 비용</span><strong>'+money(fees)+'</strong></div></div>'
       + (revenue.configured===false?'<div class="olliIncomeWarning">이 학원의 기본 교육비를 먼저 설정해 주세요.</div>':'')
       + (unpriced?'<div class="olliIncomeWarning">교육비가 미설정이거나 개별 금액 확인이 필요한 학생 '+unpriced+'명이 있습니다. 미확정 교육비는 총액에서 제외합니다.</div>':'')
-      + '<div class="olliIncomeGuide">실제 입금 확인 전의 예상 매출입니다. 등록일 기준 예상 납부일(매월 또는 4주)을 사용하며 미납·환불·실제 결제일은 별도입니다.</div>'
+      + '<div class="olliIncomeGuide">실제 입금 확인 전의 예상 매출입니다. 매월 등록일을 기준으로 계산하며 미납·환불·실제 결제일은 별도입니다.</div>'
       + '</section>';
   }
 
@@ -1342,3 +1342,4 @@
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',startup,{once:true});
   else startup();
 })(window);
+
