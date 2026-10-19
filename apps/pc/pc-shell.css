@@ -1,5 +1,6 @@
 :root{
   --pc-sidebar-w:clamp(196px,17vw,246px);
+  --pc-content-left:var(--pc-sidebar-w);
   --pc-topbar-h:78px;
   --pc-bg:#f5f6f8;
   --pc-line:#e8e9ec;
@@ -32,8 +33,10 @@ body.olliPcApp *::-webkit-scrollbar-thumb:hover{background:var(--pc-scroll-thumb
 /* Vercel이 외부 주입하는 개발용 Toolbar UI만 숨김 */
 vercel-live-feedback{display:none!important;}
 
-.olliPcShell{display:none;position:fixed;inset:0 auto 0 0;width:var(--pc-sidebar-w);z-index:86000;background:#fff;border-right:1px solid var(--pc-line);box-sizing:border-box;}
+.olliPcShell{display:none;position:fixed;inset:0 auto 0 0;width:var(--pc-sidebar-w);z-index:86000;background:#fff;border-right:1px solid var(--pc-line);box-sizing:border-box;transition:transform .28s ease,visibility 0s;}
 .olliPcShell.visible{display:flex;flex-direction:column;}
+body.olliPcSidebarCollapsed{--pc-content-left:0px;}
+body.olliPcSidebarCollapsed .olliPcShell{transform:translateX(-100%);visibility:hidden;transition:transform .28s ease,visibility 0s .28s;}
 .olliPcBrand{padding:19px 12px 16px;}
 .olliPcBrandLogo{font-size:20px;line-height:1;font-weight:900;letter-spacing:-.055em;}
 .olliPcBrandSub{margin-top:7px;font-size:11px;color:#8e9299;letter-spacing:-.035em;}
@@ -41,6 +44,18 @@ vercel-live-feedback{display:none!important;}
 .olliPcNavBtn{width:100%;height:44px;border:0;background:transparent;border-radius:12px;padding:0 12px;display:flex;align-items:center;gap:12px;font-family:inherit;font-size:15.5px;font-weight:700;color:#26282c;cursor:pointer;text-align:left;}
 .olliPcNavBtn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto;}
 .olliPcNavBtn.active{background:var(--pc-blue-soft);color:var(--pc-blue);}
+.olliPcScheduleNavRow{position:relative;min-width:0;}
+.olliPcScheduleNavRow .olliPcNavBtn{padding-right:32px;gap:8px;font-size:14px;white-space:nowrap;}
+.olliPcSidebarToggle{border:0;padding:0;display:grid;place-items:center;background:transparent;color:#89929d;cursor:pointer;}
+.olliPcSidebarTriangle{width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:6px solid currentColor;}
+.olliPcSidebarCollapse{position:absolute;top:0;right:0;width:28px;height:100%;border-radius:0 12px 12px 0;opacity:0;pointer-events:none;}
+.olliPcScheduleNavRow:hover .olliPcSidebarCollapse,.olliPcScheduleNavRow:focus-within .olliPcSidebarCollapse{opacity:1;pointer-events:auto;}
+.olliPcSidebarToggle:hover{color:var(--pc-blue);background:var(--pc-blue-soft);}
+.olliPcSidebarToggle:focus-visible{outline:2px solid var(--pc-blue);outline-offset:-2px;}
+.olliPcSidebarExpand{display:none;position:fixed;top:var(--pc-sidebar-toggle-top,232px);right:0;width:30px;height:var(--pc-sidebar-toggle-height,44px);z-index:86000;border:1px solid var(--pc-line);border-right:0;border-radius:12px 0 0 12px;background:#fff;box-shadow:0 3px 12px rgba(0,0,0,.06);}
+body.olliPcSidebarCollapsed .olliPcShell.visible ~ .olliPcSidebarExpand{display:grid;}
+@media(hover:none){.olliPcSidebarCollapse{opacity:1;pointer-events:auto;}}
+@media(prefers-reduced-motion:reduce){.olliPcShell,body.olliPcSidebarCollapsed .olliPcShell{transition:none;}}
 .olliPcContext{margin:16px 10px 0;border-top:1px solid var(--pc-line);padding-top:14px;min-width:0;min-height:0;display:flex;flex:1;flex-direction:column;overflow:hidden;}
 .olliPcContextTitle{padding:0 10px 8px;font-size:12px;font-weight:750;color:#9a9ea6;}
 .olliPcContextBody{min-height:0;overflow:auto;padding:0 0 10px;scrollbar-width:none;}
@@ -68,7 +83,7 @@ body.olliPcApp .olliPcSidebarBottom #recordSortPopup{left:50%;right:auto;bottom:
 .olliPcRoundBtn{width:40px;height:40px;border:1px solid #e3e5e8;background:#fff;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:#15171a;box-shadow:0 3px 12px rgba(0,0,0,.04);}
 .olliPcRoundBtn svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
 
-.olliPcTopbar{display:none;position:fixed;left:var(--pc-sidebar-w);right:0;top:0;height:var(--pc-topbar-h);z-index:85000;background:#fff;border-bottom:1px solid var(--pc-line);box-sizing:border-box;padding:0 clamp(16px,2vw,28px);align-items:center;justify-content:space-between;}
+.olliPcTopbar{display:none;position:fixed;left:var(--pc-content-left);right:0;top:0;height:var(--pc-topbar-h);z-index:85000;background:#fff;border-bottom:1px solid var(--pc-line);box-sizing:border-box;padding:0 clamp(16px,2vw,28px);align-items:center;justify-content:space-between;}
 .olliPcTopbar.visible{display:flex;}
 .olliPcTopbarTitle{font-size:20px;font-weight:850;letter-spacing:-.05em;}
 .olliPcTopbarTabs{min-width:0;display:flex;align-items:center;gap:24px;}
@@ -113,7 +128,7 @@ body.olliPcApp button[aria-label="검색어 지우기"]{
 .olliPcTopAction svg{width:20px;height:20px;stroke:#111;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 
 body.olliPcApp > .pageScreen{
-  left:var(--pc-sidebar-w);
+  left:var(--pc-content-left);
   top:var(--pc-topbar-h);
   right:0;
   bottom:0;
@@ -178,3 +193,4 @@ body.olliPcApp #studentModal .olliPcStudentAddTabs button:focus-visible{
   outline:2px solid rgba(22,135,255,.24);
   outline-offset:2px;
 }
+

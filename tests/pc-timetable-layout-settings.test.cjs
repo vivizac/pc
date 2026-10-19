@@ -77,5 +77,6 @@ test('reserved move cards keep configured student columns without stretching acr
   assert.ok(!css.includes('#recordRoomScreen .olliTtStudent.scheduled { grid-column: 1 / -1; }'));
   assert.ok(css.includes('grid-template-columns: repeat(var(--olli-tt-student-columns), minmax(0, 1fr))'));
   assert.ok(css.includes('overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'));
-  assert.ok(fs.readFileSync('apps/pc/index.html', 'utf8').includes('pc-timetable.css?v=20261014-reserved-card-grid-1'));
+  assert.ok(fs.readFileSync('apps/pc/index.html', 'utf8').includes('pc-timetable.css?v=20261019-sidebar-collapse-1'));
 });
+

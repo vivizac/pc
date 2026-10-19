@@ -1638,7 +1638,7 @@
   }
 }
 </style>
-<link rel="stylesheet" href="pc-shell.css">
+<link rel="stylesheet" href="pc-shell.css?v=20261019-sidebar-collapse-1">
 <link rel="stylesheet" href="pc-attendance.css?v=20261012-roster-actions-1">
 <link rel="stylesheet" href="pc-record-editor.css?v=20260930-record-colors-3">
 <link rel="stylesheet" href="pc-student-management.css?v=20261012-academy-work-orders-1">
@@ -1667,9 +1667,12 @@
     <button class="olliPcNavBtn" data-pc-nav="consultation" type="button" onclick="pcOpenSection('consultation')">
       <svg viewBox="0 0 24 24"><path d="M6 4.5h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-4.5 3v-3H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"></path><path d="M8 9h8M8 13h5"></path></svg><span>상담기록</span>
     </button>
+    <div class="olliPcScheduleNavRow" id="olliPcScheduleNavRow">
     <button class="olliPcNavBtn" data-pc-nav="schedule" type="button" onclick="pcOpenSection('schedule')">
       <svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14" rx="2.5"></rect><path d="M8 3.5v4M16 3.5v4M4 9.5h16M8 13h3M13 13h3M8 16.5h3"></path></svg><span>시간표 • 출석부</span>
     </button>
+    <button class="olliPcSidebarToggle olliPcSidebarCollapse" id="olliPcSidebarCollapse" type="button" aria-label="사이드바 접기" aria-controls="olliPcShell" aria-expanded="true" title="사이드바 접기"><span class="olliPcSidebarTriangle" aria-hidden="true"></span></button>
+    </div>
     <button class="olliPcNavBtn olliPcTeamTalkNavBtn" data-pc-nav="talk" type="button" onclick="pcOpenSection('talk')">
       <svg class="olliPcTeamTalkNavIcon" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M6.47 4.5h12c2.06 0 3.75 1.69 3.75 3.75v7.03c0 2.06-1.69 3.75-3.75 3.75H9.19l-3.94 3.1 1.13-3.1c-2.11-.28-3.66-1.92-3.66-4.03V8.25c0-2.06 1.69-3.75 3.75-3.75Z"></path>
@@ -1697,6 +1700,7 @@
     </button>
   </div>
 </div>
+<button class="olliPcSidebarToggle olliPcSidebarExpand" id="olliPcSidebarExpand" type="button" aria-label="사이드바 펼치기" aria-controls="olliPcShell" aria-expanded="false" title="사이드바 펼치기"><span class="olliPcSidebarTriangle" aria-hidden="true"></span></button>
 <div class="olliPcTopbar" id="olliPcTopbar">
   <div class="olliPcTopbarTitle" id="olliPcTopbarTitle">학생관리</div>
   <div class="olliPcTopbarRight">
@@ -4655,7 +4659,7 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 <script src="pc-team-talk.js?v=20261008-avatar-picker-1"></script>
 <script src="pc-team-talk-material-orders.js?v=20261012-needed-date-archive-1"></script>
-<script src="pc-shell.js?v=20260921-work-labels-1"></script>
+<script src="pc-shell.js?v=20261019-sidebar-collapse-1"></script>
 <script src="pc-student-management.js?v=20261012-academy-work-orders-1"></script>
 <script src="olli-feedback-photo-storage-common.js"></script>\n<script src="pc-kinder-feedback.js"></script>
 <script src="pc-note-voice.js?v=20260929-pc-notes-1"></script>
@@ -4663,7 +4667,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <script src="pc-record-editor.js?v=20260929-pc-notes-1"></script>
 <script src="pc-attendance.js?v=20261012-feedback-group-sort-2"></script>
 <script src="pc-trash.js"></script>
-<link rel="stylesheet" href="pc-timetable.css?v=20261014-reserved-card-grid-1">
+<link rel="stylesheet" href="pc-timetable.css?v=20261019-sidebar-collapse-1">
 <script>window.__OLLI_MODULAR_TIMETABLE__ = true;</script>
 <style id="olliPcAttendanceTimetableStyle" media="not all">
 /* PC 사이드바 출석부: 명단 / 시간표 */
@@ -4973,5 +4977,6 @@ document.addEventListener('DOMContentLoaded', function(){
 <script src="consultation-survey.js?v=20261013-schedule-only-1"></script>
 <script src="pc-start-page.js?v=20261014-kinder-info-two-row-1"></script>
 </body></html>
+
 
 
