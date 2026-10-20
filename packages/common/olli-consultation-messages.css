@@ -38,3 +38,14 @@
 .olliConsultationMessages .ocm-template-slot{border:1px solid #e4e9e7;border-radius:12px;padding:12px;margin:10px 0}
 .olliConsultationMessages summary{cursor:pointer;font-size:14px;font-weight:600;line-height:1.6}
 .olliConsultationMessages .ocm-extra-stages{margin:14px 0;color:#687b73}
+
+.olliConsultationMessages .ocm-use-switch{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:56px;padding:10px 0;font-size:16px;font-weight:600;color:#29423e}
+.olliConsultationMessages .ocm-use-switch small{display:block;margin-top:4px;font-size:12px;font-weight:400;color:#75847e}
+.olliConsultationMessages .ocm-switch-control{position:relative;display:block;width:46px;height:28px;flex-shrink:0}
+.olliConsultationMessages .ocm-switch-control input{position:absolute;inset:0;opacity:0;width:46px;height:28px;margin:0;cursor:pointer;z-index:1}
+.olliConsultationMessages .ocm-switch-track{display:block;width:46px;height:28px;border-radius:18px;background:#d6dedb;transition:background .16s}
+.olliConsultationMessages .ocm-switch-track::before{content:'';display:block;position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0002;transition:transform .16s}
+.olliConsultationMessages .ocm-switch-control input:checked+.ocm-switch-track{background:#548c78}
+.olliConsultationMessages .ocm-switch-control input:checked+.ocm-switch-track::before{transform:translateX(18px)}
+.olliConsultationMessages .ocm-switch-control input:focus-visible+.ocm-switch-track{outline:2px solid #508d80;outline-offset:3px}
+.olliConsultationMessages .ocm-switch-control input:disabled+.ocm-switch-track{opacity:.5}

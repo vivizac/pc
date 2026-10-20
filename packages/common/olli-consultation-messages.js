@@ -71,7 +71,8 @@
       <section data-panel="settings">
         <p class="ocm-muted">상담 대상 학부모에게 네이버 예약 링크가 담긴 알림톡을 자동 발송합니다. 예약 여부는 네이버에서 확인해 주세요.</p>
         <form data-settings>
-          <label class="ocm-check"><input type="checkbox" name="enabled" ${settings.enabled ? 'checked' : ''}>상담 예약 안내 자동 발송</label>
+          <label class="ocm-use-switch"><span>상담 안내 문자 사용<small data-usage-status>${settings.enabled ? '켜짐' : '꺼짐'}</small></span><span class="ocm-switch-control"><input type="checkbox" role="switch" aria-label="상담 안내 문자 사용" name="enabled" ${settings.enabled ? 'checked' : ''}><span class="ocm-switch-track" aria-hidden="true"></span></span></label>
+          <p class="ocm-muted">학원별 선택 기능입니다. 끄면 자동 발송과 직접 보내기가 모두 중단됩니다. 스위치 변경은 바로 저장되며, 문구와 보호자 연락처는 보존됩니다.</p>
           <label>네이버 플레이스·예약 링크<input name="booking_url" type="url" inputmode="url" placeholder="https://booking.naver.com/…" value="${escape(settings.booking_url)}" maxlength="2000"></label>
           <label>카카오채널 연동 ID<input name="channel_id" value="${escape(settings.channel_id)}" placeholder="솔라피에 등록된 채널 ID" maxlength="100"></label>
           <label>안내문 사용 방식<select name="template_mode" aria-label="안내문 사용 방식"><option value="common" ${settings.template_mode !== 'by_type' ? 'selected' : ''}>모든 상담에 공통 안내문 사용</option><option value="by_type" ${settings.template_mode === 'by_type' ? 'selected' : ''}>초등부·유치부 / 상담 시기별로 설정</option></select></label>
@@ -87,7 +88,7 @@
             <p class="ocm-muted">같은 달에 6개월·12개월 상담이 겹치면 12개월 안내문을 한 번 발송합니다. 공통 모드로 바꿔도 입력한 개별 안내문은 보존됩니다.</p>
           </div>
           <p class="ocm-muted">설정을 처음 켠 달부터 상담 안내를 시작하며, 이전 달의 상담은 한꺼번에 발송하지 않습니다. 같은 학생의 같은 상담 예정 월에는 한 번만 발송합니다.</p>
-          <p data-connection class="ocm-muted">발송업체 연결 확인 중…</p>
+          <p data-connection class="ocm-muted">${settings.enabled ? '발송업체 연결 확인 중…' : '현재 사용하지 않습니다. 사용하지 않는 학원은 발송업체를 연결하지 않아도 됩니다.'}</p>
           <button type="submit" class="ocm-primary">발송 설정 저장</button>
         </form>
       </section>
@@ -98,7 +99,7 @@
           <strong>${escape(s.name)} <small>${s.division === 'kinder' ? '유치부' : '초등부'}</small></strong>
           <p>${escape(s.phone || '학생정보에서 보호자 연락처를 등록해 주세요.')}</p>
           <p class="ocm-muted">${s.enabled && s.confirmed ? '확인된 보호자 번호 · 상담 안내 대상' : '보호자 번호 확인 또는 상담 안내 대상 설정이 필요합니다.'}</p>
-          <button type="button" data-send="${escape(s.id)}">예약 안내 보내기</button>
+          <button type="button" data-send="${escape(s.id)}" ${!settings.enabled ? 'disabled' : ''}>예약 안내 보내기</button>
         </div>`).join('') || '<p class="ocm-muted">현재 재원생이 없습니다.</p>'}</div>
       </section>
       <section data-panel="history" hidden>
@@ -107,6 +108,7 @@
         <div data-history>${historyHtml(payload)}</div>
       </section>`;
     state.dialog.querySelector('[data-settings]').addEventListener('submit', saveSettings);
+    state.dialog.querySelector('[name=enabled]').addEventListener('change', toggleUsage);
     state.dialog.querySelector('[name=template_mode]').addEventListener('change', (event) => {
       state.dialog.querySelector('[data-template-variants]').hidden = event.target.value !== 'by_type';
     });
@@ -130,12 +132,41 @@
     }));
     state.dialog.querySelectorAll('[data-send]').forEach((button) => button.addEventListener('click', () => send(button)));
     state.dialog.querySelector('[data-refresh]').addEventListener('click', refresh);
-    server('status', null, state).then((r) => {
+    if (settings.enabled) server('status', null, state).then((r) => {
+      if (active !== state || state.payload.settings?.enabled !== true) return;
       const el = state.dialog.querySelector('[data-connection]');
       if (el) el.textContent = r.configured ? '발송업체 서버 연결 설정 완료' : '발송업체 서버 연결 설정이 필요합니다. API 키는 서버에서만 등록합니다.';
     }).catch(() => {
-      if (active === state) state.dialog.querySelector('[data-connection]').textContent = '발송업체 연결 상태를 확인하지 못했습니다. 서버 설정과 배포 상태를 확인해 주세요.';
+      if (active === state && state.payload.settings?.enabled === true) state.dialog.querySelector('[data-connection]').textContent = '발송업체 연결 상태를 확인하지 못했습니다. 서버 설정과 배포 상태를 확인해 주세요.';
     });
+  }
+  function syncUsage(state) {
+    if (active !== state) return;
+    const enabled = state.payload.settings?.enabled === true;
+    state.dialog.querySelector('[name=enabled]').checked = enabled;
+    state.dialog.querySelector('[data-usage-status]').textContent = enabled ? '켜짐' : '꺼짐';
+    state.dialog.querySelectorAll('[data-send]').forEach(button => { button.disabled = !enabled; });
+    state.dialog.querySelector('[data-connection]').textContent = enabled
+      ? '상담 안내 문자 기능을 사용하고 있습니다.'
+      : '현재 사용하지 않습니다. 발송업체를 연결하지 않아도 됩니다.';
+  }
+  async function toggleUsage(event) {
+    const state = active;
+    const input = event.currentTarget;
+    if (!state || state.busy) { if (state) syncUsage(state); return; }
+    if (input.checked) {
+      await saveSettings({ preventDefault() {}, currentTarget: state.dialog.querySelector('[data-settings]') });
+      syncUsage(state);
+      return;
+    }
+    // Turning off must work even with incomplete, unsaved edits or no provider credentials.
+    // Change only usage so concurrent server edits and the current form draft survive.
+    state.busy = true; input.disabled = true;
+    try {
+      state.payload = await rpc('disable', {}, state);
+      notice('상담 안내 문자 사용을 껐습니다. 자동 발송과 직접 보내기가 중단됩니다.');
+    } catch (error) { if (active === state) notice(error.message, true); }
+    finally { state.busy = false; input.disabled = false; syncUsage(state); }
   }
   async function saveSettings(event) {
     event.preventDefault();
@@ -150,7 +181,7 @@
       template_body: slot.querySelector('[data-variant-body]').value.trim(),
       template_confirmed: slot.querySelector('[data-variant-confirmed]').checked
     }]));
-    state.busy = true; button.disabled = true;
+    state.busy = true; button.disabled = true; form.elements.enabled.disabled = true;
     try {
       if (data.enabled) {
         const status = await server('status', null, state);
@@ -158,16 +189,17 @@
       }
       const result = await rpc('settings',data,state);
       state.payload = result;
-      notice(data.enabled ? '저장했습니다. 다음 자동 발송부터 적용됩니다.' : '저장했습니다. 자동 발송이 꺼져 있습니다.');
+      syncUsage(state);
+      notice(data.enabled ? '저장했습니다. 다음 자동 발송부터 적용됩니다.' : '저장했습니다. 상담 안내 문자 사용이 꺼져 있습니다.');
     } catch (error) { if (active === state) notice(error.message,true); }
-    finally { state.busy = false; button.disabled = false; }
+    finally { state.busy = false; button.disabled = false; form.elements.enabled.disabled = false; }
   }
   async function send(button) {
     const state = active;
     if (!state || state.busy) return;
     const contact = state.payload.students.find((s) => s.id === button.dataset.send);
     if (!contact?.confirmed || !contact.enabled) return notice('확인된 보호자 연락처를 먼저 저장해 주세요.',true);
-    if (!state.payload.settings?.enabled) return notice('자동 발송 설정을 먼저 켜고 저장해 주세요.',true);
+    if (!state.payload.settings?.enabled) return notice('상담 안내 문자 사용을 먼저 켜 주세요.',true);
     state.busy = true; button.disabled = true;
     try {
       const result = await server('send',button.dataset.send,state);

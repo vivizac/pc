@@ -22,12 +22,14 @@ test('PC/mobile settings, read-only recipients, context isolation and Naver mess
     window.callOlliRpc=async(name,args)=>{
      window.calls.push({name,args});
      if(args.p_action==='settings')window.fixture.settings=args.p_data;
+     if(args.p_action==='disable')window.fixture.settings.enabled=false;
      if(args.p_action==='contact')Object.assign(window.fixture.students[0],args.p_data);
      return structuredClone(window.fixture);
     };
    },fixture);
    await page.addScriptTag({content:fs.readFileSync(path.join(__dirname,'../packages/common/olli-consultation-message-templates.js'),'utf8')});await page.addScriptTag({content:js});await page.evaluate(()=>OlliConsultationMessages.open());
-   await page.locator('[data-connection]').filter({hasText:'연결 설정 완료'}).waitFor();
+   await page.locator('[data-connection]').filter({hasText:'현재 사용하지 않습니다'}).waitFor();
+   assert.equal(await page.getByRole('switch',{name:'상담 안내 문자 사용'}).isChecked(),false);
    assert.equal(await page.locator('dialog').count(),1);
    const bounds=await page.locator('dialog').boundingBox();assert.ok(bounds.x>=0 && bounds.x+bounds.width<=width);
    await page.locator('[name=booking_url]').fill('https://booking.naver.com/booking/13/bizes/123');
@@ -49,6 +51,15 @@ test('PC/mobile settings, read-only recipients, context isolation and Naver mess
    await page.locator('[data-tab=contacts]').click();
    assert.equal(await page.locator('[data-panel=contacts] input[type=tel]').count(),0);
    await page.locator('[data-panel=contacts]').filter({hasText:'학생 등록·학생정보 화면'}).waitFor();
+   await page.locator('[data-tab=settings]').click();
+   // Off changes only usage, even when the current unsaved form is invalid.
+   await page.locator('[name=booking_url]').fill('https://invalid.example');
+   await page.getByRole('switch',{name:'상담 안내 문자 사용'}).uncheck();
+   await page.waitForFunction(()=>fixture.settings.enabled===false);
+   assert.equal(await page.evaluate(()=>fixture.settings.booking_url),'https://booking.naver.com/booking/13/bizes/123');
+   assert.equal(await page.evaluate(()=>fixture.settings.template_variants['kinder:after_1'].template_id),'KINDER-ONE');
+   assert.equal(await slot.locator('[data-variant-body]').inputValue(),'수정된 첫 상담 #{학생명}');
+   await page.locator('[data-tab=contacts]').click();assert.equal(await page.locator('[data-send]').isDisabled(),true);
    await page.locator('[data-tab=settings]').click();
    await page.screenshot({path:'/tmp/olli-consultation-'+width+'.png'});
    await page.evaluate(()=>{localStorage.setItem('olli_current_academy_id','other');window.dispatchEvent(new Event('focus'));});assert.equal(await page.locator('dialog').count(),0);

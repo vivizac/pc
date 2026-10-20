@@ -24,6 +24,7 @@ test('isolated PostgreSQL migration, access controls, current-student filter and
  insert into academy_settings values('${academy}','["every_6","every_12"]','{"completed":{}}');`);
  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261020150403_consultation_alimtalk.sql'),'utf8'));
  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261020155449_consultation_message_templates.sql'),'utf8'));
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261020231237_consultation_message_usage_switch.sql'),'utf8'));
  async function manage(token,action='load',data={},id=academy){return (await db.query('select public.olli_consultation_messages_manage($1,$2,$3,$4) as result',[token,id,action,JSON.stringify(data)])).rows[0].result;}
  const settings={enabled:true,booking_url:'https://booking.naver.com/booking/13/bizes/123',channel_id:'KA01PF',template_id:'KA01TP',template_body:'#{학생명}\n#{예약링크}',template_confirmed:true};
  const tasks=['id:'+student+'|every_6|'+currentMonth(),'id:'+student+'|every_12|'+currentMonth()];
@@ -95,6 +96,15 @@ test('isolated PostgreSQL migration, access controls, current-student filter and
    result=await manage('owner','settings',settings); // Existing clients omit the new fields.
    assert.equal(result.settings.template_mode,'common');assert.equal(result.settings.template_variants['kinder:after_1'].template_id,'KINDER-1');
    assert.equal(result.students[0].phone,'01012345678');assert.equal(result.deliveries.length,1);
+ });
+ await t.test('one academy opting out preserves its data and does not disable another academy',async()=>{
+   await db.query("insert into olli_consultation_message_settings(academy_id,enabled) values($1,true)",[other]);
+   await db.query("update olli_consultation_message_settings set template_body='다른 기기에서 저장한 안내문' where academy_id=$1",[academy]);
+   const off=await manage('owner','disable',{});
+   assert.equal(off.settings.template_body,'다른 기기에서 저장한 안내문');
+   assert.equal(off.settings.enabled,false);assert.equal(off.students[0].phone,'01012345678');assert.equal(off.deliveries.length,1);
+   assert.equal(off.settings.template_variants['kinder:after_1'].template_id,'KINDER-1');
+   const otherRow=(await db.query('select enabled from olli_consultation_message_settings where academy_id=$1',[other])).rows[0];assert.equal(otherRow.enabled,true);
  });
  await db.close();
 });

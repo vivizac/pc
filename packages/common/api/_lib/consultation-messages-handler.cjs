@@ -19,6 +19,7 @@ module.exports = async function handler(req, res) {
     if (access?.ok !== true) return res.status(403).json({ error: 'PERMISSION_DENIED' });
     const configured = !!credentials(academyId);
     if (action === 'status') return res.status(200).json({ ok: true, configured });
+    if (action === 'send' && access.settings?.enabled !== true) return res.status(409).json({ error: '상담 안내 문자 사용이 꺼져 있습니다.' });
     if (!configured) return res.status(503).json({ error: '발송업체 서버 연결 설정이 필요합니다.' });
     if (action === 'send' && !studentId) return res.status(400).json({ error: 'STUDENT_REQUIRED' });
     const counts = await service.run({ academyId, studentId: action === 'send' ? studentId : null, dispatch: action === 'send' });

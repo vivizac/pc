@@ -153,3 +153,17 @@ test('changing a template never resets the monthly deduplication record',async()
   const h=harness();await h.service.run();const data=snapshot();data.settings.template_mode='by_type';data.settings.template_variants={'kinder:every_12':{use_common:false,template_id:'changed',template_body:'변경 #{학생명}',template_confirmed:true}};
   h.setData(data);await h.service.run();assert.equal(h.sends,1);
 });
+
+
+test('disabled academy rejects direct sends without any provider credentials or provider calls',async()=>{
+  const handler=require(path.join(staged,'api/_lib/consultation-messages-handler.cjs'));
+  const previous={VERCEL_ENV:process.env.VERCEL_ENV,SUPABASE_SECRET_KEY:process.env.SUPABASE_SECRET_KEY,OLLI_CONSULTATION_SOLAPI_CREDENTIALS:process.env.OLLI_CONSULTATION_SOLAPI_CREDENTIALS};
+  const originalFetch=global.fetch;let calls=0;
+  try{
+    process.env.VERCEL_ENV='production';process.env.SUPABASE_SECRET_KEY='test';delete process.env.OLLI_CONSULTATION_SOLAPI_CREDENTIALS;
+    global.fetch=async(url)=>{calls++;assert.ok(url.endsWith('/olli_consultation_messages_manage'));return Response.json({ok:true,settings:{enabled:false}});};
+    const res={code:200,setHeader(){},status(value){this.code=value;return this},json(body){this.body=body;return this}};
+    await handler({method:'POST',headers:{},body:{academyId:'academy',sessionToken:'session',action:'send',studentId:'student'}},res);
+    assert.equal(res.code,409);assert.match(res.body.error,/꺼져/);assert.equal(calls,1);
+  }finally{global.fetch=originalFetch;for(const [key,value]of Object.entries(previous)){if(value===undefined)delete process.env[key];else process.env[key]=value;}}
+});
