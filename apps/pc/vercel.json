@@ -4,5 +4,16 @@
   "outputDirectory": ".",
   "git": {
     "deploymentEnabled": false
+  },
+  "crons": [
+    {
+      "path": "/api/consultation-messages",
+      "schedule": "0 1 * * *"
+    }
+  ],
+  "functions": {
+    "api/consultation-messages.js": {
+      "maxDuration": 300
+    }
   }
 }

@@ -1,0 +1,6 @@
+{
+  "name": "olli-consultation-message-db-tests",
+  "private": true,
+  "scripts": { "test": "node --test ../consultation-messages-db.test.cjs" },
+  "devDependencies": { "@electric-sql/pglite": "0.3.14" }
+}

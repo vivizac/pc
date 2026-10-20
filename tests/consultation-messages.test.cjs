@@ -1,0 +1,130 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const {execFileSync} = require('node:child_process');
+const core = require('../packages/common/olli-consultation-task-core.js');
+// Run the canonical server module with the same self-contained build layout as production.
+const os = require('node:os'), path = require('node:path');
+const stage = require('../apps/pc/scripts/stage-common.cjs');
+const staged = fs.mkdtempSync(path.join(os.tmpdir(),'olli-consultation-server-'));
+stage.stageCommon({pcDir:staged});
+const server = require(path.join(staged,'api/_lib/consultation-messages.cjs'));
+test.after(()=>fs.rmSync(staged,{recursive:true,force:true}));
+
+function snapshot() { return {
+  settings:{academy_id:'academy',enabled:true,start_month:'2026-10',revision:1,booking_url:'https://booking.naver.com/booking/13/bizes/123',channel_id:'KA01PF',template_id:'KA01TP',template_confirmed:true,template_body:'#{학원명} #{학생명} #{상담구분}\n#{예약링크}'},
+  academy_name:'테스트학원',rules:{elementary:['after_1','every_6','every_12'],kinder:['after_1','every_6','every_12']},progress:{tracking_started_month:'2026-01',completed:{}},
+  students:[{id:'student',name:'테스트',division:'kinder',type:'kinder',enrolled_at:'2025-10-31',updated_at:'2026-10-01T00:00:00Z',phone:'01012345678',contact_revision:1}],pending:[]
+}; }
+const now = new Date('2026-10-20T15:30:00Z');
+const env = { SUPABASE_SECRET_KEY:'test-db-key', OLLI_CONSULTATION_SOLAPI_CREDENTIALS:JSON.stringify({academy:{apiKey:'test-key',apiSecret:'test-secret'}}) };
+
+// This baseline is the known main SHA captured before the change; compares behavior, not source text.
+test('extracted calendar policy matches existing policy across 1152 cases',()=>{
+  const baseline = execFileSync('git',['show','f01811e1eccc4f0fbdc9ce6ee5674765f7c9b4ac:packages/common/olli-operations-consultation-policy.js'],{encoding:'utf8'});
+  const ctx = vm.createContext({Date,Set,Map,console,window:{},localStorage:{getItem:()=>null,setItem:()=>{}},getStudentStatus:(s)=>s.status||'active',getStudentEnrollmentDateForStats:(s)=>s.enrolled,getAcademyConsultationMonthKey:core.consultationMonthKey,addMonthsSafe:(d,m)=>{const r=new Date(d),day=r.getDate();r.setMonth(r.getMonth()+m);if(r.getDate()!==day)r.setDate(0);return r;}});
+  vm.runInContext(baseline,ctx);
+  vm.runInContext('getOlliConsultationRules = () => TEST_RULES; getOlliConsultationProgress = () => TEST_PROGRESS;',ctx);
+  let cases=0;
+  for(const type of ['kinder','elementary']) for(const enrollment of ['2024-02-29','2025-10-31','2026-09-30']) for(const month of ['2026-10-21','2026-11-01','2027-02-28','2027-10-01']) for(let mask=0;mask<16;mask++) for(const tracking of ['2026-01','2026-10','']) {
+    const rules=['after_1','after_3','every_6','every_12'].filter((_,i)=>mask&(1<<i));
+    const effective=rules.length?rules:core.getOlliDefaultConsultationRules(type);
+    const enrolled = new Date(enrollment+'T12:00:00'); const date=new Date(month+'T12:00:00');
+    const student={id:'student',type,enrolled,status:'active'};
+    const progress={tracking_started_month:tracking,completed:{'id:student|every_6|2026-10':{completed_month:'2026-10'}}};
+    ctx.TEST_RULES=effective;ctx.TEST_PROGRESS=progress;ctx.student=student;ctx.date=date;
+    const old=JSON.parse(JSON.stringify(vm.runInContext('getConsultationDueTasksForStudent(student,date)',ctx)));
+    const updated=core.calculateOlliConsultationTasks(student,{enrolled,now:date,rules:effective,progress});
+    assert.deepEqual(updated,old,JSON.stringify({type,enrollment,month,mask,tracking}));cases++;
+  }
+  assert.equal(cases,1152);
+});
+
+test('Korean month boundary and overlapping six/twelve-month rules',()=>{
+  const data=snapshot(),student=data.students[0];
+  const tasks=server.pendingTasks(data,student,server.koreaDate(now));
+  assert.deepEqual(tasks.map(t=>t.ruleKey),['every_6','every_12']);
+  assert.equal(server.koreaDate(new Date('2026-10-31T15:01:00Z')).getMonth(),10);
+  assert.equal(server.pendingTasks({...data,settings:{...data.settings,start_month:'2026-11'}},student,server.koreaDate(now)).length,0);
+});
+
+test('message includes Naver link and approved variables, disables SMS fallback',()=>{
+  const data=snapshot(),student=data.students[0];
+  const message=server.messageFor(data,student,server.pendingTasks(data,student,server.koreaDate(now)));
+  assert.equal(message.kakaoOptions.disableSms,true);
+  assert.equal(message.kakaoOptions.variables['#{예약링크}'],data.settings.booking_url);
+  assert.match(message.text,/6개월 · 12개월/);
+  for(const bad of ['javascript:alert(1)','https://naver.com.evil.test/x','https://naver.com@evil.test/x','https://evil.test/x']) assert.throws(()=>server.messageFor({...data,settings:{...data.settings,booking_url:bad}},student,[]));
+});
+
+test('credentials isolated by academy; cron fails closed without a secret',()=>{
+  assert.equal(server.credentials('different',env),null);
+  assert.equal(server.cronAuthorized('Bearer undefined',{}),false);
+  assert.equal(server.cronAuthorized('Bearer secret',{CRON_SECRET:'secret'}),false);
+  assert.equal(server.cronAuthorized('Bearer 1234567890123456',{CRON_SECRET:'1234567890123456'}),true);
+});
+
+function harness(mode='accept') {
+  let sends=0, row=null, data=snapshot();
+  const fetchImpl=async(url,options)=>{
+    if(url.startsWith('https://api.solapi.com')) {
+      sends++; assert.match(options.headers.Authorization,/^HMAC-SHA256 apiKey=test-key,/);
+      const payload=JSON.parse(options.body);assert.equal(payload.messages.length,1);
+      if(mode==='timeout') throw new Error('timeout');
+      if(mode==='gateway') return Response.json({},{status:502});
+      if(mode==='reject') return Response.json({failedMessageList:[{statusCode:'3040'}],messageList:[]});
+      if(mode==='empty') return Response.json({failedMessageList:[],messageList:[]});
+      return Response.json({failedMessageList:[],messageList:[{messageId:'M-test',statusCode:'2000'}]});
+    }
+    const args=JSON.parse(options.body);const rpc=url.split('/').pop();
+    if(rpc.endsWith('_snapshot')) return Response.json([data]);
+    if(rpc.endsWith('_reserve')) { if(row)return Response.json(null);row={status:'reserved',args};return Response.json('delivery'); }
+    if(rpc.endsWith('_finish')) { row={...row,status:args.p_status,messageId:args.p_message_id};return Response.json(true); }
+    throw Error('unexpected RPC '+rpc);
+  };
+  return {service:server.createService({fetchImpl,env,now:()=>now}),setData:(d)=>{data=d},get sends(){return sends},get row(){return row}};
+}
+
+test('concurrent workers and repeated jobs send overlapping tasks exactly once',async()=>{
+  const h=harness();await Promise.all([h.service.run(),h.service.run()]);await h.service.run();
+  assert.equal(h.sends,1);assert.equal(h.row.status,'submitted');assert.equal(h.row.args.p_due_month,'2026-10');assert.equal(h.row.args.p_task_keys.length,2);
+});
+for(const [mode,state] of [['timeout','unknown'],['gateway','unknown'],['reject','failed'],['empty','unknown']]) test(mode+' preserves durable deduplication and never retries an ambiguous send',async()=>{
+  const h=harness(mode);await h.service.run();await h.service.run();assert.equal(h.sends,1);assert.equal(h.row.status,state);
+});
+test('disabled automation, completed consultation and missing credentials produce no send',async()=>{
+  for(const variant of ['disabled','completed','credentials']) {
+    const h=harness();const data=snapshot();
+    if(variant==='disabled') data.settings.enabled=false;
+    if(variant==='completed') data.progress.completed=Object.fromEntries(server.pendingTasks(data,data.students[0],server.koreaDate(now)).map(t=>[t.key,{completed_month:'2026-10'}]));
+    if(variant==='credentials') data.settings.academy_id='other-academy';
+    h.setData(data);await h.service.run();assert.equal(h.sends,0,variant);
+  }
+});
+
+test('refresh polls provider results without sending another notice',async()=>{
+  const data=snapshot();data.pending=[{id:'delivery',provider_message_id:'M-test'}];let final;
+  const service=server.createService({env,now:()=>now,fetchImpl:async(url,options)=>{
+    if(url.startsWith('https://api.solapi.com')) { assert.equal(options.method,'GET');assert.match(url,/messageIds=/);return Response.json({messageList:{'M-test':{statusCode:'4000'}}}); }
+    if(url.endsWith('_snapshot'))return Response.json([data]);
+    if(url.endsWith('_finish')){final=JSON.parse(options.body).p_status;return Response.json(true);}
+    throw Error('refresh must not reserve/send');
+  }});
+  await service.run({dispatch:false});assert.equal(final,'delivered');
+});
+
+test('API refuses previews, unauthenticated cron and invalid owner session before provider calls',async()=>{
+  const handler=require(path.join(staged,'api/_lib/consultation-messages-handler.cjs'));
+  const before={VERCEL_ENV:process.env.VERCEL_ENV,CRON_SECRET:process.env.CRON_SECRET,SUPABASE_SECRET_KEY:process.env.SUPABASE_SECRET_KEY};
+  const originalFetch=global.fetch;let calls=0;
+  function response(){return {code:200,setHeader(){},status(n){this.code=n;return this},json(body){this.body=body;return this}};}
+  try{
+    global.fetch=async(url)=>{calls++;assert.ok(!url.startsWith('https://api.solapi.com'));return Response.json({message:'denied'},{status:403});};
+    process.env.SUPABASE_SECRET_KEY='test';process.env.CRON_SECRET='1234567890123456';process.env.VERCEL_ENV='preview';
+    let res=response();await handler({method:'GET',headers:{authorization:'Bearer '+process.env.CRON_SECRET}},res);assert.equal(res.code,503);assert.equal(calls,0);
+    process.env.VERCEL_ENV='production';res=response();await handler({method:'GET',headers:{}},res);assert.equal(res.code,401);assert.equal(calls,0);
+    res=response();await handler({method:'POST',headers:{},body:{academyId:'academy',sessionToken:'invalid',action:'send',studentId:'student'}},res);assert.equal(res.code,403);assert.equal(calls,1);
+  }finally{global.fetch=originalFetch;for(const [key,value] of Object.entries(before)) {if(value===undefined) delete process.env[key];else process.env[key]=value;}}
+});
