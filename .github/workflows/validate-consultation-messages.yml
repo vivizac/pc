@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'packages/common/olli-consultation*'
+      - 'packages/common/olli-student-guardian-contact*'
       - 'packages/common/olli-operations-consultation-policy.js'
       - 'packages/common/api/_lib/consultation-messages*'
       - 'apps/*/api/consultation-messages.js'

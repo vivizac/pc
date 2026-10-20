@@ -5,7 +5,7 @@ const js=fs.readFileSync(path.join(__dirname,'../packages/common/olli-consultati
 let css=fs.readFileSync(path.join(__dirname,'../packages/common/olli-consultation-messages.css'),'utf8');
 if(process.env.OLLI_TEST_FONT_PATH)css+="@font-face{font-family:OlliTest;src:url(data:font/otf;base64,"+fs.readFileSync(process.env.OLLI_TEST_FONT_PATH).toString('base64')+")}body{font-family:OlliTest,sans-serif}";
 const fixture={ok:true,settings:{enabled:false,booking_url:'',channel_id:'',template_id:'',template_body:'',template_confirmed:false},students:[{id:'student',name:'김테스트',division:'kinder',phone:null,enabled:null,confirmed:null}],deliveries:[]};
-test('PC/mobile settings, contact save, context isolation and Naver message layout',async()=>{
+test('PC/mobile settings, read-only recipients, context isolation and Naver message layout',async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.OLLI_CHROMIUM_PATH ? {executablePath:process.env.OLLI_CHROMIUM_PATH} : {}),args:['--no-sandbox']});
  try{
   for(const width of [1280,390]){
@@ -36,11 +36,8 @@ test('PC/mobile settings, contact save, context isolation and Naver message layo
    await page.locator('[name=template_confirmed]').check();await page.locator('[name=enabled]').first().check();await page.locator('[data-settings] [type=submit]').click();
    await page.getByRole('status').filter({hasText:'다음 자동 발송'}).waitFor();
    await page.locator('[data-tab=contacts]').click();
-   await page.locator('[data-contact] [name=phone]').fill('01012345678');await page.locator('[data-contact] [name=confirmed]').check();
-   await page.locator('[data-contact] [type=submit]').click();await page.locator('[data-contact-notice]').filter({hasText:'저장했습니다'}).waitFor();
-   assert.equal(await page.evaluate(()=>calls.filter(x=>x.args.p_action==='contact').length),1);
-   await page.locator('[data-contact] [name=phone]').fill('01087654321');assert.equal(await page.locator('[data-contact] [name=confirmed]').isChecked(),false);
-   await page.locator('[data-send]').click();await page.locator('[data-notice]').filter({hasText:'먼저 저장'}).waitFor();
+   assert.equal(await page.locator('[data-panel=contacts] input[type=tel]').count(),0);
+   await page.locator('[data-panel=contacts]').filter({hasText:'학생 등록·학생정보 화면'}).waitFor();
    await page.locator('[data-tab=settings]').click();
    await page.screenshot({path:'/tmp/olli-consultation-'+width+'.png'});
    await page.evaluate(()=>{localStorage.setItem('olli_current_academy_id','other');window.dispatchEvent(new Event('focus'));});assert.equal(await page.locator('dialog').count(),0);

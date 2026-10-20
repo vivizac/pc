@@ -741,6 +741,7 @@
 
     showStudentInfoContent(division === 'kinder' ? kinderCardHtml(authoritativeStudent) : elementaryCardHtml(authoritativeStudent));
     global.OlliTuition?.mountStudent(document.querySelector('#pcAttendanceDetailPanel .pcStudentInfoCard'), authoritativeStudent);
+    global.OlliGuardianContact?.mount(document.querySelector('#pcAttendanceDetailPanel .pcStudentInfoCard'), authoritativeStudent);
 
     if (division === 'elementary') {
       try {
@@ -982,9 +983,12 @@
       profile.feedback_teacher = feedbackTeacher;
       profile.__olli_feedback_teacher_changed = feedbackTeacher !== clean(target.feedback_teacher);
       if (typeof global.ensureStudentSavedToSupabase !== 'function') throw new Error('학생정보 저장 함수를 찾지 못했습니다.');
+      const guardianRoot = document.querySelector('#pcAttendanceDetailPanel .pcStudentInfoCard');
+      const guardianDraft = global.OlliGuardianContact?.capture(guardianRoot);
       // Student profile saves never edit timetable enrollments.
       const savedStudent = await global.ensureStudentSavedToSupabase(profile);
       profileSaved = true;
+      await global.OlliGuardianContact?.save(guardianRoot, savedStudent, guardianDraft);
       if (typeof global.loadStudentsFromSupabase === 'function') await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
       if (typeof global.showPushToast === 'function') {
         global.showPushToast('학생정보를 저장했어요.');
@@ -997,7 +1001,7 @@
     } catch (error) {
       const message = error.message || error;
       if (profileSaved) {
-        alert(`학생정보는 저장되었지만 화면 새로고침 중 오류가 발생했어요.\n\n${message}`);
+        alert(`학생정보는 저장되었지만 연락처 저장 또는 화면 갱신을 완료하지 못했어요.\n\n${message}`);
       } else {
         alert(`학생정보 서버 저장 중 오류가 발생했어요.\n\n${message}`);
       }

@@ -66,6 +66,7 @@ function openElementaryInfoModal() {
   syncElementaryInfoButtons();
   if (typeof updateElementaryInfoRiskPanel === 'function') updateElementaryInfoRiskPanel(targetStudent);
   document.getElementById('elementaryInfoModal').style.display = 'flex';
+  window.OlliGuardianContact?.mount(document.querySelector('#elementaryInfoModal .modalCard'), targetStudent);
   if (typeof window.olliPrepareInfoExtra === 'function') window.olliPrepareInfoExtra('elementary', targetStudent);
 }
 
@@ -112,7 +113,10 @@ async function saveElementaryInfo() {
     school_entry_year: inferOlliSchoolEntryYearFromGrade(normalizeElementaryGradeValue(document.getElementById('elementaryGradeInput').value)),
   };
   try {
+    const guardianRoot = document.querySelector('#elementaryInfoModal .modalCard');
+    const guardianDraft = window.OlliGuardianContact?.capture(guardianRoot);
     const savedStudent = await ensureStudentSavedToSupabase(student);
+    await window.OlliGuardianContact?.save(guardianRoot, savedStudent, guardianDraft);
     if (currentMemoStudent && String(currentMemoStudent.id) === String(savedStudent.id)) {
       currentMemoStudent = savedStudent;
       setMemoModePillLabel(savedStudent.name || '학생 이름');
@@ -132,6 +136,7 @@ function openKinderInfoModal() {
   if (typeof window.olliPatchStudentModalMarkup === 'function') window.olliPatchStudentModalMarkup();
   kinderInfoDraft = { personality: targetStudent.personality || '' };
   document.getElementById('kinderInfoModal').style.display = 'flex';
+  window.OlliGuardianContact?.mount(document.querySelector('#kinderInfoModal .modalCard'), targetStudent);
   document.getElementById('kinderInfoNameInput').value = targetStudent.name || '';
   setStudentInfoDateInput('kinderInfoEnrolledAtInput', targetStudent);
   document.getElementById('kinderKindergartenInput').value = targetStudent.kindergarten || '';
@@ -183,7 +188,10 @@ async function saveKinderInfo() {
     personality: typeof extraInfo.personality === 'string' ? extraInfo.personality : (kinderInfoDraft.personality || ''),
   };
   try {
+    const guardianRoot = document.querySelector('#kinderInfoModal .modalCard');
+    const guardianDraft = window.OlliGuardianContact?.capture(guardianRoot);
     const savedStudent = await ensureStudentSavedToSupabase(student);
+    await window.OlliGuardianContact?.save(guardianRoot, savedStudent, guardianDraft);
     if (currentMemoStudent && String(currentMemoStudent.id) === String(savedStudent.id)) {
       currentMemoStudent = savedStudent;
       const kinderNameEl = document.getElementById('kinderObservationNoteTitle');

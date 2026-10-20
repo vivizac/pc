@@ -50,7 +50,7 @@
     state.dialog.querySelector('[data-content]').innerHTML = `
       <nav class="ocm-tabs" aria-label="상담 안내 메뉴">
         <button type="button" data-tab="settings" aria-pressed="true">발송 설정</button>
-        <button type="button" data-tab="contacts" aria-pressed="false">보호자 연락처</button>
+        <button type="button" data-tab="contacts" aria-pressed="false">발송 대상</button>
         <button type="button" data-tab="history" aria-pressed="false">발송 내역</button>
       </nav>
       <section data-panel="settings">
@@ -69,18 +69,14 @@
         </form>
       </section>
       <section data-panel="contacts" hidden>
-        <p class="ocm-muted">현재 재원생의 상담 안내 연락처입니다. 번호를 확인하고 저장한 학생만 발송 대상이 됩니다.</p>
+        <p class="ocm-muted">현재 재원생의 상담 안내 대상입니다. 보호자 연락처는 학생 등록·학생정보 화면에서 저장하고 수정합니다.</p>
         <label>학생 찾기<input type="search" data-search placeholder="이름 검색"></label>
-        <div class="ocm-contacts">${payload.students.map((s) => `<form data-contact="${escape(s.id)}" data-name="${escape(s.name)}" class="ocm-contact">
+        <div class="ocm-contacts">${payload.students.map((s) => `<div data-contact="${escape(s.id)}" data-name="${escape(s.name)}" class="ocm-contact">
           <strong>${escape(s.name)} <small>${s.division === 'kinder' ? '유치부' : '초등부'}</small></strong>
-          <label>보호자 휴대전화<input name="phone" type="tel" inputmode="tel" maxlength="15" value="${escape(s.phone)}" autocomplete="off" placeholder="010-0000-0000"></label>
-          <div class="ocm-contact-options">
-            <label class="ocm-check"><input type="checkbox" name="enabled" ${s.enabled !== false ? 'checked' : ''}>안내 대상</label>
-            <label class="ocm-check"><input type="checkbox" name="confirmed" ${s.confirmed ? 'checked' : ''}>번호 확인</label>
-          </div>
-          <div class="ocm-contact-actions"><button type="submit">연락처 저장</button><button type="button" data-send="${escape(s.id)}">예약 안내 보내기</button></div>
-          <small data-contact-notice role="status"></small>
-        </form>`).join('') || '<p class="ocm-muted">현재 재원생이 없습니다.</p>'}</div>
+          <p>${escape(s.phone || '학생정보에서 보호자 연락처를 등록해 주세요.')}</p>
+          <p class="ocm-muted">${s.enabled && s.confirmed ? '확인된 보호자 번호 · 상담 안내 대상' : '보호자 번호 확인 또는 상담 안내 대상 설정이 필요합니다.'}</p>
+          <button type="button" data-send="${escape(s.id)}">예약 안내 보내기</button>
+        </div>`).join('') || '<p class="ocm-muted">현재 재원생이 없습니다.</p>'}</div>
       </section>
       <section data-panel="history" hidden>
         <button type="button" data-refresh>발송 결과 새로고침</button>
@@ -92,10 +88,6 @@
       state.dialog.querySelector('[data-settings]').elements[name].addEventListener('input', () => {
         state.dialog.querySelector('[data-settings]').elements.template_confirmed.checked = false;
       });
-    });
-    state.dialog.querySelectorAll('[data-contact]').forEach((form) => {
-      form.addEventListener('submit', saveContact);
-      form.elements.phone.addEventListener('input', () => { form.elements.confirmed.checked = false; });
     });
     state.dialog.querySelector('[data-search]').addEventListener('input', (event) => {
       const query = event.target.value.trim();
@@ -133,25 +125,10 @@
     } catch (error) { if (active === state) notice(error.message,true); }
     finally { state.busy = false; button.disabled = false; }
   }
-  async function saveContact(event) {
-    event.preventDefault();
-    const state = active, form = event.currentTarget, button = form.querySelector('[type=submit]');
-    if (state.busy) return;
-    state.busy = true; button.disabled = true;
-    try {
-      const result = await rpc('contact',{student_id:form.dataset.contact,phone:form.elements.phone.value,enabled:form.elements.enabled.checked,confirmed:form.elements.confirmed.checked},state);
-      state.payload = result;
-      form.querySelector('[data-contact-notice]').textContent = '연락처를 저장했습니다.';
-      notice('연락처를 저장했습니다.');
-    } catch (error) { if (active === state) notice(error.message,true); }
-    finally { state.busy = false; button.disabled = false; }
-  }
   async function send(button) {
     const state = active;
     if (!state || state.busy) return;
     const contact = state.payload.students.find((s) => s.id === button.dataset.send);
-    const form = button.closest('[data-contact]');
-    if (form && (form.elements.phone.value.replace(/[^0-9]/g,'') !== String(contact?.phone || '') || form.elements.confirmed.checked !== !!contact?.confirmed || form.elements.enabled.checked !== !!contact?.enabled)) return notice('변경한 연락처를 먼저 저장해 주세요.',true);
     if (!contact?.confirmed || !contact.enabled) return notice('확인된 보호자 연락처를 먼저 저장해 주세요.',true);
     if (!state.payload.settings?.enabled) return notice('자동 발송 설정을 먼저 켜고 저장해 주세요.',true);
     state.busy = true; button.disabled = true;

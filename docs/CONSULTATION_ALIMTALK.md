@@ -7,7 +7,7 @@
 - 공통 원본: `packages/common/olli-consultation-task-core.js`에 기존 상담 기준/월별 계산을 이동했습니다. 기존 `getConsultationDueTasksForStudent`는 같은 인자를 전달합니다. 서버도 이 원본을 사용합니다.
 - 기존 상담 기준/진행상태 RPC, 관찰노트 CAS, realtime, pending, session 복구, 출석/시간표 저장은 변경하지 않습니다.
 - 보호자 연락처는 별도 테이블에 저장하므로 이전 학생정보 저장 요청이 번호를 덮어쓰지 않습니다.
-- 공통 UI: `olli-consultation-messages.js/css`. 설정 → 상담 예약 안내, PC·모바일 상담 목록에서도 접근합니다. 원장/최고관리자만 접근합니다. 관리자/선생님은 발송 권한이 없습니다.
+- 공통 UI: `olli-consultation-messages.js/css`. 설정 → 상담 예약 안내, PC·모바일 상담 목록에서도 접근합니다. 보호자 번호는 학생 등록·학생정보에서만 입력·수정하며, 상담 안내의 발송 대상 탭은 읽기 전용입니다. 원장/최고관리자만 접근합니다. 관리자/선생님은 발송 권한이 없습니다.
 - 서버 원본: `packages/common/api/_lib/consultation-messages*.cjs`. 앱의 `api/consultation-messages.js`는 플랫폼 진입점입니다. 공통 파일은 기존 manifest/staging 절차로 포함합니다.
 - 새 DB 객체만 migration에 추가합니다. 기존 학생·학원 설정 구조는 변경하지 않습니다.
 - 기준 main: `f01811e1eccc4f0fbdc9ce6ee5674765f7c9b4ac`.
@@ -27,7 +27,7 @@
 
 7. PC 운영 프로젝트에 최소 16자 이상의 무작위 `CRON_SECRET`을 등록합니다. PC에만 하루 한 번의 자동 작업이 있고 모바일에는 cron이 없습니다. 서버는 `VERCEL_ENV=production`에서만 발송합니다.
 8. 모든 변경을 검증한 뒤 메인에 한 번 반영하고 각 앱 운영 프로젝트를 배포합니다. 자동 배포 비활성 설정은 유지합니다.
-9. 먼저 원장 본인 번호를 테스트 학생의 확인된 연락처로 저장해 문구·네이버 링크·중복 방지·실제 발송 결과를 확인합니다. 이후 실제 보호자 연락처를 등록하고 자동 발송을 켭니다. 실제 학부모 번호는 테스트에 사용하지 않습니다.
+9. 먼저 원장 본인 번호를 테스트 학생의 확인된 연락처로 저장해 문구·네이버 링크·중복 방지·실제 발송 결과를 확인합니다. 이후 학생 등록·학생정보에서 실제 보호자 연락처를 등록하고 자동 발송을 켭니다. 실제 학부모 번호는 테스트에 사용하지 않습니다.
 
 앱에 기본 표시되는 문구는 심사용 초안입니다. 실제 승인된 템플릿으로 바꿔야 합니다. API 키는 앱 설정에 입력하지 않습니다. SMS 대체 발송은 초기 범위에서 꺼져 있습니다.
 
@@ -60,10 +60,18 @@ node --test tests/pc-build-closure.test.cjs tests/pc-self-contained-build.test.c
 
 DB 테스트는 PGlite의 격리된 PostgreSQL에 migration을 적용하고 세션/학원 격리, 원장 권한, 재원생 필터, 중복 예약과 결과 보존을 확인합니다. 운영 DB를 수정하거나 실제 문자를 발송하지 않습니다. 기존 계산과의 비교 테스트는 위 기준 main commit이 필요하므로 CI checkout은 전체 이력을 가져옵니다.
 
-브라우저 검증은 Playwright와 Chromium이 설치된 환경에서 `node --test tests/consultation-messages-ui.test.cjs`로 실행합니다. 테스트는 모의 데이터와 모의 API만 사용합니다. `OLLI_CHROMIUM_PATH`로 Chromium 실행 파일을 지정할 수 있습니다.
+브라우저 검증은 Playwright와 Chromium이 설치된 환경에서 `node --test tests/consultation-messages-ui.test.cjs tests/student-guardian-contact-ui.test.cjs`로 실행합니다. 테스트는 모의 데이터와 모의 API만 사용합니다. `OLLI_CHROMIUM_PATH`로 Chromium 실행 파일을 지정할 수 있습니다.
 
 공통 파일을 실제 앱 폴더에 stage한 뒤 실행하는 이전 보안 테스트와, stage 이전의 단일 원본 테스트는 나눠 실행합니다. 기존 모바일 테스트 중 두 개는 이전 raw GitHub rewrite/오래된 cache-bust 버전을 기대해 기준 main에서도 실패하므로 이번 작업에서 수정하지 않습니다.
 
 ## 롤백
 
 앱에서 자동 발송을 끄면 새 발송이 중단됩니다. 긴급 시 PC Vercel Cron도 비활성화합니다. 코드 롤백 시 새 연락처/발송이력 테이블은 보존합니다. 학부모에게 이미 전달된 메시지는 코드 롤백으로 취소되지 않습니다.
+
+## 보호자 연락처 관리 위치
+
+`olli-student-guardian-contact.js/css`가 PC·모바일 공통 연락처 편집 원본입니다. 학생정보의 저장 버튼으로 프로필 저장 후 같은 연락처 저장소의 보호자 번호를 저장합니다. 기존 상담 안내 설정에서 등록한 번호도 그대로 불러옵니다. 학생 프로필의 별도 phone 필드나 다른 로컬 캐시로 복사하지 않습니다. 연락처 조회에 실패하면 입력을 막아 기존 번호를 빈 값으로 덮어쓰지 않습니다. 권한은 기존 원장/최고관리자 범위를 유지합니다.
+
+신규 등록 후 연락처 저장만 실패한 경우 입력을 유지하고 이미 생성된 학생 ID를 재사용하므로, 재시도 시 학생을 중복 생성하지 않습니다. 설정 화면에서는 연락처 등록/수정 기능을 제거하고 발송 대상과 번호를 조회합니다.
+
+연락처 위치 변경 검증: 공통/서버/격리 DB·빌드 37건, 학생정보 시간표·픽업·피드백 담임 범위 8건, PC·모바일 브라우저 3건 통과. 기존 `pc-student-info-kinder-two-row` 테스트의 두 실패는 기준 main에서도 재현되는 오래된 바인딩/버전 문자열 기대이며, 관련 레이아웃과 날짜 입력 동작은 이번 작업에서 변경하지 않았습니다.

@@ -79,6 +79,8 @@
     "olli-consultation-messages.js",
     "olli-consultation-messages.css",
     "api/_lib/consultation-messages.cjs",
-    "api/_lib/consultation-messages-handler.cjs"
+    "api/_lib/consultation-messages-handler.cjs",
+    "olli-student-guardian-contact.js",
+    "olli-student-guardian-contact.css"
   ]
 }
