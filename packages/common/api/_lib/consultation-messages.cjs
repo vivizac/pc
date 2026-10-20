@@ -2,6 +2,8 @@
 const { createHmac, randomBytes, timingSafeEqual } = require('node:crypto');
 const { calculateOlliConsultationTasks, normalizeOlliConsultationRulesByType } = require('../../olli-consultation-task-core.js');
 
+const { select: selectTemplate } = require('../../olli-consultation-message-templates.js');
+
 const SUPABASE_URL = 'https://fvkxipjwgeyosgnfhdnx.supabase.co';
 
 function problem(code, status = 500) { const error = new Error(code); error.code = code; error.status = status; return error; }
@@ -38,23 +40,24 @@ function pendingTasks(snapshot, student, now) {
 }
 function messageFor(snapshot, student, tasks) {
   const config = snapshot.settings;
+  const template = selectTemplate(config, student, tasks);
   let url;
   try { url = new URL(config.booking_url); } catch { throw problem('BOOKING_URL_INVALID', 400); }
   if (url.protocol !== 'https:' || !(url.hostname === 'naver.com' || url.hostname.endsWith('.naver.com') || url.hostname === 'naver.me') || url.username || url.password || (url.port && url.port !== '443')) throw problem('BOOKING_URL_INVALID', 400);
   if (!/^01[016789]\d{7,8}$/.test(student.phone || '')) throw problem('CONTACT_INVALID', 400);
-  if (!config.template_confirmed || !config.channel_id || !config.template_id) throw problem('TEMPLATE_NOT_READY', 400);
+  if (!template.template_confirmed || !config.channel_id || !template.template_id) throw problem('TEMPLATE_NOT_READY', 400);
   const variables = {
     '#{학원명}': snapshot.academy_name,
     '#{학생명}': student.name,
-    '#{상담구분}': Array.from(new Set(tasks.map((t) => t.label.replace(/(후|마다)$/, '')))).join(' · '),
+    '#{상담구분}': String(template.task.label || '').replace(/(후|마다)$/, ''),
     '#{예약링크}': config.booking_url
   };
-  const body = String(config.template_body || '');
+  const body = String(template.template_body || '');
   if (!body || /#\{[^}]+\}/g.test(body.replace(/#\{(?:학원명|학생명|상담구분|예약링크)\}/g, ''))) throw problem('TEMPLATE_BODY_INVALID', 400);
   const text = body.replace(/#\{[^}]+\}/g, (key) => String(variables[key] || ''));
   if (text.length > 1000) throw problem('TEMPLATE_TOO_LONG', 400);
   return { to: student.phone, type: 'ATA', text, kakaoOptions: {
-    pfId: config.channel_id, templateId: config.template_id,
+    pfId: config.channel_id, templateId: template.template_id,
     disableSms: true, variables
     // The approved template defines the '상담 예약하기' button and its #{예약링크} URL.
   } };

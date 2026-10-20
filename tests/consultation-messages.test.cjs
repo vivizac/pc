@@ -55,7 +55,7 @@ test('message includes Naver link and approved variables, disables SMS fallback'
   const message=server.messageFor(data,student,server.pendingTasks(data,student,server.koreaDate(now)));
   assert.equal(message.kakaoOptions.disableSms,true);
   assert.equal(message.kakaoOptions.variables['#{예약링크}'],data.settings.booking_url);
-  assert.match(message.text,/6개월 · 12개월/);
+  assert.match(message.text,/12개월/);
   for(const bad of ['javascript:alert(1)','https://naver.com.evil.test/x','https://naver.com@evil.test/x','https://evil.test/x']) assert.throws(()=>server.messageFor({...data,settings:{...data.settings,booking_url:bad}},student,[]));
 });
 
@@ -127,4 +127,29 @@ test('API refuses previews, unauthenticated cron and invalid owner session befor
     process.env.VERCEL_ENV='production';res=response();await handler({method:'GET',headers:{}},res);assert.equal(res.code,401);assert.equal(calls,0);
     res=response();await handler({method:'POST',headers:{},body:{academyId:'academy',sessionToken:'invalid',action:'send',studentId:'student'}},res);assert.equal(res.code,403);assert.equal(calls,1);
   }finally{global.fetch=originalFetch;for(const [key,value] of Object.entries(before)) {if(value===undefined) delete process.env[key];else process.env[key]=value;}}
+});
+
+
+test('each division and 1/6/12 month stage selects its own approved template',()=>{
+  const data=snapshot();data.settings.template_mode='by_type';data.settings.template_variants={};
+  for(const division of ['elementary','kinder'])for(const [ruleKey,months] of [['after_1',1],['every_6',6],['every_12',12]]){
+    const key=division+':'+ruleKey;
+    data.settings.template_variants[key]={use_common:false,template_id:'TPL-'+key,template_body:key+' #{학생명} #{예약링크}',template_confirmed:true};
+  }
+  for(const division of ['elementary','kinder'])for(const [ruleKey,months] of [['after_1',1],['every_6',6],['every_12',12]]){
+    const student={...data.students[0],division};const tasks=[{ruleKey,label:months+'개월',dueMonth:'2026-10',occurrenceMonths:months}];
+    const message=server.messageFor(data,student,tasks);assert.equal(message.kakaoOptions.templateId,'TPL-'+division+':'+ruleKey);assert.ok(message.text.startsWith(division+':'+ruleKey));
+  }
+  const student=data.students[0],tasks=server.pendingTasks(data,student,server.koreaDate(now));
+  assert.equal(server.messageFor(data,student,tasks).kakaoOptions.templateId,'TPL-kinder:every_12');
+  data.settings.template_mode='common';assert.equal(server.messageFor(data,student,tasks).kakaoOptions.templateId,data.settings.template_id);
+  data.settings.template_mode='by_type';data.settings.template_variants['kinder:every_12'].use_common=true;
+  assert.equal(server.messageFor(data,student,tasks).kakaoOptions.templateId,data.settings.template_id);
+  data.settings.template_variants['kinder:every_12'].use_common=false;data.settings.template_variants['kinder:every_12'].template_confirmed=false;
+  assert.throws(()=>server.messageFor(data,student,tasks),/TEMPLATE_NOT_READY/);
+});
+
+test('changing a template never resets the monthly deduplication record',async()=>{
+  const h=harness();await h.service.run();const data=snapshot();data.settings.template_mode='by_type';data.settings.template_variants={'kinder:every_12':{use_common:false,template_id:'changed',template_body:'변경 #{학생명}',template_confirmed:true}};
+  h.setData(data);await h.service.run();assert.equal(h.sends,1);
 });

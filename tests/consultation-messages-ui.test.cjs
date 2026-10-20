@@ -26,7 +26,7 @@ test('PC/mobile settings, read-only recipients, context isolation and Naver mess
      return structuredClone(window.fixture);
     };
    },fixture);
-   await page.addScriptTag({content:js});await page.evaluate(()=>OlliConsultationMessages.open());
+   await page.addScriptTag({content:fs.readFileSync(path.join(__dirname,'../packages/common/olli-consultation-message-templates.js'),'utf8')});await page.addScriptTag({content:js});await page.evaluate(()=>OlliConsultationMessages.open());
    await page.locator('[data-connection]').filter({hasText:'연결 설정 완료'}).waitFor();
    assert.equal(await page.locator('dialog').count(),1);
    const bounds=await page.locator('dialog').boundingBox();assert.ok(bounds.x>=0 && bounds.x+bounds.width<=width);
@@ -35,6 +35,17 @@ test('PC/mobile settings, read-only recipients, context isolation and Naver mess
    await page.locator('[name=template_confirmed]').check();await page.locator('[name=template_body]').fill('#{학생명}\n#{예약링크}');assert.equal(await page.locator('[name=template_confirmed]').isChecked(),false);
    await page.locator('[name=template_confirmed]').check();await page.locator('[name=enabled]').first().check();await page.locator('[data-settings] [type=submit]').click();
    await page.getByRole('status').filter({hasText:'다음 자동 발송'}).waitFor();
+   await page.locator('[name=template_mode]').selectOption('by_type');
+   const slot=page.locator('[data-template-key="kinder:after_1"]');
+   await slot.locator('summary').click();await slot.locator('[data-use-common]').uncheck();
+   await slot.locator('[data-variant-id]').fill('KINDER-ONE');await slot.locator('[data-variant-body]').fill('유치부 첫 상담 #{학생명} #{예약링크}');await slot.locator('[data-variant-confirmed]').check();
+   await page.locator('[data-settings] [type=submit]').click();
+   await page.waitForFunction(()=>fixture.settings.template_variants?.['kinder:after_1']?.template_id==='KINDER-ONE');
+   await page.locator('[name=template_mode]').selectOption('common');await page.locator('[data-settings] [type=submit]').click();
+   await page.waitForFunction(()=>fixture.settings.template_mode==='common');
+   await page.locator('[name=template_mode]').selectOption('by_type');
+   assert.equal(await slot.locator('[data-variant-id]').inputValue(),'KINDER-ONE');
+   await slot.locator('[data-variant-body]').fill('수정된 첫 상담 #{학생명}');assert.equal(await slot.locator('[data-variant-confirmed]').isChecked(),false);
    await page.locator('[data-tab=contacts]').click();
    assert.equal(await page.locator('[data-panel=contacts] input[type=tel]').count(),0);
    await page.locator('[data-panel=contacts]').filter({hasText:'학생 등록·학생정보 화면'}).waitFor();

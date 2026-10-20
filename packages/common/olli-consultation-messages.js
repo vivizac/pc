@@ -44,6 +44,21 @@
     if (!payload.deliveries.length) return '<p class="ocm-muted">아직 발송 내역이 없습니다.</p>';
     return payload.deliveries.map((d) => '<div class="ocm-history-row"><div><strong>'+escape(names.get(d.student_id) || '이전 재원생')+'</strong><small>'+escape(d.due_month)+' 상담 · '+escape(new Date(d.created_at).toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul'}))+'</small></div><span class="ocm-status '+escape(d.status)+'">'+escape(STATUS[d.status] || d.status)+'</span></div>').join('');
   }
+  function variantHtml(settings, optional = false) {
+    return global.OlliConsultationMessageTemplates.slots.filter(slot => slot.optional === optional).map(slot => {
+      const value = settings.template_variants?.[slot.key] || {};
+      const useCommon = value.use_common !== false;
+      return `<details class="ocm-template-slot" data-template-key="${escape(slot.key)}">
+        <summary>${escape(slot.label)} 안내문</summary>
+        <label class="ocm-check"><input type="checkbox" data-use-common ${useCommon ? 'checked' : ''}>공통 안내문 사용</label>
+        <div data-custom-template ${useCommon ? 'hidden' : ''}>
+          <label>개별 알림톡 템플릿 ID<input data-variant-id maxlength="100" aria-label="${escape(slot.label)} 템플릿 ID" value="${escape(value.template_id || '')}"></label>
+          <label>개별 안내문<textarea data-variant-body rows="6" maxlength="1000" aria-label="${escape(slot.label)} 안내문">${escape(value.template_body || '')}</textarea></label>
+          <label class="ocm-check"><input type="checkbox" data-variant-confirmed ${value.template_confirmed ? 'checked' : ''}>이 안내문의 템플릿 승인 내용을 확인했습니다.</label>
+        </div>
+      </details>`;
+    }).join('');
+  }
   function render(state) {
     const payload = state.payload;
     const settings = payload.settings || {};
@@ -59,10 +74,18 @@
           <label class="ocm-check"><input type="checkbox" name="enabled" ${settings.enabled ? 'checked' : ''}>상담 예약 안내 자동 발송</label>
           <label>네이버 플레이스·예약 링크<input name="booking_url" type="url" inputmode="url" placeholder="https://booking.naver.com/…" value="${escape(settings.booking_url)}" maxlength="2000"></label>
           <label>카카오채널 연동 ID<input name="channel_id" value="${escape(settings.channel_id)}" placeholder="솔라피에 등록된 채널 ID" maxlength="100"></label>
-          <label>알림톡 템플릿 ID<input name="template_id" value="${escape(settings.template_id)}" placeholder="솔라피에서 승인된 템플릿 ID" maxlength="100"></label>
-          <label>승인된 안내 문구<textarea name="template_body" rows="8" maxlength="1000">${escape(settings.template_body || DEFAULT_BODY)}</textarea></label>
+          <label>안내문 사용 방식<select name="template_mode" aria-label="안내문 사용 방식"><option value="common" ${settings.template_mode !== 'by_type' ? 'selected' : ''}>모든 상담에 공통 안내문 사용</option><option value="by_type" ${settings.template_mode === 'by_type' ? 'selected' : ''}>초등부·유치부 / 상담 시기별로 설정</option></select></label>
+          <label>공통 알림톡 템플릿 ID<input name="template_id" value="${escape(settings.template_id)}" placeholder="솔라피에서 승인된 템플릿 ID" maxlength="100"></label>
+          <label>공통 안내문<textarea name="template_body" rows="8" maxlength="1000">${escape(settings.template_body || DEFAULT_BODY)}</textarea></label>
           <p class="ocm-muted">변수: #{학원명}, #{학생명}, #{상담구분}, #{예약링크}<br>솔라피 템플릿에도 같은 문구와 ‘상담 예약하기’ 웹 링크 버튼을 등록해 주세요. 버튼 주소는 #{예약링크}로 설정합니다.</p>
           <label class="ocm-check"><input type="checkbox" name="template_confirmed" ${settings.template_confirmed ? 'checked' : ''}>채널·템플릿 ID와 문구가 승인된 내용과 일치함을 확인했습니다.</label>
+
+          <div data-template-variants ${settings.template_mode !== 'by_type' ? 'hidden' : ''}>
+            <p class="ocm-muted">바꾸고 싶은 항목의 ‘공통 안내문 사용’을 해제하고 별도 문구와 승인된 템플릿 ID를 등록해 주세요. 나머지는 공통 안내문을 사용합니다.</p>
+            ${variantHtml(settings)}
+            <details class="ocm-extra-stages"><summary>3개월 상담 기준도 사용하는 경우</summary>${variantHtml(settings, true)}</details>
+            <p class="ocm-muted">같은 달에 6개월·12개월 상담이 겹치면 12개월 안내문을 한 번 발송합니다. 공통 모드로 바꿔도 입력한 개별 안내문은 보존됩니다.</p>
+          </div>
           <p class="ocm-muted">설정을 처음 켠 달부터 상담 안내를 시작하며, 이전 달의 상담은 한꺼번에 발송하지 않습니다. 같은 학생의 같은 상담 예정 월에는 한 번만 발송합니다.</p>
           <p data-connection class="ocm-muted">발송업체 연결 확인 중…</p>
           <button type="submit" class="ocm-primary">발송 설정 저장</button>
@@ -84,9 +107,17 @@
         <div data-history>${historyHtml(payload)}</div>
       </section>`;
     state.dialog.querySelector('[data-settings]').addEventListener('submit', saveSettings);
+    state.dialog.querySelector('[name=template_mode]').addEventListener('change', (event) => {
+      state.dialog.querySelector('[data-template-variants]').hidden = event.target.value !== 'by_type';
+    });
+    state.dialog.querySelectorAll('[data-template-key]').forEach((slot) => {
+      slot.querySelector('[data-use-common]').addEventListener('change', (event) => { slot.querySelector('[data-custom-template]').hidden = event.target.checked; });
+      ['[data-variant-id]', '[data-variant-body]'].forEach(selector => slot.querySelector(selector).addEventListener('input', () => { slot.querySelector('[data-variant-confirmed]').checked = false; }));
+    });
     ['channel_id','template_id','template_body'].forEach((name) => {
       state.dialog.querySelector('[data-settings]').elements[name].addEventListener('input', () => {
         state.dialog.querySelector('[data-settings]').elements.template_confirmed.checked = false;
+        if (name === 'channel_id') state.dialog.querySelectorAll('[data-variant-confirmed]').forEach(input => { input.checked = false; });
       });
     });
     state.dialog.querySelector('[data-search]').addEventListener('input', (event) => {
@@ -113,6 +144,12 @@
     const data = Object.fromEntries(new FormData(form));
     data.enabled = form.elements.enabled.checked;
     data.template_confirmed = form.elements.template_confirmed.checked;
+    data.template_variants = Object.fromEntries(Array.from(form.querySelectorAll('[data-template-key]')).map(slot => [slot.dataset.templateKey, {
+      use_common: slot.querySelector('[data-use-common]').checked,
+      template_id: slot.querySelector('[data-variant-id]').value.trim(),
+      template_body: slot.querySelector('[data-variant-body]').value.trim(),
+      template_confirmed: slot.querySelector('[data-variant-confirmed]').checked
+    }]));
     state.busy = true; button.disabled = true;
     try {
       if (data.enabled) {

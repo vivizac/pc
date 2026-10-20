@@ -23,6 +23,7 @@ test('isolated PostgreSQL migration, access controls, current-student filter and
  insert into students values('${student}','${academy}','테스트','kinder','2025-10-01','active',false,null,'2026-10-01T00:00:00Z'),('${student2}','${other}','다른학원학생','kinder','2025-10-01','active',false,null,'2026-10-01T00:00:00Z');
  insert into academy_settings values('${academy}','["every_6","every_12"]','{"completed":{}}');`);
  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261020150403_consultation_alimtalk.sql'),'utf8'));
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261020155449_consultation_message_templates.sql'),'utf8'));
  async function manage(token,action='load',data={},id=academy){return (await db.query('select public.olli_consultation_messages_manage($1,$2,$3,$4) as result',[token,id,action,JSON.stringify(data)])).rows[0].result;}
  const settings={enabled:true,booking_url:'https://booking.naver.com/booking/13/bizes/123',channel_id:'KA01PF',template_id:'KA01TP',template_body:'#{학생명}\n#{예약링크}',template_confirmed:true};
  const tasks=['id:'+student+'|every_6|'+currentMonth(),'id:'+student+'|every_12|'+currentMonth()];
@@ -81,6 +82,19 @@ test('isolated PostgreSQL migration, access controls, current-student filter and
    const saved=(await db.query('select consultation_rules,consultation_progress from academy_settings')).rows[0];assert.deepEqual(saved,{consultation_rules:['every_6','every_12'],consultation_progress:{completed:{}}});
    assert.equal((await db.query("select count(*)::int n from students")).rows[0].n,2);
    const secure=await db.query("select relname,relrowsecurity from pg_class where relname in ('olli_consultation_message_settings','olli_consultation_message_contacts','olli_consultation_message_deliveries')");assert.ok(secure.rows.every(x=>x.relrowsecurity));
+ });
+ await t.test('common and per-stage templates persist, validate approval, and survive older clients',async()=>{
+   const variant={use_common:false,template_id:'KINDER-1',template_body:'유치부 첫 상담 #{학생명}',template_confirmed:true};
+   let result=await manage('owner','settings',{...settings,template_mode:'by_type',template_variants:{'kinder:after_1':variant}});
+   assert.equal(result.settings.template_mode,'by_type');assert.equal(result.settings.template_variants['kinder:after_1'].template_id,'KINDER-1');
+   await assert.rejects(manage('owner','settings',{...settings,template_mode:'by_type',template_variants:{'kinder:after_1':{...variant,template_confirmed:false}}}));
+   await assert.rejects(manage('owner','settings',{...settings,template_mode:'by_type',template_variants:{'unknown:after_1':variant}}));
+   await assert.rejects(manage('owner','settings',{...settings,template_mode:'by_type',template_variants:[]}));
+   result=await manage('owner','settings',{...settings,template_mode:'common'});
+   assert.equal(result.settings.template_variants['kinder:after_1'].template_body,variant.template_body);
+   result=await manage('owner','settings',settings); // Existing clients omit the new fields.
+   assert.equal(result.settings.template_mode,'common');assert.equal(result.settings.template_variants['kinder:after_1'].template_id,'KINDER-1');
+   assert.equal(result.students[0].phone,'01012345678');assert.equal(result.deliveries.length,1);
  });
  await db.close();
 });

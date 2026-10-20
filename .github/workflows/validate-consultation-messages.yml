@@ -8,6 +8,7 @@ on:
       - 'packages/common/api/_lib/consultation-messages*'
       - 'apps/*/api/consultation-messages.js'
       - 'supabase/migrations/*consultation_alimtalk.sql'
+      - 'supabase/migrations/*consultation_message_templates.sql'
       - 'tests/consultation-messages*'
       - 'tests/consultation-messages/**'
       - '.github/workflows/validate-consultation-messages.yml'
