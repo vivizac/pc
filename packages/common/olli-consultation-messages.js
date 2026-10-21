@@ -74,7 +74,13 @@
           <label class="ocm-use-switch"><span>상담 안내 문자 사용<small data-usage-status>${settings.enabled ? '켜짐' : '꺼짐'}</small></span><span class="ocm-switch-control"><input type="checkbox" role="switch" aria-label="상담 안내 문자 사용" name="enabled" ${settings.enabled ? 'checked' : ''}><span class="ocm-switch-track" aria-hidden="true"></span></span></label>
           <p class="ocm-muted">학원별 선택 기능입니다. 끄면 자동 발송과 직접 보내기가 모두 중단됩니다. 스위치 변경은 바로 저장되며, 문구와 보호자 연락처는 보존됩니다.</p>
           <label>네이버 플레이스·예약 링크<input name="booking_url" type="url" inputmode="url" placeholder="https://booking.naver.com/…" value="${escape(settings.booking_url)}" maxlength="2000"></label>
-          <label>카카오채널 연동 ID<input name="channel_id" value="${escape(settings.channel_id)}" placeholder="솔라피에 등록된 채널 ID" maxlength="100"></label>
+          <label>알림톡 발송 채널
+            <select name="selected_channel_id" aria-label="알림톡 발송 채널">
+              <option value="">본사 관리자센터에서 승인된 채널을 선택해 주세요</option>
+              ${(payload.channels || []).map(c=>`<option value="${escape(c.id)}" ${settings.selected_channel_id === c.id ? 'selected' : ''}>${escape(c.mode === 'headquarters' ? '본사 공통 · ' : '우리 학원 · ')}${escape(c.name || '카카오채널')}</option>`).join('')}
+            </select>
+          </label>
+          <p class="ocm-muted">채널 등록·승인은 본사 관리자센터에서 관리합니다. 채널을 변경하면 발송이 자동으로 꺼지며 승인된 템플릿을 다시 확인해야 합니다.</p>
           <label>안내문 사용 방식<select name="template_mode" aria-label="안내문 사용 방식"><option value="common" ${settings.template_mode !== 'by_type' ? 'selected' : ''}>모든 상담에 공통 안내문 사용</option><option value="by_type" ${settings.template_mode === 'by_type' ? 'selected' : ''}>초등부·유치부 / 상담 시기별로 설정</option></select></label>
           <label>공통 알림톡 템플릿 ID<input name="template_id" value="${escape(settings.template_id)}" placeholder="솔라피에서 승인된 템플릿 ID" maxlength="100"></label>
           <label>공통 안내문<textarea name="template_body" rows="8" maxlength="1000">${escape(settings.template_body || DEFAULT_BODY)}</textarea></label>
@@ -109,6 +115,23 @@
       </section>`;
     state.dialog.querySelector('[data-settings]').addEventListener('submit', saveSettings);
     state.dialog.querySelector('[name=enabled]').addEventListener('change', toggleUsage);
+    state.dialog.querySelector('[name=selected_channel_id]').addEventListener('change', async (event) => {
+      const channel = (state.payload.channels || []).find(c => c.id === event.target.value);
+      if (!channel || state.busy) { event.target.value = state.payload.settings?.selected_channel_id || ''; return; }
+      state.busy = true;
+      event.target.disabled = true;
+      try {
+        state.payload = await rpc('channel', {channel_id:channel.id,channel_mode:channel.mode}, state);
+        // The server disables sending on a channel change; re-render to remove stale approvals.
+        render(state);
+        notice('발송 채널을 변경했습니다. 자동 발송은 꺼졌습니다. 해당 채널에서 승인된 안내문을 확인한 뒤 다시 켜 주세요.');
+      } catch(error) {
+        if(active === state) { event.target.value = state.payload.settings?.selected_channel_id || ''; notice(error.message,true); }
+      } finally {
+        state.busy = false;
+        if(active === state && event.isTrusted && event.target.isConnected) event.target.disabled = false;
+      }
+    });
     state.dialog.querySelector('[name=template_mode]').addEventListener('change', (event) => {
       state.dialog.querySelector('[data-template-variants]').hidden = event.target.value !== 'by_type';
     });
@@ -116,10 +139,10 @@
       slot.querySelector('[data-use-common]').addEventListener('change', (event) => { slot.querySelector('[data-custom-template]').hidden = event.target.checked; });
       ['[data-variant-id]', '[data-variant-body]'].forEach(selector => slot.querySelector(selector).addEventListener('input', () => { slot.querySelector('[data-variant-confirmed]').checked = false; }));
     });
-    ['channel_id','template_id','template_body'].forEach((name) => {
+    ['template_id','template_body'].forEach((name) => {
       state.dialog.querySelector('[data-settings]').elements[name].addEventListener('input', () => {
         state.dialog.querySelector('[data-settings]').elements.template_confirmed.checked = false;
-        if (name === 'channel_id') state.dialog.querySelectorAll('[data-variant-confirmed]').forEach(input => { input.checked = false; });
+
       });
     });
     state.dialog.querySelector('[data-search]').addEventListener('input', (event) => {
@@ -174,6 +197,11 @@
     if (state.busy) return;
     const data = Object.fromEntries(new FormData(form));
     data.enabled = form.elements.enabled.checked;
+    // The selected channel is managed exclusively by the 'channel' RPC.
+    // Never allow the generic settings save to override its assignment.
+    delete data.selected_channel_id;
+    delete data.channel_mode;
+    delete data.channel_id;
     data.template_confirmed = form.elements.template_confirmed.checked;
     data.template_variants = Object.fromEntries(Array.from(form.querySelectorAll('[data-template-key]')).map(slot => [slot.dataset.templateKey, {
       use_common: slot.querySelector('[data-use-common]').checked,
