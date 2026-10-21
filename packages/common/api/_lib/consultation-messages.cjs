@@ -38,6 +38,23 @@ function pendingTasks(snapshot, student, now) {
     progress: snapshot.progress || {}
   }).filter((task) => !task.completed && task.dueMonth >= config.start_month);
 }
+function nameWithParticle(name, pair) {
+  const value = String(name || '').trim();
+  if (!value) throw problem('STUDENT_NAME_MISSING', 400);
+  const last = value.codePointAt(value.length - 1);
+  const hangul = last >= 0xAC00 && last <= 0xD7A3;
+  // On non-Hangul endings do not guess particles for foreign names.
+  if (!hangul) throw problem('STUDENT_NAME_PARTICLE_UNSUPPORTED', 400);
+  const jong = (last - 0xAC00) % 28;
+  const suffixes = {
+    subject: jong ? '은' : '는',
+    nominative: jong ? '이' : '가',
+    object: jong ? '을' : '를',
+    with: jong ? '과' : '와',
+    direction: !jong || jong === 8 ? '로' : '으로'
+  };
+  return value + suffixes[pair];
+}
 function messageFor(snapshot, student, tasks) {
   const config = snapshot.settings;
   const template = selectTemplate(config, student, tasks);
@@ -52,8 +69,19 @@ function messageFor(snapshot, student, tasks) {
     '#{상담구분}': String(template.task.label || '').replace(/(후|마다)$/, ''),
     '#{예약링크}': config.booking_url
   };
+  // A complete value occupies each approved Solapi placeholder, e.g.
+  // '#{학생이름_주제}' becomes '민서는', never '민서' plus a hardcoded suffix.
+  const nameTokens = {
+    '#{학생이름_주제}':'subject', '#{학생이름_주격}':'nominative',
+    '#{학생이름_목적격}':'object', '#{학생이름_함께}':'with',
+    '#{학생이름_방향}':'direction'
+  };
   const body = String(template.template_body || '');
-  if (!body || /#\{[^}]+\}/g.test(body.replace(/#\{(?:학원명|학생명|상담구분|예약링크)\}/g, ''))) throw problem('TEMPLATE_BODY_INVALID', 400);
+  for (const [token, kind] of Object.entries(nameTokens)) {
+    if (body.includes(token)) variables[token] = nameWithParticle(student.name, kind);
+  }
+  const allowed = new Set(Object.keys(variables));
+  if (!body || [...body.matchAll(/#\\{[^}]+\\}/g)].some(([token]) => !allowed.has(token))) throw problem('TEMPLATE_BODY_INVALID', 400);
   const text = body.replace(/#\{[^}]+\}/g, (key) => String(variables[key] || ''));
   if (text.length > 1000) throw problem('TEMPLATE_TOO_LONG', 400);
   return { to: student.phone, type: 'ATA', text, kakaoOptions: {
@@ -207,4 +235,4 @@ function verifiedTemplate(template, binding) {
     row.body === template.template_body);
 }
 
-module.exports = { createService, cronAuthorized, credentials, koreaDate, pendingTasks, messageFor, centralCredentials, verifiedChannel, verifiedTemplate };
+module.exports = { createService, cronAuthorized, credentials, koreaDate, pendingTasks, messageFor, centralCredentials, verifiedChannel, verifiedTemplate, nameWithParticle };
