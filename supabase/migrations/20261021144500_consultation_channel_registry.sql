@@ -63,7 +63,22 @@ declare
   v_custom boolean;
 begin
   perform olli_consultation_private.require_owner(p_session_token,p_academy_id);
-  if p_action='disable' then
+  if p_action='channel' then
+    if (p_data->>'channel_id') is null or not exists (
+      select 1 from public.olli_consultation_channels c
+      join public.olli_consultation_channel_assignments a on a.channel_id=c.id
+      where a.academy_id=p_academy_id
+        and c.id=(p_data->>'channel_id')::uuid
+        and c.channel_type=p_data->>'channel_mode'
+        and c.approval_state='approved' and a.approval_state='approved'
+        and (c.channel_type='headquarters' or c.owner_academy_id=p_academy_id)
+    ) then raise exception '승인된 학원 채널이 아닙니다.'; end if;
+    update public.olli_consultation_message_settings
+    set selected_channel_id=(p_data->>'channel_id')::uuid,
+        channel_mode=p_data->>'channel_mode',
+        enabled=false,template_confirmed=false,revision=revision+1,
+        updated_at=clock_timestamp() where academy_id=p_academy_id;
+  elsif p_action='disable' then
     update public.olli_consultation_message_settings
     set enabled=false,revision=revision+1,updated_at=clock_timestamp()
     where academy_id=p_academy_id;
