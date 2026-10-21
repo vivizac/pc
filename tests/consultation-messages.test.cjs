@@ -196,3 +196,16 @@ test('Solapi student name placeholders render Korean particles without modifying
   data.settings.template_body='#{학생이름_주제}';
   assert.throws(()=>server.messageFor(data,{...student,name:'Alex'},tasks),/STUDENT_NAME_PARTICLE_UNSUPPORTED/);
 });
+
+test('consultation Alimtalk never includes school or kindergarten names',()=>{
+  const data=snapshot(),student={...data.students[0],name:'하정우',school_name:'한샘초',kindergarten_name:'키즈킹',school:'한샘초',kindergarten:'키즈킹'};
+  data.settings.template_body='#{학생이름_주제} 상담 신청 예약 안내\\n#{예약링크}';
+  const tasks=[{ruleKey:'after_1',label:'1개월',dueMonth:'2026-10',occurrenceMonths:1}];
+  const result=server.messageFor(data,student,tasks);
+  assert.match(result.text,/하정우는 상담 신청 예약 안내/);
+  assert.ok(!result.text.includes('한샘초'));
+  assert.ok(!result.text.includes('키즈킹'));
+  assert.equal(Object.hasOwn(result.kakaoOptions.variables,'#{학교명}'),false);
+  assert.equal(Object.hasOwn(result.kakaoOptions.variables,'#{유치원명}'),false);
+  assert.equal(Object.hasOwn(result.kakaoOptions.variables,'#{학생이름_주제}'),true);
+});
