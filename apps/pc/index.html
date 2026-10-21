@@ -2119,7 +2119,7 @@
 <script src="olli-record-feedback-generation.js"></script>
 <script src="olli-record-room-navigation.js"></script>
 <script src="observation-memo-storage-common.js"></script>
-<script src="olli-record-memo-storage.js"></script>
+<script src="olli-record-memo-storage.js?v=20261021-guardian-contact-1"></script>
 <script src="observation-memo-session-common.js"></script>
 <script src="observation-memo-save-common.js"></script>
 <script src="observation-memo-feedback-clear-common.js"></script>
@@ -2128,9 +2128,15 @@
 <script src="observation-memo-version-history-core.js"></script>
 <script src="observation-memo-core.js"></script>
 <script src="olli-record-list-view.js"></script>
+<script src="olli-consultation-task-core.js"></script>
 <script src="olli-operations-consultation-policy.js"></script>
+<script src="olli-consultation-message-templates.js"></script>
+<script src="olli-consultation-messages.js"></script>
+<script src="olli-student-guardian-contact.js"></script>
+<link rel="stylesheet" href="olli-student-guardian-contact.css">
+<link rel="stylesheet" href="olli-consultation-messages.css">
 <script src="olli-consultation-runtime.js"></script>
-<script src="olli-student-info-runtime.js"></script>
+<script src="olli-student-info-runtime.js?v=20261021-guardian-contact-1"></script>
 <script src="olli-app-startup.js"></script>
 <script src="olli-feedback-runtime.js"></script>
 
@@ -2643,6 +2649,7 @@
 <span class="settingsRowValue" id="settingsAttendancePolicyValue"></span>
 <svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
 </div>
+<div class="settingsRow" data-academy-management="true" onclick="if(OlliConsultationMessages.isOwner()) OlliConsultationMessages.open()" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"><div class="settingsRowLeft"><span class="settingsRowTitle">상담 예약 안내</span></div><span class="settingsRowValue">알림톡 설정</span></div>
 <div class="settingsRow" onclick="openSettingsSheet('consultationMonths')" role="button">
 <div class="settingsRowLeft">
 <span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M7 4.8h10a2.2 2.2 0 0 1 2.2 2.2v10a2.2 2.2 0 0 1-2.2 2.2H7A2.2 2.2 0 0 1 4.8 17V7A2.2 2.2 0 0 1 7 4.8z"></path><path d="M8 3.5v3"></path><path d="M16 3.5v3"></path><path d="M8 11h8"></path><path d="M8 15h5"></path></svg></span>
@@ -4977,7 +4984,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <script src="pc-timetable-history.js"></script>
 <script src="pc-timetable.js?v=20261019-sidebar-anchor-2"></script>
 <script src="consultation-survey.js?v=20261013-schedule-only-1"></script>
-<script src="pc-start-page.js?v=20261019-tuition-1"></script>
+<script src="pc-start-page.js?v=20261021-guardian-contact-1"></script>
 </body></html>
 
 

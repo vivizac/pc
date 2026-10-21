@@ -1030,6 +1030,7 @@ function openStudentModal() {
   if (kinderExtraFields) kinderExtraFields.style.display = targetView === 'kinder' ? 'block' : 'none';
   if (typeof window.olliPrepareStudentAddExtra === 'function') window.olliPrepareStudentAddExtra(targetView);
 
+  window.OlliGuardianContact?.mount(document.querySelector('#studentModal .modalCard'), null, { reset: true });
   setTimeout(() => nameInput.focus(), 50);
 }
 function closeStudentModal() {
@@ -1063,7 +1064,9 @@ async function confirmStudent() {
 
   const type = currentRecordView === 'kinder' ? 'kinder' : 'elementary';
   const list = getStudentsByType(type);
-  const duplicate = list.some(student => student.name === name && String(student.year) === String(year) && String(student.month) === String(month) && String(student.day) === String(day));
+  const guardianRoot = document.querySelector('#studentModal .modalCard');
+  const previouslyRegistered = window.OlliGuardianContact?.registered(guardianRoot);
+  const duplicate = list.some(student => String(student.id) !== String(previouslyRegistered?.id || '') && student.name === name && String(student.year) === String(year) && String(student.month) === String(month) && String(student.day) === String(day));
   if (duplicate) {
     alert('같은 이름과 등록일의 학생이 이미 등록되어 있습니다.');
     return;
@@ -1074,7 +1077,7 @@ async function confirmStudent() {
   const selectedGroupMonths = type === 'elementary' ? elementaryGroupMonthsToText(extraInfo.group_months || extraInfo.feedback_months || getElementaryGroupFeedbackMonths(selectedGroup)) : '';
 
   const newStudent = {
-    id: uid(),
+    id: previouslyRegistered?.id || uid(),
     type,
     name,
     year,
@@ -1093,7 +1096,10 @@ async function confirmStudent() {
   };
 
   try {
+    const guardianDraft = window.OlliGuardianContact?.capture(guardianRoot);
     const savedStudent = await ensureStudentSavedToSupabase(newStudent);
+    window.OlliGuardianContact?.markRegistered(guardianRoot, savedStudent);
+    await window.OlliGuardianContact?.save(guardianRoot, savedStudent, guardianDraft);
     let scheduleError = null;
     const schedulePairs = Array.isArray(extraInfo.schedule_pairs) ? extraInfo.schedule_pairs.filter(Boolean) : [];
 

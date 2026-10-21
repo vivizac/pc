@@ -129,6 +129,7 @@
     }
     modal.innerHTML = cardHtml(student || {});
     global.OlliTuition?.mountStudent(modal.querySelector('.pcStudentInfoCard'), student);
+    global.OlliGuardianContact?.mount(modal.querySelector('.pcStudentInfoCard'), student);
     return modal;
   }
 
@@ -347,7 +348,10 @@
       profile.__olli_feedback_teacher_changed = feedbackTeacher !== clean(feedbackField?.dataset.savedValue ?? latestTarget.feedback_teacher);
       if (typeof global.ensureStudentSavedToSupabase !== 'function') throw new Error('학생정보 저장 기능을 찾지 못했습니다.');
 
+      const guardianRoot = document.querySelector('#elementaryInfoModal .pcStudentInfoCard');
+      const guardianDraft = global.OlliGuardianContact?.capture(guardianRoot);
       const saved = await global.ensureStudentSavedToSupabase(profile, { requireServer: true });
+      await global.OlliGuardianContact?.save(guardianRoot, saved, guardianDraft);
 
       if (typeof global.loadStudentsFromSupabase === 'function') await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
       const refreshed = typeof global.findStudentById === 'function' ? (global.findStudentById(saved.id) || saved) : saved;

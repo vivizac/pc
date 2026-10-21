@@ -1,0 +1,29 @@
+name: Validate consultation reservation messages
+on:
+  pull_request:
+    paths:
+      - 'packages/common/olli-consultation*'
+      - 'packages/common/olli-student-guardian-contact*'
+      - 'packages/common/olli-operations-consultation-policy.js'
+      - 'packages/common/api/_lib/consultation-messages*'
+      - 'apps/*/api/consultation-messages.js'
+      - 'supabase/migrations/*consultation_alimtalk.sql'
+      - 'supabase/migrations/*consultation_message_templates.sql'
+      - 'supabase/migrations/*consultation_message_usage_switch.sql'
+      - 'tests/consultation-messages*'
+      - 'tests/consultation-messages/**'
+      - '.github/workflows/validate-consultation-messages.yml'
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix tests/consultation-messages --ignore-scripts
+      - run: node --test tests/consultation-messages.test.cjs tests/consultation-messages-db.test.cjs
+      - run: node --test tests/pc-build-closure.test.cjs tests/pc-self-contained-build.test.cjs tests/mobile-self-contained-build.test.cjs tests/vercel-monorepo-separation-contract.test.cjs

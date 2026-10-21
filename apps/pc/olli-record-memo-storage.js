@@ -80,6 +80,7 @@ function openStudentModal() {
     setTimeout(window.olliTuneStudentModalGuideText, 0);
   }
 
+  window.OlliGuardianContact?.mount(document.querySelector('#studentModal .modalCard'), null, { reset: true });
   setTimeout(() => nameInput.focus(), 50);
 }
 
@@ -201,7 +202,9 @@ async function confirmStudent() {
 
   const type = currentRecordView === 'kinder' ? 'kinder' : 'elementary';
   const list = getStudentsByType(type);
-  const duplicate = list.some(student => student.name === name && String(student.year) === String(year) && String(student.month) === String(month) && String(student.day) === String(day));
+  const guardianRoot = document.querySelector('#studentModal .modalCard');
+  const previouslyRegistered = window.OlliGuardianContact?.registered(guardianRoot);
+  const duplicate = list.some(student => String(student.id) !== String(previouslyRegistered?.id || '') && student.name === name && String(student.year) === String(year) && String(student.month) === String(month) && String(student.day) === String(day));
   if (duplicate) {
     alert('같은 이름과 등록일의 학생이 이미 등록되어 있습니다.');
     return;
@@ -238,7 +241,7 @@ async function confirmStudent() {
   }
 
   const newStudent = {
-    id: uid(),
+    id: previouslyRegistered?.id || uid(),
     type,
     name,
     year,
@@ -262,7 +265,10 @@ async function confirmStudent() {
   };
 
   try {
+    const guardianDraft = window.OlliGuardianContact?.capture(guardianRoot);
     const savedStudent = await ensureStudentSavedToSupabase(newStudent);
+    window.OlliGuardianContact?.markRegistered(guardianRoot, savedStudent);
+    await window.OlliGuardianContact?.save(guardianRoot, savedStudent, guardianDraft);
     if (trialRegistration && trialRegistration.previewStatus === 'ready') {
       try {
         if (!window.OlliTimetableService?.linkTrialFeedback) throw new Error('체험 피드백 연결 모듈을 찾지 못했습니다.');

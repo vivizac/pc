@@ -40,7 +40,7 @@ test('PC build remains closed after removing tracked common parity copies and st
     }
 
     const staged = stageCommon({ pcDir: tempPc, commonDir: COMMON, manifestPath: MANIFEST });
-    assert.equal(staged.count, 67);
+    assert.equal(staged.count, manifest.files.length);
 
     for (const file of manifest.files) {
       assert.equal(fs.existsSync(path.join(tempPc, file)), true, 'staged common file missing: ' + file);

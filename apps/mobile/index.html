@@ -534,11 +534,17 @@
 <script src="olli-observation-memo-storage-phone-adapter.js?v=20260920-growth-all-divisions-1"></script>
 <script src="observation-memo-session-common.js?v=20260929-memo-page-owner-1"></script>
 <script src="observation-memo-save-common.js?v=20260909-2143-1"></script>
-<script src="olli-observation-runtime.js?v=20261012-rear-layer-stage3-1"></script>
+<script src="olli-observation-runtime.js?v=20261021-guardian-contact-1"></script>
 <script src="olli-observation-roster-phone.js?v=20261012-attendance-scale-1"></script>
 <script src="olli-record-list-view.js?v=20261012-student-row-stage5-1"></script>
 <script src="olli-record-board-actions-phone-adapter.js"></script>
+<script src="olli-consultation-task-core.js"></script>
 <script src="olli-operations-consultation-policy.js"></script>
+<script src="olli-consultation-message-templates.js"></script>
+<script src="olli-consultation-messages.js"></script>
+<script src="olli-student-guardian-contact.js"></script>
+<link rel="stylesheet" href="olli-student-guardian-contact.css">
+<link rel="stylesheet" href="olli-consultation-messages.css">
 <script src="olli-settings-server-sync.js?v=20260924-academy-owner-cleanup-1"></script>
 <script src="olli-record-room-navigation.js?v=20261013-attendance-entry-light-1"></script>
 <script src="olli-attendance-phone-adapter.js?v=20261012-roster-render-stage4-1"></script>
@@ -620,6 +626,7 @@
 <span class="settingsRowValue" id="settingsAttendancePolicyValue"></span>
 <svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
 </div>
+<div class="settingsRow" data-academy-management="true" onclick="if(OlliConsultationMessages.isOwner()) OlliConsultationMessages.open()" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"><div class="settingsRowLeft"><span class="settingsRowTitle">상담 예약 안내</span></div><span class="settingsRowValue">알림톡 설정</span></div>
 <div class="settingsRow" onclick="openPhoneSettingsSheet('consultationMonths')" role="button">
 <div class="settingsRowLeft">
 <span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M7 4.8h10a2.2 2.2 0 0 1 2.2 2.2v10a2.2 2.2 0 0 1-2.2 2.2H7A2.2 2.2 0 0 1 4.8 17V7A2.2 2.2 0 0 1 7 4.8z"></path><path d="M8 3.5v3"></path><path d="M16 3.5v3"></path><path d="M8 11h8"></path><path d="M8 15h5"></path></svg></span>
@@ -1187,8 +1194,8 @@
 <script src="olli-student-bulk-edit-parser.js"></script>
 <script src="olli-student-schedule-runtime.js?v=20261013-feedback-teacher-1"></script>
 <script src="olli-phone-student-schedule-editor.js?v=20261013-feedback-teacher-1"></script>
-<script src="olli-phone-kinder-student-info-card.js?v=20261019-tuition-1"></script>
-<script src="olli-phone-elementary-student-info-card.js?v=20261019-tuition-1"></script>
+<script src="olli-phone-kinder-student-info-card.js?v=20261021-guardian-contact-1"></script>
+<script src="olli-phone-elementary-student-info-card.js?v=20261021-guardian-contact-1"></script>
 <script src="olli-attendance-guide-align-runtime.js?v=20260923-guide-align-2"></script>
 <script src="olli-start-page-storage-phone.js?v=20260924-reconnect-local-first-1"></script>
 <link rel="stylesheet" href="olli-attendance-policy-phone.css">

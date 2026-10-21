@@ -1,0 +1,51 @@
+.olliConsultationMessages{box-sizing:border-box;width:min(680px,calc(100% - 24px));max-height:90dvh;margin:auto;padding:0;border:1px solid #e4e8e8;border-radius:22px;background:#fff;color:#253534;font-family:inherit;box-shadow:0 20px 80px #152c3526;text-align:left}
+.olliConsultationMessages::backdrop{background:#162b3b55}
+.olliConsultationMessages *{box-sizing:border-box}
+.olliConsultationMessages header{display:flex;justify-content:space-between;align-items:center;padding:22px 24px 12px}
+.olliConsultationMessages h2{margin:0;font-size:21px}
+.olliConsultationMessages header p{margin:6px 0;color:#71817e;font-size:13px}
+.olliConsultationMessages button{min-height:44px;border:1px solid #dfe6e4;border-radius:12px;padding:8px 14px;font:inherit;font-size:14px;background:#fff;color:#29423e;cursor:pointer}
+.olliConsultationMessages button:disabled{opacity:.5;cursor:wait}
+.olliConsultationMessages button:focus-visible,.olliConsultationMessages input:focus-visible,.olliConsultationMessages textarea:focus-visible{outline:2px solid #508d80;outline-offset:2px}
+.olliConsultationMessages [data-close]{font-size:26px;border:0;width:44px;padding:0}
+.olliConsultationMessages .ocm-content{padding:0 24px 16px}
+.olliConsultationMessages .ocm-tabs{display:flex;gap:6px;margin-bottom:20px}
+.olliConsultationMessages .ocm-tabs button{flex:1;padding:8px 5px;white-space:nowrap}
+.olliConsultationMessages .ocm-tabs button[aria-pressed=true]{background:#edf5f2;border-color:#cbded7;font-weight:600}
+.olliConsultationMessages label{display:block;font-size:13px;margin:15px 0;color:#475d57}
+.olliConsultationMessages input:not([type=checkbox]),.olliConsultationMessages textarea{display:block;width:100%;margin-top:7px;border:1px solid #dce4e1;border-radius:10px;padding:12px;background:#fff;color:#253534;font:inherit;font-size:16px}
+.olliConsultationMessages textarea{line-height:1.65;resize:vertical}
+.olliConsultationMessages .ocm-check{display:flex;align-items:center;gap:8px;line-height:1.6}
+.olliConsultationMessages input[type=checkbox]{width:18px;height:18px;accent-color:#4f8877;flex-shrink:0}
+.olliConsultationMessages .ocm-muted{font-size:13px;line-height:1.7;color:#73827f;margin:12px 0}
+.olliConsultationMessages .ocm-primary{background:#e0eee8;border-color:#caddd4;width:100%;min-height:47px;font-weight:600}
+.olliConsultationMessages [data-notice]{position:sticky;bottom:0;padding:12px 24px;margin:0;background:#fff;border-top:1px solid #edf0ef;color:#477563;font-size:13px;line-height:1.6;min-height:44px}
+.olliConsultationMessages [data-notice].error{color:#aa4b45}
+.olliConsultationMessages .ocm-contact{border:1px solid #e4e9e7;border-radius:14px;padding:16px;margin:12px 0}
+.olliConsultationMessages small{font-size:12px;color:#82908c;font-weight:400}
+.olliConsultationMessages .ocm-contact-options{display:flex;gap:18px;flex-wrap:wrap}
+.olliConsultationMessages .ocm-contact-actions{display:flex;gap:8px;flex-wrap:wrap}
+.olliConsultationMessages [data-contact-notice]{display:block;margin-top:8px}
+.olliConsultationMessages .ocm-history-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:16px 0;border-bottom:1px solid #edf0ef}
+.olliConsultationMessages .ocm-history-row small{display:block;margin-top:5px}
+.olliConsultationMessages .ocm-status{font-size:12px;white-space:nowrap;color:#6d7e78}
+.olliConsultationMessages .ocm-status.delivered{color:#387b62}
+.olliConsultationMessages .ocm-status.failed,.olliConsultationMessages .ocm-status.unknown{color:#aa4b45}
+.olliConsultationMessages [hidden]{display:none}
+@media(max-width:480px){.olliConsultationMessages header{padding:18px 16px 12px}.olliConsultationMessages .ocm-content{padding:0 16px 12px}.olliConsultationMessages .ocm-tabs button{font-size:13px}.olliConsultationMessages [data-notice]{padding:12px 16px}}
+
+.olliConsultationMessages select{display:block;width:100%;margin-top:7px;padding:12px;border:1px solid #dce4e1;border-radius:10px;font:inherit;font-size:16px;background:#fff;color:#253534}
+.olliConsultationMessages .ocm-template-slot{border:1px solid #e4e9e7;border-radius:12px;padding:12px;margin:10px 0}
+.olliConsultationMessages summary{cursor:pointer;font-size:14px;font-weight:600;line-height:1.6}
+.olliConsultationMessages .ocm-extra-stages{margin:14px 0;color:#687b73}
+
+.olliConsultationMessages .ocm-use-switch{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:56px;padding:10px 0;font-size:16px;font-weight:600;color:#29423e}
+.olliConsultationMessages .ocm-use-switch small{display:block;margin-top:4px;font-size:12px;font-weight:400;color:#75847e}
+.olliConsultationMessages .ocm-switch-control{position:relative;display:block;width:46px;height:28px;flex-shrink:0}
+.olliConsultationMessages .ocm-switch-control input{position:absolute;inset:0;opacity:0;width:46px;height:28px;margin:0;cursor:pointer;z-index:1}
+.olliConsultationMessages .ocm-switch-track{display:block;width:46px;height:28px;border-radius:18px;background:#d6dedb;transition:background .16s}
+.olliConsultationMessages .ocm-switch-track::before{content:'';display:block;position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0002;transition:transform .16s}
+.olliConsultationMessages .ocm-switch-control input:checked+.ocm-switch-track{background:#548c78}
+.olliConsultationMessages .ocm-switch-control input:checked+.ocm-switch-track::before{transform:translateX(18px)}
+.olliConsultationMessages .ocm-switch-control input:focus-visible+.ocm-switch-track{outline:2px solid #508d80;outline-offset:3px}
+.olliConsultationMessages .ocm-switch-control input:disabled+.ocm-switch-track{opacity:.5}

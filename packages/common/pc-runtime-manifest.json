@@ -74,6 +74,14 @@
     "olli-education-inspection-common.css",
     "olli-education-inspection-common.js",
     "olli-tuition-common.js",
-    "olli-tuition-common.css"
+    "olli-tuition-common.css",
+    "olli-consultation-task-core.js",
+    "olli-consultation-messages.js",
+    "olli-consultation-messages.css",
+    "api/_lib/consultation-messages.cjs",
+    "api/_lib/consultation-messages-handler.cjs",
+    "olli-student-guardian-contact.js",
+    "olli-student-guardian-contact.css",
+    "olli-consultation-message-templates.js"
   ]
 }
