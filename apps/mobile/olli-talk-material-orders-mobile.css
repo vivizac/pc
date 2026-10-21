@@ -98,7 +98,9 @@
   --olli-mobile-mat-modal-sub-color:#747980;
   position:fixed;
   inset:0;
-  z-index:7445;
+  /* Shared coffee-request dialog must paint above the active Work (120500)
+     and Work Hub (130200) routes, while remaining below global toasts. */
+  z-index:180050;
   pointer-events:none;
 }
 .olliMobileMatQuickHost .olliMobileMatModalBackdrop,
