@@ -51,6 +51,7 @@ test('isolated PostgreSQL migration, access controls, current-student filter and
    await assert.rejects(manage('owner','settings',{...settings,booking_url:'https://naver.com.evil.test/x'}));
    await assert.rejects(manage('owner','settings',{...settings,template_body:'#{잘못된변수}'}));
    const saved=await manage('owner','settings',settings);assert.equal(saved.settings.enabled,true);assert.equal(saved.settings.start_month,currentMonth());
+   params[4]=saved.settings.revision;
  });
  await t.test('contacts scoped to active academy and confirmation required by worker',async()=>{
    await assert.rejects(manage('owner','contact',{student_id:student2,phone:'01012345678',confirmed:true}));
