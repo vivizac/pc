@@ -1,4 +1,4 @@
-const { createService, cronAuthorized, credentials } = require('./consultation-messages.cjs');
+const { createService, cronAuthorized, centralCredentials } = require('./consultation-messages.cjs');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -17,7 +17,7 @@ module.exports = async function handler(req, res) {
     // The DB authenticates the session AND owner membership before any provider operation.
     const access = await service.rpc('olli_consultation_messages_manage', { p_session_token: sessionToken, p_academy_id: academyId, p_action: 'load', p_data: {} });
     if (access?.ok !== true) return res.status(403).json({ error: 'PERMISSION_DENIED' });
-    const configured = !!credentials(academyId);
+    const configured = !!centralCredentials();
     if (action === 'status') return res.status(200).json({ ok: true, configured });
     if (action === 'send' && access.settings?.enabled !== true) return res.status(409).json({ error: '상담 안내 문자 사용이 꺼져 있습니다.' });
     if (!configured) return res.status(503).json({ error: '발송업체 서버 연결 설정이 필요합니다.' });
