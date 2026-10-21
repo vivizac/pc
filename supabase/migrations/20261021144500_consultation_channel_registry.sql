@@ -64,7 +64,10 @@ declare
 begin
   perform olli_consultation_private.require_owner(p_session_token,p_academy_id);
   if p_action='channel' then
-    if coalesce(p_data->>'channel_id','') !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}
+    if coalesce(p_data->>'channel_id','') !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
+      raise exception '올바른 카카오채널 ID를 선택해 주세요.';
+    end if;
+    if not exists (
       select 1 from public.olli_consultation_channels c
       join public.olli_consultation_channel_assignments a on a.channel_id=c.id
       where a.academy_id=p_academy_id
@@ -72,7 +75,9 @@ begin
         and c.channel_type=p_data->>'channel_mode'
         and c.approval_state='approved' and a.approval_state='approved'
         and (c.channel_type='headquarters' or c.owner_academy_id=p_academy_id)
-    ) then raise exception '승인된 학원 채널이 아닙니다.'; end if;
+    ) then
+      raise exception '승인된 학원 채널이 아닙니다.';
+    end if;
     update public.olli_consultation_message_settings
     set selected_channel_id=(p_data->>'channel_id')::uuid,
         channel_mode=p_data->>'channel_mode',
