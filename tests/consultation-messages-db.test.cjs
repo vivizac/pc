@@ -25,6 +25,13 @@ test('isolated PostgreSQL migration, access controls, current-student filter and
  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261020150403_consultation_alimtalk.sql'),'utf8'));
  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261020155449_consultation_message_templates.sql'),'utf8'));
  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261020231237_consultation_message_usage_switch.sql'),'utf8'));
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261021144500_consultation_channel_registry.sql'),'utf8'));
+ // Explicit HQ approval; older channel_id alone never becomes authorized.
+ const channelId='30000000-0000-0000-0000-000000000001';
+ await db.query("insert into olli_consultation_channels(id,pf_id,channel_name,channel_type,approval_state) values($1,'KA01PF','테스트 채널','headquarters','approved')",[channelId]);
+ await db.query("insert into olli_consultation_channel_assignments(academy_id,channel_id,approval_state) values($1,$2,'approved')",[academy,channelId]);
+ await db.query("insert into olli_consultation_channel_templates(channel_id,template_id,template_body,approval_state) values($1,'KA01TP',$2,'approved')",[channelId,'#{학생명}\\n#{예약링크}']);
+ await db.query("insert into olli_consultation_message_settings(academy_id,selected_channel_id,channel_mode) values($1,$2,'headquarters')",[academy,channelId]);
  async function manage(token,action='load',data={},id=academy){return (await db.query('select public.olli_consultation_messages_manage($1,$2,$3,$4) as result',[token,id,action,JSON.stringify(data)])).rows[0].result;}
  const settings={enabled:true,booking_url:'https://booking.naver.com/booking/13/bizes/123',channel_id:'KA01PF',template_id:'KA01TP',template_body:'#{학생명}\n#{예약링크}',template_confirmed:true};
  const tasks=['id:'+student+'|every_6|'+currentMonth(),'id:'+student+'|every_12|'+currentMonth()];
