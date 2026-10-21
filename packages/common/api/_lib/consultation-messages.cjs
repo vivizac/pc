@@ -168,4 +168,43 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
   }
   return { rpc, run };
 }
-module.exports = { createService, cronAuthorized, credentials, koreaDate, pendingTasks, messageFor };
+
+/**
+ * Future headquarters-account integration gate. This is intentionally NOT wired
+ * into the live dispatch loop until the authoritative channel registry and
+ * academy-scoped database authorization are deployed together.
+ *
+ * Never trust a channel ID supplied by a client. A channel binding must come
+ * from the server registry and have an explicit academy authorization.
+ */
+function centralCredentials(env = process.env) {
+  let value;
+  try { value = JSON.parse(env.OLLI_CONSULTATION_SOLAPI_CREDENTIALS || '{}'); }
+  catch { return null; }
+  if (!value || Array.isArray(value) ||
+      typeof value.apiKey !== 'string' || !value.apiKey.trim() ||
+      typeof value.apiSecret !== 'string' || !value.apiSecret.trim()) return null;
+  return { apiKey:value.apiKey, apiSecret:value.apiSecret };
+}
+function verifiedChannel(snapshot, binding, env = process.env) {
+  const settings = snapshot?.settings;
+  if (!settings?.academy_id || !binding || !centralCredentials(env)) return null;
+  const mode = settings.channel_mode || 'headquarters';
+  if (!['headquarters','academy'].includes(mode)) return null;
+  if (binding.academy_id !== settings.academy_id ||
+      binding.mode !== mode || binding.enabled !== true ||
+      binding.approved !== true || binding.revision !== settings.channel_revision ||
+      typeof binding.pf_id !== 'string' || !binding.pf_id.trim()) return null;
+  if (mode === 'headquarters' && binding.allowed_academy_id !== settings.academy_id) return null;
+  if (mode === 'academy' && binding.owner_academy_id !== settings.academy_id) return null;
+  return { pfId:binding.pf_id, credential:centralCredentials(env) };
+}
+function verifiedTemplate(template, binding) {
+  if (!template || !binding?.approved || !Array.isArray(binding.approved_templates)) return false;
+  return binding.approved_templates.some(row => row.approved === true &&
+    row.channel_id === binding.pf_id &&
+    row.template_id === template.template_id &&
+    row.body === template.template_body);
+}
+
+module.exports = { createService, cronAuthorized, credentials, koreaDate, pendingTasks, messageFor, centralCredentials, verifiedChannel, verifiedTemplate };
