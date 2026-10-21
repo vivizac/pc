@@ -167,3 +167,32 @@ test('disabled academy rejects direct sends without any provider credentials or 
     assert.equal(res.code,409);assert.match(res.body.error,/꺼져/);assert.equal(calls,1);
   }finally{global.fetch=originalFetch;for(const [key,value]of Object.entries(previous)){if(value===undefined)delete process.env[key];else process.env[key]=value;}}
 });
+
+test('Solapi student name placeholders render Korean particles without modifying approved template',()=>{
+  const data=snapshot(), student=data.students[0];
+  const tasks=[{ruleKey:'after_1',label:'1개월',dueMonth:'2026-10',occurrenceMonths:1}];
+  const cases=[
+    ['하정우','#{학생이름_주제}','하정우는'],
+    ['김지훈','#{학생이름_주제}','김지훈은'],
+    ['민서','#{학생이름_주격}','민서가'],
+    ['민준','#{학생이름_주격}','민준이'],
+    ['민서','#{학생이름_목적격}','민서를'],
+    ['민준','#{학생이름_목적격}','민준을'],
+    ['민서','#{학생이름_함께}','민서와'],
+    ['민준','#{학생이름_함께}','민준과'],
+    ['민서','#{학생이름_방향}','민서로'],
+    ['하늘','#{학생이름_방향}','하늘로'],
+    ['민준','#{학생이름_방향}','민준으로']
+  ];
+  for(const [name,placeholder,expected] of cases){
+    data.settings.template_body=placeholder+' 상담 예약을 진행해주세요.';
+    const rendered=server.messageFor(data,{...student,name},tasks);
+    assert.equal(rendered.kakaoOptions.variables[placeholder],expected);
+    assert.equal(rendered.text,expected+' 상담 예약을 진행해주세요.');
+    assert.equal(data.settings.template_body,placeholder+' 상담 예약을 진행해주세요.');
+  }
+  data.settings.template_body='#{학생이름_미지원}';
+  assert.throws(()=>server.messageFor(data,student,tasks),/TEMPLATE_BODY_INVALID/);
+  data.settings.template_body='#{학생이름_주제}';
+  assert.throws(()=>server.messageFor(data,{...student,name:'Alex'},tasks),/STUDENT_NAME_PARTICLE_UNSUPPORTED/);
+});
