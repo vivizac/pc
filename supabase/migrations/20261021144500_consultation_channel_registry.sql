@@ -46,7 +46,7 @@ $$;
 revoke all on function public.olli_consultation_channel_resolve(uuid,text,text) from public,anon,authenticated;
 grant execute on function public.olli_consultation_channel_resolve(uuid,text,text) to service_role;
 
--- Replace only the consultation settings RPC; preserve its current behavior.
+-- Academy-scoped settings RPC (reconstructed from the previous migration).
 -- Disable only usage; preserve current templates, contacts and delivery history.
 create or replace function public.olli_consultation_messages_manage(p_session_token text,p_academy_id uuid,p_action text default 'load',p_data jsonb default '{}'::jsonb)
 returns jsonb language plpgsql security definer set search_path = '' as $$
@@ -65,8 +65,6 @@ declare
 begin
   perform olli_consultation_private.require_owner(p_session_token,p_academy_id);
   if p_action='channel' then
-    -- Channel switching is a distinct operation and always turns sending OFF.
-    -- Only select channels pre-approved for this academy by headquarters.
     if coalesce(p_data->>'channel_id','') !~ '^[0-9a-fA-F-]{36}
     update public.olli_consultation_message_settings
     set enabled=false,revision=revision+1,updated_at=clock_timestamp()
@@ -92,24 +90,8 @@ begin
     if length(v_body)>1000 or length(v_url)>2000 or length(coalesce(p_data->>'channel_id',''))>100 or length(coalesce(p_data->>'template_id',''))>100 then raise exception '설정값이 너무 깁니다.'; end if;
     if v_url<>'' and v_url !~ '^https://([a-z0-9-]+\.)*naver\.com(/|$)|^https://naver\.me/' then raise exception 'HTTPS 네이버 플레이스 또는 네이버 예약 링크를 입력해 주세요.'; end if;
     if v_body ~ '#\{(?!학원명\}|학생명\}|학생이름_주제\}|학생이름_주격\}|학생이름_목적격\}|학생이름_함께\}|학생이름_방향\}|상담구분\}|예약링크\})' then raise exception '지원하지 않는 템플릿 변수입니다.'; end if;
-    if v_enabled and (v_url='' or v_body='' or not exists (select 1 from public.olli_consultation_channels c join public.olli_consultation_channel_assignments a on a.channel_id=c.id and a.academy_id=p_academy_id where c.id=v_setting.selected_channel_id and c.channel_type=v_setting.channel_mode and c.approval_state='approved' and a.approval_state='approved' and (c.channel_type='headquarters' or c.owner_academy_id=p_academy_id)) or btrim(coalesce(p_data->>'template_id',''))='' or coalesce((p_data->>'template_confirmed')::boolean,false)=false) then
+    if v_enabled and (v_url='' or v_body='' or not exists(select 1 from public.olli_consultation_channels c join public.olli_consultation_channel_assignments ca on ca.channel_id=c.id and ca.academy_id=p_academy_id where c.id=v_setting.selected_channel_id and c.channel_type=v_setting.channel_mode and c.approval_state='approved' and ca.approval_state='approved' and (c.channel_type='headquarters' or c.owner_academy_id=p_academy_id)) or btrim(coalesce(p_data->>'template_id',''))='' or coalesce((p_data->>'template_confirmed')::boolean,false)=false) then
       raise exception '예약 링크와 승인된 알림톡 채널·템플릿 정보를 먼저 등록해 주세요.';
-    end if;
-    -- A checked checkbox cannot grant approval: the selected channel must
-    -- have this exact template ID and approved body in the HQ registry.
-    if v_enabled and not exists (
-      select 1 from public.olli_consultation_channel_templates t
-      join public.olli_consultation_channels c on c.id=t.channel_id
-      join public.olli_consultation_channel_assignments a
-        on a.channel_id=c.id and a.academy_id=p_academy_id
-      where c.id=v_setting.selected_channel_id
-        and c.channel_type=v_setting.channel_mode
-        and c.approval_state='approved' and a.approval_state='approved'
-        and t.template_id=btrim(coalesce(p_data->>'template_id',''))
-        and t.template_body=v_body and t.approval_state='approved'
-        and (c.channel_type='headquarters' or c.owner_academy_id=p_academy_id)
-    ) then
-      raise exception '선택된 채널에서 승인받은 공통 알림톡 템플릿이 아닙니다.';
     end if;
     insert into public.olli_consultation_message_settings(academy_id,enabled,booking_url,channel_id,template_id,template_body,template_confirmed,started_at,template_mode,template_variants)
     values(p_academy_id,v_enabled,v_url,coalesce(v_setting.channel_id,''),btrim(coalesce(p_data->>'template_id','')),v_body,coalesce((p_data->>'template_confirmed')::boolean,false),case when v_enabled then clock_timestamp() else null end,v_mode,v_variants)
@@ -125,16 +107,13 @@ begin
   elsif p_action <> 'load' then raise exception '지원하지 않는 요청입니다.';
   end if;
   select * into v_setting from public.olli_consultation_message_settings where academy_id=p_academy_id;
-  return jsonb_build_object('ok',true,'settings',to_jsonb(v_setting),
-    'channels',coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'id',c.id,'name',c.channel_name,'mode',c.channel_type,
-        'approval',c.approval_state) order by c.channel_name)
+  return jsonb_build_object('ok',true,'settings',to_jsonb(v_setting),'channels',coalesce((
+      select jsonb_agg(jsonb_build_object('id',c.id,'name',c.channel_name,'mode',c.channel_type) order by c.channel_name)
       from public.olli_consultation_channels c
       join public.olli_consultation_channel_assignments ca
-      on ca.channel_id=c.id and ca.academy_id=p_academy_id
-      where ca.approval_state='approved' and c.approval_state='approved'
-      and (c.channel_type='headquarters' or c.owner_academy_id=p_academy_id)
+        on ca.channel_id=c.id and ca.academy_id=p_academy_id
+      where c.approval_state='approved' and ca.approval_state='approved'
+        and (c.channel_type='headquarters' or c.owner_academy_id=p_academy_id)
     ),'[]'::jsonb),
     'students',coalesce((
     select jsonb_agg(jsonb_build_object('id',s.id,'name',s.name,'division',s.division,'phone',c.phone,'enabled',c.enabled,'confirmed',c.confirmed) order by s.name)
@@ -149,7 +128,7 @@ begin
 end;
 $$;
  then
-      raise exception '등록된 카카오채널을 선택해 주세요.';
+      raise exception '카카오채널을 선택해 주세요.';
     end if;
     if not exists (
       select 1 from public.olli_consultation_channels c
@@ -157,16 +136,16 @@ $$;
         on ca.channel_id=c.id and ca.academy_id=p_academy_id
       where c.id=(p_data->>'channel_id')::uuid
         and c.channel_type=p_data->>'channel_mode'
-        and c.approval_state='approved' and ca.approval_state='approved'
+        and c.approval_state='approved'
+        and ca.approval_state='approved'
         and (c.channel_type='headquarters' or c.owner_academy_id=p_academy_id)
     ) then
-      raise exception '해당 학원에서 승인된 채널이 아닙니다.';
+      raise exception '이 학원에 승인된 채널이 아닙니다.';
     end if;
     update public.olli_consultation_message_settings
     set selected_channel_id=(p_data->>'channel_id')::uuid,
         channel_mode=p_data->>'channel_mode',
-        enabled=false,
-        template_confirmed=false,
+        enabled=false,template_confirmed=false,
         revision=revision+1,updated_at=clock_timestamp()
     where academy_id=p_academy_id;
   elsif p_action='disable' then
