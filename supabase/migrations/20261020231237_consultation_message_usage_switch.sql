@@ -30,7 +30,7 @@ begin
       if (v_variant ? 'use_common') and jsonb_typeof(v_variant->'use_common')<>'boolean' then raise exception '공통 안내문 사용 설정을 확인해 주세요.'; end if;
       v_custom := coalesce((v_variant->>'use_common')::boolean,true)=false;
       if length(coalesce(v_variant->>'template_id',''))>100 or length(coalesce(v_variant->>'template_body',''))>1000 then raise exception '개별 안내문 또는 템플릿 ID가 너무 깁니다.'; end if;
-      if coalesce(v_variant->>'template_body','') ~ '#\{(?!학원명\}|학생명\}|상담구분\}|예약링크\})' then raise exception '지원하지 않는 개별 안내문 변수입니다.'; end if;
+      if coalesce(v_variant->>'template_body','') ~ '#\{(?!학원명\}|학생명\}|학생이름_주제\}|학생이름_주격\}|학생이름_목적격\}|학생이름_함께\}|학생이름_방향\}|상담구분\}|예약링크\})' then raise exception '지원하지 않는 개별 안내문 변수입니다.'; end if;
       if v_enabled and v_mode='by_type' and v_custom and (btrim(coalesce(v_variant->>'template_id',''))='' or btrim(coalesce(v_variant->>'template_body',''))='' or coalesce((v_variant->>'template_confirmed')::boolean,false)=false) then
         raise exception '개별 안내문의 승인된 템플릿 ID·문구·승인 확인이 필요합니다: %',v_key;
       end if;
@@ -39,7 +39,7 @@ begin
     v_body := btrim(coalesce(p_data->>'template_body',''));
     if length(v_body)>1000 or length(v_url)>2000 or length(coalesce(p_data->>'channel_id',''))>100 or length(coalesce(p_data->>'template_id',''))>100 then raise exception '설정값이 너무 깁니다.'; end if;
     if v_url<>'' and v_url !~ '^https://([a-z0-9-]+\.)*naver\.com(/|$)|^https://naver\.me/' then raise exception 'HTTPS 네이버 플레이스 또는 네이버 예약 링크를 입력해 주세요.'; end if;
-    if v_body ~ '#\{(?!학원명\}|학생명\}|상담구분\}|예약링크\})' then raise exception '지원하지 않는 템플릿 변수입니다.'; end if;
+    if v_body ~ '#\{(?!학원명\}|학생명\}|학생이름_주제\}|학생이름_주격\}|학생이름_목적격\}|학생이름_함께\}|학생이름_방향\}|상담구분\}|예약링크\})' then raise exception '지원하지 않는 템플릿 변수입니다.'; end if;
     if v_enabled and (v_url='' or v_body='' or btrim(coalesce(p_data->>'channel_id',''))='' or btrim(coalesce(p_data->>'template_id',''))='' or coalesce((p_data->>'template_confirmed')::boolean,false)=false) then
       raise exception '예약 링크와 승인된 알림톡 채널·템플릿 정보를 먼저 등록해 주세요.';
     end if;
