@@ -84,9 +84,9 @@ function harness(mode='accept') {
     }
     const args=JSON.parse(options.body);const rpc=url.split('/').pop();
     if(rpc.endsWith('_snapshot')) return Response.json([data]);
-    if(rpc.endsWith('_channel_resolve')) return Response.json([{
-      pf_id:'KA01PF',channel_revision:1
-    }]);
+    if(rpc.endsWith('_channel_resolve')) return Response.json(
+      data.settings.academy_id === 'academy' ? [{pf_id:'KA01PF',channel_revision:1}] : []
+    );
     if(rpc.endsWith('_reserve')) { if(row)return Response.json(null);row={status:'reserved',args};return Response.json('delivery'); }
     if(rpc.endsWith('_finish')) { row={...row,status:args.p_status,messageId:args.p_message_id};return Response.json(true); }
     throw Error('unexpected RPC '+rpc);
