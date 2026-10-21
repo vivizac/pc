@@ -81,7 +81,7 @@ function messageFor(snapshot, student, tasks) {
     if (body.includes(token)) variables[token] = nameWithParticle(student.name, kind);
   }
   const allowed = new Set(Object.keys(variables));
-  if (!body || [...body.matchAll(/#\\{[^}]+\\}/g)].some(([token]) => !allowed.has(token))) throw problem('TEMPLATE_BODY_INVALID', 400);
+  if (!body || [...body.matchAll(/#\{[^}]+\}/g)].some(([token]) => !allowed.has(token))) throw problem('TEMPLATE_BODY_INVALID', 400);
   const text = body.replace(/#\{[^}]+\}/g, (key) => String(variables[key] || ''));
   if (text.length > 1000) throw problem('TEMPLATE_TOO_LONG', 400);
   return { to: student.phone, type: 'ATA', text, kakaoOptions: {
