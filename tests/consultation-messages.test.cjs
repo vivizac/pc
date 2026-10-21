@@ -236,3 +236,34 @@ test('revocation between channel check and reservation prevents provider send',a
   assert.equal(providerCalls,0);
   assert.equal(counts.skipped,1);
 });
+
+test('cross-academy channel denial prevents reservation and Solapi calls',async()=>{
+  const data=snapshot();let reserves=0,sends=0;
+  const service=server.createService({env,now:()=>now,fetchImpl:async(url,options)=>{
+    if(url.startsWith('https://api.solapi.com')){sends++;throw Error('unauthorized send');}
+    const rpc=url.split('/').pop();
+    if(rpc.endsWith('_snapshot'))return Response.json([data]);
+    if(rpc.endsWith('_channel_resolve'))return Response.json([]);
+    if(rpc.endsWith('_reserve')){reserves++;return Response.json('unexpected');}
+    throw Error('unexpected RPC '+rpc);
+  }});
+  const counts=await service.run();
+  assert.equal(counts.skipped,1);
+  assert.equal(reserves,0);
+  assert.equal(sends,0);
+});
+test('changed channel revision after reservation prevents Solapi send',async()=>{
+  const data=snapshot();let resolves=0,sends=0;
+  const service=server.createService({env,now:()=>now,fetchImpl:async(url)=>{
+    if(url.startsWith('https://api.solapi.com')){sends++;throw Error('send blocked');}
+    const rpc=url.split('/').pop();
+    if(rpc.endsWith('_snapshot'))return Response.json([data]);
+    if(rpc.endsWith('_channel_resolve')){resolves++;return Response.json([{pf_id:'KA01PF',channel_revision:resolves}]);}
+    if(rpc.endsWith('_reserve'))return Response.json('reserved-id');
+    throw Error('unexpected RPC '+rpc);
+  }});
+  const counts=await service.run();
+  assert.equal(resolves,2);
+  assert.equal(sends,0);
+  assert.equal(counts.skipped,1);
+});
