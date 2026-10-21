@@ -19,7 +19,7 @@ function snapshot() { return {
   students:[{id:'student',name:'테스트',division:'kinder',type:'kinder',enrolled_at:'2025-10-31',updated_at:'2026-10-01T00:00:00Z',phone:'01012345678',contact_revision:1}],pending:[]
 }; }
 const now = new Date('2026-10-20T15:30:00Z');
-const env = { SUPABASE_SECRET_KEY:'test-db-key', OLLI_CONSULTATION_SOLAPI_CREDENTIALS:JSON.stringify({academy:{apiKey:'test-key',apiSecret:'test-secret'}}) };
+const env = { SUPABASE_SECRET_KEY:'test-db-key', OLLI_CONSULTATION_SOLAPI_CREDENTIALS:JSON.stringify({apiKey:'test-key',apiSecret:'test-secret'}) };
 
 // This baseline is the known main SHA captured before the change; compares behavior, not source text.
 test('extracted calendar policy matches existing policy across 1152 cases',()=>{
@@ -59,6 +59,10 @@ test('message includes Naver link and approved variables, disables SMS fallback'
   for(const bad of ['javascript:alert(1)','https://naver.com.evil.test/x','https://naver.com@evil.test/x','https://evil.test/x']) assert.throws(()=>server.messageFor({...data,settings:{...data.settings,booking_url:bad}},student,[]));
 });
 
+test('one headquarters API credential serves all academies but does not authorize their channels',()=>{
+  assert.deepEqual(server.centralCredentials(env),{apiKey:'test-key',apiSecret:'test-secret'});
+  assert.equal(server.centralCredentials({OLLI_CONSULTATION_SOLAPI_CREDENTIALS:JSON.stringify({academy:{apiKey:'x',apiSecret:'y'}})}),null);
+});
 test('credentials isolated by academy; cron fails closed without a secret',()=>{
   assert.equal(server.credentials('different',env),null);
   assert.equal(server.cronAuthorized('Bearer undefined',{}),false);
@@ -80,6 +84,9 @@ function harness(mode='accept') {
     }
     const args=JSON.parse(options.body);const rpc=url.split('/').pop();
     if(rpc.endsWith('_snapshot')) return Response.json([data]);
+    if(rpc.endsWith('_channel_resolve')) return Response.json([{
+      pf_id:'KA01PF',channel_revision:1
+    }]);
     if(rpc.endsWith('_reserve')) { if(row)return Response.json(null);row={status:'reserved',args};return Response.json('delivery'); }
     if(rpc.endsWith('_finish')) { row={...row,status:args.p_status,messageId:args.p_message_id};return Response.json(true); }
     throw Error('unexpected RPC '+rpc);
@@ -208,4 +215,24 @@ test('consultation Alimtalk never includes school or kindergarten names',()=>{
   assert.equal(Object.hasOwn(result.kakaoOptions.variables,'#{학교명}'),false);
   assert.equal(Object.hasOwn(result.kakaoOptions.variables,'#{유치원명}'),false);
   assert.equal(Object.hasOwn(result.kakaoOptions.variables,'#{학생이름_주제}'),true);
+});
+
+test('revocation between channel check and reservation prevents provider send',async()=>{
+  const data=snapshot();let queries=0,providerCalls=0,reserved=false;
+  const service=server.createService({env,now:()=>now,fetchImpl:async(url,options)=>{
+    if(url.startsWith('https://api.solapi.com')){providerCalls++;throw Error('Provider must never be called');}
+    const rpc=url.split('/').pop();
+    if(rpc.endsWith('_snapshot'))return Response.json([data]);
+    if(rpc.endsWith('_channel_resolve')){
+      queries++;
+      return Response.json(queries===1?[{pf_id:'KA01PF',channel_revision:1}]:[]);
+    }
+    if(rpc.endsWith('_reserve')){reserved=true;return Response.json('reserved-id');}
+    throw Error('Unexpected RPC '+rpc);
+  }});
+  const counts=await service.run();
+  assert.equal(reserved,true);
+  assert.equal(queries,2);
+  assert.equal(providerCalls,0);
+  assert.equal(counts.skipped,1);
 });
