@@ -141,7 +141,17 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
     }
   }
   async function send(snapshot, student, tasks, credential) {
-    const message = messageFor(snapshot, student, tasks);
+    const selected = selectTemplate(snapshot.settings, student, tasks);
+    const matches = await rpc('olli_consultation_channel_resolve', {
+      p_academy_id: snapshot.settings.academy_id,
+      p_template_id: selected.template_id,
+      p_template_body: selected.template_body
+    });
+    if (!Array.isArray(matches) || matches.length !== 1 || !matches[0].pf_id) return 'skipped';
+    const message = messageFor({
+      ...snapshot,
+      settings: { ...snapshot.settings, channel_id: matches[0].pf_id }
+    }, student, tasks);
     // Month grouping: one notice per student per consultation due month even when rules overlap.
     const dueMonth = tasks[tasks.length - 1].dueMonth;
     const id = await rpc('olli_consultation_messages_reserve', {
@@ -174,7 +184,9 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
     const calendarNow = koreaDate(now());
     const started = Date.now();
     for (const snapshot of snapshots) {
-      const credential = credentials(snapshot.settings.academy_id, env);
+      // A shared Solapi account serves every academy, but only DB-approved
+      // channel assignments can produce new outgoing messages.
+      const credential = centralCredentials(env);
       if (!credential) { counts.configurationMissing++; continue; }
       try { await reconcile(snapshot, credential); } catch { counts.errors++; }
       if (!dispatch || !snapshot.settings.enabled) continue;
