@@ -115,6 +115,17 @@ begin
         and (c.channel_type='headquarters' or c.owner_academy_id=p_academy_id)) or btrim(coalesce(p_data->>'template_id',''))='' or coalesce((p_data->>'template_confirmed')::boolean,false)=false) then
       raise exception '예약 링크와 승인된 알림톡 채널·템플릿 정보를 먼저 등록해 주세요.';
     end if;
+    if v_enabled and not exists (
+      select 1 from public.olli_consultation_channel_templates t
+      join public.olli_consultation_channels c on c.id=t.channel_id
+      join public.olli_consultation_channel_assignments a
+        on a.channel_id=c.id and a.academy_id=p_academy_id
+      where c.id=v_setting.selected_channel_id and c.channel_type=v_setting.channel_mode
+        and c.approval_state='approved' and a.approval_state='approved'
+        and t.template_id=btrim(coalesce(p_data->>'template_id',''))
+        and t.template_body=v_body and t.approval_state='approved'
+        and (c.channel_type='headquarters' or c.owner_academy_id=p_academy_id)
+    ) then raise exception '해당 채널에서 승인받은 안내문이 아닙니다.'; end if;
     insert into public.olli_consultation_message_settings(academy_id,enabled,booking_url,channel_id,template_id,template_body,template_confirmed,started_at,template_mode,template_variants)
     values(p_academy_id,v_enabled,v_url,coalesce(v_setting.channel_id,''),btrim(coalesce(p_data->>'template_id','')),v_body,coalesce((p_data->>'template_confirmed')::boolean,false),case when v_enabled then clock_timestamp() else null end,v_mode,v_variants)
     on conflict(academy_id) do update set template_mode=excluded.template_mode,template_variants=excluded.template_variants,start_month=case when public.olli_consultation_message_settings.started_at is null and excluded.enabled then to_char(now() at time zone 'Asia/Seoul','YYYY-MM') else public.olli_consultation_message_settings.start_month end,started_at=coalesce(public.olli_consultation_message_settings.started_at,excluded.started_at),enabled=excluded.enabled,booking_url=excluded.booking_url,channel_id=public.olli_consultation_message_settings.channel_id,template_id=excluded.template_id,template_body=excluded.template_body,template_confirmed=excluded.template_confirmed,revision=public.olli_consultation_message_settings.revision+1,updated_at=clock_timestamp();
