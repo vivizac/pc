@@ -161,6 +161,18 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
       p_rules: snapshot.rules ?? null, p_progress: snapshot.progress ?? null
     });
     if (!id) return 'skipped';
+    // Check again after obtaining the deduplicated reservation. Never send if
+    // headquarters revoked this academy's channel or template meanwhile.
+    // An interrupted reservation remains reserved for manual reconciliation,
+    // deliberately never retried automatically.
+    const latest = await rpc('olli_consultation_channel_resolve', {
+      p_academy_id: snapshot.settings.academy_id,
+      p_template_id: selected.template_id,
+      p_template_body: selected.template_body
+    });
+    if (!Array.isArray(latest) || latest.length !== 1 ||
+        latest[0].pf_id !== message.kakaoOptions.pfId ||
+        latest[0].channel_revision !== matches[0].channel_revision) return 'skipped';
     let result;
     try {
       result = await provider(credential, '/messages/v4/send-many/detail', { messages: [message], showMessageList: true, allowDuplicates: false, strict: true });
