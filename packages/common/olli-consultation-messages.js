@@ -78,7 +78,7 @@
           <label>안내문 사용 방식<select name="template_mode" aria-label="안내문 사용 방식"><option value="common" ${settings.template_mode !== 'by_type' ? 'selected' : ''}>모든 상담에 공통 안내문 사용</option><option value="by_type" ${settings.template_mode === 'by_type' ? 'selected' : ''}>초등부·유치부 / 상담 시기별로 설정</option></select></label>
           <label>공통 알림톡 템플릿 ID<input name="template_id" value="${escape(settings.template_id)}" placeholder="솔라피에서 승인된 템플릿 ID" maxlength="100"></label>
           <label>공통 안내문<textarea name="template_body" rows="8" maxlength="1000">${escape(settings.template_body || DEFAULT_BODY)}</textarea></label>
-          <p class="ocm-muted">변수: #{학원명}, #{학생명}, #{상담구분}, #{예약링크}<br>솔라피 템플릿에도 같은 문구와 ‘상담 예약하기’ 웹 링크 버튼을 등록해 주세요. 버튼 주소는 #{예약링크}로 설정합니다.</p>
+          <p class="ocm-muted">변수: #{학원명}, #{학생명}, #{상담구분}, #{예약링크}, #{학생이름_주제}, #{학생이름_주격}, #{학생이름_목적격}, #{학생이름_함께}, #{학생이름_방향}<br>솔라피 템플릿에도 같은 문구와 ‘상담 예약하기’ 웹 링크 버튼을 등록해 주세요. 버튼 주소는 #{예약링크}로 설정합니다.</p>
           <label class="ocm-check"><input type="checkbox" name="template_confirmed" ${settings.template_confirmed ? 'checked' : ''}>채널·템플릿 ID와 문구가 승인된 내용과 일치함을 확인했습니다.</label>
 
           <div data-template-variants ${settings.template_mode !== 'by_type' ? 'hidden' : ''}>
