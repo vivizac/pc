@@ -129,8 +129,21 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
         'Content-Type': 'application/json'
       }, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(12000), redirect: 'error'
     });
+    // Read the response once. Non-JSON denial pages can originate upstream of the API.
+    const contentType=String(response.headers?.get?.('content-type')||'').toLowerCase();
     let data;
-    try { data = await response.json(); } catch { throw problem('PROVIDER_RESPONSE_UNKNOWN', 502); }
+    try { data = await response.json(); }
+    catch {
+      if (!response.ok) {
+        const err=problem('PROVIDER_REJECTED',502);
+        err.providerCode='HTTP_'+response.status+'_NON_JSON';
+        err.responseKind=contentType.includes('text/html')?'HTML':contentType.includes('text/plain')?'TEXT':'OTHER';
+        err.authCategory='Unclassified403';
+        err.knownFailure=response.status>=400&&response.status<500&&response.status!==408;
+        throw err;
+      }
+      throw problem('PROVIDER_RESPONSE_UNKNOWN',502);
+    }
     if (!response.ok) {
       // Only an explicit API rejection is a known failure; gateway/5xx/timeouts are ambiguous.
       const err = problem(response.status >= 500 || response.status === 408 ? 'PROVIDER_RESULT_UNKNOWN' : 'PROVIDER_REJECTED', 502);
@@ -141,6 +154,7 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
       const safeCode = typeof rawCode === 'number' || typeof rawCode === 'string' ? String(rawCode) : '';
       err.providerCode = 'HTTP_' + response.status + (safeCode && /^[A-Za-z0-9_-]{1,30}$/.test(safeCode) ? '_' + safeCode : '');
       err.authCategory = response.status === 403 ? (safeSolapiAuthCategory(data) || 'Unclassified403') : null;
+      err.responseKind=contentType.includes('application/json')||contentType.includes('+json')?'JSON':contentType.includes('text/html')?'HTML':contentType.includes('text/plain')?'TEXT':'OTHER';
       err.knownFailure = response.status >= 400 && response.status < 500 && response.status !== 408;
       throw err;
     }
@@ -279,7 +293,7 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
       await provider(credential,'/messages/v4/list?limit=1');
       return {authenticated:true,diagnostics};
     }catch(error){
-      return {authenticated:false,code:error.providerCode||error.code||'PROVIDER_CHECK_FAILED',authCategory:error.authCategory||null,diagnostics};
+      return {authenticated:false,code:error.providerCode||error.code||'PROVIDER_CHECK_FAILED',authCategory:error.authCategory||null,responseKind:error.responseKind||'UNKNOWN',diagnostics};
     }
   }
   async function run({ academyId = null, studentId = null, dispatch = true } = {}) {
