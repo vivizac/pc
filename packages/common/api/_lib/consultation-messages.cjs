@@ -116,6 +116,10 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
     if (!response.ok) {
       // Only an explicit API rejection is a known failure; gateway/5xx/timeouts are ambiguous.
       const err = problem(response.status >= 500 || response.status === 408 ? 'PROVIDER_RESULT_UNKNOWN' : 'PROVIDER_REJECTED', 502);
+      // Store only HTTP status and provider's short machine error code; never log response text, phone or credentials.
+      const rawCode = data && typeof data === 'object' ? (data.errorCode ?? data.code ?? data.statusCode ?? data.error?.code) : null;
+      const safeCode = typeof rawCode === 'number' || typeof rawCode === 'string' ? String(rawCode) : '';
+      err.providerCode = 'HTTP_' + response.status + (safeCode && /^[A-Za-z0-9_-]{1,30}$/.test(safeCode) ? '_' + safeCode : '');
       err.knownFailure = response.status >= 400 && response.status < 500 && response.status !== 408;
       throw err;
     }
@@ -233,7 +237,7 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
           status=code==='4000'?'delivered':/^[345]\\d{3}$/.test(code)?'failed':'submitted';
         }
       }
-    }catch(error){status=error.knownFailure?'failed':'unknown';code=error.knownFailure?'PROVIDER_REJECTED':'CHECK_PROVIDER_CONSOLE';}
+    }catch(error){status=error.knownFailure?'failed':'unknown';code=error.knownFailure?(error.providerCode||'PROVIDER_REJECTED'):'CHECK_PROVIDER_CONSOLE';}
     await fetchImpl(url+'?id=eq.'+encodeURIComponent(entry.id),{
       method:'PATCH',headers:{...headers,Prefer:'return=minimal'},
       body:JSON.stringify({status,provider_message_id:messageId,provider_code:code}),
