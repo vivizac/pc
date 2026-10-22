@@ -117,7 +117,9 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
       // Only an explicit API rejection is a known failure; gateway/5xx/timeouts are ambiguous.
       const err = problem(response.status >= 500 || response.status === 408 ? 'PROVIDER_RESULT_UNKNOWN' : 'PROVIDER_REJECTED', 502);
       // Store only HTTP status and provider's short machine error code; never log response text, phone or credentials.
-      const rawCode = data && typeof data === 'object' ? (data.errorCode ?? data.code ?? data.statusCode ?? data.error?.code) : null;
+      const rawCode = data && typeof data === 'object'
+        ? (data.errorCode ?? data.error_code ?? data.code ?? data.statusCode ?? data.error?.code ?? data.error?.errorCode)
+        : null;
       const safeCode = typeof rawCode === 'number' || typeof rawCode === 'string' ? String(rawCode) : '';
       err.providerCode = 'HTTP_' + response.status + (safeCode && /^[A-Za-z0-9_-]{1,30}$/.test(safeCode) ? '_' + safeCode : '');
       err.knownFailure = response.status >= 400 && response.status < 500 && response.status !== 408;
@@ -247,12 +249,18 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
   async function checkProviderAuth() {
     const credential=centralCredentials(env);
     if(!credential)throw problem('PROVIDER_NOT_CONFIGURED',503);
+    const diagnostics={
+      apiKeySurroundingWhitespace: credential.apiKey !== credential.apiKey.trim(),
+      apiSecretSurroundingWhitespace: credential.apiSecret !== credential.apiSecret.trim(),
+      apiKeyContainsQuotationMarks: credential.apiKey.includes('"') || credential.apiKey.includes("'"),
+      apiSecretContainsQuotationMarks: credential.apiSecret.includes('"') || credential.apiSecret.includes("'")
+    };
     try{
       // Read-only authenticated request: never submits any message.
       await provider(credential,'/messages/v4/list?limit=1');
-      return {authenticated:true};
+      return {authenticated:true,diagnostics};
     }catch(error){
-      return {authenticated:false,code:error.providerCode||error.code||'PROVIDER_CHECK_FAILED'};
+      return {authenticated:false,code:error.providerCode||error.code||'PROVIDER_CHECK_FAILED',diagnostics};
     }
   }
   async function run({ academyId = null, studentId = null, dispatch = true } = {}) {
