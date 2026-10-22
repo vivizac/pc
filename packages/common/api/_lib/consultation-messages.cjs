@@ -310,6 +310,18 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
       const status=Number(rawStatus);
       const name=typeof error?.name==='string'&&/^[A-Za-z]{1,40}$/.test(error.name)?error.name:'SDK_ERROR';
       sdk.code=Number.isInteger(status)&&status>=100&&status<=599?'HTTP_'+status+'_'+name:name;
+      const responseData=error?.response?.data??error?.response?.body??error?.data;
+      const candidates=[
+        error?.code,error?.errorCode,error?.response?.statusText,
+        responseData?.errorCode,responseData?.error_code,responseData?.code,
+        responseData?.error?.code,responseData?.error?.errorCode
+      ];
+      // Only known authentication categories are returned; never print SDK messages or response bodies.
+      sdk.category=candidates.map(value=>safeSolapiAuthCategory(
+        typeof value==='string'?value:{code:value}
+      )).find(Boolean)||'Unclassified';
+      sdk.status=Number.isInteger(status)&&status>=100&&status<=599?status:null;
+      sdk.responseKind=typeof responseData==='object'&&responseData!==null?'STRUCTURED':typeof responseData==='string'?'TEXT':'UNKNOWN';
     }
     return {...direct,diagnostics,sdk};
   }
