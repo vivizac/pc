@@ -1,0 +1,8 @@
+{
+  "name": "olli-pc",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "solapi": "6.0.1"
+  }
+}
