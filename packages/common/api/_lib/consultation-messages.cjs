@@ -190,6 +190,56 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
     await finish(id, state, accepted.messageId, code);
     return state;
   }
+  async function testSend(academyId, studentId) {
+    if (!/^[0-9a-f-]{36}$/i.test(String(studentId||''))) throw problem('STUDENT_REQUIRED',400);
+    const snapshots = await rpc('olli_consultation_messages_snapshot', { p_academy_id: academyId });
+    const snapshot = snapshots.find(x=>x.settings?.academy_id===academyId);
+    if (!snapshot) throw problem('ACADEMY_NOT_CONFIGURED',409);
+    if (snapshot.settings.enabled) throw problem('TURN_OFF_AUTOMATIC_SENDING_FIRST',409);
+    const student=(snapshot.students||[]).find(x=>x.id===studentId);
+    if (!student || !student.enabled || !student.confirmed || !student.phone) throw problem('TEST_CONTACT_NOT_READY',409);
+    const credential=centralCredentials(env);
+    if (!credential) throw problem('PROVIDER_NOT_CONFIGURED',503);
+    const task={ruleKey:'after_1',label:'1개월',dueMonth:'2099-01',occurrenceMonths:1};
+    const template=selectTemplate(snapshot.settings,student,[task]);
+    const matches=await rpc('olli_consultation_channel_resolve',{
+      p_academy_id:academyId,p_template_id:template.template_id,p_template_body:template.template_body
+    });
+    if(!Array.isArray(matches)||matches.length!==1||!matches[0].pf_id)throw problem('CHANNEL_TEMPLATE_NOT_APPROVED',409);
+    const message=messageFor({...snapshot,settings:{...snapshot.settings,channel_id:matches[0].pf_id}},student,[task]);
+    // A unique reservation is inserted BEFORE the provider request, so retries
+    // and double clicks cannot submit a second Kakao message.
+    const key=env.SUPABASE_SECRET_KEY||env.SUPABASE_SERVICE_ROLE_KEY;
+    if(!key)throw problem('SUPABASE_SERVER_KEY_MISSING',503);
+    const url=SUPABASE_URL+'/rest/v1/olli_consultation_test_sends';
+    const headers={apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json',Prefer:'return=representation'};
+    const reservation=await fetchImpl(url,{method:'POST',headers,body:JSON.stringify({academy_id:academyId,student_id:studentId,template_id:template.template_id,status:'reserved'}),signal:AbortSignal.timeout(12000)});
+    if(reservation.status===409)return {status:'duplicate'};
+    if(!reservation.ok)throw problem('TEST_RESERVATION_FAILED',503);
+    const [entry]=await reservation.json();
+    const latest=await rpc('olli_consultation_channel_resolve',{p_academy_id:academyId,p_template_id:template.template_id,p_template_body:template.template_body});
+    if(!Array.isArray(latest)||latest.length!==1||latest[0].pf_id!==matches[0].pf_id||latest[0].channel_revision!==matches[0].channel_revision)
+      throw problem('CHANNEL_CHANGED_AFTER_RESERVATION',409);
+    let status='unknown',messageId=null,code='CHECK_PROVIDER_CONSOLE';
+    try{
+      const result=await provider(credential,'/messages/v4/send-many/detail',{messages:[message],showMessageList:true,allowDuplicates:false,strict:true});
+      const failure=result.failedMessageList?.[0];
+      if(failure){status='failed';messageId=failure.messageId||null;code=String(failure.statusCode||'REGISTRATION_FAILED');}
+      else{
+        const accepted=Array.isArray(result.messageList)?result.messageList[0]:Object.values(result.messageList||{})[0];
+        if(accepted?.messageId){
+          messageId=accepted.messageId;code=String(accepted.statusCode||'');
+          status=code==='4000'?'delivered':/^[345]\\d{3}$/.test(code)?'failed':'submitted';
+        }
+      }
+    }catch(error){status=error.knownFailure?'failed':'unknown';code=error.knownFailure?'PROVIDER_REJECTED':'CHECK_PROVIDER_CONSOLE';}
+    await fetchImpl(url+'?id=eq.'+encodeURIComponent(entry.id),{
+      method:'PATCH',headers:{...headers,Prefer:'return=minimal'},
+      body:JSON.stringify({status,provider_message_id:messageId,provider_code:code}),
+      signal:AbortSignal.timeout(12000)
+    }).then(response=>{if(!response.ok)throw problem('TEST_LOG_UPDATE_FAILED',503);});
+    return {status};
+  }
   async function run({ academyId = null, studentId = null, dispatch = true } = {}) {
     const snapshots = await rpc('olli_consultation_messages_snapshot', { p_academy_id: academyId });
     const counts = { submitted: 0, delivered: 0, failed: 0, unknown: 0, skipped: 0, configurationMissing: 0, deferred: 0, errors: 0 };
@@ -218,7 +268,7 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
     }
     return counts;
   }
-  return { rpc, run };
+  return { rpc, run, testSend };
 }
 
 /**
