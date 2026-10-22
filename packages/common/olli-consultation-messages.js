@@ -105,7 +105,7 @@
           <strong>${escape(s.name)} <small>${s.division === 'kinder' ? '유치부' : '초등부'}</small></strong>
           <p>${escape(s.phone || '학생정보에서 보호자 연락처를 등록해 주세요.')}</p>
           <p class="ocm-muted">${s.enabled && s.confirmed ? '확인된 보호자 번호 · 상담 안내 대상' : '보호자 번호 확인 또는 상담 안내 대상 설정이 필요합니다.'}</p>
-          <button type="button" data-send="${escape(s.id)}" ${!settings.enabled ? 'disabled' : ''}>예약 안내 보내기</button> <button type="button" data-test-send="${escape(s.id)}" ${settings.enabled || !s.enabled || !s.confirmed ? "disabled" : ""}>시험 발송 (1회)</button>
+          <button type="button" data-send="${escape(s.id)}" ${!settings.enabled ? 'disabled' : ''}>예약 안내 보내기</button> <button type="button" data-test-send="${escape(s.id)}" ${settings.enabled || !s.enabled || !s.confirmed ? "disabled" : ""}>시험 발송</button>
         </div>`).join('') || '<p class="ocm-muted">현재 재원생이 없습니다.</p>'}</div>
       </section>
       <section data-panel="history" hidden>
@@ -230,12 +230,12 @@
     const contact=state.payload.students.find(s=>s.id===button.dataset.testSend);
     if(!contact?.confirmed||!contact.enabled)return notice('확인된 보호자 연락처를 먼저 저장해 주세요.',true);
     if(state.payload.settings?.enabled)return notice('시험 발송 전에 자동 발송을 꺼 주세요.',true);
-    if(!confirm(contact.name+' 학생의 등록된 보호자 번호로 알림톡을 1건 시험 발송할까요?\\n\\n실제 문자 요금이 발생할 수 있습니다. 같은 학생과 템플릿의 시험 발송은 1회만 가능합니다.'))return;
+    if(!confirm(contact.name+' 학생의 등록된 보호자 번호로 알림톡을 1건 시험 발송할까요?\\n\\n실제 문자 요금이 발생할 수 있습니다. 확실한 API 거절일 때만 다시 시도할 수 있습니다.'))return;
     state.busy=true;button.disabled=true;
     try {
       const result=await server('test-send',button.dataset.testSend,state);
       const status=result.result?.status;
-      notice(status==='duplicate'?'이미 이 학생에게 같은 템플릿 시험 발송을 요청했습니다. 솔라피에서 결과를 확인해 주세요.':status==='failed'?'발송이 거절되었습니다. 솔라피 발송 내역을 확인해 주세요.':status==='unknown'?'발송 결과가 불확실합니다. 재발송 전에 솔라피에서 확인해 주세요.':'시험 알림톡이 접수되었습니다. 실제 수신 여부를 확인해 주세요.',status==='failed'||status==='unknown');
+      notice(status==='duplicate'?'기존 요청이 접수됐거나 결과가 불확실하여 재발송을 차단했습니다. 솔라피에서 확인해 주세요.':status==='failed'?'발송이 거절되었습니다. 솔라피 발송 내역을 확인해 주세요.':status==='unknown'?'발송 결과가 불확실합니다. 재발송 전에 솔라피에서 확인해 주세요.':'시험 알림톡이 접수되었습니다. 실제 수신 여부를 확인해 주세요.',status==='failed'||status==='unknown');
     }catch(error){notice(error.message,true);}
     finally{state.busy=false;button.disabled=false;}
   }

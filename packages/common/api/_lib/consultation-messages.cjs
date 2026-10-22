@@ -218,10 +218,9 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
     if(!key)throw problem('SUPABASE_SERVER_KEY_MISSING',503);
     const url=SUPABASE_URL+'/rest/v1/olli_consultation_test_sends';
     const headers={apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json',Prefer:'return=representation'};
-    const reservation=await fetchImpl(url,{method:'POST',headers,body:JSON.stringify({academy_id:academyId,student_id:studentId,template_id:template.template_id,status:'reserved'}),signal:AbortSignal.timeout(12000)});
-    if(reservation.status===409)return {status:'duplicate'};
-    if(!reservation.ok)throw problem('TEST_RESERVATION_FAILED',503);
-    const [entry]=await reservation.json();
+    const reservationId=await rpc('olli_consultation_test_reserve',{p_academy_id:academyId,p_student_id:studentId,p_template_id:template.template_id});
+    if(!reservationId)return {status:'duplicate'};
+    const entry={id:reservationId};
     const latest=await rpc('olli_consultation_channel_resolve_test',{p_academy_id:academyId,p_template_id:template.template_id,p_template_body:template.template_body});
     if(!Array.isArray(latest)||latest.length!==1||latest[0].pf_id!==matches[0].pf_id||latest[0].channel_revision!==matches[0].channel_revision)
       throw problem('CHANNEL_CHANGED_AFTER_RESERVATION',409);
