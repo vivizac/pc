@@ -69,7 +69,9 @@ function nameWithParticle(name, pair) {
     nominative: jong ? '이' : '가',
     object: jong ? '을' : '를',
     with: jong ? '과' : '와',
-    direction: !jong || jong === 8 ? '로' : '으로'
+    direction: !jong || jong === 8 ? '로' : '으로',
+    // Natural Korean name form: 민기의 / 지안이의.
+    possessive: jong ? '이의' : '의'
   };
   return value + suffixes[pair];
 }
@@ -101,7 +103,7 @@ function messageFor(snapshot, student, tasks) {
   const nameTokens = {
     '#{학생이름_주제}':'subject', '#{학생이름_주격}':'nominative',
     '#{학생이름_목적격}':'object', '#{학생이름_함께}':'with',
-    '#{학생이름_방향}':'direction'
+    '#{학생이름_방향}':'direction', '#{학생이름_소유격}':'possessive'
   };
   const body = String(template.template_body || '');
   for (const [token, kind] of Object.entries(nameTokens)) {
