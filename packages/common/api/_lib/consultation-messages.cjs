@@ -79,7 +79,7 @@ function consultationGivenName(fullName) {
   // Preserve nonstandard or short names rather than returning an empty name.
   if (!/^[가-힣]{3,}$/.test(name)) return name;
   const compoundSurnames = ['남궁', '황보', '제갈', '선우', '독고', '사공', '서문', '동방'];
-  const surnameLength = compoundSurnames.some(surname => name.startsWith(surname)) && name.length >= 4 ? 2 : 1;
+  const surnameLength = compoundSurnames.some(surname => name.startsWith(surname)) && name.length >= 3 ? 2 : 1;
   return name.slice(surnameLength);
 }
 function messageFor(snapshot, student, tasks) {
