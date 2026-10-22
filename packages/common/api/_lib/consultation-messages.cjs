@@ -6,6 +6,24 @@ const { select: selectTemplate } = require('../../olli-consultation-message-temp
 
 const SUPABASE_URL = 'https://fvkxipjwgeyosgnfhdnx.supabase.co';
 
+const SOLAPI_AUTH_CODES = ['InvalidAPIKey','SignatureDoesNotMatch','RequestTimeTooSkewed','DuplicatedSignature'];
+function safeSolapiAuthCategory(value) {
+  // Search only a bounded provider error structure for documented enum names.
+  // Do not return untrusted provider text: it might echo authorization secrets.
+  const fields = [];
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    fields.push(value.errorCode,value.error_code,value.code,value.statusCode,value.message);
+    if(value.error && typeof value.error==='object')fields.push(value.error.code,value.error.errorCode,value.error.message);
+    else fields.push(value.error);
+  } else if (typeof value==='string') fields.push(value);
+  for(const field of fields){
+    if(typeof field!=='string')continue;
+    for(const code of SOLAPI_AUTH_CODES){
+      if(new RegExp('(^|[^A-Za-z])'+code+'([^A-Za-z]|$)','i').test(field.slice(0,1024)))return code;
+    }
+  }
+  return null;
+}
 function problem(code, status = 500) { const error = new Error(code); error.code = code; error.status = status; return error; }
 function credentials(academyId, env = process.env) {
   let map;
@@ -122,6 +140,7 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
         : null;
       const safeCode = typeof rawCode === 'number' || typeof rawCode === 'string' ? String(rawCode) : '';
       err.providerCode = 'HTTP_' + response.status + (safeCode && /^[A-Za-z0-9_-]{1,30}$/.test(safeCode) ? '_' + safeCode : '');
+      err.authCategory = response.status === 403 ? (safeSolapiAuthCategory(data) || 'Unclassified403') : null;
       err.knownFailure = response.status >= 400 && response.status < 500 && response.status !== 408;
       throw err;
     }
@@ -260,7 +279,7 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
       await provider(credential,'/messages/v4/list?limit=1');
       return {authenticated:true,diagnostics};
     }catch(error){
-      return {authenticated:false,code:error.providerCode||error.code||'PROVIDER_CHECK_FAILED',diagnostics};
+      return {authenticated:false,code:error.providerCode||error.code||'PROVIDER_CHECK_FAILED',authCategory:error.authCategory||null,diagnostics};
     }
   }
   async function run({ academyId = null, studentId = null, dispatch = true } = {}) {
