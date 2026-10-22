@@ -288,13 +288,30 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
       apiKeyContainsQuotationMarks: credential.apiKey.includes('"') || credential.apiKey.includes("'"),
       apiSecretContainsQuotationMarks: credential.apiSecret.includes('"') || credential.apiSecret.includes("'")
     };
-    try{
-      // Read-only authenticated request: never submits any message.
+    const direct={authenticated:false,code:null,authCategory:null,responseKind:null};
+    try {
       await provider(credential,'/messages/v4/list?limit=1');
-      return {authenticated:true,diagnostics};
-    }catch(error){
-      return {authenticated:false,code:error.providerCode||error.code||'PROVIDER_CHECK_FAILED',authCategory:error.authCategory||null,responseKind:error.responseKind||'UNKNOWN',diagnostics};
+      direct.authenticated=true;
+    } catch(error) {
+      direct.code=error.providerCode||error.code||'PROVIDER_CHECK_FAILED';
+      direct.authCategory=error.authCategory||null;
+      direct.responseKind=error.responseKind||'UNKNOWN';
     }
+    const sdk={authenticated:false,code:null};
+    try {
+      // Official SDK read-only account balance lookup; no messages are sent.
+      const {SolapiMessageService}=require('solapi');
+      const client=new SolapiMessageService(credential.apiKey,credential.apiSecret);
+      await client.getBalance();
+      sdk.authenticated=true;
+    } catch(error) {
+      // Never return SDK error messages: some vendors echo private request details.
+      const rawStatus=error?.statusCode??error?.status??error?.response?.status;
+      const status=Number(rawStatus);
+      const name=typeof error?.name==='string'&&/^[A-Za-z]{1,40}$/.test(error.name)?error.name:'SDK_ERROR';
+      sdk.code=Number.isInteger(status)&&status>=100&&status<=599?'HTTP_'+status+'_'+name:name;
+    }
+    return {...direct,diagnostics,sdk};
   }
   async function run({ academyId = null, studentId = null, dispatch = true } = {}) {
     const snapshots = await rpc('olli_consultation_messages_snapshot', { p_academy_id: academyId });
