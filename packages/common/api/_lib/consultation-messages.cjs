@@ -197,7 +197,8 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
     if (!snapshot) throw problem('ACADEMY_NOT_CONFIGURED',409);
     if (snapshot.settings.enabled) throw problem('TURN_OFF_AUTOMATIC_SENDING_FIRST',409);
     const student=(snapshot.students||[]).find(x=>x.id===studentId);
-    if (!student || !student.enabled || !student.confirmed || !student.phone) throw problem('TEST_CONTACT_NOT_READY',409);
+    // Snapshot students are already inner-joined to enabled, confirmed contacts.
+    if (!student || !student.phone) throw problem('TEST_CONTACT_NOT_READY',409);
     const credential=centralCredentials(env);
     if (!credential) throw problem('PROVIDER_NOT_CONFIGURED',503);
     const task={ruleKey:'after_1',label:'1개월',dueMonth:'2099-01',occurrenceMonths:1};
