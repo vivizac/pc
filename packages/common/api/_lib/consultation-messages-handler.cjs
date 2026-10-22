@@ -13,12 +13,19 @@ module.exports = async function handler(req, res) {
     }
     const { academyId, sessionToken, action, studentId } = req.body || {};
     if (!academyId || !sessionToken) return res.status(401).json({ error: 'SESSION_REQUIRED' });
-    if (!['status', 'send', 'refresh'].includes(action)) return res.status(400).json({ error: 'INVALID_ACTION' });
+    if (!['status', 'send', 'refresh', 'test-send'].includes(action)) return res.status(400).json({ error: 'INVALID_ACTION' });
     // The DB authenticates the session AND owner membership before any provider operation.
     const access = await service.rpc('olli_consultation_messages_manage', { p_session_token: sessionToken, p_academy_id: academyId, p_action: 'load', p_data: {} });
     if (access?.ok !== true) return res.status(403).json({ error: 'PERMISSION_DENIED' });
     const configured = !!centralCredentials();
     if (action === 'status') return res.status(200).json({ ok: true, configured });
+    if (action === 'test-send') {
+      if (access.settings?.enabled === true) return res.status(409).json({error:'시험 발송 전에 자동 발송을 꺼 주세요.'});
+      if (!studentId || typeof studentId !== 'string') return res.status(400).json({error:'STUDENT_REQUIRED'});
+      if (!configured) return res.status(503).json({error:'PROVIDER_NOT_CONFIGURED'});
+      const result = await service.testSend(academyId, studentId);
+      return res.status(200).json({ok:true,result});
+    }
     if (action === 'send' && access.settings?.enabled !== true) return res.status(409).json({ error: '상담 안내 문자 사용이 꺼져 있습니다.' });
     if (!configured) return res.status(503).json({ error: '발송업체 서버 연결 설정이 필요합니다.' });
     if (action === 'send' && !studentId) return res.status(400).json({ error: 'STUDENT_REQUIRED' });
