@@ -203,7 +203,7 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
     if (!credential) throw problem('PROVIDER_NOT_CONFIGURED',503);
     const task={ruleKey:'after_1',label:'1개월',dueMonth:'2099-01',occurrenceMonths:1};
     const template=selectTemplate(snapshot.settings,student,[task]);
-    const matches=await rpc('olli_consultation_channel_resolve',{
+    const matches=await rpc('olli_consultation_channel_resolve_test',{
       p_academy_id:academyId,p_template_id:template.template_id,p_template_body:template.template_body
     });
     if(!Array.isArray(matches)||matches.length!==1||!matches[0].pf_id)throw problem('CHANNEL_TEMPLATE_NOT_APPROVED',409);
@@ -218,7 +218,7 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
     if(reservation.status===409)return {status:'duplicate'};
     if(!reservation.ok)throw problem('TEST_RESERVATION_FAILED',503);
     const [entry]=await reservation.json();
-    const latest=await rpc('olli_consultation_channel_resolve',{p_academy_id:academyId,p_template_id:template.template_id,p_template_body:template.template_body});
+    const latest=await rpc('olli_consultation_channel_resolve_test',{p_academy_id:academyId,p_template_id:template.template_id,p_template_body:template.template_body});
     if(!Array.isArray(latest)||latest.length!==1||latest[0].pf_id!==matches[0].pf_id||latest[0].channel_revision!==matches[0].channel_revision)
       throw problem('CHANNEL_CHANGED_AFTER_RESERVATION',409);
     let status='unknown',messageId=null,code='CHECK_PROVIDER_CONSOLE';
