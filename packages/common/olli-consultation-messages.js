@@ -105,7 +105,7 @@
           <strong>${escape(s.name)} <small>${s.division === 'kinder' ? '유치부' : '초등부'}</small></strong>
           <p>${escape(s.phone || '학생정보에서 보호자 연락처를 등록해 주세요.')}</p>
           <p class="ocm-muted">${s.enabled && s.confirmed ? '확인된 보호자 번호 · 상담 안내 대상' : '보호자 번호 확인 또는 상담 안내 대상 설정이 필요합니다.'}</p>
-          <button type="button" data-send="${escape(s.id)}" ${!settings.enabled ? 'disabled' : ''}>예약 안내 보내기</button>
+          <button type="button" data-send="${escape(s.id)}" ${!settings.enabled ? 'disabled' : ''}>예약 안내 보내기</button> <button type="button" data-test-send="${escape(s.id)}" ${settings.enabled || !s.enabled || !s.confirmed ? "disabled" : ""}>시험 발송 (1회)</button>
         </div>`).join('') || '<p class="ocm-muted">현재 재원생이 없습니다.</p>'}</div>
       </section>
       <section data-panel="history" hidden>
@@ -154,6 +154,7 @@
       state.dialog.querySelectorAll('[data-panel]').forEach((panel) => { panel.hidden = panel.dataset.panel !== button.dataset.tab; });
     }));
     state.dialog.querySelectorAll('[data-send]').forEach((button) => button.addEventListener('click', () => send(button)));
+    state.dialog.querySelectorAll('[data-test-send]').forEach((button) => button.addEventListener('click', () => testSend(button)));
     state.dialog.querySelector('[data-refresh]').addEventListener('click', refresh);
     if (settings.enabled) server('status', null, state).then((r) => {
       if (active !== state || state.payload.settings?.enabled !== true) return;
@@ -169,6 +170,7 @@
     state.dialog.querySelector('[name=enabled]').checked = enabled;
     state.dialog.querySelector('[data-usage-status]').textContent = enabled ? '켜짐' : '꺼짐';
     state.dialog.querySelectorAll('[data-send]').forEach(button => { button.disabled = !enabled; });
+    state.dialog.querySelectorAll('[data-test-send]').forEach(button => { const c=state.payload.students.find(s=>s.id===button.dataset.testSend);button.disabled=enabled || !c?.confirmed || !c?.enabled; });
     state.dialog.querySelector('[data-connection]').textContent = enabled
       ? '상담 안내 문자 기능을 사용하고 있습니다.'
       : '현재 사용하지 않습니다. 발송업체를 연결하지 않아도 됩니다.';
@@ -221,6 +223,21 @@
       notice(data.enabled ? '저장했습니다. 다음 자동 발송부터 적용됩니다.' : '저장했습니다. 상담 안내 문자 사용이 꺼져 있습니다.');
     } catch (error) { if (active === state) notice(error.message,true); }
     finally { state.busy = false; button.disabled = false; form.elements.enabled.disabled = false; }
+  }
+  async function testSend(button) {
+    const state=active;
+    if(!state||state.busy)return;
+    const contact=state.payload.students.find(s=>s.id===button.dataset.testSend);
+    if(!contact?.confirmed||!contact.enabled)return notice('확인된 보호자 연락처를 먼저 저장해 주세요.',true);
+    if(state.payload.settings?.enabled)return notice('시험 발송 전에 자동 발송을 꺼 주세요.',true);
+    if(!confirm(contact.name+' 학생의 등록된 보호자 번호로 알림톡을 1건 시험 발송할까요?\\n\\n실제 문자 요금이 발생할 수 있습니다. 같은 학생과 템플릿의 시험 발송은 1회만 가능합니다.'))return;
+    state.busy=true;button.disabled=true;
+    try {
+      const result=await server('test-send',button.dataset.testSend,state);
+      const status=result.result?.status;
+      notice(status==='duplicate'?'이미 이 학생에게 같은 템플릿 시험 발송을 요청했습니다. 솔라피에서 결과를 확인해 주세요.':status==='failed'?'발송이 거절되었습니다. 솔라피 발송 내역을 확인해 주세요.':status==='unknown'?'발송 결과가 불확실합니다. 재발송 전에 솔라피에서 확인해 주세요.':'시험 알림톡이 접수되었습니다. 실제 수신 여부를 확인해 주세요.',status==='failed'||status==='unknown');
+    }catch(error){notice(error.message,true);}
+    finally{state.busy=false;button.disabled=false;}
   }
   async function send(button) {
     const state = active;
