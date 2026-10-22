@@ -73,6 +73,15 @@ function nameWithParticle(name, pair) {
   };
   return value + suffixes[pair];
 }
+function consultationGivenName(fullName) {
+  const name = String(fullName || '').trim();
+  // Standard Korean family names are one syllable; support common two-syllable surnames.
+  // Preserve nonstandard or short names rather than returning an empty name.
+  if (!/^[가-힣]{3,}$/.test(name)) return name;
+  const compoundSurnames = ['남궁', '황보', '제갈', '선우', '독고', '사공', '서문', '동방'];
+  const surnameLength = compoundSurnames.some(surname => name.startsWith(surname)) && name.length >= 4 ? 2 : 1;
+  return name.slice(surnameLength);
+}
 function messageFor(snapshot, student, tasks) {
   const config = snapshot.settings;
   const template = selectTemplate(config, student, tasks);
@@ -83,7 +92,7 @@ function messageFor(snapshot, student, tasks) {
   if (!template.template_confirmed || !config.channel_id || !template.template_id) throw problem('TEMPLATE_NOT_READY', 400);
   const variables = {
     '#{학원명}': snapshot.academy_name,
-    '#{학생명}': student.name,
+    '#{학생명}': consultationGivenName(student.name),
     '#{상담구분}': String(template.task.label || '').replace(/(후|마다)$/, ''),
     '#{예약링크}': config.booking_url
   };
@@ -96,7 +105,7 @@ function messageFor(snapshot, student, tasks) {
   };
   const body = String(template.template_body || '');
   for (const [token, kind] of Object.entries(nameTokens)) {
-    if (body.includes(token)) variables[token] = nameWithParticle(student.name, kind);
+    if (body.includes(token)) variables[token] = nameWithParticle(consultationGivenName(student.name), kind);
   }
   const allowed = new Set(Object.keys(variables));
   if (!body || [...body.matchAll(/#\{[^}]+\}/g)].some(([token]) => !allowed.has(token))) throw problem('TEMPLATE_BODY_INVALID', 400);
