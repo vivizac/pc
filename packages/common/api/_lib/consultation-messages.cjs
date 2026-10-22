@@ -244,6 +244,17 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
     }).then(response=>{if(!response.ok)throw problem('TEST_LOG_UPDATE_FAILED',503);});
     return {status};
   }
+  async function checkProviderAuth() {
+    const credential=centralCredentials(env);
+    if(!credential)throw problem('PROVIDER_NOT_CONFIGURED',503);
+    try{
+      // Read-only authenticated request: never submits any message.
+      await provider(credential,'/messages/v4/list?limit=1');
+      return {authenticated:true};
+    }catch(error){
+      return {authenticated:false,code:error.providerCode||error.code||'PROVIDER_CHECK_FAILED'};
+    }
+  }
   async function run({ academyId = null, studentId = null, dispatch = true } = {}) {
     const snapshots = await rpc('olli_consultation_messages_snapshot', { p_academy_id: academyId });
     const counts = { submitted: 0, delivered: 0, failed: 0, unknown: 0, skipped: 0, configurationMissing: 0, deferred: 0, errors: 0 };
@@ -272,7 +283,7 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
     }
     return counts;
   }
-  return { rpc, run, testSend };
+  return { rpc, run, testSend, checkProviderAuth };
 }
 
 /**

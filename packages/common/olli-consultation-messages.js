@@ -94,6 +94,8 @@
             <p class="ocm-muted">같은 달에 6개월·12개월 상담이 겹치면 12개월 안내문을 한 번 발송합니다. 공통 모드로 바꿔도 입력한 개별 안내문은 보존됩니다.</p>
           </div>
           <p class="ocm-muted">설정을 처음 켠 달부터 상담 안내를 시작하며, 이전 달의 상담은 한꺼번에 발송하지 않습니다. 같은 학생의 같은 상담 예정 월에는 한 번만 발송합니다.</p>
+          <button type="button" data-auth-check>솔라피 API 인증 확인 (발송 없음)</button>
+          <p data-auth-result class="ocm-muted"></p>
           <p data-connection class="ocm-muted">${settings.enabled ? '발송업체 연결 확인 중…' : '현재 사용하지 않습니다. 사용하지 않는 학원은 발송업체를 연결하지 않아도 됩니다.'}</p>
           <button type="submit" class="ocm-primary">발송 설정 저장</button>
         </form>
@@ -156,6 +158,7 @@
     state.dialog.querySelectorAll('[data-send]').forEach((button) => button.addEventListener('click', () => send(button)));
     state.dialog.querySelectorAll('[data-test-send]').forEach((button) => button.addEventListener('click', () => testSend(button)));
     state.dialog.querySelector('[data-refresh]').addEventListener('click', refresh);
+    state.dialog.querySelector('[data-auth-check]').addEventListener('click', async () => { const state=active;if(!state||state.busy)return;state.busy=true;const el=state.dialog.querySelector('[data-auth-result]');el.textContent='인증 확인 중…';try{const x=await server('auth-check',null,state);el.textContent=x.result?.authenticated?'솔라피 API 인증 성공 (메시지 발송 없음)':'솔라피 API 인증 실패: '+(x.result?.code||'UNKNOWN');}catch(e){el.textContent='인증 확인 실패: '+e.message;}finally{state.busy=false;} });
     if (settings.enabled) server('status', null, state).then((r) => {
       if (active !== state || state.payload.settings?.enabled !== true) return;
       const el = state.dialog.querySelector('[data-connection]');
