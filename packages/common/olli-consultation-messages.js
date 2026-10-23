@@ -364,7 +364,7 @@
     const settings = await manualNoticeConfig();
     const variant = settings.template_mode === 'by_type' && settings.template_variants?.[key]?.use_common === false
       ? settings.template_variants[key] : null;
-    const storedBody = String(variant?.template_body || (!variant && settings.template_mode === 'common' ? settings.template_body : '') || '').trim();
+    const storedBody = String(variant?.template_body || '').trim();
     let body = storedBody || (MANUAL_NOTICE_BODIES[key] + '\n\n' + MANUAL_NOTICE_INFO);
     // The old template contained '#{학생이름_주격}가'; the token already includes the subject particle.
     body = body.replace(/#\{학생이름_주격\}가/g, '#{학생이름_주격}');
@@ -375,7 +375,7 @@
       .replace(/#\{학원명\}/g, String(settings.academy_name || '비비작'))
       .replace(/#\{상담구분\}/g, stage === 'every_12' ? '12개월' : stage === 'every_6' ? '6개월' : '1개월')
       .replace(/#\{예약링크\}/g, String(settings.booking_url || '').trim());
-    if (!storedBody && settings.booking_url) body += '\n' + settings.booking_url;
+    if (settings.booking_url && !body.includes(settings.booking_url)) body += '\n' + settings.booking_url;
     if (/#\{[^}]+\}/.test(body)) throw new Error('안내문에 아직 치환되지 않은 변수가 있습니다.');
     if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(body);
     else {
