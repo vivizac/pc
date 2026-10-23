@@ -73,7 +73,8 @@ function normalizeMemoFeedbackArchiveRows(rows, sourceTable = '') {
 }
 
 async function loadMemoFeedbackArchiveItemsFromSupabase(student) {
-  if (!student?.id || !isSupabaseConfigured()) return [];
+  if (!student?.id) throw new Error('피드백을 조회할 학생 ID가 없습니다.');
+  if (!isSupabaseConfigured()) throw new Error('Supabase 연결을 확인해 주세요.');
   const existingItems = getMemoFeedbackArchiveItems(student);
   const secureReader = typeof window.loadOlliFeedbackRowsSecure === 'function'
     ? window.loadOlliFeedbackRowsSecure

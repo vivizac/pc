@@ -111,6 +111,13 @@ test('both apps keep server errors distinct from genuine insufficient feedback',
   assert.match(files.pcUi, /cached\?\.status === 'error'/);
 });
 
+test('PC and mobile do not mistake missing Supabase configuration for an empty archive', () => {
+  const pc = fs.readFileSync(path.join(root, 'apps/pc/olli-data-attendance-feedback.js'), 'utf8');
+  assert.match(pc, /if \(!isSupabaseConfigured\(\)\) throw new Error\('Supabase 연결을 확인해 주세요.'\)/);
+  assert.match(files.mobileSheet, /if \(!isSupabaseConfigured\(\)\) throw new Error\('Supabase 연결을 확인해 주세요.'\)/);
+  assert.match(files.archive, /if \(!isSupabaseConfigured\(\)\) throw new Error\('Supabase 연결을 확인해 주세요.'\)/);
+});
+
 test('mobile feedback sheet normalizes legacy dates and refuses incomplete cache writes', async () => {
   const src = files.mobileSheet;
   const dates = section(src, 'function normalizeAttendanceFeedbackDate(', 'function formatAttendanceFeedbackSheetDate(');

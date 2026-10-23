@@ -127,7 +127,8 @@ async function loadAttendanceFeedbackRowsSecure(table, student, limit = 80) {
 }
 
 async function loadAttendanceStudentFeedbackSheetItems(student) {
-  if (!student || !isSupabaseConfigured()) return { feedbacks: [], summaries: [] };
+  if (!student) return { feedbacks: [], summaries: [] };
+  if (!isSupabaseConfigured()) throw new Error('Supabase 연결을 확인해 주세요.');
   const requests = [
     { table: 'feedbacks', type: 'feedbacks', promise: loadAttendanceFeedbackRowsSecure('feedbacks', student, 80) },
     { table: 'fail_feedbacks', type: 'feedbacks', promise: loadAttendanceFeedbackRowsSecure('fail_feedbacks', student, 80) },

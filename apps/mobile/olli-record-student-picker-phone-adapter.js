@@ -145,11 +145,10 @@ function getMemoFeedbackArchiveMonthInfo(item) {
   const monthText = String(item?.feedbackMonth || item?.row?.feedback_month || '').trim();
   const monthMatch = monthText.match(/(\d{1,2})/);
   const textMonth = monthMatch ? Number(monthMatch[1]) : 0;
-  const month = explicitMonth >= 1 && explicitMonth <= 12
-    ? explicitMonth
-    : (textMonth >= 1 && textMonth <= 12
-      ? textMonth
-      : (hasSavedDate ? savedDate.getMonth() + 1 : 0));
+  // 월별 보관함은 저장/이관된 실제 수업 날짜를 기준으로 묶습니다.
+  const month = hasSavedDate ? savedDate.getMonth() + 1
+    : explicitMonth >= 1 && explicitMonth <= 12 ? explicitMonth
+    : textMonth >= 1 && textMonth <= 12 ? textMonth : 0;
 
   if (!month) {
     return { key: 'undated', label: '기타', month: 0, year: 0, sortValue: -1 };

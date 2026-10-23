@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'apps/pc/olli-data-consultation-summary.js'
+      - 'apps/pc/olli-data-attendance-feedback.js'
       - 'apps/pc/pc-student-management.js'
       - 'apps/mobile/olli-student-core.js'
       - 'apps/mobile/olli-data-attendance-feedback.js'
