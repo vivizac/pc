@@ -53,3 +53,37 @@ test('no provider credentials prevents synchronization',async()=>{
  const h=harness([],{credentials:false});const result=await h.service.syncProviderTemplates();
  assert.equal(result.configured,false);assert.equal(h.updates.length,0);
 });
+
+test('administrator signed status sync requires valid internal HMAC',async()=>{
+ const crypto=require('node:crypto');
+ const handler=require('../packages/common/api/_lib/consultation-messages-handler.cjs');
+ const envKeys=['VERCEL_ENV','OLLI_ADMIN_TEMPLATE_SYNC_SECRET','SUPABASE_SECRET_KEY','OLLI_CONSULTATION_SOLAPI_CREDENTIALS'];
+ const previous=Object.fromEntries(envKeys.map(k=>[k,process.env[k]]));
+ const originalFetch=global.fetch;
+ let calls=0;
+ const rsp=()=>({statusCode:200,setHeader(){},status(n){this.statusCode=n;return this},json(value){this.value=value;return this}});
+ try{
+  process.env.VERCEL_ENV='production';
+  process.env.OLLI_ADMIN_TEMPLATE_SYNC_SECRET='dummy-internal-sync-signing-secret-long-enough';
+  process.env.SUPABASE_SECRET_KEY='test-key-only';
+  process.env.OLLI_CONSULTATION_SOLAPI_CREDENTIALS=JSON.stringify({apiKey:'key',apiSecret:'secret'});
+  global.fetch=async(url,opts)=>{
+   calls++;
+   if(String(url).includes('olli_consultation_template_sync_snapshot'))return Response.json([ROW]);
+   if(String(url).includes('olli_consultation_template_sync_apply'))return Response.json({ok:true,state:'approved'});
+   if(String(url).includes('api.solapi.com'))return Response.json({templateList:[{templateId:ROW.template_id,status:'APPROVED',content:ROW.template_body}]});
+   throw new Error('Unexpected URL');
+  };
+  let res=rsp();
+  await handler({method:'POST',headers:{'x-olli-sync-at':String(Date.now()),'x-olli-sync-signature':'invalid'},body:{action:'admin-template-sync'}},res);
+  assert.equal(res.statusCode,401);assert.equal(calls,0);
+  const at=String(Date.now());
+  const sig=crypto.createHmac('sha256',process.env.OLLI_ADMIN_TEMPLATE_SYNC_SECRET).update(at+':template-sync').digest('hex');
+  res=rsp();
+  await handler({method:'POST',headers:{'x-olli-sync-at':at,'x-olli-sync-signature':sig},body:{action:'admin-template-sync'}},res);
+  assert.equal(res.statusCode,200);assert.equal(res.value.templateSync.checked,1);
+ }finally{
+  global.fetch=originalFetch;
+  for(const [k,v] of Object.entries(previous)) {if(v===undefined)delete process.env[k];else process.env[k]=v;}
+ }
+});
