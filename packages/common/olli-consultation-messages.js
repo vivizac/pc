@@ -292,5 +292,135 @@
   global.addEventListener('storage',checkContext);
   global.addEventListener('focus',checkContext);
   document.addEventListener('visibilitychange',checkContext);
+
+  // Manual consultation notices: no Solapi credentials and no message dispatch.
+  const MANUAL_NOTICE_INFO = '〈상담 신청 안내〉\n상담 기간: 매월 둘째 주와 셋째 주\n상담 시간: 월~금 (오전 11시 ~ 오후 6시)\n상담 소요 시간: 약 10~15분\n상담 신청: 아래 예약 링크 → 재원생 정기 상담 선택 → 예약';
+  const MANUAL_NOTICE_BODIES = {
+    'kinder:after_1': '안녕하세요 어머님 😊\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 한 달이 되었습니다.\n\n처음 안내드린 대로 등록 후 1개월 정기상담을 진행하려 합니다.',
+    'elementary:after_1': '안녕하세요 어머님 😊\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 한 달이 되었습니다.\n\n처음 안내드린 대로 등록 후 1개월 정기상담을 진행하려 합니다.',
+    'kinder:every_6': '안녕하세요, 어머님 😊\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 6개월이 되었습니다^^\n그동안의 수업 작품과 새롭게 진행한 성향 테스트 결과를 바탕으로 #{학생이름_소유격} 그림에서는 어떤 성향이 보이는지, 테스트에서는 어떤 변화가 나타났는지, 학원 생활에는 잘 적응하고 있는지 함께 이야기 나누려 합니다.\n아래 네이버 예약 링크에서 방문 가능하신 요일과 시간을 선택해 상담을 신청해 주세요.',
+    'elementary:every_6': '안녕하세요, 어머님 😊\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 6개월이 되었습니다^^\n그동안의 수업 작품을 바탕으로 #{학생이름_소유격} 그림에서는 어떤 성향이 보이는지, 학원 생활에는 잘 적응하고 있는지 함께 이야기 나누려 합니다.\n아래 네이버 예약 링크에서 방문 가능하신 요일과 시간을 선택해 상담을 신청해 주세요.',
+    'kinder:every_12': '안녕하세요, 어머님\n벌써 1년이 되었어요~~~^^\n지난 1년 동안 #{학생이름_주격} 어떤 성장을 했을까요? 😊\n\n그동안 담임 선생님이 기록한 수업 피드백과 아이의 작품을 바탕으로 #{학생이름_소유격} 생각과 표현에 어떤 변화가 있었는지 살펴보며, 지난 1년 동안 보여준 성장과 앞으로의 교육 방향에 대해 이야기 나누고자 합니다.\n\n아래 네이버 예약 링크에서 방문 가능하신 요일과 시간을 선택해 상담을 신청해 주세요.',
+    'elementary:every_12': '안녕하세요, 어머님\n벌써 1년이 되었어요~~~^^\n지난 1년 동안 #{학생이름_주격} 어떤 성장을 했을까요? 😊\n\n그동안 담임 선생님이 기록한 수업 피드백과 아이의 작품을 바탕으로 #{학생이름_소유격} 생각과 표현에 어떤 변화가 있었는지 살펴보며, 지난 1년 동안 보여준 성장과 앞으로의 교육 방향에 대해 이야기 나누고자 합니다.\n\n아래 네이버 예약 링크에서 방문 가능하신 요일과 시간을 선택해 상담을 신청해 주세요.'
+  };
+  function manualGivenName(fullName) {
+    const value = String(fullName || '').trim();
+    if (!/^[가-힣]{3,}$/.test(value)) return value;
+    const compound = ['남궁','황보','제갈','선우','독고','사공','서문','동방'];
+    return value.slice(compound.some(name => value.startsWith(name)) ? 2 : 1);
+  }
+  function manualNameValue(fullName, kind) {
+    const name = manualGivenName(fullName);
+    const last = name.charCodeAt(name.length - 1);
+    const jong = last >= 0xac00 && last <= 0xd7a3 ? (last - 0xac00) % 28 : 0;
+    const friendly = jong ? name + '이' : name;
+    if (kind === 'subject') return friendly + '는';
+    if (kind === 'nominative') return friendly + '가';
+    if (kind === 'possessive') return friendly + '의';
+    return friendly;
+  }
+  function manualNoticeStage(card) {
+    const label = String(card.textContent || '');
+    // Consultations at 18/30 months use the 6-month notice; 24/36 months use annual.
+    const chips = Array.from(card.querySelectorAll('.recordAcademyRuleChip, .recordAcademyInfoChip'));
+    const months = chips.map(chip => Number((chip.textContent || '').match(/(\d+)\s*개월/)?.[1])).find(Number.isFinite);
+    if (Number.isFinite(months) && months > 0) {
+      if (months % 12 === 0) return 'every_12';
+      if (months % 6 === 0) return 'every_6';
+      if (months === 1) return 'after_1';
+    }
+    if (/12개월|24개월|36개월|1년|2년/.test(label)) return 'every_12';
+    if (/6개월|18개월|30개월/.test(label)) return 'every_6';
+    return 'after_1';
+  }
+  function manualNoticeStudent(card) {
+    const ref = card.dataset.pcStudentRef || card.dataset.studentRef || '';
+    if (ref && global.OlliPcStudentManagement?.resolveStudent) {
+      const matched = global.OlliPcStudentManagement.resolveStudent(ref);
+      if (matched) return matched;
+    }
+    const id = card.dataset.studentId || '';
+    const name = String(card.querySelector('.recordAcademyListName, .recordAcademyConsultStudentName, .studentName')?.textContent || '').trim();
+    const all = typeof global.getAllStudents === 'function' ? global.getAllStudents() : [];
+    if (id) return all.find(student => String(student.id) === String(id)) || null;
+    const matching = all.filter(student => student.name === name);
+    return matching.length === 1 ? matching[0] : null;
+  }
+  async function manualNoticeConfig() {
+    const ctx = context();
+    if (!ctx.academyId || !ctx.sessionToken || typeof global.callOlliRpc !== 'function') throw new Error('학원 로그인 정보를 확인할 수 없습니다.');
+    const result = await global.callOlliRpc('olli_consultation_messages_manage', {
+      p_session_token:ctx.sessionToken,p_academy_id:ctx.academyId,p_action:'load',p_data:{}
+    });
+    if (result?.ok !== true || !sameContext(ctx)) throw new Error('상담 안내 설정을 조회할 수 없습니다.');
+    return result.settings || {};
+  }
+  async function copyManualConsultationNotice(card, button) {
+    const student = manualNoticeStudent(card);
+    if (!student) throw new Error('학생을 정확하게 찾지 못했습니다. 학생 카드를 다시 열어 주세요.');
+    const stage = manualNoticeStage(card);
+    const division = (student.type || student.division) === 'kinder' ? 'kinder' : 'elementary';
+    const key = division + ':' + stage;
+    const settings = await manualNoticeConfig();
+    const variant = settings.template_mode === 'by_type' && settings.template_variants?.[key]?.use_common === false
+      ? settings.template_variants[key] : null;
+    const storedBody = String(variant?.template_body || (!variant && settings.template_mode === 'common' ? settings.template_body : '') || '').trim();
+    let body = storedBody || (MANUAL_NOTICE_BODIES[key] + '\n\n' + MANUAL_NOTICE_INFO);
+    // The old template contained '#{학생이름_주격}가'; the token already includes the subject particle.
+    body = body.replace(/#\{학생이름_주격\}가/g, '#{학생이름_주격}');
+    body = body.replace(/#\{학생이름_주격\}/g, manualNameValue(student.name, 'nominative'))
+      .replace(/#\{학생이름_주제\}/g, manualNameValue(student.name, 'subject'))
+      .replace(/#\{학생이름_소유격\}/g, manualNameValue(student.name, 'possessive'))
+      .replace(/#\{학생명\}/g, manualGivenName(student.name))
+      .replace(/#\{학원명\}/g, String(settings.academy_name || '비비작'))
+      .replace(/#\{상담구분\}/g, stage === 'every_12' ? '12개월' : stage === 'every_6' ? '6개월' : '1개월')
+      .replace(/#\{예약링크\}/g, String(settings.booking_url || '').trim());
+    if (!storedBody && settings.booking_url) body += '\n' + settings.booking_url;
+    if (/#\{[^}]+\}/.test(body)) throw new Error('안내문에 아직 치환되지 않은 변수가 있습니다.');
+    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(body);
+    else {
+      const field = document.createElement('textarea');
+      field.value = body; field.style.position = 'fixed'; field.style.opacity = '0';
+      document.body.appendChild(field); field.select();
+      const success = document.execCommand('copy'); field.remove();
+      if (!success) throw new Error('복사 권한을 확인해 주세요.');
+    }
+    button.textContent = '복사 완료';
+    setTimeout(() => { if (button.isConnected) button.textContent = '안내문 복사'; }, 1800);
+  }
+  function attachManualConsultationButtons() {
+    if (!isOwner()) return;
+    document.querySelectorAll('.recordAcademyConsultListItem').forEach(card => {
+      if (card.querySelector('[data-consultation-manual-copy]')) return;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.consultationManualCopy = 'true';
+      button.textContent = '안내문 복사';
+      button.setAttribute('aria-label', '학생 상담 안내문 복사');
+      button.style.cssText = 'flex-shrink:0;order:-1;border:1px solid #d8dce4;border-radius:8px;background:#fff;color:#343d4b;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer';
+      button.addEventListener('click', async event => {
+        event.preventDefault(); event.stopPropagation();
+        button.disabled = true;
+        try { await copyManualConsultationNotice(card, button); }
+        catch(error) { alert(error.message || '안내문 복사에 실패했습니다.'); }
+        finally { button.disabled = false; }
+      });
+      card.insertBefore(button, card.firstChild);
+    });
+  }
+  function startManualConsultationButtons() {
+    if (!document.body) return;
+    let scheduled = false;
+    const schedule = () => {
+      if (scheduled) return;
+      scheduled = true;
+      setTimeout(() => { scheduled = false; attachManualConsultationButtons(); }, 0);
+    };
+    new MutationObserver(schedule).observe(document.body, {childList:true,subtree:true});
+    schedule();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startManualConsultationButtons);
+  else startManualConsultationButtons();
+
   global.OlliConsultationMessages = Object.freeze({open,close,isOwner});
 })(window);
