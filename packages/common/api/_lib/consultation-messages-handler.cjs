@@ -1,4 +1,5 @@
 const { createService, cronAuthorized, centralCredentials } = require('./consultation-messages.cjs');
+const {createHmac,timingSafeEqual}=require('node:crypto');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -8,8 +9,22 @@ module.exports = async function handler(req, res) {
     const service = createService();
     if (req.method === 'GET') {
       if (!cronAuthorized(req.headers.authorization)) return res.status(401).json({ error: 'UNAUTHORIZED' });
+      const sync = await service.syncProviderTemplates();
       const counts = await service.run();
-      return res.status(counts.errors || counts.configurationMissing ? 503 : 200).json({ ok: !counts.errors && !counts.configurationMissing, counts });
+      return res.status(counts.errors || counts.configurationMissing || sync.errors ? 503 : 200).json({ ok: !counts.errors && !counts.configurationMissing && !sync.errors, counts, templateSync:sync });
+    }
+    if(req.body?.action==='admin-template-sync'){
+      const secret=process.env.OLLI_ADMIN_TEMPLATE_SYNC_SECRET||'';
+      const timestamp=String(req.headers['x-olli-sync-at']||'');
+      const signature=String(req.headers['x-olli-sync-signature']||'');
+      const fresh=/^\d{13}$/.test(timestamp)&&Math.abs(Date.now()-Number(timestamp))<60000;
+      const expected=secret.length>=32?createHmac('sha256',secret).update(timestamp+':template-sync').digest('hex'):'';
+      const left=Buffer.from(signature),right=Buffer.from(expected);
+      if(!fresh||!expected||left.length!==right.length||!timingSafeEqual(left,right)){
+        return res.status(401).json({error:'UNAUTHORIZED'});
+      }
+      const sync=await service.syncProviderTemplates();
+      return res.status(sync.errors?207:200).json({ok:sync.errors===0,templateSync:sync});
     }
     const { academyId, sessionToken, action, studentId } = req.body || {};
     if (!academyId || !sessionToken) return res.status(401).json({ error: 'SESSION_REQUIRED' });

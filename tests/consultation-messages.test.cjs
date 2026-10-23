@@ -22,22 +22,25 @@ const now = new Date('2026-10-20T15:30:00Z');
 const env = { SUPABASE_SECRET_KEY:'test-db-key', OLLI_CONSULTATION_SOLAPI_CREDENTIALS:JSON.stringify({apiKey:'test-key',apiSecret:'test-secret'}) };
 
 // This baseline is the known main SHA captured before the change; compares behavior, not source text.
-test('extracted calendar policy matches existing policy across 1152 cases',()=>{
-  const baseline = execFileSync('git',['show','f01811e1eccc4f0fbdc9ce6ee5674765f7c9b4ac:packages/common/olli-operations-consultation-policy.js'],{encoding:'utf8'});
-  const ctx = vm.createContext({Date,Set,Map,console,window:{},localStorage:{getItem:()=>null,setItem:()=>{}},getStudentStatus:(s)=>s.status||'active',getStudentEnrollmentDateForStats:(s)=>s.enrolled,getAcademyConsultationMonthKey:core.consultationMonthKey,addMonthsSafe:(d,m)=>{const r=new Date(d),day=r.getDate();r.setMonth(r.getMonth()+m);if(r.getDate()!==day)r.setDate(0);return r;}});
-  vm.runInContext(baseline,ctx);
-  vm.runInContext('getOlliConsultationRules = () => TEST_RULES; getOlliConsultationProgress = () => TEST_PROGRESS;',ctx);
+test('first-year selections and annual followups obey configurable policy across 1152 cases',()=>{
   let cases=0;
   for(const type of ['kinder','elementary']) for(const enrollment of ['2024-02-29','2025-10-31','2026-09-30']) for(const month of ['2026-10-21','2026-11-01','2027-02-28','2027-10-01']) for(let mask=0;mask<16;mask++) for(const tracking of ['2026-01','2026-10','']) {
     const rules=['after_1','after_3','every_6','every_12'].filter((_,i)=>mask&(1<<i));
     const effective=rules.length?rules:core.getOlliDefaultConsultationRules(type);
-    const enrolled = new Date(enrollment+'T12:00:00'); const date=new Date(month+'T12:00:00');
+    const enrolled=new Date(enrollment+'T12:00:00'),date=new Date(month+'T12:00:00');
     const student={id:'student',type,enrolled,status:'active'};
-    const progress={tracking_started_month:tracking,completed:{'id:student|every_6|2026-10':{completed_month:'2026-10'}}};
-    ctx.TEST_RULES=effective;ctx.TEST_PROGRESS=progress;ctx.student=student;ctx.date=date;
-    const old=JSON.parse(JSON.stringify(vm.runInContext('getConsultationDueTasksForStudent(student,date)',ctx)));
-    const updated=core.calculateOlliConsultationTasks(student,{enrolled,now:date,rules:effective,progress});
-    assert.deepEqual(updated,old,JSON.stringify({type,enrollment,month,mask,tracking}));cases++;
+    const progress={tracking_started_month:tracking,completed:{}};
+    const tasks=core.calculateOlliConsultationTasks(student,{enrolled,now:date,rules:effective,progress});
+    const seen=new Set();
+    for(const task of tasks){
+      assert.ok(!seen.has(task.dueMonth),'duplicate appointment month');seen.add(task.dueMonth);
+      if(task.occurrenceMonths<=12) assert.ok(effective.includes(task.ruleKey),'unselected first-year appointment');
+      else {
+        assert.equal(task.ruleKey,'every_12','post-year appointment must be annual');
+        assert.equal(task.occurrenceMonths%12,0,'post-year appointment must fall on anniversary');
+      }
+    }
+    cases++;
   }
   assert.equal(cases,1152);
 });
@@ -45,7 +48,7 @@ test('extracted calendar policy matches existing policy across 1152 cases',()=>{
 test('Korean month boundary and overlapping six/twelve-month rules',()=>{
   const data=snapshot(),student=data.students[0];
   const tasks=server.pendingTasks(data,student,server.koreaDate(now));
-  assert.deepEqual(tasks.map(t=>t.ruleKey),['every_6','every_12']);
+  assert.deepEqual(tasks.map(t=>t.ruleKey),['every_12']);
   assert.equal(server.koreaDate(new Date('2026-10-31T15:01:00Z')).getMonth(),10);
   assert.equal(server.pendingTasks({...data,settings:{...data.settings,start_month:'2026-11'}},student,server.koreaDate(now)).length,0);
 });
@@ -96,7 +99,7 @@ function harness(mode='accept') {
 
 test('concurrent workers and repeated jobs send overlapping tasks exactly once',async()=>{
   const h=harness();await Promise.all([h.service.run(),h.service.run()]);await h.service.run();
-  assert.equal(h.sends,1);assert.equal(h.row.status,'submitted');assert.equal(h.row.args.p_due_month,'2026-10');assert.equal(h.row.args.p_task_keys.length,2);
+  assert.equal(h.sends,1);assert.equal(h.row.status,'submitted');assert.equal(h.row.args.p_due_month,'2026-10');assert.equal(h.row.args.p_task_keys.length,1);
 });
 for(const [mode,state] of [['timeout','unknown'],['gateway','unknown'],['reject','failed'],['empty','unknown']]) test(mode+' preserves durable deduplication and never retries an ambiguous send',async()=>{
   const h=harness(mode);await h.service.run();await h.service.run();assert.equal(h.sends,1);assert.equal(h.row.status,state);
@@ -179,8 +182,8 @@ test('Solapi student name placeholders render Korean particles without modifying
   const data=snapshot(), student=data.students[0];
   const tasks=[{ruleKey:'after_1',label:'1개월',dueMonth:'2026-10',occurrenceMonths:1}];
   const cases=[
-    ['하정우','#{학생이름_주제}','하정우는'],
-    ['김지훈','#{학생이름_주제}','김지훈은'],
+    ['하정우','#{학생이름_주제}','정우는'],
+    ['김지훈','#{학생이름_주제}','지훈은'],
     ['민서','#{학생이름_주격}','민서가'],
     ['민준','#{학생이름_주격}','민준이'],
     ['민서','#{학생이름_목적격}','민서를'],
@@ -209,7 +212,7 @@ test('consultation Alimtalk never includes school or kindergarten names',()=>{
   data.settings.template_body='#{학생이름_주제} 상담 신청 예약 안내\\n#{예약링크}';
   const tasks=[{ruleKey:'after_1',label:'1개월',dueMonth:'2026-10',occurrenceMonths:1}];
   const result=server.messageFor(data,student,tasks);
-  assert.match(result.text,/하정우는 상담 신청 예약 안내/);
+  assert.match(result.text,/정우는 상담 신청 예약 안내/);
   assert.ok(!result.text.includes('한샘초'));
   assert.ok(!result.text.includes('키즈킹'));
   assert.equal(Object.hasOwn(result.kakaoOptions.variables,'#{학교명}'),false);

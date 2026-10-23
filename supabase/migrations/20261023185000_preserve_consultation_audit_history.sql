@@ -1,0 +1,6 @@
+alter table public.olli_consultation_template_sync_events alter column channel_id drop not null;
+alter table public.olli_consultation_template_sync_events drop constraint if exists olli_consultation_template_sync_events_channel_id_fkey;
+alter table public.olli_consultation_template_sync_events add constraint olli_consultation_template_sync_events_channel_id_fkey foreign key(channel_id) references public.olli_consultation_channels(id) on delete set null;
+alter table public.olli_consultation_template_replacements alter column channel_id drop not null;
+alter table public.olli_consultation_template_replacements drop constraint if exists olli_consultation_template_replacements_channel_id_fkey;
+alter table public.olli_consultation_template_replacements add constraint olli_consultation_template_replacements_channel_id_fkey foreign key(channel_id) references public.olli_consultation_channels(id) on delete set null;
