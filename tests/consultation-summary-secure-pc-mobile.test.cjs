@@ -25,36 +25,73 @@ function evaluate(src, functionName, scope = {}) {
 }
 
 for (const app of ['pc', 'mobile']) {
-  test(app + ': consultation material uses available growth records, not every scheduled-month slot', async () => {
+  test(app + ': 12-month summary waits for the final growth feedback, even if previous records exist', async () => {
     const code = section(files[app], 'async function prepareConsultationFeedbackMaterial(', 'function normalizeConsultationSummaryFeedbackRows(');
-    let rows = [], slotCount = 0;
+    const helper = section(files[app], 'function getElementaryAnnualConsultationFinalMonth(', 'function getConsultationMaterialContext(');
+    let rows = [];
     const scope = {
       getConsultationSummaryMonthsFromLabels: () => 12,
       getConsultationFeedbackMaterialMode: () => 'elementary_summary_slots',
-      getConsultationMaterialContext: () => ({ start: new Date('2025-10-01'), end: new Date('2026-10-23') }),
+      getConsultationMaterialContext: () => ({
+        enrolled: new Date(2025, 3, 12),
+        start: new Date(2025, 3, 12),
+        end: new Date(2026, 3, 18),
+        checkedAt: new Date(2026, 3, 18)
+      }),
       loadConsultationSummaryFeedbackRows: async (_student, _months, options) => {
         assert.equal(options.sourceTables[0], 'feedbacks');
+        assert.equal(options.context.start.getFullYear(), 2025);
+        assert.equal(options.context.start.getMonth(), 3);
+        assert.equal(options.context.start.getDate(), 1);
+        assert.equal(options.context.end.getFullYear(), 2026);
+        assert.equal(options.context.end.getMonth(), 3);
         return rows;
       },
       pickElementaryFeedbackRowsBySlots: () => ({
-        slots: Array.from({ length: slotCount }, () => ({})),
-        slotStates: Array.from({ length: slotCount }, () => ({ fulfilled: false }))
+        slots: [{},{},{},{}],
+        slotStates: [{fulfilled:false},{fulfilled:false},{fulfilled:false},{fulfilled:false}]
       }),
-      formatConsultationRecordRowsForPreview: () => 'records',
+      isDateWithinRange: (value, begin, end) => value >= begin && value <= end,
+      formatConsultationRecordRowsForPreview: () => 'records'
     };
-    const prepare = evaluate(code, 'prepareConsultationFeedbackMaterial', scope);
-    rows = [{ source_table: 'feedbacks', content: 'June growth' }, { source_table: 'feedbacks', content: 'July growth' }];
-    slotCount = 4;
-    assert.equal((await prepare({ type: 'elementary', id: 'student-1' }, 12)).status, 'ready');
-    slotCount = 0;
-    assert.equal((await prepare({ type: 'elementary', id: 'student-1' }, 12)).status, 'ready');
-    slotCount = 1;
-    rows = rows.slice(0, 1);
-    assert.equal((await prepare({ type: 'elementary', id: 'student-1' }, 12)).status, 'ready');
-    slotCount = 4;
-    const result = await prepare({ type: 'elementary', id: 'student-1' }, 12);
-    assert.equal(result.status, 'insufficient');
-    assert.match(result.reason, /최소 2개/);
+    const prepare = evaluate(helper + code, 'prepareConsultationFeedbackMaterial', scope);
+    const growth = (date, type = 'growth') => ({
+      source_table: 'feedbacks',
+      feedback_type: type,
+      content: 'Growth feedback',
+      _summaryDate: new Date(date)
+    });
+    const student = { type: 'elementary', id: 's1' };
+    rows = [growth('2025-06-30'), growth('2025-09-30'), growth('2025-12-31')];
+    const pending = await prepare(student, 12, ['매년 상담']);
+    assert.equal(pending.status, 'insufficient');
+    assert.match(pending.reason, /2026년 3월분/);
+    rows.push(growth('2026-03-28'));
+    assert.equal((await prepare(student, 12, [])).status, 'ready');
+    rows.pop();
+    rows.push(growth('2026-04-08'));
+    assert.equal((await prepare(student, 12, [])).status, 'ready');
+    rows.pop();
+    rows.push(growth('2026-05-01'));
+    assert.equal((await prepare(student, 12, [])).status, 'insufficient');
+    rows.pop();
+    rows.push(growth('2026-04-08', 'class'));
+    assert.equal((await prepare(student, 12, [])).status, 'insufficient');
+  });
+
+  test(app + ': annual target month stays correct after the anniversary month and on later years', () => {
+    const code = section(files[app], 'function getElementaryAnnualConsultationFinalMonth(', 'function getConsultationMaterialContext(');
+    const getFinal = evaluate(code, 'getElementaryAnnualConsultationFinalMonth');
+    const enrolled = new Date(2025, 3, 12);
+    const first = getFinal({ enrolled, checkedAt: new Date(2026, 3, 10) });
+    assert.equal(first.label, '2026년 3월');
+    assert.equal(first.finalMonthStart.getFullYear(), 2026);
+    assert.equal(first.finalMonthStart.getMonth(), 2);
+    assert.equal(first.followingMonthEnd.getMonth(), 3);
+    assert.equal(getFinal({ enrolled, checkedAt: new Date(2026, 4, 12) }).label, '2026년 3월');
+    assert.equal(getFinal({ enrolled, checkedAt: new Date(2027, 3, 14) }).label, '2027년 3월');
+    const october = getFinal({ enrolled: new Date(2025, 9, 1), checkedAt: new Date(2026, 9, 3) });
+    assert.equal(october.label, '2026년 9월');
   });
 
   test(app + ': protected consultation reading propagates a failed server read', async () => {
