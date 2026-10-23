@@ -1,0 +1,22 @@
+name: Validate mobile consultation material status
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/olli-student-core.js'
+      - 'apps/mobile/index.html'
+      - 'tests/mobile-consultation-material-status.test.cjs'
+      - '.github/workflows/validate-mobile-consultation-material-status.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check apps/mobile/olli-student-core.js
+      - run: node --test tests/mobile-consultation-material-status.test.cjs
+      - run: node --test tests/consultation-summary-secure-pc-mobile.test.cjs
