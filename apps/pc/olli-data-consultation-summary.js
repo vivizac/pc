@@ -207,16 +207,17 @@ async function prepareConsultationFeedbackMaterial(student, months, labels = [])
   }
 
   if (mode === 'elementary_summary_slots') {
-    const picked = pickElementaryFeedbackRowsBySlots(student, rows, context);
-    const expectedCount = picked.slots.length;
-    const requiredCount = Math.max(2, expectedCount);
-    if (!expectedCount) {
-      return { mode, status: 'insufficient', rows: [], context, slots: picked.slotStates, reason: '그룹별 피드백 발송월 설정이 없습니다.' };
+    const records = rows.filter(row => row.source_table === 'feedbacks');
+    const picked = pickElementaryFeedbackRowsBySlots(student, records, context);
+    // 그룹별 발송월은 참고합니다. 누락된 발송월 하나 때문에 다른 달의 실제 피드백을 버리지 않습니다.
+    const requiredCount = picked.slots.length === 1 ? 1 : 2;
+    if (records.length < requiredCount) {
+      return {
+        mode, status: 'insufficient', rows: records, context, slots: picked.slotStates,
+        reason: `상담 기간 내 성장 피드백이 최소 ${requiredCount}개 필요합니다. 현재 ${records.length}개가 확인되었습니다.`
+      };
     }
-    if (picked.rows.length < requiredCount || picked.slotStates.some(slot => !slot.fulfilled)) {
-      return { mode, status: 'insufficient', rows: picked.rows, context, slots: picked.slotStates, reason: `필요 피드백 ${requiredCount}개 중 ${picked.rows.length}개만 확인되었습니다.` };
-    }
-    return { mode, status: 'ready', rows: picked.rows, context, slots: picked.slotStates };
+    return { mode, status: 'ready', rows: records, context, slots: picked.slotStates };
   }
 
   return {
@@ -278,19 +279,19 @@ async function loadConsultationSummaryFeedbackRows(student, months, options = {}
     throw new Error('상담용 피드백 보호 조회 모듈이 준비되지 않았습니다.');
   }
 
+  if (!studentId && !studentName) throw new Error('상담 학생의 식별 정보가 없습니다.');
   const identity = { academyId };
   if (studentId) identity.studentId = studentId;
   else if (studentName) identity.student_name = studentName;
 
   const settled = await Promise.all(requestedTables.map(async table => {
+    const feature = getConsultationSecureFeedbackReadFeature(table);
+    const spec = core.FeatureRegistry.require(feature);
     try {
-      const feature = getConsultationSecureFeedbackReadFeature(table);
-      const spec = core.FeatureRegistry.require(feature);
       const rows = await core.ServerAdapter.read(spec, identity, { limit: 300 });
       return normalizeConsultationSummaryFeedbackRows(rows, table, safeMonths, options);
     } catch (err) {
-      console.warn('상담용 피드백 기록 조회 실패:', table, err.message || err);
-      return [];
+      throw new Error(`상담 피드백 서버 조회 실패 (${table}): ${err?.message || '연결 오류'}`);
     }
   }));
 
@@ -447,13 +448,13 @@ function setAcademyConsultationSummaryItem(key, patch) {
 }
 
 function getAcademyConsultationSummaryStatusLabel(status) {
-  const normalized = String(status || 'insufficient');
-  if (normalized === 'ready') return '준비완료';
+  if (status === 'ready') return '준비완료';
+  if (status === 'error') return '확인오류';
   return '자료부족';
 }
 
 function getAcademyConsultationSummaryDisplayStatus(status) {
-  return String(status || '') === 'ready' ? 'ready' : 'insufficient';
+  return status === 'ready' || status === 'error' ? status : 'insufficient';
 }
 
 function isSummaryFeedbackRowForMonth(row, monthKey) {
@@ -465,7 +466,7 @@ async function loadConsultationSummaryFeedbackRowsSecure(student, limit = 50) {
   const academyId = requireOlliAcademyId('상담용 종합 피드백 확인');
   const studentId = String(student?.id || '').trim();
   const studentName = String(student?.name || '').trim();
-  if (!studentId && !studentName) return [];
+  if (!studentId && !studentName) throw new Error('상담 학생의 식별 정보가 없습니다.');
 
   const core = window.OlliStorageCore;
   if (!core?.FeatureRegistry || !core?.ServerAdapter) {
@@ -484,14 +485,7 @@ async function findSavedConsultationSummaryFeedback(student, months) {
   const safeMonths = Number(months) || 1;
   const year = new Date().getFullYear();
   const monthKey = getAcademyConsultationMonthKey();
-  let sourceRows = [];
-
-  try {
-    sourceRows = await loadConsultationSummaryFeedbackRowsSecure(student, 50);
-  } catch (err) {
-    console.warn('상담용 종합 피드백 저장본 확인 실패:', err.message || err);
-    sourceRows = [];
-  }
+  const sourceRows = await loadConsultationSummaryFeedbackRowsSecure(student, 50);
 
   const seen = new Set();
   const rows = filterOlliActiveRows(sourceRows)
@@ -669,7 +663,7 @@ async function runAcademyConsultationSummaryAutoCheck() {
           });
         } else {
           setAcademyConsultationSummaryItem(key, {
-            status: 'insufficient',
+            status: 'error',
             error: err.message || '알 수 없는 오류입니다.',
             studentName: student.name || '',
             studentDivision: student.type === 'kinder' ? 'kinder' : 'elementary',

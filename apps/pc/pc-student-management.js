@@ -210,8 +210,8 @@
 
   function consultationStatusChipHtml(student, labels) {
     const cached = consultationStatusCache.get(consultationStatusKey(student, labels));
-    const status = cached?.status === 'ready' ? 'ready' : (cached?.status === 'insufficient' ? 'insufficient' : 'checking');
-    const label = status === 'ready' ? '준비완료' : (status === 'insufficient' ? '자료부족' : '확인중');
+    const status = cached?.status === 'ready' ? 'ready' : (cached?.status === 'insufficient' ? 'insufficient' : (cached?.status === 'error' ? 'error' : 'checking'));
+    const label = status === 'ready' ? '준비완료' : (status === 'insufficient' ? '자료부족' : (status === 'error' ? '확인오류' : '확인중'));
     return '<span class="recordAcademyConsultStatusChip '+status+'" data-pc-consult-material-status="'+status+'">'+label+'</span>';
   }
 

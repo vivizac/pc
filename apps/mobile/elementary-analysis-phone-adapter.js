@@ -79,37 +79,23 @@ async function loadMemoFeedbackArchiveItemsFromSupabase(student) {
     ? window.loadOlliFeedbackRowsSecure
     : null;
 
-  if (!secureReader) {
-    console.warn('피드백 보관함 보호 조회 모듈이 준비되지 않아 기존 로컬 보관함을 유지합니다.');
-    return existingItems;
-  }
+  if (!secureReader) throw new Error('피드백 보관함 보호 조회 모듈이 준비되지 않았습니다.');
 
   const results = await Promise.allSettled([
     secureReader('feedbacks', student, 120),
     secureReader('fail_feedbacks', student, 120)
   ]);
 
-  if (results.every(result => result.status === 'rejected')) {
-    console.warn('피드백 보관함 서버 조회 실패: 기존 로컬 보관함을 유지합니다.');
-    return existingItems;
+  if (results.some(result => result.status === 'rejected')) {
+    throw new Error('피드백 보관함 서버 조회 실패: ' + results.filter(result => result.status === 'rejected').map(result => result.reason?.message || '연결 오류').join(', '));
   }
 
-  const existingBySource = sourceTable => existingItems.filter(item =>
-    String(item?.sourceTable || item?.row?.source_table || '').trim() === sourceTable
-  );
-  const feedbackItems = results[0].status === 'fulfilled'
-    ? normalizeMemoFeedbackArchiveRows(results[0].value, 'feedbacks')
-    : existingBySource('feedbacks');
-  const failItems = results[1].status === 'fulfilled'
-    ? normalizeMemoFeedbackArchiveRows(results[1].value, 'fail_feedbacks')
-    : existingBySource('fail_feedbacks');
+  const feedbackItems = normalizeMemoFeedbackArchiveRows(results[0].value, 'feedbacks');
+  const failItems = normalizeMemoFeedbackArchiveRows(results[1].value, 'fail_feedbacks');
   const otherItems = existingItems.filter(item => {
     const sourceTable = String(item?.sourceTable || item?.row?.source_table || '').trim();
     return sourceTable !== 'feedbacks' && sourceTable !== 'fail_feedbacks';
   });
-
-  if (results[0].status === 'rejected') console.warn('피드백 보관함 불러오기 실패: 기존 feedbacks 로컬 항목을 유지합니다.', results[0].reason?.message || results[0].reason);
-  if (results[1].status === 'rejected') console.warn('실패-성장 피드백 보관함 불러오기 실패: 기존 fail_feedbacks 로컬 항목을 유지합니다.', results[1].reason?.message || results[1].reason);
 
   const seen = new Set();
   const items = [...feedbackItems, ...failItems, ...otherItems]
