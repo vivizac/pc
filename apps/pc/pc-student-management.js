@@ -372,6 +372,24 @@
       + '<div class="pcAcademyTodoList">'+rows+'</div>';
   }
 
+  // 상담 대상 여부와 상담 피드백 범위는 규칙을 따르되, 학생 카드에는 실제 재원 개월 수를 표시합니다.
+  function consultationTenureChips(student, dueLabels) {
+    try {
+      const enrolled = typeof getStudentEnrollmentDateForStats === 'function'
+        ? getStudentEnrollmentDateForStats(student)
+        : null;
+      const elapsedMonths = typeof monthsBetweenByCalendar === 'function'
+        ? monthsBetweenByCalendar(enrolled, new Date())
+        : NaN;
+      if (Number.isInteger(elapsedMonths) && elapsedMonths >= 0) {
+        return [elapsedMonths + '개월'];
+      }
+    } catch (_) {}
+    return dueLabels.length
+      ? dueLabels.map((label) => typeof getOlliConsultationRuleShortLabel === 'function' ? getOlliConsultationRuleShortLabel(label) : label)
+      : ['상담 예정'];
+  }
+
   function consultationListHtml(due) {
     if (!due.length) return '<div class="pcAcademyConsultEmpty">이번 달 상담 예정 학생이 없습니다.</div>';
     const groups = [
@@ -381,7 +399,7 @@
     return groups.map((group) => {
       const rows = group.students.length ? group.students.map((student) => {
         const dueLabels = dueLabelsForStudent(student);
-        const chips = dueLabels.length ? dueLabels.map((label) => typeof getOlliConsultationRuleShortLabel === 'function' ? getOlliConsultationRuleShortLabel(label) : label) : ['상담 예정'];
+        const chips = consultationTenureChips(student, dueLabels);
         let completed = false;
         try { completed = typeof isAcademyConsultationCompletedForCurrentList === 'function' && isAcademyConsultationCompletedForCurrentList(student); } catch (_) {}
         const ref = consultationStudentRef(student);
