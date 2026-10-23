@@ -141,7 +141,12 @@ test('mobile: saved consultation summary uses protected RPC instead of forbidden
 test('both apps keep server errors distinct from genuine insufficient feedback', () => {
   for (const app of ['pc', 'mobile']) {
     assert.match(files[app], /if \(status === 'error'\) return '확인오류';/);
-    assert.match(files[app], /return status === 'ready' \|\| status === 'error' \? status : 'insufficient';/);
+    if (app === 'mobile') {
+      assert.match(files[app], /status === 'checking' \|\| status === 'generating'/);
+      assert.match(files[app], /return 'insufficient';/);
+    } else {
+      assert.match(files[app], /return status === 'ready' \|\| status === 'error' \? status : 'insufficient';/);
+    }
     assert.match(files[app], /status: 'error',\s+(?:reason|error): err\.message/);
   }
   assert.match(files.mobile, /status !== 'insufficient' && status !== 'error'/);
