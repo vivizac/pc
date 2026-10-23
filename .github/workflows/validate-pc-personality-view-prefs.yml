@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - 'apps/pc/pc-attendance.js'
+      - 'apps/pc/pc-attendance.css'
+      - 'apps/pc/olli-data-attendance-feedback.js'
+      - 'apps/pc/tests/pc-personality-feedback-archive-legacy.test.cjs'
       - 'apps/pc/index.html'
       - 'apps/pc/tests/pc-record-unification.test.cjs'
       - '.github/workflows/validate-pc-personality-view-prefs.yml'
@@ -11,6 +14,9 @@ on:
     branches: [main]
     paths:
       - 'apps/pc/pc-attendance.js'
+      - 'apps/pc/pc-attendance.css'
+      - 'apps/pc/olli-data-attendance-feedback.js'
+      - 'apps/pc/tests/pc-personality-feedback-archive-legacy.test.cjs'
       - 'apps/pc/index.html'
       - 'apps/pc/tests/pc-record-unification.test.cjs'
       - '.github/workflows/validate-pc-personality-view-prefs.yml'
@@ -31,3 +37,8 @@ jobs:
       - name: Validate PC record view preferences
         working-directory: apps/pc
         run: node tests/pc-record-unification.test.cjs
+      - name: Check PC feedback data syntax
+        run: node --check apps/pc/olli-data-attendance-feedback.js
+      - name: Validate imported feedback archive dates and safe caching
+        working-directory: apps/pc
+        run: node --test tests/pc-personality-feedback-archive-legacy.test.cjs

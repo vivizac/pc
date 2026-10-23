@@ -136,16 +136,25 @@ async function loadAttendanceStudentFeedbackSheetItems(student) {
   const settled = await Promise.allSettled(requests.map(item => item.promise));
   const feedbacks = [];
   const summaries = [];
+  const failedRequests = [];
   settled.forEach((result, index) => {
     const request = requests[index];
     if (result.status !== 'fulfilled') {
       console.warn(`${request.table} 피드백 불러오기 실패:`, result.reason?.message || result.reason);
+      failedRequests.push(request.table);
       return;
     }
     const rows = normalizeAttendanceFeedbackRows(result.value, request.table);
     if (request.type === 'summaries') summaries.push(...rows);
     else feedbacks.push(...rows);
   });
+  // 일부 조회만 성공한 결과로 기존 학생 보관함 캐시를 덮어쓰지 않습니다.
+  if (failedRequests.length) {
+    const error = new Error('일부 피드백 조회에 실패했습니다. 기존 보관함 기록을 유지합니다.');
+    error.code = 'PARTIAL_FEEDBACK_READ_FAILED';
+    error.tables = failedRequests;
+    throw error;
+  }
   const sortByDateDesc = (a, b) => (new Date(b.createdAt || '').getTime() || 0) - (new Date(a.createdAt || '').getTime() || 0);
   return {
     feedbacks: feedbacks.sort(sortByDateDesc),

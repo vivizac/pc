@@ -115,7 +115,10 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .kinderStuden
 .pcAttendanceArchiveTitle{padding:0 2px 10px;font:800 14px 'Pretendard',sans-serif;color:#15171a;letter-spacing:-.035em;}
 .pcAttendanceArchiveMonths{display:flex;flex-wrap:nowrap;align-items:center;gap:8px;width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;padding:0 2px 14px;}
 .pcAttendanceArchiveMonths::-webkit-scrollbar{display:none;}
-.pcAttendanceArchiveMonthBtn{flex:0 0 auto;min-width:60px;height:42px;padding:0 15px;border:1px solid #fff;border-radius:999px;background:#fff;color:#8e8e93;font:600 14px 'Pretendard',sans-serif;line-height:1;cursor:pointer;}
+.pcAttendanceArchiveMonthBtn{display:inline-flex;flex:0 0 auto;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:64px;height:48px;padding:0 12px;border:1px solid #fff;border-radius:999px;background:#fff;color:#8e8e93;font:600 14px 'Pretendard',sans-serif;line-height:1;cursor:pointer;}
+.pcAttendanceArchiveMonthText{font:600 14px 'Pretendard',sans-serif;line-height:1;}
+.pcAttendanceArchiveYearText{font:500 10px 'Pretendard',sans-serif;line-height:1;opacity:.75;}
+.pcAttendanceArchiveMonthBtn.active .pcAttendanceArchiveYearText{opacity:.9;}
 .pcAttendanceArchiveMonthBtn.active{border-color:#0A84FF;background:#0A84FF;color:#fff;}
 .pcAttendanceCombinedBody{display:flex;flex-direction:column;gap:0;flex:1;min-height:0;overflow:hidden;padding:0 10px 10px;}
 /* 로컬 캐시가 없는 최초 조회에서도 로딩 문구는 노출하지 않고 서버 갱신은 뒤에서 계속 진행 */

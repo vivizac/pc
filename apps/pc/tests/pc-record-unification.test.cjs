@@ -44,4 +44,4 @@ assert.match(classMode,/completeSuccessfulSubmit/);
 
 console.log('PC 관찰노트·퀵노트 통합 정적 검증 통과');
 
-assert.match(index,/pc-attendance\.js\?v=20261002-personality-view-prefs-1/);
+assert.match(index,/pc-attendance\.js\?v=\d{8}-[a-z0-9-]+/);

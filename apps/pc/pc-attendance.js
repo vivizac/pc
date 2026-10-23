@@ -635,6 +635,10 @@ function recordModeTabsHtml() {
     const match = String(key || '').match(/^(\d{4})-(\d{2})$/);
     return match ? Number(match[2]) + '월' : '';
   }
+  function archiveYearLabel(key) {
+    const match = String(key || '').match(/^(\d{4})-(\d{2})$/);
+    return match ? match[1] + '년' : '';
+  }
   function archiveMonths(feedbacks, summaries) {
     return [...new Set([...(feedbacks || []), ...(summaries || [])].map(archiveMonthKey).filter(Boolean))].sort((a, b) => b.localeCompare(a));
   }
@@ -644,8 +648,18 @@ function recordModeTabsHtml() {
     const months = archiveMonths(feedbacks, summaries);
     if (!months.length) { state.archiveMonthKey = ''; host.innerHTML = ''; return; }
     if (!months.includes(state.archiveMonthKey)) state.archiveMonthKey = months[0];
-    host.innerHTML = months.map((key) => '<button type="button" class="pcAttendanceArchiveMonthBtn '+(key === state.archiveMonthKey ? 'active' : '')+'" title="'+escape(key)+'" onclick="pcSelectAttendanceArchiveMonth(\''+escape(key)+'\')">'+archiveMonthLabel(key)+'</button>').join('');
+    host.innerHTML = months.map((key) => {
+      const monthLabel = archiveMonthLabel(key);
+      const yearLabel = archiveYearLabel(key);
+      const fullLabel = yearLabel + ' ' + monthLabel;
+      return '<button type="button" class="pcAttendanceArchiveMonthBtn ' + (key === state.archiveMonthKey ? 'active' : '')
+        + '" title="' + escape(fullLabel) + '" aria-label="' + escape(fullLabel)
+        + '" onclick="pcSelectAttendanceArchiveMonth(&quot;' + escape(key) + '&quot;)">'
+        + '<span class="pcAttendanceArchiveMonthText">' + escape(monthLabel) + '</span>'
+        + '<span class="pcAttendanceArchiveYearText">' + escape(yearLabel) + '</span></button>';
+    }).join('');
   }
+
   function renderCombinedRecords(student, data) {
     const feedbacks = Array.isArray(data?.feedbacks) ? data.feedbacks : [];
     const summaries = Array.isArray(data?.summaries) ? data.summaries : [];
