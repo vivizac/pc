@@ -60,7 +60,7 @@ test('a stuck checking status does not block subsequent server recheck', () => {
   const source = between('async function runAcademyConsultationSummaryAutoCheck(', 'window.toggleAcademyConsultationSummaryPreview =');
   assert.doesNotMatch(source, /existingState.status === 'generating' \|\| existingState.status === 'checking'/);
   assert.match(source, /fetchConsultationSummaryFromServer/);
-  assert.match(source, /await prepareConsultationFeedbackMaterial/);
+  assert.match(source, /await fetchConsultationSummaryFromServer/);
   assert.match(source, /status: 'error'/);
 });
 
