@@ -5,8 +5,8 @@
 })(typeof window!=='undefined'?window:globalThis,function(){
   'use strict';
   const divisions=[{key:'elementary',label:'초등부'},{key:'kinder',label:'유치부'}];
-  const stages=[{key:'after_1',label:'1개월',months:1},{key:'every_6',label:'6개월',months:6},{key:'every_12',label:'12개월',months:12}];
-  const slots=[...divisions.flatMap(division=>stages.map(stage=>({key:division.key+':'+stage.key,division:division.key,ruleKey:stage.key,label:division.label+' · '+stage.label,optional:false}))),{key:'annual:every_12',division:'annual',ruleKey:'every_12',label:'24개월 이후 · 공통 정기상담',optional:false}];
+  const stages=[{key:'after_1',label:'1개월',months:1},{key:'every_6',label:'6개월',months:6},{key:'every_12',label:'12개월',months:12},{key:'after_3',label:'3개월',months:3,optional:true}];
+  const slots=[...divisions.flatMap(division=>stages.map(stage=>({key:division.key+':'+stage.key,division:division.key,ruleKey:stage.key,label:division.label+' · '+stage.label,optional:!!stage.optional}))),{key:'annual:every_12',division:'annual',ruleKey:'every_12',label:'24개월 이후 · 공통 정기상담',optional:false}];
   function select(settings,student,tasks){
     if(!Array.isArray(tasks)||!tasks.length)throw new Error('CONSULTATION_TASK_REQUIRED');
     // One notice per due month. The latest month wins; annual consultation wins a 6/12 overlap.
