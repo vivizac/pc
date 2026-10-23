@@ -195,8 +195,8 @@ async function updateStudentStatusById(status, studentId) {
 
   // Persist first: never close the student modal on a merely local status change.
   await updateStudentStatusInSupabase(nextStudent);
-  setPendingStudentStatus(nextStudent);
   await saveStudent(nextStudent, { skipRemote: true });
+  clearPendingStudentStatus(targetId);
 
   if (nextStudent.type === 'elementary' || nextStudent.type === 'kinder') {
     const sectionState = recordStatusSectionOpenState[nextStudent.type];
