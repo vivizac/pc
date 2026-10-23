@@ -193,6 +193,8 @@ async function updateStudentStatusById(status, studentId) {
     updated_at: changedAt
   }, student.type || 'elementary');
 
+  // Persist first: never close the student modal on a merely local status change.
+  await updateStudentStatusInSupabase(nextStudent);
   setPendingStudentStatus(nextStudent);
   await saveStudent(nextStudent, { skipRemote: true });
 
@@ -213,13 +215,6 @@ async function updateStudentStatusById(status, studentId) {
   if (currentRecordView === 'elementary') renderElementaryRecords(searchValue);
   else if (currentRecordView === 'kinder') renderKinderRecords(searchValue);
   else if (currentRecordView === 'academy') renderRecordAcademyManagementDashboard();
-
-  try {
-    await updateStudentStatusInSupabase(nextStudent);
-  } catch (err) {
-    // 실패해도 로컬 상태와 재동기화 대기값은 유지합니다.
-    console.warn('student status remote sync pending:', err.message || err);
-  }
 
   await loadRecords(searchValue);
   if (currentRecordView === 'academy') renderRecordAcademyManagementDashboard();
@@ -275,7 +270,8 @@ async function deactivateStudentInSupabase(studentId) {
           deleted_by: deletedBy || null,
           delete_reason: 'student_deleted'
         },
-        forceCommon: true
+        forceCommon: true,
+        suppressQueue: true
       });
       if (result && result.serverSaved && result.verified) return result;
       if (result && result.pending) throw new Error('학생 삭제가 서버에 반영되지 않아 재전송 대기열에 남았습니다.');
@@ -840,12 +836,12 @@ async function updateStudentStatusInSupabase(student) {
     studentId,
     forceCommon: true,
     data: payload,
-    serverOptions: { operation: 'patch' }
+    serverOptions: { operation: 'patch' },
+    suppressQueue: true
   });
 
   if (isOlliPendingCommonSaveResult(result)) {
-    setPendingStudentStatus({ ...student, ...payload, id: studentId });
-    return true;
+    throw new Error('학생 상태 변경이 서버에 저장되지 않았습니다. 다시 시도해 주세요.');
   }
   if (!result || !result.serverSaved || !result.verified) {
     const error = result && result.error
