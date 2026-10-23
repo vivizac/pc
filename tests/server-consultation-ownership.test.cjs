@@ -70,6 +70,8 @@ test('consultation completion never treats a local optimistic button as confirme
  assert.match(code,/catch \(error\)/);
  assert.match(mobileRuntime,/getThisMonthConsultationDueStudents/);
  assert.match(mobileRuntime,/previousMobileAcademyRenderer/);
+ assert.match(mobileRuntime,/data-consult-preview/);
+ assert.match(mobileRuntime,/renderAcademyConsultationSummaryPreview/);
  assert.match(pc,/pendingGeneration/);
  assert.match(mobile,/pendingGeneration/);
  assert.match(mobileRuntime,/toggleAcademyConsultationCompleted/);
@@ -93,4 +95,32 @@ test('PC API proxies mobile shared server, without its own AI generation',()=>{
  assert.match(proxy,/vivizac-feedback\.vercel\.app\/api\/consultation-summary/);
  assert.doesNotMatch(proxy,/api\.openai\.com/);
  assert.match(api,/oll[i]_\S*consultation_summary_job_access/);
+});
+
+test('consultation carry-over uses the same calendar task core on both devices',()=>{
+ const source=read('packages/common/olli-consultation-task-core.js');
+ const calculate=vm.runInNewContext(source+'\ncalculateOlliConsultationTasks',{Date,Set});
+ const enrolled=new Date(2025,3,14), reference=new Date(2026,9,23);
+ const rules=['after_1','every_12'];
+ const active=calculate({type:'elementary',id:'00000000-0000-4000-8000-000000000001'},{
+   now:reference,enrolled,rules,progress:{tracking_started_month:'2026-04',completed:{}}
+ });
+ assert.equal(active.filter(x=>x.ruleKey==='every_12').length,1);
+ assert.equal(active.find(x=>x.ruleKey==='every_12').dueMonth,'2026-04');
+ const task=active.find(x=>x.ruleKey==='every_12');
+ const done={completed_at:'2026-10-22T11:00:00Z',completed_month:'2026-10'};
+ const sameMonth=calculate({type:'elementary',id:'00000000-0000-4000-8000-000000000001'},{
+   now:reference,enrolled,rules,progress:{tracking_started_month:'2026-04',completed:{[task.key]:done}}
+ });
+ assert.equal(sameMonth.find(x=>x.key===task.key)?.completed,true);
+ const afterMonth=calculate({type:'elementary',id:'00000000-0000-4000-8000-000000000001'},{
+   now:new Date(2026,10,1),enrolled,rules,progress:{tracking_started_month:'2026-04',completed:{[task.key]:done}}
+ });
+ assert.equal(afterMonth.some(x=>x.key===task.key),false);
+});
+test('summary claim RPC is executable only by service role',()=>{
+ const migration=read('supabase/migrations/20261023233000_consultation_job_server_only.sql');
+ assert.match(migration,/revoke execute on function public\.olli_consultation_summary_job_access/);
+ assert.match(migration,/from public, anon, authenticated/);
+ assert.match(migration,/to service_role/);
 });

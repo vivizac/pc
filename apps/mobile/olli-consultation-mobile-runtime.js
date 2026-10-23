@@ -317,6 +317,10 @@ function renderOlliServerConsultationDashboard() {
       const feedback = typeof getAcademyConsultationSummaryItem === 'function'
         ? getAcademyConsultationSummaryItem(student, months) : { status:'checking' };
       const state = feedback?.status || 'checking';
+      const feedbackKey = typeof getAcademyConsultationSummaryKey === 'function'
+        ? getAcademyConsultationSummaryKey(student, months) : '';
+      const previewExpanded = feedbackKey && typeof academyConsultationSummaryState !== 'undefined'
+        && academyConsultationSummaryState.expandedKey === feedbackKey;
       const statusText = typeof getAcademyConsultationSummaryStatusLabel === 'function'
         ? getAcademyConsultationSummaryStatusLabel(state) : '확인중';
       result += '<div class="recordAcademyConsultListItem">'
@@ -324,9 +328,15 @@ function renderOlliServerConsultationDashboard() {
         + esc(student.name) + '</div><div class="recordAcademyChipRow"><span class="recordAcademyInfoChip">'
         + esc(labels || '정기 상담') + '</span></div></div><div class="recordAcademyConsultActions">'
         + '<span class="recordAcademyConsultStatusChip">' + esc(statusText) + '</span>'
+        + (feedbackKey ? '<button type="button" class="recordAcademyConsultFeedbackBtn" data-consult-preview="'
+          + esc(feedbackKey) + '" aria-expanded="' + !!previewExpanded + '">'
+          + (previewExpanded ? '접기' : '내용 보기') + '</button>' : '')
         + '<button type="button" class="recordAcademyConsultCompleteBtn' + (done ? ' active' : '')
         + '" data-consult-ref="' + esc(ref) + '" aria-pressed="' + done + '">'
         + (done ? '완료' : '상담') + '</button></div></div>';
+      if (previewExpanded && typeof renderAcademyConsultationSummaryPreview === 'function') {
+        result += renderAcademyConsultationSummaryPreview(feedbackKey);
+      }
     }
     result += '</div>';
   }
@@ -334,6 +344,15 @@ function renderOlliServerConsultationDashboard() {
   panel.querySelectorAll('[data-consult-ref]').forEach(button => {
     button.addEventListener('click', event =>
       toggleAcademyConsultationCompleted(button.dataset.consultRef, event));
+  });
+  panel.querySelectorAll('[data-consult-preview]').forEach(button => {
+    button.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof window.toggleAcademyConsultationSummaryPreview === 'function') {
+        window.toggleAcademyConsultationSummaryPreview(button.dataset.consultPreview);
+      }
+    });
   });
 }
 const previousMobileAcademyRenderer = typeof window.renderRecordAcademyManagementDashboard === 'function'
