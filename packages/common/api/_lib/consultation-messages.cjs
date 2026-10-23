@@ -302,19 +302,14 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
         const response=await provider(credential,'/kakao/v2/templates/?templateId='+encodeURIComponent(row.template_id)+'&limit=10');
         const candidates=Array.isArray(response?.templateList)?response.templateList:[];
         const match=candidates.find(item=>item.templateId===row.template_id);
-        if(!match){
+        if(!match || match.isDeleted===true || match.isHidden===true){
+          // An absent, deleted or hidden template must never remain sendable.
           await rpc('olli_consultation_template_sync_apply',{
             p_channel_id:row.channel_id,p_template_id:row.template_id,
-            p_provider_status:null,p_content_matches:null,p_error_code:'TEMPLATE_NOT_RETURNED'
+            p_provider_status:match?'REJECTED':'PENDING',p_content_matches:false,p_error_code:null
           });
-          summary.errors++;continue;
-        }
-        if(match.isDeleted===true || match.isHidden===true){
-          await rpc('olli_consultation_template_sync_apply',{
-            p_channel_id:row.channel_id,p_template_id:row.template_id,
-            p_provider_status:null,p_content_matches:null,p_error_code:'TEMPLATE_NOT_SENDABLE'
-          });
-          summary.errors++;continue;
+          summary.checked++;summary.changed++;
+          continue;
         }
         const status=String(match.status||'').toUpperCase();
         if(!['PENDING','INSPECTING','APPROVED','REJECTED'].includes(status)){
