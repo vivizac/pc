@@ -45,6 +45,31 @@
       const data = await response.json();
       if (!response.ok || !data.ok) throw new Error(data.message || data.error || '종합 피드백 서버 처리 실패');
       return data;
+    },
+    async requestManualSummary(studentId, months, selectedFeedbackIds) {
+      const { academyId, sessionToken } = context();
+      const validMonths = [1, 3, 6, 12].includes(Number(months));
+      if (!validMonths) throw new Error('지원하지 않는 종합 피드백 기간입니다.');
+      const date = new Date();
+      const due = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2,'0');
+      const taskKey = 'id:' + studentId + '|manual_' + Number(months) + '|' + due;
+      const response = await global.fetch('/api/consultation-summary', {
+        method: 'POST', headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({academyId,sessionToken,studentId,taskKey,selectedFeedbackIds})
+      });
+      const data=await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.message||data.error||'수동 종합 피드백 서버 오류');
+      return {...data,taskKey};
+    },
+    async reviseManualSummary(studentId, taskKey, content) {
+      const {academyId,sessionToken}=context();
+      const response=await global.fetch('/api/consultation-summary',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({academyId,sessionToken,studentId,taskKey,action:'revise',content})
+      });
+      const data=await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.message||data.error||'종합 피드백 수정 저장 실패');
+      return data;
     }
   });
 })(window);

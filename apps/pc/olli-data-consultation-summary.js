@@ -411,27 +411,8 @@ async function fetchConsultationFeedbackByPromptType(promptType, messages, optio
   return { res, data };
 }
 
-async function createSummaryFeedbackFromRows(student, months, rows, labels = []) {
-  if (!Array.isArray(rows) || !rows.length) {
-    throw new Error(`최근 ${months}개월 안에 사용할 수 있는 저장 피드백이 없습니다.`);
-  }
-  const promptType = getConsultationFeedbackPromptType(student, months);
-  const userText = buildConsultationSummaryFeedbackUserText(student, months, rows, labels);
-  const messages = buildConsultationFeedbackMessages(student, months, userText);
-  const { res, data } = await fetchConsultationFeedbackByPromptType(promptType, messages, {
-    studentId: student?.id || '',
-    studentName: student?.name || '',
-    studentDivision: student?.type === 'kinder' ? 'kinder' : 'elementary'
-  });
-
-  if (!res.ok) throw new Error(getApiErrorMessage(res.status, data));
-
-  const rawReply = String(data.reply || '').trim();
-  if (!rawReply) throw new Error('응답 본문이 비어 있습니다.');
-  const cleanText = parseReplyType(rawReply).cleanText;
-  return typeof restoreFeedbackStudentAliases === 'function'
-    ? restoreFeedbackStudentAliases(cleanText, student?.name || '')
-    : cleanText;
+async function createSummaryFeedbackFromRows() {
+  throw new Error('종합 피드백은 올리 공통 서버에서만 생성할 수 있습니다.');
 }
 
 const academyConsultationSummaryState = {
@@ -694,61 +675,38 @@ async function requestConsultationSummaryFeedback(studentId, studentName, months
 
 async function requestSummaryFeedbackFromRecords(studentName, encodedRecords, months) {
   if (loading) return;
-  let records = [];
-  try { records = JSON.parse(decodeURIComponent(encodedRecords || '[]')); } catch { records = []; }
-  const allStudents = getAllStudents();
-  const studentId = String(records.find(row => row && row.student_id)?.student_id || '').trim();
-  const displayName = String(studentName || records.find(row => row && row.student_name)?.student_name || '').trim();
-  let student = null;
-
-  if (studentId) {
-    student = allStudents.find(item => String(item.id || '').trim() === studentId) || {
-      id: studentId,
-      name: displayName,
-      type: getPreferredStudentTypeForSave ? getPreferredStudentTypeForSave() : 'elementary'
-    };
-  } else if (displayName) {
-    const matches = allStudents.filter(item => String(item.name || '').trim() === displayName);
-    if (matches.length === 1) {
-      student = matches[0];
-    } else if (matches.length > 1) {
-      alert('같은 이름의 학생이 여러 명 있습니다. 학생코드가 있는 학생 기록에서 다시 생성해 주세요.');
-      return;
-    } else {
-      student = {
-        name: displayName,
-        type: getPreferredStudentTypeForSave ? getPreferredStudentTypeForSave() : 'elementary'
-      };
-    }
-  }
-
-  if (!student) {
-    alert('학생 정보를 찾을 수 없습니다. 학생 목록을 새로고침한 뒤 다시 시도해 주세요.');
+  let records=[];
+  try { records=JSON.parse(decodeURIComponent(encodedRecords||'[]')); } catch { records=[]; }
+  if(!Array.isArray(records))records=[];
+  const studentId=String(records.find(row=>row?.student_id)?.student_id||'').trim();
+  const studentList=typeof getAllStudents==='function'?getAllStudents():[];
+  const matches=studentId
+    ?studentList.filter(s=>String(s.id||'').trim()===studentId)
+    :studentList.filter(s=>String(s.name||'').trim()===String(studentName||'').trim());
+  if(matches.length!==1||!matches[0].id){
+    alert('학생을 정확히 식별할 수 없습니다. 학생 관리에서 등록된 학생 기록을 선택해 주세요.');
     return;
   }
-
-  const summaryMonths = Number(months) || 6;
-  const rows = normalizeConsultationSummaryFeedbackRows(records, 'feedbacks', summaryMonths);
-
-  loading = true;
-  showFeedbackLoading('summary');
-  try {
-    const reply = await createSummaryFeedbackFromRows(student, summaryMonths, rows, [`${summaryMonths}개월`]);
-    currentSaveType = 'summary';
-    addRecordSummaryPopup(reply, `${student.name || displayName} ${summaryMonths}개월 종합 피드백`, {
-      studentId: student.id || '',
-      studentName: student.name || displayName,
-      studentDivision: student.type === 'kinder' ? 'kinder' : 'elementary',
-      months: summaryMonths
-    });
-  } catch (err) {
-    console.error('종합 피드백 생성 오류:', err);
-    alert(`종합 피드백 생성 중 오류가 발생했어요.
-
-${err.message || '알 수 없는 오류입니다.'}`);
-  } finally {
-    hideFeedbackLoading();
-    loading = false;
+  const student=matches[0], period=Number(months)||6;
+  const ids=[...new Set(records.map(row=>Number(row?.id)).filter(id=>Number.isSafeInteger(id)&&id>0))];
+  if(!ids.length){alert('서버에 저장된 기록을 먼저 선택해 주세요.');return;}
+  if(!window.OlliConsultationServer||!window.OlliConsultationManualUI){
+    alert('종합 피드백 공통 서버가 준비되지 않았습니다. 새로고침하여 다시 시도해 주세요.');
+    return;
+  }
+  loading=true;
+  if(typeof showFeedbackLoading==='function')showFeedbackLoading('summary');
+  try{
+    const result=await window.OlliConsultationServer.requestManualSummary(student.id,period,ids);
+    if(result.status==='generating'){alert('서버에서 종합 피드백을 생성 중입니다. 잠시 후 다시 확인해 주세요.');return;}
+    if(result.status!=='ready'||!result.content)throw new Error(result.reason||'서버 종합 피드백을 확인하지 못했습니다.');
+    window.OlliConsultationManualUI.open({studentId:student.id,studentName:student.name,
+      months:period,taskKey:result.taskKey,content:result.content});
+  }catch(error){
+    alert('종합 피드백 서버 처리 실패: '+(error?.message||error));
+  }finally{
+    if(typeof hideFeedbackLoading==='function')hideFeedbackLoading();
+    loading=false;
   }
 }
 window.requestConsultationSummaryFeedback = requestConsultationSummaryFeedback;
