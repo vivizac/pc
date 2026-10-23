@@ -5,7 +5,7 @@ const path=require('node:path');
 const vm=require('node:vm');
 const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
-const api=read('apps/mobile/api/consultation-summary.js');
+const api=read('packages/common/api/_lib/consultation-summary-handler.cjs');
 const pc=read('apps/pc/olli-data-consultation-summary.js');
 const mobile=read('apps/mobile/olli-student-core.js');
 const client=read('packages/common/olli-consultation-progress-client.js');
@@ -14,8 +14,7 @@ const mobileRuntime=read('apps/mobile/olli-consultation-mobile-runtime.js');
 const migration=read('supabase/migrations/20261023193000_consultation_server_source_of_truth.sql');
 
 function getHelpers() {
-  const js=api.replace('export default async function handler','async function handler')
-    .replace('export const __test =','const __test =');
+  const js=api.replace('module.exports=handler;', '').replace('module.exports.__test=', 'const __test =');
   return vm.runInNewContext(js+'\n__test',{Date,URL,Set,console,process:{env:{}},fetch:()=>{throw Error('No network allowed in unit tests')}});
 }
 function section(source,begin,end) {
@@ -92,9 +91,10 @@ test('database enforces single job per academy student rule and due-month with a
 });
 test('PC API proxies mobile shared server, without its own AI generation',()=>{
  const proxy=read('apps/pc/api/consultation-summary.js');
- assert.match(proxy,/vivizac-feedback\.vercel\.app\/api\/consultation-summary/);
+ assert.match(proxy, /require\('\.\/_lib\/consultation-summary-handler\.cjs'\)/);
+ assert.equal(proxy, read('apps/mobile/api/consultation-summary.js'));
+ assert.match(api,/olli_consultation_summary_job_access/);
  assert.doesNotMatch(proxy,/api\.openai\.com/);
- assert.match(api,/oll[i]_\S*consultation_summary_job_access/);
 });
 
 test('consultation carry-over uses the same calendar task core on both devices',()=>{
@@ -123,4 +123,17 @@ test('summary claim RPC is executable only by service role',()=>{
  assert.match(migration,/revoke execute on function public\.olli_consultation_summary_job_access/);
  assert.match(migration,/from public, anon, authenticated/);
  assert.match(migration,/to service_role/);
+});
+
+test('expired generation lease is allowed to proceed to atomic claim check',()=>{
+ const s=read('packages/common/api/_lib/consultation-summary-handler.cjs');
+ assert.doesNotMatch(s,/if\(status\.status==='generating'\)return/);
+ assert.match(s,/p_action:'claim'/);
+});
+test('shared consultation handler is staged identically in both apps',()=>{
+ for (const app of ['pc','mobile']) {
+   const m=JSON.parse(read('packages/common/'+app+'-runtime-manifest.json'));
+   assert.ok(m.files.includes('api/_lib/consultation-summary-handler.cjs'),app);
+   assert.match(read('apps/'+app+'/api/consultation-summary.js'),/require\('\.\/_lib\/consultation-summary-handler\.cjs'\)/);
+ }
 });

@@ -83,6 +83,7 @@
     "olli-student-guardian-contact.js",
     "olli-student-guardian-contact.css",
     "olli-consultation-message-templates.js",
-    "olli-consultation-progress-client.js"
+    "olli-consultation-progress-client.js",
+    "api/_lib/consultation-summary-handler.cjs"
   ]
 }
