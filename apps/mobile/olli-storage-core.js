@@ -1666,7 +1666,7 @@
       requiredColumns: ['academy_id', 'id', 'is_deleted'],
       selectColumns: ['id', 'academy_id', 'is_deleted', 'deleted_at', 'deleted_by', 'delete_reason', 'status', 'status_changed_at', 'updated_at']
     },
-    verification: { mode: 'read_after_write', compareFields: ['academy_id', 'id', 'is_deleted'] },
+    verification: { mode: 'custom_returned_row', compareFields: ['academy_id', 'id', 'is_deleted'] },
     conflict: { policy: 'latest_valid_update', protectPendingLocal: true },
     permissions: { read: ['teacher', 'manager', 'owner'], write: ['teacher', 'manager', 'owner'] },
     diagnostics: { serverRequired: true, adminVisible: true }
