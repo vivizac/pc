@@ -19,19 +19,22 @@
       p_action: action,
       p_task_keys: options.taskKeys || null,
       p_completed: options.completed === true ? true : options.completed === false ? false : null,
-      p_todos: options.todos || null
+      p_todos: options.todos || null,
+      p_rules: options.rules || null
     });
     if (!result?.ok) {
       const error = new Error('상담 상태를 서버에 저장하거나 불러오지 못했습니다: ' + (result?.code || 'UNKNOWN'));
       error.code = result?.code || 'CONSULTATION_RPC_FAILED';
       throw error;
     }
-    return result.progress || {};
+    return action==='read_rules'||action==='set_rules' ? (result.rules || {}) : (result.progress || {});
   }
   global.OlliConsultationServer = Object.freeze({
     readProgress: () => request('read'),
     setCompleted: (taskKeys, completed) => request('set_completed', { taskKeys, completed }),
     setTodos: todos => request('set_todos', { todos }),
+    readRules: () => request('read_rules'),
+    setRules: rules => request('set_rules', { rules }),
     // Claim status is owned by the central server endpoint, never the client.
     async requestSummary(studentId, taskKey) {
       const { academyId, sessionToken } = context();

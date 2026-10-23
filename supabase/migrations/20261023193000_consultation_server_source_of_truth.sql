@@ -25,13 +25,15 @@ revoke all on public.olli_consultation_summary_jobs from public, anon, authentic
 create or replace function public.olli_consultation_progress_access(
   p_session_token text, p_academy_id uuid,
   p_action text default 'read', p_task_keys text[] default null,
-  p_completed boolean default null, p_todos jsonb default null
+  p_completed boolean default null, p_todos jsonb default null,
+  p_rules jsonb default null
 ) returns jsonb
 language plpgsql security definer set search_path = ''
 as $$
 declare
   v_account uuid; v_role text; v_progress jsonb;
   v_completed jsonb; v_task text; v_student_text text; v_student_id uuid;
+  v_rule text; v_division text;
   v_now text := to_char(now() at time zone 'Asia/Seoul','YYYY-MM');
   v_completed_at text := to_char(now() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"');
 begin
@@ -45,10 +47,10 @@ begin
     and m.role in ('owner','manager','teacher','super_admin')
   limit 1;
   if v_role is null then return jsonb_build_object('ok',false,'code','PERMISSION_DENIED'); end if;
-  if p_action not in ('read','set_completed','set_todos') then
+  if p_action not in ('read','set_completed','set_todos','read_rules','set_rules') then
     return jsonb_build_object('ok',false,'code','ACTION_INVALID');
   end if;
-  if p_action <> 'read' and v_role not in ('owner','manager','super_admin') then
+  if p_action not in ('read','read_rules') and v_role not in ('owner','manager','super_admin') then
     return jsonb_build_object('ok',false,'code','WRITE_DENIED');
   end if;
 
@@ -58,6 +60,25 @@ begin
   if not found then return jsonb_build_object('ok',false,'code','SETTINGS_NOT_FOUND'); end if;
   if jsonb_typeof(v_progress) <> 'object' then v_progress := '{}'::jsonb; end if;
   if p_action='read' then return jsonb_build_object('ok',true,'progress',v_progress); end if;
+  if p_action='read_rules' then
+    return jsonb_build_object('ok',true,'rules',
+      coalesce((select consultation_rules from public.academy_settings where academy_id=p_academy_id),'{}'::jsonb));
+  end if;
+  if p_action='set_rules' then
+    if jsonb_typeof(p_rules)<>'object' then return jsonb_build_object('ok',false,'code','RULES_INVALID'); end if;
+    for v_division in select jsonb_object_keys(p_rules) loop
+      if v_division not in ('elementary','kinder') or jsonb_typeof(p_rules->v_division)<>'array' then
+        return jsonb_build_object('ok',false,'code','DIVISION_RULES_INVALID');
+      end if;
+      for v_rule in select jsonb_array_elements_text(p_rules->v_division) loop
+        if v_rule not in ('after_1','after_3','every_6','every_12') then
+          return jsonb_build_object('ok',false,'code','RULE_INVALID');
+        end if;
+      end loop;
+    end loop;
+    update public.academy_settings set consultation_rules=p_rules,updated_at=now() where academy_id=p_academy_id;
+    return jsonb_build_object('ok',true,'rules',p_rules);
+  end if;
 
   if p_action='set_completed' then
     if p_completed is null or coalesce(array_length(p_task_keys,1),0) not between 1 and 24 then
@@ -97,8 +118,8 @@ begin
   return jsonb_build_object('ok',true,'progress',v_progress);
 end;
 $$;
-revoke all on function public.olli_consultation_progress_access(text,uuid,text,text[],boolean,jsonb) from public,anon,authenticated;
-grant execute on function public.olli_consultation_progress_access(text,uuid,text,text[],boolean,jsonb) to anon,authenticated,service_role;
+revoke all on function public.olli_consultation_progress_access(text,uuid,text,text[],boolean,jsonb,jsonb) from public,anon,authenticated;
+grant execute on function public.olli_consultation_progress_access(text,uuid,text,text[],boolean,jsonb,jsonb) to anon,authenticated,service_role;
 
 create or replace function public.olli_consultation_summary_job_access(
   p_session_token text, p_academy_id uuid, p_student_id uuid,

@@ -189,23 +189,15 @@ function refreshOlliConsultationViews(){
 }
 
 async function saveOlliConsultationRulesShared(rules){
-  const academyId = ensureOlliConsultationContext();
-  const normalized = normalizeOlliConsultationRulesByType(rules);
-  if (!academyId || typeof saveOlliData !== 'function') return normalized;
-
-  // saveOlliData는 서버 요청 전에 공통 학원별 로컬 캐시에 먼저 저장합니다.
-  const savePromise = saveOlliData('consultation_rules', {
-    academyId,
-    data: normalized,
-    forceCommon: true
-  });
+  const academyId=ensureOlliConsultationContext();
+  const normalized=normalizeOlliConsultationRulesByType(rules);
+  if(!academyId||!window.OlliConsultationServer)throw new Error('상담 공통 서버를 사용할 수 없습니다.');
+  const saved=await window.OlliConsultationServer.setRules(normalized);
+  if(typeof writeOlliLocal==='function')writeOlliLocal('consultation_rules',{academyId},
+    normalizeOlliConsultationRulesByType(saved),
+    {syncStatus:'synced',lastSyncedAt:new Date().toISOString(),retryCount:0});
   refreshOlliConsultationViews();
-
-  const result = await savePromise;
-  if (!result || !result.serverSaved || !result.verified) {
-    console.warn('상담기준은 로컬에 저장되었으며 서버 동기화를 다시 시도합니다.', result && (result.errorCode || result.error));
-  }
-  return normalized;
+  return normalizeOlliConsultationRulesByType(saved);
 }
 
 function saveOlliConsultationRules(rules){

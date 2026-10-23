@@ -160,8 +160,15 @@ async function loadOlliConsultationProgressFromServer(options = {}){
 
 
 async function loadOlliConsultationRulesFromServer() {
-  // 추후 공통 상담 규칙 RPC를 이용하며, 현재는 로컬의 설정 규칙을 사용합니다.
-  return false;
+  const academyId=ensureOlliConsultationContext();
+  if(!academyId||!window.OlliConsultationServer)return false;
+  try {
+    const rules=await window.OlliConsultationServer.readRules();
+    if(typeof writeOlliLocal==='function')writeOlliLocal('consultation_rules',{academyId},
+      normalizeOlliConsultationRulesByType(rules),
+      {syncStatus:'synced',lastSyncedAt:new Date().toISOString(),retryCount:0});
+    return true;
+  }catch(err){console.warn('모바일 상담 기준 서버 조회 실패:',err);return false;}
 }
 
 function isCurrentMonthYear(date){
@@ -335,7 +342,7 @@ function initializeMobileConsultationServer() {
   if (!window.OlliConsultationServer) return;
   const reload = () => {
     if (typeof getOlliCurrentAcademyId !== 'function' || !getOlliCurrentAcademyId()) return;
-    loadOlliConsultationProgressFromServer({ force: true }).then(() => {
+    Promise.all([loadOlliConsultationRulesFromServer(),loadOlliConsultationProgressFromServer({ force: true })]).then(() => {
       if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') {
         renderRecordAcademyManagementDashboard();
       }

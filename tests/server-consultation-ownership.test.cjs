@@ -80,6 +80,8 @@ test('database enforces single job per academy student rule and due-month with a
  assert.match(migration,/on conflict \(academy_id,client_mutation_id\) do nothing/);
  assert.match(migration,/revoke all on public\.olli_consultation_summary_jobs/);
  assert.match(migration,/public\.olli_account_id_from_session/);
+ assert.match(migration,/p_action='set_rules'/);
+ assert.match(client,/readRules: \(\) => request\('read_rules'\)/);
  assert.match(migration,/m\.role in \('owner','manager','super_admin'\)/);
 });
 test('PC API proxies mobile shared server, without its own AI generation',()=>{
