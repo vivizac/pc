@@ -111,22 +111,24 @@ function getMemoFeedbackArchiveNoteTitle(item) {
   const match = rawDate.match(/(?:^|\D)(\d{1,2})\s*[월.]/);
   return match ? `${Number(match[1])}월 ${label}` : label;
 }
+function normalizeMemoFeedbackArchiveDate(value) {
+  const raw = String(value || '').trim();
+  const match = raw.match(/^(\d{4})\s*\.\s*(\d{1,2})\s*\.\s*(\d{1,2})\.?$/);
+  if (match) {
+    const y = Number(match[1]), m = Number(match[2]), d = Number(match[3]);
+    const parsed = new Date(y, m - 1, d);
+    if (parsed.getFullYear() !== y || parsed.getMonth() !== m - 1 || parsed.getDate() !== d) return '';
+    return `${match[1]}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+  return raw && !Number.isNaN(new Date(raw).getTime()) ? raw : '';
+}
 function getMemoFeedbackArchiveSavedAt(item) {
   const row = item?.row || {};
-  const candidates = [
-    row.created_at,
-    item?.created_at,
-    item?.savedAt,
-    item?.saved_at,
-    item?.createdAt,
-    row.updated_at,
-    item?.updatedAt,
-    item?.updated_at,
-    row.date,
-    item?.date
-  ];
+  const candidates = [row.date, row.lesson_date, item?.date, item?.createdAt, row.created_at,
+    item?.created_at, item?.savedAt, item?.saved_at, row.updated_at, item?.updatedAt, item?.updated_at];
   for (const value of candidates) {
-    if (formatMemoFeedbackArchiveDate(value)) return value;
+    const normalized = normalizeMemoFeedbackArchiveDate(value);
+    if (normalized) return normalized;
   }
   const localIdMatch = String(item?.id || '').match(/^memo_feedback_(\d{10,})_/);
   if (localIdMatch) {
@@ -143,11 +145,10 @@ function getMemoFeedbackArchiveMonthInfo(item) {
   const monthText = String(item?.feedbackMonth || item?.row?.feedback_month || '').trim();
   const monthMatch = monthText.match(/(\d{1,2})/);
   const textMonth = monthMatch ? Number(monthMatch[1]) : 0;
-  const month = explicitMonth >= 1 && explicitMonth <= 12
-    ? explicitMonth
-    : (textMonth >= 1 && textMonth <= 12
-      ? textMonth
-      : (hasSavedDate ? savedDate.getMonth() + 1 : 0));
+  // 월별 보관함은 저장/이관된 실제 수업 날짜를 기준으로 묶습니다.
+  const month = hasSavedDate ? savedDate.getMonth() + 1
+    : explicitMonth >= 1 && explicitMonth <= 12 ? explicitMonth
+    : textMonth >= 1 && textMonth <= 12 ? textMonth : 0;
 
   if (!month) {
     return { key: 'undated', label: '기타', month: 0, year: 0, sortValue: -1 };
@@ -179,7 +180,7 @@ function renderMemoFeedbackArchiveMonthCapsules(groups, selectedMonthKey) {
   return `<div class="memoFeedbackArchiveMonthRow" role="tablist" aria-label="피드백 월 선택">
     ${list.map(group => {
       const active = group.key === selectedMonthKey;
-      return `<button type="button" class="memoFeedbackArchiveMonthBtn ${active ? 'active' : ''}" data-memo-archive-month="${escapeHtml(group.key)}" aria-selected="${active ? 'true' : 'false'}" role="tab" onclick="event.stopPropagation(); selectMemoFeedbackArchiveMonth('${escapeHtml(group.key)}')">${escapeHtml(group.label)}</button>`;
+      return `<button type="button" class="memoFeedbackArchiveMonthBtn ${active ? 'active' : ''}" data-memo-archive-month="${escapeHtml(group.key)}" aria-selected="${active ? 'true' : 'false'}" role="tab" onclick="event.stopPropagation(); selectMemoFeedbackArchiveMonth('${escapeHtml(group.key)}')"><span class="memoFeedbackArchiveMonthText">${escapeHtml(group.label)}</span><span class="memoFeedbackArchiveYearText">${group.year ? escapeHtml(group.year + '년') : ''}</span></button>`;
     }).join('')}
   </div>`;
 }
@@ -469,6 +470,8 @@ function getMemoFeedbackArchiveItemsSignature(items) {
     id: String(item?.id || item?.row?.id || ''),
     content: String(item?.content || ''),
     createdAt: String(item?.createdAt || item?.created_at || item?.row?.created_at || ''),
+    lessonDate: String(item?.row?.date || item?.row?.lesson_date || ''),
+    sourceTable: String(item?.sourceTable || item?.row?.source_table || ''),
     updatedAt: String(item?.updatedAt || item?.updated_at || item?.row?.updated_at || ''),
     feedbackType: String(item?.feedbackType || item?.feedback_type || item?.row?.feedback_type || '')
   })).sort((a, b) => a.id.localeCompare(b.id) || a.createdAt.localeCompare(b.createdAt)));
@@ -491,6 +494,10 @@ function refreshElementaryRecordsMenuFromServer(menu, student, localItems) {
       console.error('관찰노트 보관함 불러오기 오류:', err);
       if (!currentMemoStudent || String(currentMemoStudent.id || '') !== studentId) return false;
       if (!localItems.length) renderMemoFeedbackArchiveLoadError(menu, err);
+      else {
+        const subtitle = menu.querySelector('.memoFeedbackArchiveSubtitle');
+        if (subtitle) subtitle.textContent = '서버 조회 오류 · 저장된 기록 표시 중';
+      }
       return false;
     });
 }

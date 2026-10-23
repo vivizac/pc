@@ -469,6 +469,26 @@ function getConsultationRuleOptionsFromLabels(labels) {
   });
 }
 
+// 연간 상담은 등록월부터 12개월씩 묶으며, 마지막 달의 피드백이 작성되었는지 별도로 확인합니다.
+// 예: 2025년 4월 등록 → 2026년 3월 마지막 달, 3월 또는 4월에 쓴 마지막 성장 피드백 인정.
+function getElementaryAnnualConsultationFinalMonth(context) {
+  const enrolled = context?.enrolled;
+  if (!(enrolled instanceof Date) || Number.isNaN(enrolled.getTime())) return null;
+  const reference = context?.checkedAt instanceof Date ? context.checkedAt : new Date();
+  const calendarMonths = (reference.getFullYear() - enrolled.getFullYear()) * 12
+    + reference.getMonth() - enrolled.getMonth();
+  const completedAnnualMonths = Math.max(12, Math.floor(calendarMonths / 12) * 12);
+  const finalMonthStart = new Date(enrolled.getFullYear(), enrolled.getMonth() + completedAnnualMonths - 1, 1);
+  const windowStart = new Date(enrolled.getFullYear(), enrolled.getMonth() + completedAnnualMonths - 12, 1);
+  const followingMonthEnd = new Date(finalMonthStart.getFullYear(), finalMonthStart.getMonth() + 2, 0, 23, 59, 59, 999);
+  return {
+    windowStart,
+    finalMonthStart,
+    followingMonthEnd,
+    label: `${finalMonthStart.getFullYear()}년 ${finalMonthStart.getMonth() + 1}월`
+  };
+}
+
 function getConsultationMaterialContext(student, months, labels = [], referenceDate = new Date()) {
   const enrolled = getStudentEnrollmentDateForStats(student);
   const now = referenceDate instanceof Date && !isNaN(referenceDate.getTime()) ? referenceDate : new Date();
@@ -509,7 +529,8 @@ function getConsultationMaterialContext(student, months, labels = [], referenceD
     summaryMonths: safeMonths,
     blockStartMonths,
     labels: Array.isArray(labels) ? labels : [],
-    dueOptions
+    dueOptions,
+    checkedAt: now
   };
 }
 
@@ -603,6 +624,15 @@ async function prepareConsultationFeedbackMaterial(student, months, labels = [])
   const safeMonths = Number(months) || getConsultationSummaryMonthsFromLabels(labels) || 1;
   const mode = getConsultationFeedbackMaterialMode(student, safeMonths, labels);
   const context = getConsultationMaterialContext(student, safeMonths, labels);
+  const annualFinalMonth = mode === 'elementary_summary_slots' && safeMonths >= 12
+    ? getElementaryAnnualConsultationFinalMonth(context)
+    : null;
+  if (annualFinalMonth && context) {
+    context.start = annualFinalMonth.windowStart;
+    if (!(context.end instanceof Date) || context.end > annualFinalMonth.followingMonthEnd) {
+      context.end = annualFinalMonth.followingMonthEnd;
+    }
+  }
   const rows = await loadConsultationSummaryFeedbackRows(student, safeMonths, {
     labels,
     context,
@@ -632,16 +662,37 @@ async function prepareConsultationFeedbackMaterial(student, months, labels = [])
   }
 
   if (mode === 'elementary_summary_slots') {
-    const picked = pickElementaryFeedbackRowsBySlots(student, rows, context);
-    const expectedCount = picked.slots.length;
-    const requiredCount = Math.max(2, expectedCount);
-    if (!expectedCount) {
-      return { mode, status: 'insufficient', rows: [], context, slots: picked.slotStates, reason: '그룹별 피드백 발송월 설정이 없습니다.' };
+    const records = rows.filter(row => row.source_table === 'feedbacks'
+      && (!row.feedback_type || String(row.feedback_type).toLowerCase() === 'growth'));
+    const picked = pickElementaryFeedbackRowsBySlots(student, records, context);
+    // 각 그룹의 이전 발송월 중 일부가 비어도, 실제 작성된 성장기록은 종합 피드백에 사용할 수 있습니다.
+    const requiredCount = picked.slots.length === 1 ? 1 : 2;
+    if (records.length < requiredCount) {
+      return {
+        mode, status: 'insufficient', rows: records, context, slots: picked.slotStates,
+        reason: `상담 기간 내 성장 피드백이 최소 ${requiredCount}개 필요합니다. 현재 ${records.length}개가 확인되었습니다.`
+      };
     }
-    if (picked.rows.length < requiredCount || picked.slotStates.some(slot => !slot.fulfilled)) {
-      return { mode, status: 'insufficient', rows: picked.rows, context, slots: picked.slotStates, reason: `필요 피드백 ${requiredCount}개 중 ${picked.rows.length}개만 확인되었습니다.` };
+    // 12개월 상담의 마지막 기록은 필수. 최종 월 또는 다음 달에 실제 성장 피드백이
+    // 작성되어 있어야 하며, 과거 기록 2건만으로 미리 생성하지 않습니다.
+    if (safeMonths >= 12) {
+      if (!annualFinalMonth) {
+        return {
+          mode, status: 'insufficient', rows: records, context, slots: picked.slotStates,
+          reason: '마지막 성장 피드백을 판정할 등록일 정보가 없습니다.'
+        };
+      }
+      const hasFinalGrowth = records.some(row =>
+        row._summaryDate instanceof Date
+        && isDateWithinRange(row._summaryDate, annualFinalMonth.finalMonthStart, annualFinalMonth.followingMonthEnd));
+      if (!hasFinalGrowth) {
+        return {
+          mode, status: 'insufficient', rows: records, context, slots: picked.slotStates,
+          reason: `마지막 성장 피드백(${annualFinalMonth.label}분)이 아직 없습니다. 마지막 달 말이나 다음 달에 작성된 기록이 있어야 종합 피드백을 만들 수 있습니다.`
+        };
+      }
     }
-    return { mode, status: 'ready', rows: picked.rows, context, slots: picked.slotStates };
+    return { mode, status: 'ready', rows: records, context, slots: picked.slotStates };
   }
 
   return {
@@ -682,39 +733,35 @@ function dedupeConsultationSummaryFeedbackRows(rows) {
   return result;
 }
 
+function getConsultationSecureFeedbackReadFeature(table) {
+  if (table === 'feedbacks') return 'general_feedback_records_read';
+  if (table === 'fail_feedbacks') return 'growth_feedback_records_read';
+  if (table === 'summary_feedbacks') return 'summary_feedback_records_read';
+  throw new Error('지원하지 않는 상담용 피드백 테이블입니다: ' + table);
+}
+
 async function loadConsultationSummaryFeedbackRows(student, months, options = {}) {
   const academyId = requireOlliAcademyId('상담용 종합 피드백 생성');
   const safeMonths = Number(months) || 1;
-  const encodedAcademyId = encodeURIComponent(academyId);
-  const encodedStudentId = student?.id ? encodeURIComponent(student.id) : '';
-  const encodedName = encodeURIComponent(String(student?.name || '').trim());
+  const studentId = String(student?.id || '').trim();
+  const studentName = String(student?.name || '').trim();
+  if (!studentId && !studentName) throw new Error('상담 학생의 식별 정보가 없습니다.');
   const requestedTables = Array.isArray(options.sourceTables) && options.sourceTables.length
-    ? options.sourceTables
-    : ['feedbacks', 'fail_feedbacks'];
-  const requests = [];
-
-  if (encodedStudentId) {
-    requestedTables.forEach(table => {
-      requests.push({ table, path: `${table}?select=*&academy_id=eq.${encodedAcademyId}&student_id=eq.${encodedStudentId}&order=id.desc&limit=300` });
-    });
-  } else if (encodedName) {
-    // 학생코드가 없는 과거 기록만 이름으로 보조 조회합니다.
-    // 학생코드가 있는 학생은 동명이인 혼선을 막기 위해 student_id로만 조회합니다.
-    requestedTables.forEach(table => {
-      requests.push({ table, path: `${table}?select=*&academy_id=eq.${encodedAcademyId}&student_name=eq.${encodedName}&order=id.desc&limit=300` });
-    });
-  }
-
-  const settled = await Promise.all(requests.map(async request => {
+    ? options.sourceTables : ['feedbacks', 'fail_feedbacks'];
+  const core = window.OlliStorageCore;
+  if (!core?.FeatureRegistry || !core?.ServerAdapter) throw new Error('상담용 피드백 보호 조회 모듈이 준비되지 않았습니다.');
+  const identity = { academyId };
+  if (studentId) identity.studentId = studentId;
+  else identity.student_name = studentName;
+  const settled = await Promise.all(requestedTables.map(async table => {
+    const spec = core.FeatureRegistry.require(getConsultationSecureFeedbackReadFeature(table));
     try {
-      const rows = await supabase('GET', request.path);
-      return normalizeConsultationSummaryFeedbackRows(rows, request.table, safeMonths, options);
+      const rows = await core.ServerAdapter.read(spec, identity, { limit: 300 });
+      return normalizeConsultationSummaryFeedbackRows(rows, table, safeMonths, options);
     } catch (err) {
-      console.warn('상담용 피드백 기록 조회 실패:', request.table, err.message || err);
-      return [];
+      throw new Error(`상담 피드백 서버 조회 실패 (${table}): ${err?.message || '연결 오류'}`);
     }
   }));
-
   return dedupeConsultationSummaryFeedbackRows(settled.flat())
     .sort((a, b) => (a._summaryDate?.getTime() || 0) - (b._summaryDate?.getTime() || 0));
 }
@@ -913,12 +960,12 @@ function writeAcademyConsultationSummarySnapshot(snapshot) {
 function normalizeAcademyConsultationSummaryStableItem(item) {
   if (!item || typeof item !== 'object') return null;
   const status = String(item.status || '').trim();
-  if (status !== 'ready' && status !== 'insufficient') return null;
+  if (status !== 'ready' && status !== 'insufficient' && status !== 'error') return null;
   return {
     status,
     mode: String(item.mode || ''),
     content: String(item.content || ''),
-    reason: String(item.reason || (status === 'insufficient' ? (item.error || '') : '') || ''),
+    reason: String(item.reason || ((status === 'insufficient' || status === 'error') ? (item.error || '') : '') || ''),
     studentName: String(item.studentName || ''),
     studentDivision: item.studentDivision === 'kinder' ? 'kinder' : 'elementary',
     months: Number(item.months) || 1,
@@ -1018,13 +1065,13 @@ function pruneAcademyConsultationSummarySnapshot(validKeys) {
 }
 
 function getAcademyConsultationSummaryStatusLabel(status) {
-  const normalized = String(status || 'insufficient');
-  if (normalized === 'ready') return '준비완료';
+  if (status === 'ready') return '준비완료';
+  if (status === 'error') return '확인오류';
   return '자료부족';
 }
 
 function getAcademyConsultationSummaryDisplayStatus(status) {
-  return String(status || '') === 'ready' ? 'ready' : 'insufficient';
+  return status === 'ready' || status === 'error' ? status : 'insufficient';
 }
 
 function isSummaryFeedbackRowForMonth(row, monthKey) {
@@ -1032,35 +1079,27 @@ function isSummaryFeedbackRowForMonth(row, monthKey) {
   return !!d && getAcademyConsultationMonthKey(d) === monthKey;
 }
 
-async function findSavedConsultationSummaryFeedback(student, months) {
+async function loadConsultationSummaryFeedbackRowsSecure(student, limit = 50) {
   const academyId = requireOlliAcademyId('상담용 종합 피드백 확인');
+  const studentId = String(student?.id || '').trim();
+  const studentName = String(student?.name || '').trim();
+  if (!studentId && !studentName) throw new Error('상담 학생의 식별 정보가 없습니다.');
+  const core = window.OlliStorageCore;
+  if (!core?.FeatureRegistry || !core?.ServerAdapter) throw new Error('상담용 종합 피드백 보호 조회 모듈이 준비되지 않았습니다.');
+  return core.ServerAdapter.read(core.FeatureRegistry.require('summary_feedback_records_read'),
+    { academyId, studentId, student_name: studentName }, { limit });
+}
+
+async function findSavedConsultationSummaryFeedback(student, months) {
   const safeMonths = Number(months) || 1;
   const year = new Date().getFullYear();
   const monthKey = getAcademyConsultationMonthKey();
-  const encodedAcademyId = encodeURIComponent(academyId);
-  const encodedStudentId = student?.id ? encodeURIComponent(student.id) : '';
-  const encodedName = encodeURIComponent(String(student?.name || '').trim());
-  const paths = [];
-
-  if (encodedStudentId) {
-    paths.push(`summary_feedbacks?select=*&academy_id=eq.${encodedAcademyId}&student_id=eq.${encodedStudentId}&summary_months=eq.${safeMonths}&year=eq.${year}&order=id.desc&limit=50`);
-  } else if (encodedName) {
-    // 학생코드가 없는 과거 저장본만 이름으로 보조 조회합니다.
-    paths.push(`summary_feedbacks?select=*&academy_id=eq.${encodedAcademyId}&student_name=eq.${encodedName}&summary_months=eq.${safeMonths}&year=eq.${year}&order=id.desc&limit=50`);
-  }
-
-  const settled = await Promise.all(paths.map(async path => {
-    try {
-      return await supabase('GET', path);
-    } catch (err) {
-      console.warn('상담용 종합 피드백 저장본 확인 실패:', err.message || err);
-      return [];
-    }
-  }));
-
+  const sourceRows = await loadConsultationSummaryFeedbackRowsSecure(student, 50);
   const seen = new Set();
-  const rows = filterOlliActiveRows(settled.flat())
+  const rows = filterOlliActiveRows(sourceRows)
     .filter(row => row && String(row.content || '').trim())
+    .filter(row => Number(row.summary_months || 0) === safeMonths)
+    .filter(row => Number(row.year || 0) === year)
     .filter(row => isSummaryFeedbackRowForMonth(row, monthKey))
     .filter(row => {
       const key = row.id || `${row.student_id || ''}:${row.student_name || ''}:${row.date || row.created_at || ''}`;
@@ -1073,7 +1112,6 @@ async function findSavedConsultationSummaryFeedback(student, months) {
       const bd = parseConsultationSummaryRecordDate(b)?.getTime() || 0;
       return bd - ad;
     });
-
   return rows[0] || null;
 }
 
@@ -1110,7 +1148,7 @@ function renderAcademyConsultationSummaryPreview(key) {
     content = item.reason || '상담 기준 기간 안에 사용할 수 있는 저장 피드백이 부족합니다.';
     muted = true;
   } else if (item.status === 'error') {
-    content = item.error || '상담용 종합 피드백 생성 중 오류가 발생했습니다.';
+    content = item.reason || item.error || '상담용 종합 피드백 생성 중 오류가 발생했습니다.';
     muted = true;
   } else {
     content = '저장된 상담 피드백을 확인하고 있습니다.';
@@ -1239,7 +1277,7 @@ async function runAcademyConsultationSummaryAutoCheck() {
               months: summaryMonths
             }
           : {
-              status: 'insufficient',
+              status: 'error',
               reason: err.message || '알 수 없는 오류입니다.',
               studentName: student.name || '',
               studentDivision: student.type === 'kinder' ? 'kinder' : 'elementary',

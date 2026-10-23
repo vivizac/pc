@@ -1,6 +1,21 @@
+function normalizeAttendanceFeedbackDate(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const match = raw.match(/^(\d{4})\s*\.\s*(\d{1,2})\s*\.\s*(\d{1,2})\.?$/);
+  if (match) {
+    const y = Number(match[1]), m = Number(match[2]), d = Number(match[3]);
+    const date = new Date(y, m - 1, d);
+    if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return '';
+    return `${match[1]}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+  return Number.isNaN(new Date(raw).getTime()) ? '' : raw;
+}
 function getAttendanceFeedbackRowDate(row) {
-  // 기존 피드백 가져오기는 과거 수업일을 date에 저장하므로 date를 최우선으로 사용합니다.
-  return row?.date || row?.created_at || row?.updated_at || '';
+  for (const value of [row?.date, row?.lesson_date, row?.created_at, row?.updated_at]) {
+    const normalized = normalizeAttendanceFeedbackDate(value);
+    if (normalized) return normalized;
+  }
+  return '';
 }
 
 function formatAttendanceFeedbackSheetDate(value) {
@@ -109,7 +124,8 @@ async function loadAttendanceFeedbackRowsSecure(table, student, limit = 80) {
 window.loadOlliFeedbackRowsSecure = loadAttendanceFeedbackRowsSecure;
 
 async function loadAttendanceStudentFeedbackSheetItems(student) {
-  if (!student || !isSupabaseConfigured()) return { feedbacks: [], summaries: [] };
+  if (!student) return { feedbacks: [], summaries: [] };
+  if (!isSupabaseConfigured()) throw new Error('Supabase 연결을 확인해 주세요.');
   const requests = [
     { table: 'feedbacks', type: 'feedbacks', promise: loadAttendanceFeedbackRowsSecure('feedbacks', student, 80) },
     { table: 'fail_feedbacks', type: 'feedbacks', promise: loadAttendanceFeedbackRowsSecure('fail_feedbacks', student, 80) },
@@ -118,16 +134,24 @@ async function loadAttendanceStudentFeedbackSheetItems(student) {
   const settled = await Promise.allSettled(requests.map(item => item.promise));
   const feedbacks = [];
   const summaries = [];
+  const failedRequests = [];
   settled.forEach((result, index) => {
     const request = requests[index];
     if (result.status !== 'fulfilled') {
       console.warn(`${request.table} 피드백 불러오기 실패:`, result.reason?.message || result.reason);
+      failedRequests.push(request.table);
       return;
     }
     const rows = normalizeAttendanceFeedbackRows(result.value, request.table);
     if (request.type === 'summaries') summaries.push(...rows);
     else feedbacks.push(...rows);
   });
+  if (failedRequests.length) {
+    const err = new Error('피드백 조회가 일부 실패했습니다. 기존 보관함 기록을 유지합니다.');
+    err.code = 'PARTIAL_FEEDBACK_READ_FAILED';
+    err.tables = failedRequests;
+    throw err;
+  }
   const sortByDateDesc = (a, b) => (new Date(b.createdAt || '').getTime() || 0) - (new Date(a.createdAt || '').getTime() || 0);
   const data = {
     feedbacks: feedbacks.sort(sortByDateDesc),
@@ -494,6 +518,7 @@ async function openAttendanceStudentFeedbackSheet(studentOrId) {
     renderAttendanceStudentFeedbackSheet(student, data);
   } catch (err) {
     console.error('출석부 학생 피드백 불러오기 오류:', err);
+    if (cached && subtitleEl) subtitleEl.textContent = '서버 조회 오류 · 저장된 기록 표시 중';
     if (!cached) {
       if (subtitleEl) subtitleEl.textContent = '';
       body.innerHTML = `<div class="attendanceFeedbackSheetEmpty">피드백을 불러오지 못했어요.<br>${escapeHtml(err.message || '알 수 없는 오류입니다.')}</div>`;
