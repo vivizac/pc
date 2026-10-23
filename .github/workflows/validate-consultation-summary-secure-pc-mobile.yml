@@ -1,0 +1,34 @@
+name: Validate PC and mobile consultation feedback reads
+on:
+  pull_request:
+    paths:
+      - 'apps/pc/olli-data-consultation-summary.js'
+      - 'apps/pc/pc-student-management.js'
+      - 'apps/mobile/olli-student-core.js'
+      - 'apps/mobile/olli-data-attendance-feedback.js'
+      - 'apps/mobile/elementary-analysis-phone-adapter.js'
+      - 'apps/mobile/olli-record-student-picker-phone-adapter.js'
+      - 'apps/mobile/olli-phone-base.css'
+      - 'tests/consultation-summary-secure-pc-mobile.test.cjs'
+      - '.github/workflows/validate-consultation-summary-secure-pc-mobile.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax checks
+        run: |
+          node --check apps/pc/olli-data-consultation-summary.js
+          node --check apps/pc/pc-student-management.js
+          node --check apps/mobile/olli-student-core.js
+          node --check apps/mobile/olli-data-attendance-feedback.js
+          node --check apps/mobile/elementary-analysis-phone-adapter.js
+          node --check apps/mobile/olli-record-student-picker-phone-adapter.js
+      - name: Test safe feedback reads, material selection, and archive
+        run: node --test tests/consultation-summary-secure-pc-mobile.test.cjs
