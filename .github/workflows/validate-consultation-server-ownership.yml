@@ -10,6 +10,7 @@ on:
       - 'apps/pc/api/consultation-summary.js'
       - 'packages/common/olli-consultation-progress-client.js'
       - 'tests/server-consultation-ownership.test.cjs'
+      - 'tests/server-consultation-concurrency.test.cjs'
       - 'supabase/migrations/20261023193000_consultation_server_source_of_truth.sql'
       - '.github/workflows/validate-consultation-server-ownership.yml'
   workflow_dispatch:
@@ -39,4 +40,5 @@ jobs:
       - name: Contract tests
         run: |
           node --test tests/server-consultation-ownership.test.cjs
+          node --test tests/server-consultation-concurrency.test.cjs
           node --test tests/consultation-summary-secure-pc-mobile.test.cjs
