@@ -100,7 +100,13 @@ body.olliPcApp #recordAcademyDashboard .recordAcademyConsultSection{
 .pcAcademyDetailPanel .recordAcademyInfoChip{font-size:10px;color:#959ba4;background:transparent;border:0;padding:0;}
 .pcAcademyDetailPanel .recordAcademyConsultCompleteBtn{flex:0 0 auto;height:30px;padding:0 12px;border:0;border-radius:999px;background:#eaf4ff;color:#167ce1;font:inherit;font-size:11px;font-weight:820;cursor:pointer;}
 .pcAcademyDetailPanel .recordAcademyConsultCompleteBtn:hover{background:#dceeff;}
-.pcAcademyDetailPanel .recordAcademyConsultCompleteBtn.active{background:#22262b;color:#fff;}
+.pcAcademyDetailPanel .recordAcademyConsultCompleteBtn.active{background:#0A84FF;color:#fff;}
+.pcAcademyDetailPanel .recordAcademyConsultCompleteBtn.active:hover{background:#0075e8;}
+.pcAcademyDetailPanel .recordAcademyConsultManualCopyBtn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:30px;height:30px;padding:0;border:1px solid #d8dce4;border-radius:999px;background:#fff;color:#343d4b;cursor:pointer;}
+.pcAcademyDetailPanel .recordAcademyConsultManualCopyBtn svg{display:block;width:16px;height:16px;}
+.pcAcademyDetailPanel .recordAcademyConsultManualCopyBtn:hover{border-color:#a8c8ef;background:#f2f8ff;color:#0A84FF;}
+.pcAcademyDetailPanel .recordAcademyConsultManualCopyBtn:disabled{opacity:.6;cursor:wait;}
+.pcAcademyDetailPanel .recordAcademyConsultManualCopyBtn:focus-visible{outline:2px solid #0A84FF;outline-offset:2px;}
 .pcAcademyDetailPanel .recordAcademyConsultGroupEmpty,.pcAcademyConsultEmpty{display:flex;align-items:center;justify-content:center;min-height:82px;border-radius:17px;background:#f8f9fa;color:#a0a5ac;font-size:11.5px;font-weight:700;text-align:center;}
 
 @media(max-width:1180px){

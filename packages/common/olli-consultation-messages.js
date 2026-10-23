@@ -456,19 +456,34 @@
       const success = document.execCommand('copy'); field.remove();
       if (!success) throw new Error('복사 권한을 확인해 주세요.');
     }
-    button.textContent = '복사 완료';
-    setTimeout(() => { if (button.isConnected) button.textContent = '안내문 복사'; }, 1800);
+    button.innerHTML = manualConsultationCopyIconMarkup(true);
+    button.setAttribute('aria-label', '안내문 복사 완료');
+    button.title = '복사 완료';
+    setTimeout(() => {
+      if (!button.isConnected) return;
+      button.innerHTML = manualConsultationCopyIconMarkup(false);
+      button.setAttribute('aria-label', '학생 상담 안내문 복사');
+      button.title = '안내문 복사';
+    }, 1800);
+  }
+  function manualConsultationCopyIconMarkup(copied = false) {
+    return copied
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
   }
   function attachManualConsultationButtons() {
     if (!isOwner()) return;
     document.querySelectorAll('.recordAcademyConsultListItem').forEach(card => {
       if (card.querySelector('[data-consultation-manual-copy]')) return;
+      const actions = card.querySelector('.recordAcademyConsultActions');
+      if (!actions) return;
       const button = document.createElement('button');
       button.type = 'button';
       button.dataset.consultationManualCopy = 'true';
-      button.textContent = '안내문 복사';
+      button.className = 'recordAcademyConsultManualCopyBtn';
+      button.innerHTML = manualConsultationCopyIconMarkup(false);
       button.setAttribute('aria-label', '학생 상담 안내문 복사');
-      button.style.cssText = 'flex-shrink:0;order:-1;border:1px solid #d8dce4;border-radius:8px;background:#fff;color:#343d4b;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer';
+      button.title = '안내문 복사';
       button.addEventListener('click', async event => {
         event.preventDefault(); event.stopPropagation();
         button.disabled = true;
@@ -476,7 +491,9 @@
         catch(error) { alert(error.message || '안내문 복사에 실패했습니다.'); }
         finally { button.disabled = false; }
       });
-      card.insertBefore(button, card.firstChild);
+      // 복사 아이콘 → 준비완료 상태 → 상담/완료 버튼 순서를 유지합니다.
+      const status = actions.querySelector('.recordAcademyConsultStatusChip');
+      actions.insertBefore(button, status || actions.firstChild);
     });
   }
   function startManualConsultationButtons() {
