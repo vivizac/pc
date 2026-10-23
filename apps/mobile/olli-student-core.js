@@ -898,7 +898,9 @@ function getAcademyConsultationSummaryInputsSignature() {
   try {
     return JSON.stringify(normalizeAcademyConsultationSummarySignatureValue({
       rules,
-      groupFeedbackMonths
+      groupFeedbackMonths,
+      // 상담 자료 준비 조건이 바뀌면 종전의 "자료부족" 판단을 재사용하지 않습니다.
+      consultationMaterialsRevision: '20261023-secure-final-month-status-v2'
     }));
   } catch (_) {
     return '';
@@ -991,7 +993,8 @@ function getAcademyConsultationSummaryItemByKey(key) {
   const transient = academyConsultationSummaryState.transientItems[safeKey];
   if (transient) return transient;
   const snapshot = readAcademyConsultationSummarySnapshot();
-  return normalizeAcademyConsultationSummaryStableItem(snapshot.items[safeKey]) || { status: 'insufficient' };
+  // 확인하지 않은 학생을 '자료부족'으로 표시하지 않습니다.
+  return normalizeAcademyConsultationSummaryStableItem(snapshot.items[safeKey]) || { status: 'checking' };
 }
 
 function getAcademyConsultationSummaryItem(student, months) {
@@ -1000,7 +1003,7 @@ function getAcademyConsultationSummaryItem(student, months) {
 
 function setAcademyConsultationSummaryItem(key, patch) {
   const safeKey = String(key || '');
-  if (!safeKey) return { item: { status: 'insufficient' }, changed: false, persisted: false };
+  if (!safeKey) return { item: { status: 'checking' }, changed: false, persisted: false };
 
   const previous = getAcademyConsultationSummaryItemByKey(safeKey);
   const next = {
@@ -1067,11 +1070,14 @@ function pruneAcademyConsultationSummarySnapshot(validKeys) {
 function getAcademyConsultationSummaryStatusLabel(status) {
   if (status === 'ready') return '준비완료';
   if (status === 'error') return '확인오류';
+  if (status === 'checking') return '확인중';
+  if (status === 'generating') return '생성중';
   return '자료부족';
 }
 
 function getAcademyConsultationSummaryDisplayStatus(status) {
-  return status === 'ready' || status === 'error' ? status : 'insufficient';
+  if (status === 'ready' || status === 'error' || status === 'checking' || status === 'generating') return status;
+  return 'insufficient';
 }
 
 function isSummaryFeedbackRowForMonth(row, monthKey) {
@@ -1196,7 +1202,8 @@ async function runAcademyConsultationSummaryAutoCheck() {
       const key = getAcademyConsultationSummaryKey(student, summaryMonths);
       const existingState = getAcademyConsultationSummaryItemByKey(key) || null;
       const keepReadyStatus = existingState && existingState.status === 'ready';
-      if (existingState && (existingState.status === 'generating' || existingState.status === 'checking')) continue;
+      // 중단된 이전 확인의 checking 상태 때문에 이후 점검이 영원히 건너뛰어지지 않게 합니다.
+      if (existingState && existingState.status === 'generating') continue;
 
       setAcademyConsultationSummaryItem(key, {
         ...(keepReadyStatus ? { status: 'ready' } : { status: 'checking' }),
