@@ -32,6 +32,10 @@ jobs:
           node --check apps/pc/api/consultation-summary.js
           node --check apps/mobile/api/consultation-summary.js
           node --check packages/common/olli-consultation-progress-client.js
+      - name: Stage shared scripts in both application builds
+        run: |
+          node apps/pc/scripts/stage-common.cjs
+          node apps/mobile/scripts/stage-common.cjs
       - name: Contract tests
         run: |
           node --test tests/server-consultation-ownership.test.cjs
