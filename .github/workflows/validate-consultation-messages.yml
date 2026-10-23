@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci --prefix tests/consultation-messages --ignore-scripts
-      - run: node --test tests/consultation-messages.test.cjs tests/consultation-messages-db.test.cjs
       - run: node --check packages/common/olli-consultation-messages.js
       - run: node --test apps/pc/tests/consultation-due-card-actions-ui.test.cjs
+      - run: node --test tests/consultation-messages.test.cjs tests/consultation-messages-db.test.cjs
       - run: node --test tests/pc-build-closure.test.cjs tests/pc-self-contained-build.test.cjs tests/mobile-self-contained-build.test.cjs tests/vercel-monorepo-separation-contract.test.cjs
