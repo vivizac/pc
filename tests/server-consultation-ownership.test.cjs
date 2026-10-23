@@ -74,6 +74,7 @@ test('consultation completion never treats a local optimistic button as confirme
  assert.match(mobile,/pendingGeneration/);
  assert.match(mobileRuntime,/toggleAcademyConsultationCompleted/);
  assert.match(mobileRuntime,/loadOlliConsultationProgressFromServer/);
+ assert.match(pcRuntime,/restoreOlliConsultationPendingRecovery/);
 });
 test('database enforces single job per academy student rule and due-month with atomic claim',()=>{
  assert.match(migration,/primary key \(academy_id, student_id, rule_key, due_month\)/);

@@ -214,19 +214,55 @@ async function saveOlliConsultationProgressShared(progress){
   return normalizeOlliConsultationProgress(serverValue);
 }
 
+function getOlliConsultationUnsyncedCompletionKey() {
+  return 'olli_consultation_unsynced_completed_v1_'+String(ensureOlliConsultationContext()||'');
+}
+function getOlliConsultationPendingRecovery() {
+  try {
+    const parsed=JSON.parse(localStorage.getItem(getOlliConsultationUnsyncedCompletionKey())||'[]');
+    return Array.isArray(parsed)?parsed.filter(k=>/^id:[0-9a-f-]{36}\|/.test(String(k))):[];
+  }catch(_){return[];}
+}
+function rememberOlliConsultationPendingRecovery(before,server) {
+  const current=getAcademyConsultationMonthKey();
+  const old=new Set(getOlliConsultationPendingRecovery());
+  Object.entries(before?.completed||{}).forEach(([key,value])=>{
+    if(value?.completed_month===current && !server?.completed?.[key] && /^id:[0-9a-f-]{36}\|/.test(key))old.add(key);
+  });
+  for(const key of [...old])if(server?.completed?.[key])old.delete(key);
+  try{localStorage.setItem(getOlliConsultationUnsyncedCompletionKey(),JSON.stringify([...old]));}catch(_){}
+  return old.size;
+}
+async function restoreOlliConsultationPendingRecovery() {
+  const pending=getOlliConsultationPendingRecovery();
+  if(!pending.length)return;
+  if(!confirm('이 PC에만 남아 있는 상담완료 '+pending.length+'건을 서버에 복구하시겠습니까? 다른 기기에서 완료를 취소한 기록도 다시 완료될 수 있습니다.'))return;
+  try {
+    let latest=normalizeOlliConsultationProgress(await window.OlliConsultationServer.readProgress());
+    const missing=pending.filter(key=>!latest.completed[key]);
+    for(let i=0;i<missing.length;i+=24)
+      latest=normalizeOlliConsultationProgress(await window.OlliConsultationServer.setCompleted(missing.slice(i,i+24),true));
+    localStorage.removeItem(getOlliConsultationUnsyncedCompletionKey());
+    writeOlliConsultationProgressLocal(latest,'synced');
+    renderRecordAcademyManagementDashboard();
+    if(typeof showPushToast==='function')showPushToast('상담완료 '+missing.length+'건을 서버에 복구했습니다.');
+  }catch(err){alert('상담완료 복구 실패: '+(err?.message||err));}
+}
+window.restoreOlliConsultationPendingRecovery=restoreOlliConsultationPendingRecovery;
+
 async function loadOlliConsultationProgressFromServer(options = {}){
   const academyId = ensureOlliConsultationContext();
   if (!academyId || !window.OlliConsultationServer) return false;
   if (olliConsultationProgressRefreshPromise) return olliConsultationProgressRefreshPromise;
   olliConsultationProgressRefreshPromise = (async () => {
-    const previous = JSON.stringify(getOlliConsultationProgress());
-    const latest = await window.OlliConsultationServer.readProgress();
-    writeOlliConsultationProgressLocal(normalizeOlliConsultationProgress(latest), 'synced');
+    const before=normalizeOlliConsultationProgress(getOlliConsultationProgress());
+    const previous=JSON.stringify(before);
+    const latest=normalizeOlliConsultationProgress(await window.OlliConsultationServer.readProgress());
+    rememberOlliConsultationPendingRecovery(before,latest);
+    writeOlliConsultationProgressLocal(latest,'synced');
     const changed = previous !== JSON.stringify(getOlliConsultationProgress());
-    if (changed && currentRecordView === 'academy') {
-      if (document.body?.classList?.contains('olliPcApp') && typeof window.pcRefreshAcademyConsultationCompletionState === 'function') {
-        window.pcRefreshAcademyConsultationCompletionState();
-      } else if (typeof renderRecordAcademyManagementDashboard === 'function') renderRecordAcademyManagementDashboard();
+    if(currentRecordView==='academy' && (changed||getOlliConsultationPendingRecovery().length)) {
+      if(typeof renderRecordAcademyManagementDashboard==='function')renderRecordAcademyManagementDashboard();
     }
     return changed;
   })().catch(err => {
