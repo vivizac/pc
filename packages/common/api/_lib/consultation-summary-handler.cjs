@@ -97,12 +97,15 @@ async function generate(student,months,rows,dueMonth){
   if(!res.ok || !String(data.reply||'').trim())fail(502,data.error||'AI 종합 피드백 생성 실패','AI_GENERATION_FAILED');
   return String(data.reply).trim();
 }
-async function main(body) {
+async function main(body, context = {}) {
   // All preview deployments share the production Supabase project.
   // Block real AI generation and updates in preview unless explicitly enabled for a controlled test.
   if(process.env.VERCEL_ENV==='preview' && process.env.OLLI_ENABLE_PREVIEW_CONSULTATION_WRITES!=='enabled')
     fail(403,'미리보기 환경에서는 실제 상담 데이터 생성을 차단합니다.','PREVIEW_WRITE_BLOCKED');
-  const academyId=String(body.academyId||'').trim(), sessionToken=String(body.sessionToken||'').trim();
+  const academyId=String(body.academyId||'').trim(),
+    sessionToken=context.scheduled===true?'__olli_server_cron_internal__':String(body.sessionToken||'').trim();
+  if(context.scheduled!==true && sessionToken==='__olli_server_cron_internal__')
+    fail(403,'서버 내부 작업으로 가장한 요청은 허용되지 않습니다.','INVALID_SESSION');
   const studentId=String(body.studentId||'').trim(), taskKey=String(body.taskKey||'').trim();
   const parts=taskKey.split('|'),rule=parts[1],dueMonth=parts[2];
   if(!academyId||!sessionToken||!studentId||parts.length!==3||parts[0]!=='id:'+studentId
@@ -186,4 +189,5 @@ async function handler(req,res) {
   catch(error){return res.status(error.httpStatus||500).json({ok:false,error:error.code||'ERROR',message:error.message||'Server error'});}
 }
 module.exports=handler;
+module.exports.runScheduled=(task)=>main(task,{scheduled:true});
 module.exports.__test={monthKey,addMonth,parseMonth,verifyDue,dateFromFeedback,relevantRows,userPrompt};

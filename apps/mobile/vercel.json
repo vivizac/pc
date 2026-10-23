@@ -1015,6 +1015,15 @@
   "functions": {
     "api/consultation-summary.js": {
       "maxDuration": 300
+    },
+    "api/consultation-summary-cron.js": {
+      "maxDuration": 300
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/consultation-summary-cron",
+      "schedule": "0 2 * * *"
+    }
+  ]
 }

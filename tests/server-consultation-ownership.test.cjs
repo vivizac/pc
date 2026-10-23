@@ -193,3 +193,20 @@ test('manual UI scripts and styles are present in both staging manifests',()=>{
    assert.match(read('apps/'+app+'/index.html'),/olli-consultation-manual-summary-ui\.js\?v=/);
  }
 });
+
+test('cron can only run in production with secret and explicit enable flag',()=>{
+ const source=read('packages/common/api/_lib/consultation-summary-cron.cjs');
+ assert.match(source,/CRON_SECRET/);
+ assert.match(source,/OLLI_CONSULTATION_CRON_ENABLED/);
+ assert.match(source,/VERCEL_ENV!=='production'/);
+ assert.match(source,/summary\.runScheduled\(task\)/);
+ assert.match(source,/return res\.status\(401\)/);
+ assert.match(source,/p_limit:6/);
+ const sql=read('supabase/migrations/20261024101500_consultation_server_cron.sql');
+ assert.match(sql,/CRON_ROLE_DENIED/);
+ assert.match(sql,/service_scheduler/);
+ assert.match(sql,/current_setting\('request\.jwt\.claim\.role'/);
+ assert.match(sql,/cron_candidates/);
+ const config=JSON.parse(read('apps/mobile/vercel.json'));
+ assert.ok(config.crons.some(x=>x.path==='/api/consultation-summary-cron'));
+});
