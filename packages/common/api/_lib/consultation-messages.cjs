@@ -290,6 +290,54 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
     }).then(response=>{if(!response.ok)throw problem('TEST_LOG_UPDATE_FAILED',503);});
     return {status};
   }
+  async function syncProviderTemplates({ academyId = null } = {}) {
+    const credential=centralCredentials(env);
+    if(!credential)return { checked:0, changed:0, errors:1, configured:false };
+    const listing=await rpc('olli_consultation_template_sync_snapshot',{});
+    const rows=Array.isArray(listing)?listing:[];
+    const summary={checked:0,changed:0,errors:0,configured:true};
+    for(const row of rows){
+      if(!row.template_id || !row.pf_id)continue;
+      try{
+        const response=await provider(credential,'/kakao/v2/templates/?templateId='+encodeURIComponent(row.template_id)+'&limit=10');
+        const candidates=Array.isArray(response?.templateList)?response.templateList:[];
+        const match=candidates.find(item=>item.templateId===row.template_id);
+        if(!match){
+          await rpc('olli_consultation_template_sync_apply',{
+            p_channel_id:row.channel_id,p_template_id:row.template_id,
+            p_provider_status:null,p_content_matches:null,p_error_code:'TEMPLATE_NOT_RETURNED'
+          });
+          summary.errors++;continue;
+        }
+        if(match.isDeleted===true || match.isHidden===true){
+          await rpc('olli_consultation_template_sync_apply',{
+            p_channel_id:row.channel_id,p_template_id:row.template_id,
+            p_provider_status:null,p_content_matches:null,p_error_code:'TEMPLATE_NOT_SENDABLE'
+          });
+          summary.errors++;continue;
+        }
+        const status=String(match.status||'').toUpperCase();
+        if(!['PENDING','INSPECTING','APPROVED','REJECTED'].includes(status)){
+          summary.errors++;continue;
+        }
+        const sameContent=String(match.content||'').replace(/\r\n/g,'\n')===String(row.template_body||'').replace(/\r\n/g,'\n');
+        const result=await rpc('olli_consultation_template_sync_apply',{
+          p_channel_id:row.channel_id,p_template_id:row.template_id,
+          p_provider_status:status,p_content_matches:sameContent,p_error_code:null
+        });
+        summary.checked++;
+        if(result?.state!==row.approval_state)summary.changed++;
+      }catch(error){
+        summary.errors++;
+        // Never include remote body or provider credentials in audit events.
+        try{await rpc('olli_consultation_template_sync_apply',{
+          p_channel_id:row.channel_id,p_template_id:row.template_id,
+          p_provider_status:null,p_content_matches:null,p_error_code:'PROVIDER_QUERY_FAILED'
+        });}catch{}
+      }
+    }
+    return summary;
+  }
   async function checkProviderAuth() {
     const credential=centralCredentials(env);
     if(!credential)throw problem('PROVIDER_NOT_CONFIGURED',503);
@@ -364,7 +412,7 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
     }
     return counts;
   }
-  return { rpc, run, testSend, checkProviderAuth };
+  return { rpc, run, testSend, checkProviderAuth, syncProviderTemplates };
 }
 
 /**
