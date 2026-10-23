@@ -53,7 +53,7 @@
         <label class="ocm-check"><input type="checkbox" data-use-common ${useCommon ? 'checked' : ''}>공통 안내문 사용</label>
         <div data-custom-template ${useCommon ? 'hidden' : ''}>
           <label>개별 알림톡 템플릿 ID<input data-variant-id maxlength="100" aria-label="${escape(slot.label)} 템플릿 ID" value="${escape(value.template_id || '')}"></label>
-          <label>개별 안내문<textarea data-variant-body rows="6" maxlength="1000" aria-label="${escape(slot.label)} 안내문">${escape(value.template_body || '')}</textarea></label>
+          <label>개별 안내문<textarea data-variant-body rows="6" maxlength="1000" aria-label="${escape(slot.label)} 안내문">${escape(value.template_body || (MANUAL_NOTICE_BODIES[slot.key] ? MANUAL_NOTICE_BODIES[slot.key] + '\n\n' + MANUAL_NOTICE_INFO : ''))}</textarea></label>
           <label class="ocm-check"><input type="checkbox" data-variant-confirmed ${value.template_confirmed ? 'checked' : ''}>이 안내문의 템플릿 승인 내용을 확인했습니다.</label>
         </div>
       </details>`;
@@ -362,8 +362,8 @@
     const settings = await manualNoticeConfig();
     const variant = settings.template_mode === 'by_type' && settings.template_variants?.[key]?.use_common === false
       ? settings.template_variants[key] : null;
-    const storedBody = String(variant?.template_body || '').trim();
-    let body = storedBody || (MANUAL_NOTICE_BODIES[key] + '\n\n' + MANUAL_NOTICE_INFO);
+    // Manual copying follows the approved academy copy wording independently of older Solapi templates.
+    let body = MANUAL_NOTICE_BODIES[key] + '\n\n' + MANUAL_NOTICE_INFO;
     // The old template contained '#{학생이름_주격}가'; the token already includes the subject particle.
     body = body.replace(/#\{학생이름_주격\}가/g, '#{학생이름_주격}');
     body = body.replace(/#\{학생이름_주격\}/g, manualNameValue(student.name, 'nominative'))
