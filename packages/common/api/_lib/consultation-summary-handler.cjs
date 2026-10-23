@@ -93,6 +93,10 @@ async function generate(student,months,rows,dueMonth){
   return String(data.reply).trim();
 }
 async function main(body) {
+  // All preview deployments share the production Supabase project.
+  // Block real AI generation and updates in preview unless explicitly enabled for a controlled test.
+  if(process.env.VERCEL_ENV==='preview' && process.env.OLLI_ENABLE_PREVIEW_CONSULTATION_WRITES!=='enabled')
+    fail(403,'미리보기 환경에서는 실제 상담 데이터 생성을 차단합니다.','PREVIEW_WRITE_BLOCKED');
   const academyId=String(body.academyId||'').trim(), sessionToken=String(body.sessionToken||'').trim();
   const studentId=String(body.studentId||'').trim(), taskKey=String(body.taskKey||'').trim();
   const parts=taskKey.split('|'),rule=parts[1],dueMonth=parts[2];

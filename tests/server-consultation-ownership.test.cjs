@@ -138,6 +138,14 @@ test('shared consultation handler is staged identically in both apps',()=>{
  }
 });
 
+test('preview deployments cannot mutate production consultation progress or generate AI',()=>{
+ const server=read('packages/common/api/_lib/consultation-summary-handler.cjs');
+ const client=read('packages/common/olli-consultation-progress-client.js');
+ assert.match(server,/process\.env\.VERCEL_ENV==='preview'/);
+ assert.match(server,/PREVIEW_WRITE_BLOCKED/);
+ assert.match(client,/assertProductionWriteHost/);
+ assert.match(client,/setCompleted: \(taskKeys, completed\) => \{ assertProductionWriteHost\(\)/);
+});
 test('manual record selection can only generate on shared server from validated saved IDs',()=>{
  const handler=read('packages/common/api/_lib/consultation-summary-handler.cjs');
  assert.match(handler,/manual_1','manual_3','manual_6','manual_12/);

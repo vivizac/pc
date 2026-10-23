@@ -29,12 +29,19 @@
     }
     return action==='read_rules'||action==='set_rules' ? (result.rules || {}) : (result.progress || {});
   }
+  function assertProductionWriteHost() {
+    const host = String(global.location?.hostname || '').toLowerCase();
+    if (host.endsWith('.vercel.app') && host !== 'pc-seven-silk.vercel.app'
+      && host !== 'vivizac-feedback.vercel.app') {
+      throw new Error('미리보기 주소에서는 실제 상담 데이터를 변경할 수 없습니다.');
+    }
+  }
   global.OlliConsultationServer = Object.freeze({
     readProgress: () => request('read'),
-    setCompleted: (taskKeys, completed) => request('set_completed', { taskKeys, completed }),
-    setTodos: todos => request('set_todos', { todos }),
+    setCompleted: (taskKeys, completed) => { assertProductionWriteHost(); return request('set_completed', {taskKeys,completed}); },
+    setTodos: todos => { assertProductionWriteHost(); return request('set_todos', {todos}); },
     readRules: () => request('read_rules'),
-    setRules: rules => request('set_rules', { rules }),
+    setRules: rules => { assertProductionWriteHost(); return request('set_rules', {rules}); },
     // Claim status is owned by the central server endpoint, never the client.
     async requestSummary(studentId, taskKey) {
       const { academyId, sessionToken } = context();
