@@ -17,7 +17,7 @@ module.exports = async function handler(req, res) {
       const secret=process.env.OLLI_ADMIN_TEMPLATE_SYNC_SECRET||'';
       const timestamp=String(req.headers['x-olli-sync-at']||'');
       const signature=String(req.headers['x-olli-sync-signature']||'');
-      const fresh=/^\\d{13}$/.test(timestamp)&&Math.abs(Date.now()-Number(timestamp))<60000;
+      const fresh=/^\d{13}$/.test(timestamp)&&Math.abs(Date.now()-Number(timestamp))<60000;
       const expected=secret.length>=32?createHmac('sha256',secret).update(timestamp+':template-sync').digest('hex'):'';
       const left=Buffer.from(signature),right=Buffer.from(expected);
       if(!fresh||!expected||left.length!==right.length||!timingSafeEqual(left,right)){
