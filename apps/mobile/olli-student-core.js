@@ -1205,6 +1205,7 @@ async function runAcademyConsultationSummaryAutoCheck() {
   pruneAcademyConsultationSummarySnapshot(validKeys);
   academyConsultationSummaryState.running=true;
   let changed=false;
+  let pendingGeneration=false;
   try {
     for(const student of students) {
       if(currentRecordView!=='academy')break;
@@ -1216,6 +1217,7 @@ async function runAcademyConsultationSummaryAutoCheck() {
       try {
         const value=await fetchConsultationSummaryFromServer(student,task);
         const status=value.status==='ready'?'ready':value.status==='insufficient'?'insufficient':'generating';
+        if(status==='generating') pendingGeneration=true;
         const r=setAcademyConsultationSummaryItem(key,{
           ...basic,status,mode:value.mode||'',content:status==='ready'?String(value.content||''):'',
           reason:value.reason||''
@@ -1229,6 +1231,7 @@ async function runAcademyConsultationSummaryAutoCheck() {
   }finally {
     academyConsultationSummaryState.running=false;
     if(changed) scheduleRecordAcademyManagementDashboardRender(120);
+    if(pendingGeneration) scheduleAcademyConsultationSummaryAutoCheck(6000);
   }
 }
 window.toggleAcademyConsultationSummaryPreview = toggleAcademyConsultationSummaryPreview;

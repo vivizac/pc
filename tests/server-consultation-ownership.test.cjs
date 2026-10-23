@@ -69,6 +69,9 @@ test('consultation completion never treats a local optimistic button as confirme
  assert.doesNotMatch(code,/pressedBtn\.classList\.toggle/);
  assert.match(code,/catch \(error\)/);
  assert.match(mobileRuntime,/getThisMonthConsultationDueStudents/);
+ assert.match(mobileRuntime,/previousMobileAcademyRenderer/);
+ assert.match(pc,/pendingGeneration/);
+ assert.match(mobile,/pendingGeneration/);
  assert.match(mobileRuntime,/toggleAcademyConsultationCompleted/);
  assert.match(mobileRuntime,/loadOlliConsultationProgressFromServer/);
 });

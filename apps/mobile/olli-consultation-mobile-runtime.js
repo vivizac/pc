@@ -285,7 +285,7 @@ async function toggleAcademyConsultationCompleted(studentRef, event){
 window.toggleAcademyConsultationCompleted = toggleAcademyConsultationCompleted;
 
 
-function renderRecordAcademyManagementDashboard() {
+function renderOlliServerConsultationDashboard() {
   const root = document.getElementById('recordAcademyDashboard');
   if (!root) return;
   const due = getThisMonthConsultationDueStudents(getAcademyManagementStudentsForStats());
@@ -336,7 +336,12 @@ function renderRecordAcademyManagementDashboard() {
       toggleAcademyConsultationCompleted(button.dataset.consultRef, event));
   });
 }
-window.renderRecordAcademyManagementDashboard = renderRecordAcademyManagementDashboard;
+const previousMobileAcademyRenderer = typeof window.renderRecordAcademyManagementDashboard === 'function'
+  ? window.renderRecordAcademyManagementDashboard : null;
+window.renderRecordAcademyManagementDashboard = function() {
+  if(previousMobileAcademyRenderer) previousMobileAcademyRenderer();
+  renderOlliServerConsultationDashboard();
+};
 
 function initializeMobileConsultationServer() {
   if (!window.OlliConsultationServer) return;
@@ -344,7 +349,7 @@ function initializeMobileConsultationServer() {
     if (typeof getOlliCurrentAcademyId !== 'function' || !getOlliCurrentAcademyId()) return;
     Promise.all([loadOlliConsultationRulesFromServer(),loadOlliConsultationProgressFromServer({ force: true })]).then(() => {
       if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') {
-        renderRecordAcademyManagementDashboard();
+        window.renderRecordAcademyManagementDashboard();
       }
     });
   };

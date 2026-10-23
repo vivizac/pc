@@ -634,6 +634,7 @@ async function runAcademyConsultationSummaryAutoCheck() {
   if (!['owner','manager','super_admin'].includes(typeof getOlliCurrentRole === 'function' ? getOlliCurrentRole() : '')) return;
   const students = getThisMonthConsultationDueStudents(getAcademyManagementStudentsForStats());
   academyConsultationSummaryState.running = true;
+  let pendingGeneration = false;
   try {
     for (const student of students) {
       if (currentRecordView !== 'academy') break;
@@ -645,6 +646,7 @@ async function runAcademyConsultationSummaryAutoCheck() {
       try {
         const result = await fetchConsultationSummaryFromServer(student,task);
         const status = result.status === 'ready'?'ready':result.status === 'insufficient'?'insufficient':'generating';
+        if(status==='generating') pendingGeneration = true;
         setAcademyConsultationSummaryItem(key,{
           status,mode:result.mode||'',content:status==='ready'?String(result.content||''):'',
           reason:result.reason||'',studentName:student.name,studentDivision:student.type,months:summaryMonths
@@ -659,6 +661,7 @@ async function runAcademyConsultationSummaryAutoCheck() {
   } finally {
     academyConsultationSummaryState.running = false;
     scheduleRecordAcademyManagementDashboardRender(120);
+    if(pendingGeneration) scheduleAcademyConsultationSummaryAutoCheck(6000);
   }
 }
 
