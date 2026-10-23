@@ -609,118 +609,52 @@ function toggleAcademyConsultationSummaryPreview(key) {
   if (currentRecordView === 'academy') renderRecordAcademyManagementDashboard();
 }
 
+function getConsultationSummaryServerTask(student, requestedMonths) {
+  if (typeof getConsultationDueTasksForStudent !== 'function') return null;
+  const tasks = getConsultationDueTasksForStudent(student)
+    .filter(task => task?.key && ['after_1','after_3','every_6','every_12'].includes(task.ruleKey))
+    .sort((a,b) => Number(b.occurrenceMonths||0) - Number(a.occurrenceMonths||0));
+  const months = Number(requestedMonths) || 0;
+  return tasks.find(task => {
+    const optionMonths = task.ruleKey === 'every_12' ? 12
+      : task.ruleKey === 'every_6' ? 6 : task.ruleKey === 'after_3' ? 3 : 1;
+    return !months || months === optionMonths;
+  }) || tasks[0] || null;
+}
+
+async function fetchConsultationSummaryFromServer(student, task) {
+  const server = window.OlliConsultationServer;
+  if (!server) throw new Error('종합 피드백 공통 서버가 준비되지 않았습니다.');
+  if (!student?.id || !task?.key) throw new Error('상담 대상 학생 또는 상담 회차 정보가 없습니다.');
+  return server.requestSummary(student.id, task.key);
+}
+
 async function runAcademyConsultationSummaryAutoCheck() {
-  if (academyConsultationSummaryState.running) return;
-  const currentRole = typeof getOlliCurrentRole === 'function' ? getOlliCurrentRole() : '';
-  if (!['owner', 'manager', 'super_admin'].includes(currentRole)) return;
-  if (currentRecordView !== 'academy') return;
-
-  const dueStudents = getThisMonthConsultationDueStudents(getAcademyManagementStudentsForStats());
-  if (!dueStudents.length) return;
-
+  if (academyConsultationSummaryState.running || currentRecordView !== 'academy') return;
+  if (!['owner','manager','super_admin'].includes(typeof getOlliCurrentRole === 'function' ? getOlliCurrentRole() : '')) return;
+  const students = getThisMonthConsultationDueStudents(getAcademyManagementStudentsForStats());
   academyConsultationSummaryState.running = true;
   try {
-    for (const student of dueStudents) {
+    for (const student of students) {
       if (currentRecordView !== 'academy') break;
-
-      const labels = getDueConsultationRuleLabelsForStudent(student);
-      const summaryMonths = getConsultationSummaryMonthsFromLabels(labels);
-      const key = getAcademyConsultationSummaryKey(student, summaryMonths);
-      const existingState = academyConsultationSummaryState.items[key] || null;
-      const keepReadyStatus = existingState && existingState.status === 'ready';
-      if (existingState && (existingState.status === 'generating' || existingState.status === 'checking')) continue;
-
-      setAcademyConsultationSummaryItem(key, {
-        ...(keepReadyStatus ? { status: 'ready' } : { status: 'checking' }),
-        studentName: student.name || '',
-        studentDivision: student.type === 'kinder' ? 'kinder' : 'elementary',
-        months: summaryMonths
-      });
-
+      const task = getConsultationSummaryServerTask(student);
+      if (!task) continue;
+      const summaryMonths = task.ruleKey === 'every_12'?12:task.ruleKey==='every_6'?6:task.ruleKey==='after_3'?3:1;
+      const key = getAcademyConsultationSummaryKey(student,summaryMonths);
+      setAcademyConsultationSummaryItem(key,{status:'checking',studentName:student.name,studentDivision:student.type,months:summaryMonths});
       try {
-        const material = await prepareConsultationFeedbackMaterial(student, summaryMonths, labels);
-        if (material.mode === 'elementary_one_month_records') {
-          setAcademyConsultationSummaryItem(key, {
-            status: material.status,
-            mode: material.mode,
-            content: material.status === 'ready' ? material.content : '',
-            reason: material.status === 'ready' ? '' : '초등부 1개월 상담에 사용할 일반 피드백이 없습니다.',
-            studentName: student.name || '',
-            studentDivision: 'elementary',
-            months: summaryMonths
-          });
-          scheduleRecordAcademyManagementDashboardRender(120);
-          continue;
-        }
-
-        const saved = await findSavedConsultationSummaryFeedback(student, summaryMonths);
-        if (saved) {
-          setAcademyConsultationSummaryItem(key, {
-            status: 'ready',
-            mode: material.mode,
-            content: String(saved.content || '').trim(),
-            savedRow: saved,
-            studentName: student.name || '',
-            studentDivision: student.type === 'kinder' ? 'kinder' : 'elementary',
-            months: summaryMonths
-          });
-          scheduleRecordAcademyManagementDashboardRender(120);
-          continue;
-        }
-
-        if (material.status !== 'ready' || !material.rows.length) {
-          setAcademyConsultationSummaryItem(key, {
-            status: 'insufficient',
-            mode: material.mode,
-            reason: material.reason || '상담 기준 기간 안에 사용할 수 있는 저장 피드백이 부족합니다.',
-            studentName: student.name || '',
-            studentDivision: student.type === 'kinder' ? 'kinder' : 'elementary',
-            months: summaryMonths
-          });
-          scheduleRecordAcademyManagementDashboardRender(120);
-          continue;
-        }
-
-        setAcademyConsultationSummaryItem(key, {
-          ...(keepReadyStatus ? { status: 'ready' } : { status: 'generating' }),
-          mode: material.mode,
-          studentName: student.name || '',
-          studentDivision: student.type === 'kinder' ? 'kinder' : 'elementary',
-          months: summaryMonths
+        const result = await fetchConsultationSummaryFromServer(student,task);
+        const status = result.status === 'ready'?'ready':result.status === 'insufficient'?'insufficient':'generating';
+        setAcademyConsultationSummaryItem(key,{
+          status,mode:result.mode||'',content:status==='ready'?String(result.content||''):'',
+          reason:result.reason||'',studentName:student.name,studentDivision:student.type,months:summaryMonths
         });
-
-        const reply = await createSummaryFeedbackFromRows(student, summaryMonths, material.rows, labels);
-        const savedRow = await saveConsultationSummaryFeedbackAuto(student, summaryMonths, reply);
-        setAcademyConsultationSummaryItem(key, {
-          status: 'ready',
-          mode: material.mode,
-          content: reply,
-          savedRow,
-          studentName: student.name || '',
-          studentDivision: student.type === 'kinder' ? 'kinder' : 'elementary',
-          months: summaryMonths
+      } catch (error) {
+        setAcademyConsultationSummaryItem(key,{
+          status:'error',error:error.message||'서버 오류',studentName:student.name,studentDivision:student.type,months:summaryMonths
         });
-        renderRecordAcademyManagementDashboard();
-      } catch (err) {
-        console.error('상담용 종합 피드백 자동 생성 오류:', err);
-        if (keepReadyStatus) {
-          setAcademyConsultationSummaryItem(key, {
-            status: 'ready',
-            error: err.message || '알 수 없는 오류입니다.',
-            studentName: student.name || '',
-            studentDivision: student.type === 'kinder' ? 'kinder' : 'elementary',
-            months: summaryMonths
-          });
-        } else {
-          setAcademyConsultationSummaryItem(key, {
-            status: 'error',
-            error: err.message || '알 수 없는 오류입니다.',
-            studentName: student.name || '',
-            studentDivision: student.type === 'kinder' ? 'kinder' : 'elementary',
-            months: summaryMonths
-          });
-        }
       }
+      scheduleRecordAcademyManagementDashboardRender(120);
     }
   } finally {
     academyConsultationSummaryState.running = false;
@@ -732,68 +666,27 @@ window.toggleAcademyConsultationSummaryPreview = toggleAcademyConsultationSummar
 window.runAcademyConsultationSummaryAutoCheck = runAcademyConsultationSummaryAutoCheck;
 
 async function requestConsultationSummaryFeedback(studentId, studentName, months, btn) {
-  if (loading) return;
-  const students = getAcademyManagementStudentsForStats();
-  const targetId = String(studentId || '').trim();
-  const targetName = String(studentName || '').trim();
-  let student = null;
-  if (targetId) {
-    student = students.find(item => String(item.id || '') === targetId) || null;
-  } else if (targetName) {
-    const matches = students.filter(item => String(item.name || '').trim() === targetName);
-    if (matches.length === 1) student = matches[0];
-    else if (matches.length > 1) {
-      alert('같은 이름의 학생이 여러 명 있습니다. 학생 목록에서 해당 학생을 다시 선택해 주세요.');
-      return;
-    }
-  }
-  if (!student) {
-    alert('학생 정보를 찾을 수 없습니다. 학생 목록을 새로고침한 뒤 다시 시도해 주세요.');
-    return;
-  }
-
-  const labels = getDueConsultationRuleLabelsForStudent(student);
-  const summaryMonths = Number(months) || getConsultationSummaryMonthsFromLabels(labels);
-
-  loading = true;
-  showFeedbackLoading('summary');
-  if (btn) {
-    btn.disabled = true;
-    btn.dataset.originalText = btn.textContent || '상담 피드백';
-    btn.textContent = '생성 중...';
-  }
-
-  try {
-    const material = await prepareConsultationFeedbackMaterial(student, summaryMonths, labels);
-    if (material.mode === 'elementary_one_month_records') {
-      alert(material.status === 'ready'
-        ? '초등부 1개월 상담은 종합피드백이 아니라 성향 기록지의 일반 피드백을 확인해 주세요.'
-        : '초등부 1개월 상담에 사용할 일반 피드백이 없습니다.');
-      return;
-    }
-    if (material.status !== 'ready' || !material.rows.length) {
-      throw new Error(material.reason || `최근 ${summaryMonths}개월 안에 사용할 수 있는 저장 피드백이 부족합니다.`);
-    }
-    const reply = await createSummaryFeedbackFromRows(student, summaryMonths, material.rows, labels);
-    currentSaveType = 'summary';
-    addRecordSummaryPopup(reply, `${student.name} ${summaryMonths}개월 상담 피드백`, {
-      studentId: student.id || '',
-      studentName: student.name,
-      studentDivision: student.type === 'kinder' ? 'kinder' : 'elementary',
-      months: summaryMonths
+  const student=getAcademyManagementStudentsForStats().find(s=>String(s.id||'')===String(studentId||''))
+    || getAcademyManagementStudentsForStats().find(s=>String(s.name||'')===String(studentName||''));
+  if(!student){alert('학생을 찾지 못했습니다.');return;}
+  const task=getConsultationSummaryServerTask(student,months);
+  if(!task){alert('상담예정 회차가 없습니다.');return;}
+  if(btn){btn.disabled=true;btn.textContent='확인중...';}
+  try{
+    const result=await fetchConsultationSummaryFromServer(student,task);
+    if(result.status==='insufficient'){alert(result.reason||'상담 자료가 부족합니다.');return;}
+    if(result.status==='generating'){alert('공통 서버에서 종합 피드백을 생성하고 있습니다.');return;}
+    if(result.status!=='ready')throw new Error('알 수 없는 종합 피드백 처리 상태');
+    const summaryMonths=task.ruleKey==='every_12'?12:task.ruleKey==='every_6'?6:task.ruleKey==='after_3'?3:1;
+    const key=getAcademyConsultationSummaryKey(student,summaryMonths);
+    setAcademyConsultationSummaryItem(key,{
+      status:'ready',mode:result.mode||'',content:String(result.content||''),
+      studentName:student.name,studentDivision:student.type,months:summaryMonths
     });
-  } catch (err) {
-    console.error('상담용 종합 피드백 생성 오류:', err);
-    alert(`상담용 종합 피드백 생성 중 오류가 발생했어요.\n\n${err.message || '알 수 없는 오류입니다.'}`);
-  } finally {
-    hideFeedbackLoading();
-    loading = false;
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = btn.dataset.originalText || '상담 피드백';
-      delete btn.dataset.originalText;
-    }
-  }
+    academyConsultationSummaryState.expandedKey=key;
+    if(typeof renderRecordAcademyManagementDashboard==='function')renderRecordAcademyManagementDashboard();
+  }catch(error){alert('종합 피드백 서버 확인 실패: '+(error.message||error));}
+  finally{if(btn){btn.disabled=false;btn.textContent=btn.dataset.originalText||'상담 피드백';}}
 }
 
 async function requestSummaryFeedbackFromRecords(studentName, encodedRecords, months) {
