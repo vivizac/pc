@@ -1,13 +1,12 @@
 const OLLI_CONSULTATION_RULES_KEY = 'olli_consultation_rules_v1';
 const OLLI_CONSULTATION_RULE_OPTIONS = [
   { key: 'after_1', label: '1개월 후', type: 'once', month: 1 },
-  { key: 'after_3', label: '3개월 후', type: 'once', month: 3 },
-  { key: 'every_6', label: '6개월마다', type: 'repeat', interval: 6 },
+  { key: 'every_6', label: '6개월 후', type: 'once', month: 6 },
   { key: 'every_12', label: '12개월마다', type: 'repeat', interval: 12 }
 ];
-const OLLI_DEFAULT_CONSULTATION_RULES = ['after_1','every_12'];
+const OLLI_DEFAULT_CONSULTATION_RULES = ['after_1','every_6','every_12'];
 const OLLI_DEFAULT_CONSULTATION_RULES_BY_TYPE = {
-  elementary: ['after_1','every_12'],
+  elementary: ['after_1','every_6','every_12'],
   kinder: ['after_1','every_6','every_12']
 };
 
@@ -118,7 +117,8 @@ function calculateOlliConsultationTasks(student, context = {}){
   const trackingStart = progress.tracking_started_month || currentMonth;
   const trackingStartIndex = getConsultationMonthIndex(trackingStart);
   const elapsedMonths = monthsBetweenByCalendar(enrolled, now);
-  const activeKeys = new Set(normalizeOlliConsultationRules(context.rules, getOlliDefaultConsultationRules(student?.type || student?.division)));
+  // Fixed academy policy: first consultations at 1, 6, 12 months; annually thereafter.
+  const activeKeys = new Set(['after_1', 'every_6', 'every_12']);
   const tasks = [];
 
   const pushTask = (option, dueDate, occurrenceMonths) => {

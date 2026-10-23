@@ -53,7 +53,7 @@
         <label class="ocm-check"><input type="checkbox" data-use-common ${useCommon ? 'checked' : ''}>공통 안내문 사용</label>
         <div data-custom-template ${useCommon ? 'hidden' : ''}>
           <label>개별 알림톡 템플릿 ID<input data-variant-id maxlength="100" aria-label="${escape(slot.label)} 템플릿 ID" value="${escape(value.template_id || '')}"></label>
-          <label>개별 안내문<textarea data-variant-body rows="6" maxlength="1000" aria-label="${escape(slot.label)} 안내문">${escape(value.template_body || '')}</textarea></label>
+          <label>개별 안내문<textarea data-variant-body rows="6" maxlength="1000" aria-label="${escape(slot.label)} 안내문">${escape(value.template_body || (MANUAL_NOTICE_BODIES[slot.key] ? MANUAL_NOTICE_BODIES[slot.key] + '\n\n' + MANUAL_NOTICE_INFO : ''))}</textarea></label>
           <label class="ocm-check"><input type="checkbox" data-variant-confirmed ${value.template_confirmed ? 'checked' : ''}>이 안내문의 템플릿 승인 내용을 확인했습니다.</label>
         </div>
       </details>`;
@@ -294,14 +294,15 @@
   document.addEventListener('visibilitychange',checkContext);
 
   // Manual consultation notices: no Solapi credentials and no message dispatch.
-  const MANUAL_NOTICE_INFO = '〈상담 신청 안내〉\n상담 기간: 매월 둘째 주와 셋째 주\n상담 시간: 월~금 (오전 11시 ~ 오후 6시)\n상담 소요 시간: 약 10~15분\n상담 신청: 아래 예약 링크 → 재원생 정기 상담 선택 → 예약';
+  const MANUAL_NOTICE_INFO = "〈상담 신청 안내〉\\n상담 기간: 매월 둘째 주와 셋째 주\\n상담 시간: 월~금 (오전 11시 ~ 오후 6시)\\n상담 소요 시간: 약 10~15분\\n상담 신청: 아래 예약 링크 → '재원생 정기 상담' 선택 → 예약";
   const MANUAL_NOTICE_BODIES = {
-    'kinder:after_1': '안녕하세요 어머님 😊\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 한 달이 되었습니다.\n\n처음 안내드린 대로 등록 후 1개월 정기상담을 진행하려 합니다.',
-    'elementary:after_1': '안녕하세요 어머님 😊\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 한 달이 되었습니다.\n\n처음 안내드린 대로 등록 후 1개월 정기상담을 진행하려 합니다.',
-    'kinder:every_6': '안녕하세요, 어머님 😊\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 6개월이 되었습니다^^\n그동안의 수업 작품과 새롭게 진행한 성향 테스트 결과를 바탕으로 #{학생이름_소유격} 그림에서는 어떤 성향이 보이는지, 테스트에서는 어떤 변화가 나타났는지, 학원 생활에는 잘 적응하고 있는지 함께 이야기 나누려 합니다.\n아래 네이버 예약 링크에서 방문 가능하신 요일과 시간을 선택해 상담을 신청해 주세요.',
-    'elementary:every_6': '안녕하세요, 어머님 😊\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 6개월이 되었습니다^^\n그동안의 수업 작품을 바탕으로 #{학생이름_소유격} 그림에서는 어떤 성향이 보이는지, 학원 생활에는 잘 적응하고 있는지 함께 이야기 나누려 합니다.\n아래 네이버 예약 링크에서 방문 가능하신 요일과 시간을 선택해 상담을 신청해 주세요.',
-    'kinder:every_12': '안녕하세요, 어머님\n벌써 1년이 되었어요~~~^^\n지난 1년 동안 #{학생이름_주격} 어떤 성장을 했을까요? 😊\n\n그동안 담임 선생님이 기록한 수업 피드백과 아이의 작품을 바탕으로 #{학생이름_소유격} 생각과 표현에 어떤 변화가 있었는지 살펴보며, 지난 1년 동안 보여준 성장과 앞으로의 교육 방향에 대해 이야기 나누고자 합니다.\n\n아래 네이버 예약 링크에서 방문 가능하신 요일과 시간을 선택해 상담을 신청해 주세요.',
-    'elementary:every_12': '안녕하세요, 어머님\n벌써 1년이 되었어요~~~^^\n지난 1년 동안 #{학생이름_주격} 어떤 성장을 했을까요? 😊\n\n그동안 담임 선생님이 기록한 수업 피드백과 아이의 작품을 바탕으로 #{학생이름_소유격} 생각과 표현에 어떤 변화가 있었는지 살펴보며, 지난 1년 동안 보여준 성장과 앞으로의 교육 방향에 대해 이야기 나누고자 합니다.\n\n아래 네이버 예약 링크에서 방문 가능하신 요일과 시간을 선택해 상담을 신청해 주세요.'
+    "kinder:after_1": "안녕하세요 어머님 😊\\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 한 달이 지났습니다.\\n\\n처음 안내드린 대로 등록 후 1개월 차 정기상담을 진행하려 합니다.",
+    "elementary:after_1": "안녕하세요 어머님 😊\\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 한 달이 지났습니다.\\n\\n처음 안내드린 대로 등록 후 1개월 차 정기상담을 진행하려 합니다.",
+    "kinder:every_6": "안녕하세요, 어머님 😊\\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 6개월이 지났습니다^^\\n\\n그동안의 수업 작품과 새롭게 진행한 성향 테스트 결과를 바탕으로 #{학생이름_소유격} 그림과 테스트에서는 어떤 결과가 보이는지, 학원 생활에는 잘 적응하고 있는지 함께 이야기 나누려 합니다.",
+    "elementary:every_6": "안녕하세요, 어머님 😊\\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 6개월이 지났습니다^^\\n그동안의 수업 작품을 바탕으로 #{학생이름_소유격} 그림에서는 어떤 성향이 보이는지, 학원 생활에는 잘 적응하고 있는지 함께 이야기 나누려 합니다.",
+    "kinder:every_12": "안녕하세요, 어머님\\n지난 1년 동안 #{학생이름_주격} 어떤 성장을 했을까요? 😊\\n\\n그동안 담임 선생님이 기록한 수업 피드백과 아이의 작품을 바탕으로 #{학생이름_소유격} 생각과 표현에 어떤 변화가 있었는지 살펴보며 이야기 나누고자 합니다.",
+    "elementary:every_12": "안녕하세요, 어머님\\n지난 1년 동안 #{학생이름_주격} 어떤 성장을 했을까요? 😊\\n\\n그동안 담임 선생님이 기록한 수업 피드백과 아이의 작품을 바탕으로 #{학생이름_소유격} 생각과 표현에 어떤 변화가 있었는지 살펴보며 이야기 나누고자 합니다.",
+    "annual:every_12": "안녕하세요, 어머님 😊\\n올해도 #{학생이름_소유격} 정기상담 기간이 돌아왔습니다^^\\n그동안의 그림과 수업 과정을 함께 살펴보거나, 가정에서 궁금하셨던 점이 있다면 편하게 이야기 나누는 시간을 가져보려 합니다."
   };
   function manualGivenName(fullName) {
     const value = String(fullName || '').trim();
@@ -320,17 +321,14 @@
     return friendly;
   }
   function manualNoticeStage(card) {
-    const label = String(card.textContent || '');
-    // Consultations at 18/30 months use the 6-month notice; 24/36 months use annual.
-    const chips = Array.from(card.querySelectorAll('.recordAcademyRuleChip, .recordAcademyInfoChip'));
-    const months = chips.map(chip => Number((chip.textContent || '').match(/(\d+)\s*개월/)?.[1])).find(Number.isFinite);
-    if (Number.isFinite(months) && months > 0) {
-      if (months % 12 === 0) return 'every_12';
-      if (months % 6 === 0) return 'every_6';
+    const labels = Array.from(card.querySelectorAll('.recordAcademyRuleChip, .recordAcademyInfoChip'));
+    const months = labels.map(chip => Number((chip.textContent || '').match(/(\d+)\s*개월/)?.[1])).find(Number.isFinite);
+    if (Number.isFinite(months)) {
+      if (months >= 24 && months % 12 === 0) return 'annual:every_12';
+      if (months === 12) return 'every_12';
+      if (months === 6) return 'every_6';
       if (months === 1) return 'after_1';
     }
-    if (/12개월|24개월|36개월|1년|2년/.test(label)) return 'every_12';
-    if (/6개월|18개월|30개월/.test(label)) return 'every_6';
     return 'after_1';
   }
   function manualNoticeStudent(card) {
@@ -360,12 +358,12 @@
     if (!student) throw new Error('학생을 정확하게 찾지 못했습니다. 학생 카드를 다시 열어 주세요.');
     const stage = manualNoticeStage(card);
     const division = (student.type || student.division) === 'kinder' ? 'kinder' : 'elementary';
-    const key = division + ':' + stage;
+    const key = stage === 'annual:every_12' ? stage : division + ':' + stage;
     const settings = await manualNoticeConfig();
     const variant = settings.template_mode === 'by_type' && settings.template_variants?.[key]?.use_common === false
       ? settings.template_variants[key] : null;
-    const storedBody = String(variant?.template_body || '').trim();
-    let body = storedBody || (MANUAL_NOTICE_BODIES[key] + '\n\n' + MANUAL_NOTICE_INFO);
+    // Manual copying follows the approved academy copy wording independently of older Solapi templates.
+    let body = MANUAL_NOTICE_BODIES[key] + '\n\n' + MANUAL_NOTICE_INFO;
     // The old template contained '#{학생이름_주격}가'; the token already includes the subject particle.
     body = body.replace(/#\{학생이름_주격\}가/g, '#{학생이름_주격}');
     body = body.replace(/#\{학생이름_주격\}/g, manualNameValue(student.name, 'nominative'))
@@ -373,7 +371,7 @@
       .replace(/#\{학생이름_소유격\}/g, manualNameValue(student.name, 'possessive'))
       .replace(/#\{학생명\}/g, manualGivenName(student.name))
       .replace(/#\{학원명\}/g, String(settings.academy_name || '비비작'))
-      .replace(/#\{상담구분\}/g, stage === 'every_12' ? '12개월' : stage === 'every_6' ? '6개월' : '1개월')
+      .replace(/#\{상담구분\}/g, (stage === 'every_12' || stage === 'annual:every_12') ? '12개월' : stage === 'every_6' ? '6개월' : '1개월')
       .replace(/#\{예약링크\}/g, String(settings.booking_url || '').trim());
     if (settings.booking_url && !body.includes(settings.booking_url)) body += '\n' + settings.booking_url;
     if (/#\{[^}]+\}/.test(body)) throw new Error('안내문에 아직 치환되지 않은 변수가 있습니다.');
