@@ -3,7 +3,7 @@
 // generation is owned by an atomic academy/student/rule/due-month lease in Postgres.
 const SUPABASE_URL = 'https://fvkxipjwgeyosgnfhdnx.supabase.co';
 const CHAT_API_URL = process.env.OLLI_SUMMARY_AI_ENDPOINT || 'https://vivizac-feedback.vercel.app/api/chat';
-const VALID_RULES = new Set(['after_1','after_3','every_6','every_12']);
+const VALID_RULES = new Set(['after_1','after_3','every_6','every_12','manual_1','manual_3','manual_6','manual_12']);
 function serverKey() { return process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ''; }
 function fail(status, message, code = 'ERROR') { const e = new Error(message);e.httpStatus=status;e.code=code;throw e; }
 function monthKey(date) { return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0'); }
@@ -99,8 +99,18 @@ async function main(body) {
   if(!academyId||!sessionToken||!studentId||parts.length!==3||parts[0]!=='id:'+studentId
     ||!VALID_RULES.has(rule)||!parseMonth(dueMonth))fail(400,'상담 회차 또는 로그인 정보를 확인해 주세요.','INVALID_TASK');
   const key=serverKey();if(!key)fail(503,'서버 Supabase 키 설정이 없습니다.','SERVER_KEY_MISSING');
+  const manual=/^manual_(1|3|6|12)$/.test(rule);
+  const action=String(body.action||'generate').trim();
+  if(!['generate','revise'].includes(action))fail(400,'지원하지 않는 종합 피드백 요청입니다.','INVALID_ACTION');
   const params={p_session_token:sessionToken,p_academy_id:academyId,p_student_id:studentId,
     p_rule_key:rule,p_due_month:dueMonth};
+  if(action==='revise') {
+    if(!manual)fail(403,'정기 상담 종합 피드백은 이 편집 경로로 수정할 수 없습니다.','REVISION_UNAVAILABLE');
+    const content=String(body.content||'').trim();
+    if(content.length<10||content.length>18000)fail(400,'수정한 종합 피드백 내용을 확인해 주세요.','INVALID_CONTENT');
+    const saved=await callRpc('olli_consultation_summary_job_access',{...params,p_action:'revise',p_content:content},key);
+    return {ok:true,status:'ready',content:saved.content,feedbackId:saved.feedback_id,taskKey};
+  }
   const status=await callRpc('olli_consultation_summary_job_access',{...params,p_action:'read'},key);
   if(status.status==='ready'&&status.feedback_id){
     const rows=await getRows('summary_feedbacks',{id:'eq.'+status.feedback_id,academy_id:'eq.'+academyId,select:'id,content'},key);
@@ -110,7 +120,12 @@ async function main(body) {
   const students=await getRows('students',{id:'eq.'+studentId,academy_id:'eq.'+academyId,select:'id,name,division,enrolled_at,status,is_deleted'},key);
   const student=students[0];if(!student||student.status!=='active'||student.is_deleted)fail(404,'재원 학생을 찾을 수 없습니다.');
   const due=parseMonth(dueMonth);
-  const months=verifyDue(student,rule,due);
+  const months=manual ? Number(rule.slice(7)) : verifyDue(student,rule,due);
+  if(manual) {
+    const today=new Date(), kst=new Date(today.toLocaleString('en-US',{timeZone:'Asia/Seoul'}));
+    if(due>new Date(kst.getFullYear(),kst.getMonth(),1))
+      fail(400,'미래 월의 수동 종합 피드백은 생성할 수 없습니다.','FUTURE_DUE');
+  }
   const base={academy_id:'eq.'+academyId,student_id:'eq.'+studentId,is_deleted:'is.false',
     select:'id,date,lesson_date,created_at,feedback_type,content',limit:'300'};
   // Both feedback tables may have different date columns; query only shared fields.
@@ -119,7 +134,20 @@ async function main(body) {
   if(student.division==='kinder' && months>1){
     failures=await getRows('fail_feedbacks',Object.assign({},base,{select:'id,date,created_at,feedback_type,content'}),key);
   }
-  const material=relevantRows(feedbacks,failures,student.division,rule,due,months);
+  let material;
+  if(manual) {
+    const ids=Array.isArray(body.selectedFeedbackIds) ? body.selectedFeedbackIds.map(Number) : [];
+    if(!ids.length || ids.length>80 || ids.some(id=>!Number.isSafeInteger(id)||id<=0))
+      fail(400,'수동 종합 피드백에 사용할 저장 기록을 선택해 주세요.','SELECTION_INVALID');
+    const selected=new Set(ids);
+    const found=feedbacks.filter(row=>selected.has(Number(row.id)) && String(row.content||'').trim())
+      .map(row=>({...row,source_table:'feedbacks',_date:dateFromFeedback(row)}));
+    if(new Set(found.map(row=>Number(row.id))).size!==selected.size)
+      fail(400,'다른 학생의 기록 또는 삭제된 기록이 포함되었습니다.','SELECTION_NOT_FOUND');
+    material={status:'ready',rows:found};
+  }else{
+    material=relevantRows(feedbacks,failures,student.division,rule,due,months);
+  }
   if(material.status!=='ready')return{ok:true,status:'insufficient',reason:material.reason};
   if(material.mode==='elementary_one_month_records')return{ok:true,status:'ready',mode:'elementary_one_month_records',
     content:material.rows.map(r=>String(r.content||'')).join('\n\n')};
