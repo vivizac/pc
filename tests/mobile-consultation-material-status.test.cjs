@@ -61,7 +61,7 @@ test('a stuck checking status does not block subsequent server recheck', () => {
   assert.doesNotMatch(source, /existingState.status === 'generating' \|\| existingState.status === 'checking'/);
   assert.match(source, /fetchConsultationSummaryFromServer/);
   assert.match(source, /await fetchConsultationSummaryFromServer/);
-  assert.match(source, /status: 'error'/);
+  assert.match(source, /status:'error'/);
 });
 
 test('mobile HTML requests the newly versioned script', () => {
