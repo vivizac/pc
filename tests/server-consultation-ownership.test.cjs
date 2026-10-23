@@ -137,3 +137,44 @@ test('shared consultation handler is staged identically in both apps',()=>{
    assert.match(read('apps/'+app+'/api/consultation-summary.js'),/require\('\.\/_lib\/consultation-summary-handler\.cjs'\)/);
  }
 });
+
+test('manual record selection can only generate on shared server from validated saved IDs',()=>{
+ const handler=read('packages/common/api/_lib/consultation-summary-handler.cjs');
+ assert.match(handler,/manual_1','manual_3','manual_6','manual_12/);
+ assert.match(handler,/selectedFeedbackIds/);
+ assert.match(handler,/Number\.isSafeInteger/);
+ assert.match(handler,/SELECTION_NOT_FOUND/);
+ assert.match(handler,/SELECTION_INVALID/);
+ assert.match(handler,/p_action:'revise'/);
+ assert.match(handler,/Number\(row\.id\)/);
+ for(const source of [pc,mobile]){
+   const manual=section(source,'async function requestSummaryFeedbackFromRecords(','window.requestConsultationSummaryFeedback =');
+   assert.match(manual,/requestManualSummary\(/);
+   assert.match(manual,/OlliConsultationManualUI\.open/);
+   assert.doesNotMatch(manual,/createSummaryFeedbackFromRows\(/);
+   assert.doesNotMatch(manual,/saveFeedbackRowVerified/);
+   assert.doesNotMatch(manual,/addRecordSummaryPopup/);
+   assert.match(source,/throw new Error\('종합 피드백은 올리 공통 서버에서만 생성할 수 있습니다/);
+ }
+});
+
+test('manual edit saves to the same authorized job instead of inserting a second summary row',()=>{
+ const client=read('packages/common/olli-consultation-progress-client.js');
+ const ui=read('packages/common/olli-consultation-manual-summary-ui.js');
+ const migration=read('supabase/migrations/20261024003500_consultation_manual_summary_server.sql');
+ assert.match(client,/reviseManualSummary\(studentId, taskKey, content\)/);
+ assert.match(ui,/reviseManualSummary\(studentId,taskKey,value\)/);
+ assert.doesNotMatch(ui,/saveFeedbackRowVerified/);
+ assert.match(migration,/p_action='revise'/);
+ assert.match(migration,/where sf\.id=v_job\.feedback_id and sf\.academy_id=p_academy_id/);
+ assert.match(migration,/revoke execute on function public\.olli_consultation_summary_job_access/);
+ assert.match(migration,/to service_role/);
+});
+test('manual UI scripts and styles are present in both staging manifests',()=>{
+ for(const app of ['pc','mobile']){
+   const m=JSON.parse(read('packages/common/'+app+'-runtime-manifest.json'));
+   assert.ok(m.files.includes('olli-consultation-manual-summary-ui.js'));
+   assert.ok(m.files.includes('olli-consultation-manual-summary-ui.css'));
+   assert.match(read('apps/'+app+'/index.html'),/olli-consultation-manual-summary-ui\.js\?v=/);
+ }
+});
