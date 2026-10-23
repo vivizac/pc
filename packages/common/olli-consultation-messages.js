@@ -99,6 +99,7 @@
           <p data-connection class="ocm-muted">${settings.enabled ? '발송업체 연결 확인 중…' : '현재 사용하지 않습니다. 사용하지 않는 학원은 발송업체를 연결하지 않아도 됩니다.'}</p>
           <button type="submit" class="ocm-primary">발송 설정 저장</button>
         </form>
+        ${manualNoticeEditorMarkup()}
       </section>
       <section data-panel="contacts" hidden>
         <p class="ocm-muted">현재 재원생의 상담 안내 대상입니다. 보호자 연락처는 학생 등록·학생정보 화면에서 저장하고 수정합니다.</p>
@@ -116,6 +117,8 @@
         <div data-history>${historyHtml(payload)}</div>
       </section>`;
     state.dialog.querySelector('[data-settings]').addEventListener('submit', saveSettings);
+    state.dialog.querySelector('.ocm-manual-editor')?.addEventListener('click', saveManualNotice);
+    hydrateManualNoticeEditor();
     state.dialog.querySelector('[name=enabled]').addEventListener('change', toggleUsage);
     state.dialog.querySelector('[name=selected_channel_id]').addEventListener('change', async (event) => {
       const channel = (state.payload.channels || []).find(c => c.id === event.target.value);
@@ -306,6 +309,67 @@
     "elementary:every_12": "안녕하세요, 어머님\n지난 1년 동안 #{학생이름_주격} 어떤 성장을 했을까요? 😊\n\n그동안 담임 선생님이 기록한 수업 피드백과 아이의 작품을 바탕으로 #{학생이름_소유격} 생각과 표현에 어떤 변화가 있었는지 살펴보며 이야기 나누고자 합니다.",
     "annual:every_12": "안녕하세요, 어머님 😊\n\n올해도 #{학생이름_소유격} 정기상담 기간이 돌아왔습니다^^\n\n그동안의 그림과 수업 과정을 함께 살펴보거나, 가정에서 궁금하셨던 점이 있다면 편하게 상담을 신청해 주세요. 😊"
   };
+  const manualNoticeCache = { academyId:'', sessionToken:'', notices:null, promise:null };
+  async function loadManualNotices(force=false) {
+    const ctx=context();
+    if (!ctx.academyId || !ctx.sessionToken || typeof global.callOlliRpc !== 'function') throw new Error('학원 로그인이 필요합니다.');
+    if (manualNoticeCache.academyId!==ctx.academyId || manualNoticeCache.sessionToken!==ctx.sessionToken) {
+      manualNoticeCache.academyId=ctx.academyId;
+      manualNoticeCache.sessionToken=ctx.sessionToken;
+      manualNoticeCache.notices=null;
+      manualNoticeCache.promise=null;
+    }
+    if (!force && manualNoticeCache.notices) return manualNoticeCache.notices;
+    if (!force && manualNoticeCache.promise) return manualNoticeCache.promise;
+    const pending=global.callOlliRpc('olli_consultation_manual_notice_manage', {
+      p_session_token:ctx.sessionToken,p_academy_id:ctx.academyId,p_action:'load',p_key:null,p_body:null
+    }).then(result=>{
+      if (!sameContext(ctx) || result?.ok!==true) throw new Error('안내문 서버 조회 실패');
+      manualNoticeCache.notices=result.notices||{};
+      return manualNoticeCache.notices;
+    }).finally(()=>{if(manualNoticeCache.promise===pending)manualNoticeCache.promise=null;});
+    manualNoticeCache.promise=pending;
+    return pending;
+  }
+  function manualNoticeDefaults(key) {
+    return (MANUAL_NOTICE_BODIES[key] || '') + '\n\n' + MANUAL_NOTICE_INFO;
+  }
+  function manualNoticeEditorMarkup() {
+    const slots=global.OlliConsultationMessageTemplates?.slots||[];
+    return '<div class="ocm-manual-editor"><h3>안내문 복사 문구</h3><p class="ocm-muted">솔라피 승인 문구와 별도로 저장됩니다. 변경하면 PC·모바일 복사에 반영됩니다.</p>'
+      +slots.map(slot=>'<details data-manual-key="'+escape(slot.key)+'"><summary>'+escape(slot.label)+'</summary><textarea rows="7" maxlength="5000" style="width:100%;box-sizing:border-box;white-space:pre-wrap" data-manual-body></textarea><button type="button" data-manual-save>복사용 안내문 저장</button></details>').join('')+'</div>';
+  }
+  async function hydrateManualNoticeEditor() {
+    const host=active?.dialog?.querySelector('.ocm-manual-editor');
+    if (!host) return;
+    try {
+      const notices=await loadManualNotices();
+      if (!host.isConnected) return;
+      host.querySelectorAll('[data-manual-key]').forEach(item=>{
+        const key=item.dataset.manualKey;
+        item.querySelector('[data-manual-body]').value=notices[key]??manualNoticeDefaults(key);
+      });
+    }catch(error){
+      host.querySelector('p').textContent='안내문 조회 실패: '+(error.message||error);
+    }
+  }
+  async function saveManualNotice(event) {
+    const button=event.target.closest('[data-manual-save]');
+    if(!button)return;
+    const item=button.closest('[data-manual-key]');
+    const key=item.dataset.manualKey, body=item.querySelector('[data-manual-body]').value;
+    const ctx=context();
+    button.disabled=true;
+    try {
+      const result=await global.callOlliRpc('olli_consultation_manual_notice_manage',{
+        p_session_token:ctx.sessionToken,p_academy_id:ctx.academyId,p_action:'save',p_key:key,p_body:body
+      });
+      if (result?.ok!==true || !sameContext(ctx)) throw new Error('안내문 저장이 확인되지 않았습니다.');
+      if (manualNoticeCache.notices) manualNoticeCache.notices[key]=body;
+      notice('복사용 안내문을 저장했습니다.');
+    }catch(error){notice(error.message||'저장 실패',true);}
+    finally{button.disabled=false;}
+  }
   function manualGivenName(fullName) {
     const value = String(fullName || '').trim();
     if (!/^[가-힣]{3,}$/.test(value)) return value;
@@ -371,7 +435,8 @@
     const variant = settings.template_mode === 'by_type' && settings.template_variants?.[key]?.use_common === false
       ? settings.template_variants[key] : null;
     // Manual copying follows the approved academy copy wording independently of older Solapi templates.
-    let body = MANUAL_NOTICE_BODIES[key] + '\n\n' + MANUAL_NOTICE_INFO;
+    const notices = await loadManualNotices();
+    let body = notices[key] ?? manualNoticeDefaults(key);
     // The old template contained '#{학생이름_주격}가'; the token already includes the subject particle.
     body = body.replace(/#\{학생이름_주격\}가/g, '#{학생이름_주격}');
     body = body.replace(/#\{학생이름_주격\}/g, manualNameValue(student.name, 'nominative'))
@@ -420,7 +485,7 @@
     const schedule = () => {
       if (scheduled) return;
       scheduled = true;
-      setTimeout(() => { scheduled = false; attachManualConsultationButtons(); }, 0);
+      queueMicrotask(() => { scheduled = false; attachManualConsultationButtons(); });
     };
     new MutationObserver(schedule).observe(document.body, {childList:true,subtree:true});
     schedule();
