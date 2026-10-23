@@ -125,6 +125,13 @@ test('summary claim RPC is executable only by service role',()=>{
  assert.match(migration,/to service_role/);
 });
 
+test('annual growth gate uses explicit lesson target month rather than generation date',()=>{
+ const h=getHelpers(),due=h.parseMonth('2026-04');
+ const old=[{date:'2025-06-20',feedback_type:'growth',content:'first'},{date:'2025-11-21',feedback_type:'growth',content:'second'}];
+ assert.equal(h.relevantRows([...old,{date:'2026-04-05',feedback_type:'growth',content:'April draft without target month'}],[],'elementary','every_12',due,12).status,'insufficient');
+ assert.equal(h.relevantRows([...old,{date:'2026-04-05',target_month:'2026-03',feedback_type:'growth',content:'March lessons written April'}],[],'elementary','every_12',due,12).status,'ready');
+ assert.equal(h.relevantRows([...old,{date:'2026-04-05',target_month:'2026-04',feedback_type:'growth',content:'April lessons'}],[],'elementary','every_12',due,12).status,'insufficient');
+});
 test('expired generation lease is allowed to proceed to atomic claim check',()=>{
  const s=read('packages/common/api/_lib/consultation-summary-handler.cjs');
  assert.doesNotMatch(s,/if\(status\.status==='generating'\)return/);

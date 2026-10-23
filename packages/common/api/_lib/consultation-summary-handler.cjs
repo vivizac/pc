@@ -53,8 +53,13 @@ function relevantRows(feedbacks,failures,division,rule,due,months) {
   const start=addMonth(due,-months);
   const through=addMonth(due,1); // the due month may contain the final prior-month feedback
   let rows=[...feedbacks.map(x=>({...x,source_table:'feedbacks'})),...failures.map(x=>({...x,source_table:'fail_feedbacks'}))];
-  rows=rows.map(row=>({...row,_date:dateFromFeedback(row)}))
-    .filter(row=>row._date && row._date>=start && row._date<through && String(row.content||'').trim())
+  rows=rows.map(row=>{
+    const _date=dateFromFeedback(row);
+    const explicit=String(row.target_month||'');
+    const _reportingDate=/^20[0-9]{2}-(0[1-9]|1[0-2])$/.test(explicit) ? parseMonth(explicit) : _date;
+    return {...row,_date,_reportingDate};
+  })
+    .filter(row=>row._date && row._reportingDate && row._reportingDate>=start && row._reportingDate<through && String(row.content||'').trim())
     .sort((a,b)=>a._date-b._date);
   const general=rows.filter(row=>row.source_table==='feedbacks');
   const growth=general.filter(row=>!row.feedback_type || String(row.feedback_type).toLowerCase()==='growth');
@@ -64,7 +69,7 @@ function relevantRows(feedbacks,failures,division,rule,due,months) {
     if(growth.length<2) return {status:'insufficient',rows:growth,reason:'초등부 종합 상담에는 성장 피드백 최소 2개가 필요합니다.'};
     if(rule==='every_12'){
       const finalMonth=addMonth(due,-1);
-      if(!growth.some(row=>row._date>=finalMonth&&row._date<through))
+      if(!growth.some(row=>row._reportingDate>=finalMonth && row._reportingDate<due))
         return {status:'insufficient',rows:growth,reason:monthKey(finalMonth)+'분 마지막 성장 피드백이 아직 없습니다.'};
     }
     return {status:'ready',rows:growth};
@@ -131,9 +136,9 @@ async function main(body) {
       fail(400,'미래 월의 수동 종합 피드백은 생성할 수 없습니다.','FUTURE_DUE');
   }
   const base={academy_id:'eq.'+academyId,student_id:'eq.'+studentId,is_deleted:'is.false',
-    select:'id,date,lesson_date,created_at,feedback_type,content',limit:'300'};
+    select:'id,date,lesson_date,created_at,feedback_type,target_month,content',limit:'300'};
   // Both feedback tables may have different date columns; query only shared fields.
-  const feedbacks=await getRows('feedbacks',Object.assign({},base,{select:'id,date,lesson_date,created_at,feedback_type,content'}),key);
+  const feedbacks=await getRows('feedbacks',Object.assign({},base,{select:'id,date,lesson_date,created_at,feedback_type,target_month,content'}),key);
   let failures=[];
   if(student.division==='kinder' && months>1){
     failures=await getRows('fail_feedbacks',Object.assign({},base,{select:'id,date,created_at,feedback_type,content'}),key);

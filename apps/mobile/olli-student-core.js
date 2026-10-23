@@ -310,6 +310,7 @@ async function autoSaveGeneratedFeedback(text, options = {}, btn = null) {
       student_name: savedStudent.name || name,
       content,
       feedback_type: feedbackType,
+      ...(feedbackType === 'growth' ? {target_month:getOlliFeedbackTargetMonthForSave(feedbackType,options.targetMonth)} : {}),
       year,
       date,
       ...(options.clientRecordId ? { client_record_id: String(options.clientRecordId) } : {})

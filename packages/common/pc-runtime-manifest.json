@@ -86,6 +86,7 @@
     "olli-consultation-progress-client.js",
     "api/_lib/consultation-summary-handler.cjs",
     "olli-consultation-manual-summary-ui.js",
-    "olli-consultation-manual-summary-ui.css"
+    "olli-consultation-manual-summary-ui.css",
+    "olli-feedback-target-month.js"
   ]
 }
