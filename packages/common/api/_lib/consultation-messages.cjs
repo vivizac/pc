@@ -313,6 +313,10 @@ function createService({ fetchImpl = fetch, env = process.env, now = () => new D
         }
         const status=String(match.status||'').toUpperCase();
         if(!['PENDING','INSPECTING','APPROVED','REJECTED'].includes(status)){
+          await rpc('olli_consultation_template_sync_apply',{
+            p_channel_id:row.channel_id,p_template_id:row.template_id,
+            p_provider_status:null,p_content_matches:null,p_error_code:'UNKNOWN_PROVIDER_STATUS'
+          });
           summary.errors++;continue;
         }
         const sameContent=String(match.content||'').replace(/\r\n/g,'\n')===String(row.template_body||'').replace(/\r\n/g,'\n');
