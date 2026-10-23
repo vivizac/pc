@@ -297,6 +297,8 @@
   const MANUAL_NOTICE_INFO = "〈상담 신청 안내〉\\n상담 기간: 매월 둘째 주와 셋째 주\\n상담 시간: 월~금 (오전 11시 ~ 오후 6시)\\n상담 소요 시간: 약 10~15분\\n상담 신청: 아래 예약 링크 → '재원생 정기 상담' 선택 → 예약";
   const MANUAL_NOTICE_BODIES = {
     "kinder:after_1": "안녕하세요 어머님 😊\\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 한 달이 지났습니다.\\n\\n처음 안내드린 대로 등록 후 1개월 차 정기상담을 진행하려 합니다.",
+    "kinder:after_3": "안녕하세요 어머님 😊\\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 3개월이 지났습니다.\\n\\n그동안의 수업 모습과 학원 생활에 대해 함께 이야기 나누고자 정기상담을 진행하려 합니다.",
+    "elementary:after_3": "안녕하세요 어머님 😊\\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 3개월이 지났습니다.\\n\\n그동안의 수업 모습과 학원 생활에 대해 함께 이야기 나누고자 정기상담을 진행하려 합니다.",
     "elementary:after_1": "안녕하세요 어머님 😊\\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 한 달이 지났습니다.\\n\\n처음 안내드린 대로 등록 후 1개월 차 정기상담을 진행하려 합니다.",
     "kinder:every_6": "안녕하세요, 어머님 😊\\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 6개월이 지났습니다^^\\n\\n그동안의 수업 작품과 새롭게 진행한 성향 테스트 결과를 바탕으로 #{학생이름_소유격} 그림과 테스트에서는 어떤 결과가 보이는지, 학원 생활에는 잘 적응하고 있는지 함께 이야기 나누려 합니다.",
     "elementary:every_6": "안녕하세요, 어머님 😊\\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 6개월이 지났습니다^^\\n그동안의 수업 작품을 바탕으로 #{학생이름_소유격} 그림에서는 어떤 성향이 보이는지, 학원 생활에는 잘 적응하고 있는지 함께 이야기 나누려 합니다.",
@@ -320,15 +322,21 @@
     if (kind === 'possessive') return friendly + '의';
     return friendly;
   }
-  function manualNoticeStage(card) {
-    const labels = Array.from(card.querySelectorAll('.recordAcademyRuleChip, .recordAcademyInfoChip'));
-    const months = labels.map(chip => Number((chip.textContent || '').match(/(\d+)\s*개월/)?.[1])).find(Number.isFinite);
-    if (Number.isFinite(months)) {
-      if (months >= 24 && months % 12 === 0) return 'annual:every_12';
-      if (months === 12) return 'every_12';
-      if (months === 6) return 'every_6';
-      if (months === 1) return 'after_1';
+  function manualNoticeStage(card, student) {
+    if (typeof global.getConsultationDueTasksForStudent === 'function' && student) {
+      const tasks = global.getConsultationDueTasksForStudent(student) || [];
+      if (tasks.length) {
+        const chosen = global.OlliConsultationMessageTemplates?.select({template_mode:'common'},student,tasks);
+        if (Number(chosen?.task?.occurrenceMonths) >= 24) return 'annual:every_12';
+        if (['after_1','after_3','every_6','every_12'].includes(chosen?.task?.ruleKey)) return chosen.task.ruleKey;
+      }
     }
+    const months = Array.from(card.querySelectorAll('.recordAcademyRuleChip, .recordAcademyInfoChip'))
+      .map(chip => Number((chip.textContent || '').match(/(\d+)\s*개월/)?.[1])).find(Number.isFinite);
+    if (months >= 24) return 'annual:every_12';
+    if (months >= 12) return 'every_12';
+    if (months >= 6) return 'every_6';
+    if (months >= 3) return 'after_3';
     return 'after_1';
   }
   function manualNoticeStudent(card) {
@@ -356,7 +364,7 @@
   async function copyManualConsultationNotice(card, button) {
     const student = manualNoticeStudent(card);
     if (!student) throw new Error('학생을 정확하게 찾지 못했습니다. 학생 카드를 다시 열어 주세요.');
-    const stage = manualNoticeStage(card);
+    const stage = manualNoticeStage(card, student);
     const division = (student.type || student.division) === 'kinder' ? 'kinder' : 'elementary';
     const key = stage === 'annual:every_12' ? stage : division + ':' + stage;
     const settings = await manualNoticeConfig();
@@ -371,7 +379,7 @@
       .replace(/#\{학생이름_소유격\}/g, manualNameValue(student.name, 'possessive'))
       .replace(/#\{학생명\}/g, manualGivenName(student.name))
       .replace(/#\{학원명\}/g, String(settings.academy_name || '비비작'))
-      .replace(/#\{상담구분\}/g, (stage === 'every_12' || stage === 'annual:every_12') ? '12개월' : stage === 'every_6' ? '6개월' : '1개월')
+      .replace(/#\{상담구분\}/g, (stage === 'every_12' || stage === 'annual:every_12') ? '12개월' : stage === 'every_6' ? '6개월' : stage === 'after_3' ? '3개월' : '1개월')
       .replace(/#\{예약링크\}/g, String(settings.booking_url || '').trim());
     if (settings.booking_url && !body.includes(settings.booking_url)) body += '\n' + settings.booking_url;
     if (/#\{[^}]+\}/.test(body)) throw new Error('안내문에 아직 치환되지 않은 변수가 있습니다.');
