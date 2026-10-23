@@ -8,8 +8,9 @@ module.exports = async function handler(req, res) {
     const service = createService();
     if (req.method === 'GET') {
       if (!cronAuthorized(req.headers.authorization)) return res.status(401).json({ error: 'UNAUTHORIZED' });
+      const sync = await service.syncProviderTemplates();
       const counts = await service.run();
-      return res.status(counts.errors || counts.configurationMissing ? 503 : 200).json({ ok: !counts.errors && !counts.configurationMissing, counts });
+      return res.status(counts.errors || counts.configurationMissing || sync.errors ? 503 : 200).json({ ok: !counts.errors && !counts.configurationMissing && !sync.errors, counts, templateSync:sync });
     }
     const { academyId, sessionToken, action, studentId } = req.body || {};
     if (!academyId || !sessionToken) return res.status(401).json({ error: 'SESSION_REQUIRED' });
