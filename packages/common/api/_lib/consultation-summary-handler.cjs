@@ -13,7 +13,10 @@ function parseMonth(s) {
   return new Date(Number(s.slice(0,4)),Number(s.slice(5,7))-1,1);
 }
 function dateFromFeedback(row) {
-  const raw=String(row.date||row.lesson_date||row.created_at||'').trim();
+  // Weekly Quick Note records follow the actual lesson date. Quarterly growth
+  // records follow their explicit target_month (handled in relevantRows) or date.
+  const isClass=String(row.feedback_type||'').trim().toLowerCase()==='class';
+  const raw=String((isClass?row.lesson_date||row.date:row.date||row.lesson_date)||row.created_at||'').trim();
   let m=raw.match(/^(\d{4})[.\-\s]+(\d{1,2})[.\-\s]+(\d{1,2})/);
   if(m) {const d=new Date(+m[1],+m[2]-1,+m[3]); return d.getFullYear()==+m[1] && d.getMonth()==+m[2]-1 && d.getDate()==+m[3]?d:null;}
   const d=new Date(raw);return Number.isNaN(d.getTime())?null:d;
@@ -50,39 +53,68 @@ async function getRows(table, params,key) {
   return result;
 }
 function relevantRows(feedbacks,failures,division,rule,due,months) {
+  // The consultation month is NOT part of the analysis period.
+  // November 2026 annual consultation: Nov 2025 through Oct 2026.
   const start=addMonth(due,-months);
-  const through=addMonth(due,1); // the due month may contain the final prior-month feedback
-  let rows=[...feedbacks.map(x=>({...x,source_table:'feedbacks'})),...failures.map(x=>({...x,source_table:'fail_feedbacks'}))];
+  const end=due;
+  let rows=[...feedbacks.map(x=>({...x,source_table:'feedbacks'})),
+    ...failures.map(x=>({...x,source_table:'fail_feedbacks'}))];
   rows=rows.map(row=>{
     const _date=dateFromFeedback(row);
     const explicit=String(row.target_month||'');
-    const _reportingDate=/^20[0-9]{2}-(0[1-9]|1[0-2])$/.test(explicit) ? parseMonth(explicit) : _date;
+    const _reportingDate=/^20[0-9]{2}-(0[1-9]|1[0-2])$/.test(explicit)
+      ? parseMonth(explicit) : _date;
     return {...row,_date,_reportingDate};
   })
-    .filter(row=>row._date && row._reportingDate && row._reportingDate>=start && row._reportingDate<through && String(row.content||'').trim())
-    .sort((a,b)=>a._date-b._date);
+    .filter(row=>row._date && row._reportingDate
+      && row._reportingDate>=start && row._reportingDate<end
+      && String(row.content||'').trim())
+    .sort((a,b)=>a._reportingDate-b._reportingDate||a._date-b._date);
+
   const general=rows.filter(row=>row.source_table==='feedbacks');
-  const growth=general.filter(row=>!row.feedback_type || String(row.feedback_type).toLowerCase()==='growth');
-  if(division==='elementary' && months===1) return {status:general.length?'ready':'insufficient',mode:'elementary_one_month_records',rows:general,reason:'일반 피드백이 없습니다.'};
-  if(division==='kinder' && months===1 && general.length<4) return {status:'insufficient',rows:general,reason:'유치부 1개월 상담은 수업 피드백 최소 4개가 필요합니다.'};
-  if(division==='elementary') {
-    if(growth.length<2) return {status:'insufficient',rows:growth,reason:'초등부 종합 상담에는 성장 피드백 최소 2개가 필요합니다.'};
-    if(rule==='every_12'){
-      const finalMonth=addMonth(due,-1);
-      if(!growth.some(row=>row._reportingDate>=finalMonth && row._reportingDate<due))
-        return {status:'insufficient',rows:growth,reason:monthKey(finalMonth)+'분 마지막 성장 피드백이 아직 없습니다.'};
-    }
-    return {status:'ready',rows:growth};
+  const classRecords=general.filter(row=>String(row.feedback_type||'').trim().toLowerCase()==='class');
+  // Legacy untyped general feedbacks continue to count as growth records, never
+  // as evidence of weekly class records. This prevents bypassing the final month.
+  const growth=general.filter(row=>!String(row.feedback_type||'').trim()
+    ||String(row.feedback_type).trim().toLowerCase()==='growth');
+
+  // Keep the existing first-month rules and protect the initial adjustment report.
+  if(months===1&&division==='elementary')
+    return {status:general.length?'ready':'insufficient',
+      mode:'elementary_one_month_records',rows:general,
+      reason:general.length?'':'저장된 첫 달 기록이 없습니다.'};
+  if(months===1&&division==='kinder') {
+    if(classRecords.length<4)
+      return {status:'insufficient',rows:classRecords,
+        reason:'유치부 1개월 상담은 이전 달 퀵노트 수업 기록 최소 4개가 필요합니다.'};
+    return {status:'ready',rows:classRecords};
   }
-  if(!rows.length)return{status:'insufficient',rows,reason:'해당 상담 기간에 저장된 피드백이 없습니다.'};
-  return {status:'ready',rows};
+
+  // Rule applies to the student's RECORD MIX, not kindergarten vs elementary.
+  // Weekly Quick Note (class) records make the final-month quarterly growth
+  // document optional. Include both lesson and growth records in the summary.
+  if(classRecords.length)
+    return {status:'ready',rows,mode:'weekly_class_records'};
+
+  // Growth-only students receive quarterly records. For those students the
+  // growth report for the last analysis month is required before generating.
+  const requiredGrowthCount=months<=3?1:2;
+  if(growth.length<requiredGrowthCount)
+    return {status:'insufficient',rows:growth,
+      reason:'성장 기록만 있는 학생은 상담 기간 내 성장 기록 최소 '+requiredGrowthCount+'개가 필요합니다.'};
+  const lastMonth=addMonth(due,-1);
+  if(!growth.some(row=>row._reportingDate>=lastMonth&&row._reportingDate<due))
+    return {status:'insufficient',rows:growth,
+      reason:monthKey(lastMonth)+'분 마지막 성장 기록이 아직 없습니다.'};
+  return {status:'ready',rows:growth,mode:'quarterly_growth_records'};
 }
 function userPrompt(student,months,rows,dueMonth){
   const division=student.division==='kinder'?'유치부':'초등부';
   const records=rows.map((r,i)=>{
     const d=r._date;
     const date=d?d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0'):'미확인';
-    const kind=r.source_table==='fail_feedbacks'?'실패·재도전 성장기록':'성장·수업 피드백';
+    const kind=r.source_table==='fail_feedbacks'?'실패·재도전 성장 기록'
+      :String(r.feedback_type||'').trim().toLowerCase()==='class'?'퀵노트 수업 기록':'성장 기록';
     return (i+1)+'. ['+date+' / '+kind+']\n'+String(r.content||'');
   }).join('\n\n');
   return '[학생 정보]\n- 이름: '+student.name+'\n- 구분: '+division+'\n- 등록일: '+student.enrolled_at+
@@ -203,7 +235,7 @@ async function main(body, context = {}) {
   // Both feedback tables may have different date columns; query only shared fields.
   const feedbacks=await getRows('feedbacks',Object.assign({},base,{select:'id,date,lesson_date,created_at,feedback_type,target_month,content'}),key);
   let failures=[];
-  if(student.division==='kinder' && months>1){
+  if(months>1){
     failures=await getRows('fail_feedbacks',Object.assign({},base,{select:'id,date,created_at,feedback_type,content'}),key);
   }
   let material;

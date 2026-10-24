@@ -34,7 +34,7 @@ test('calendar month calculation: April 2025 enrollment means April 2026 due',()
  assert.throws(()=>h.verifyDue(enrolled,'every_12',h.parseMonth('2026-03')),/등록일/);
  assert.throws(()=>h.verifyDue(enrolled,'after_3',due),/등록일/);
 });
-test('elementary annual summary requires last lesson-month growth even if recorded in April',()=>{
+test('growth-only annual summary requires last reporting-month growth, even if saved during due month',()=>{
  const h=getHelpers(),due=h.parseMonth('2026-04');
  const row=(date,feedback_type='growth')=>({date,feedback_type,content:'growth example'});
  const prior=[row('2025-06-20'),row('2025-09-13'),row('2025-12-12')];
@@ -48,9 +48,10 @@ test('elementary annual summary requires last lesson-month growth even if record
 });
 test('kinder first-month consultation requires four feedbacks',()=>{
  const h=getHelpers(),due=h.parseMonth('2026-10');
- const rows=Array.from({length:3},(_,i)=>({date:'2026-09-'+String(i+5).padStart(2,'0'),content:'feedback'}));
+ const rows=Array.from({length:3},(_,i)=>({date:'2026-09-'+String(i+5).padStart(2,'0'),feedback_type:'class',content:'Quick Note'}));
  assert.equal(h.relevantRows(rows,[],'kinder','after_1',due,1).status,'insufficient');
- assert.equal(h.relevantRows([...rows,{date:'2026-10-03',content:'feedback'}],[],'kinder','after_1',due,1).status,'ready');
+ assert.equal(h.relevantRows([...rows,{date:'2026-09-28',feedback_type:'class',content:'Quick Note'}],[],'kinder','after_1',due,1).status,'ready');
+ assert.equal(h.relevantRows([...rows,{date:'2026-10-03',feedback_type:'class',content:'Quick Note'}],[],'kinder','after_1',due,1).status,'insufficient');
 });
 test('client auto-check uses single server endpoint, no client-side AI and auto-save',()=>{
  for(const source of [pc,mobile]) {
