@@ -210,8 +210,9 @@
 
   function consultationStatusChipHtml(student, labels) {
     const cached = consultationStatusCache.get(consultationStatusKey(student, labels));
-    const status = cached?.status === 'ready' ? 'ready' : (cached?.status === 'insufficient' ? 'insufficient' : (cached?.status === 'error' ? 'error' : 'checking'));
-    const label = status === 'ready' ? '준비완료' : (status === 'insufficient' ? '자료부족' : (status === 'error' ? '확인오류' : '확인중'));
+    // PC도 로컬 캐시를 먼저 그리고, 서버 응답이 오면 조용히 갱신합니다.
+    const status = cached?.status === 'ready' ? 'ready' : (cached?.status === 'error' ? 'error' : 'insufficient');
+    const label = status === 'ready' ? '준비완료' : (status === 'error' ? '확인오류' : '자료부족');
     return '<span class="recordAcademyConsultStatusChip '+status+'" data-pc-consult-material-status="'+status+'">'+label+'</span>';
   }
 

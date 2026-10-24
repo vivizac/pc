@@ -623,19 +623,24 @@ async function runAcademyConsultationSummaryAutoCheck() {
       if (!task) continue;
       const summaryMonths = task.ruleKey === 'every_12'?12:task.ruleKey==='every_6'?6:task.ruleKey==='after_3'?3:1;
       const key = getAcademyConsultationSummaryKey(student,summaryMonths);
-      setAcademyConsultationSummaryItem(key,{status:'checking',studentName:student.name,studentDivision:student.type,months:summaryMonths});
+      // 서버 재조회 중에는 마지막 로컬 상담 상태를 그대로 보여 줍니다.
       try {
         const result = await fetchConsultationSummaryFromServer(student,task);
         const status = result.status === 'ready'?'ready':result.status === 'insufficient'?'insufficient':'generating';
         if(status==='generating') pendingGeneration = true;
-        setAcademyConsultationSummaryItem(key,{
-          status,mode:result.mode||'',content:status==='ready'?String(result.content||''):'',
-          reason:result.reason||'',studentName:student.name,studentDivision:student.type,months:summaryMonths
-        });
+        // 서버에서 '생성중'이라도 이미 저장된 준비완료 기록을 가리지 않습니다.
+        if (status !== 'generating' || getAcademyConsultationSummaryItem(student, summaryMonths).status !== 'ready') {
+          setAcademyConsultationSummaryItem(key,{
+            status,mode:result.mode||'',content:status==='ready'?String(result.content||''):'',
+            reason:result.reason||'',studentName:student.name,studentDivision:student.type,months:summaryMonths
+          });
+        }
       } catch (error) {
-        setAcademyConsultationSummaryItem(key,{
-          status:'error',error:error.message||'서버 오류',studentName:student.name,studentDivision:student.type,months:summaryMonths
-        });
+        if (getAcademyConsultationSummaryItem(student, summaryMonths).status !== 'ready') {
+          setAcademyConsultationSummaryItem(key,{
+            status:'error',error:error.message||'서버 오류',studentName:student.name,studentDivision:student.type,months:summaryMonths
+          });
+        }
       }
       scheduleRecordAcademyManagementDashboardRender(120);
     }

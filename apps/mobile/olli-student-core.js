@@ -979,11 +979,13 @@ function areAcademyConsultationSummaryStableItemsEqual(left, right) {
 
 function getAcademyConsultationSummaryItemByKey(key) {
   const safeKey = String(key || '');
-  const transient = academyConsultationSummaryState.transientItems[safeKey];
-  if (transient) return transient;
   const snapshot = readAcademyConsultationSummarySnapshot();
-  // 확인하지 않은 학생을 '자료부족'으로 표시하지 않습니다.
-  return normalizeAcademyConsultationSummaryStableItem(snapshot.items[safeKey]) || { status: 'checking' };
+  const cached = normalizeAcademyConsultationSummaryStableItem(snapshot.items[safeKey]);
+  const transient = academyConsultationSummaryState.transientItems[safeKey];
+  // 로컬에 저장된 준비완료 기록은 서버 재조회·생성이 진행돼도 즉시 보여 줍니다.
+  if (cached?.status === 'ready' && (!transient || ['checking','generating'].includes(transient.status))) return cached;
+  // 로컬에 아무것도 없다면 서버 요청을 기다리지 않고 기존 '자료부족' 상태로 표시합니다.
+  return transient || cached || { status: 'insufficient' };
 }
 
 function getAcademyConsultationSummaryItem(student, months) {
@@ -992,7 +994,7 @@ function getAcademyConsultationSummaryItem(student, months) {
 
 function setAcademyConsultationSummaryItem(key, patch) {
   const safeKey = String(key || '');
-  if (!safeKey) return { item: { status: 'checking' }, changed: false, persisted: false };
+  if (!safeKey) return { item: { status: 'insufficient' }, changed: false, persisted: false };
 
   const previous = getAcademyConsultationSummaryItemByKey(safeKey);
   const next = {
@@ -1059,13 +1061,13 @@ function pruneAcademyConsultationSummarySnapshot(validKeys) {
 function getAcademyConsultationSummaryStatusLabel(status) {
   if (status === 'ready') return '준비완료';
   if (status === 'error') return '확인오류';
-  if (status === 'checking') return '확인중';
-  if (status === 'generating') return '생성중';
+  // 서버 상태가 도착하기 전에도 기존 화면은 '자료부족' / '준비완료'만 표시합니다.
+  if (status === 'checking' || status === 'generating') return '자료부족';
   return '자료부족';
 }
 
 function getAcademyConsultationSummaryDisplayStatus(status) {
-  if (status === 'ready' || status === 'error' || status === 'checking' || status === 'generating') return status;
+  if (status === 'ready' || status === 'error') return status;
   return 'insufficient';
 }
 
@@ -1146,7 +1148,7 @@ function renderAcademyConsultationSummaryPreview(key) {
     content = item.reason || item.error || '상담용 종합 피드백 생성 중 오류가 발생했습니다.';
     muted = true;
   } else {
-    content = '저장된 상담 피드백을 확인하고 있습니다.';
+    content = '저장된 상담 피드백 자료가 부족합니다.';
     muted = true;
   }
 
@@ -1202,7 +1204,8 @@ async function runAcademyConsultationSummaryAutoCheck() {
       const months=task.ruleKey==='every_12'?12:task.ruleKey==='every_6'?6:task.ruleKey==='after_3'?3:1;
       const key=getAcademyConsultationSummaryKey(student,months);
       const basic={studentName:student.name,studentDivision:student.type,months};
-      setAcademyConsultationSummaryItem(key,{...basic,status:'checking'});
+      // 로컬 저장 상태를 먼저 렌더한 채 서버는 뒤에서 조회합니다.
+      // 화면에 '확인중'을 표시하거나 준비완료 캐시를 덮어쓰지 않습니다.
       try {
         const value=await fetchConsultationSummaryFromServer(student,task);
         const status=value.status==='ready'?'ready':value.status==='insufficient'?'insufficient':'generating';
@@ -1213,8 +1216,11 @@ async function runAcademyConsultationSummaryAutoCheck() {
         });
         changed=changed||r.changed;
       }catch(error){
-        const r=setAcademyConsultationSummaryItem(key,{...basic,status:'error',reason:error.message||'서버 오류'});
-        changed=changed||r.changed;
+        // 네트워크 장애 시 기존 준비완료 캐시를 지우지 않습니다.
+        if(getAcademyConsultationSummaryItemByKey(key).status!=='ready'){
+          const r=setAcademyConsultationSummaryItem(key,{...basic,status:'error',reason:error.message||'서버 오류'});
+          changed=changed||r.changed;
+        }
       }
     }
   }finally {
