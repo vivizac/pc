@@ -476,16 +476,7 @@
         catch(error) { alert(error.message || '안내문 복사에 실패했습니다.'); }
         finally { button.disabled = false; }
       });
-      // The mobile server-owned layout uses a two-row card. Keep the copy
-      // action with the other buttons, not ahead of the student's name.
-      const mobileActions = card.closest('.recordAcademyConsultationListMobile')
-        ? card.querySelector('.recordAcademyConsultActions') : null;
-      if (mobileActions) {
-        button.style.order = '3';
-        mobileActions.appendChild(button);
-      } else {
-        card.insertBefore(button, card.firstChild);
-      }
+      card.insertBefore(button, card.firstChild);
     });
   }
   function startManualConsultationButtons() {

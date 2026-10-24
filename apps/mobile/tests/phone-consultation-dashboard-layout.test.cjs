@@ -2,41 +2,45 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const crypto = require('node:crypto');
 const path = require('node:path');
-const root = path.resolve(__dirname, '../..', '..');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const root = path.resolve(__dirname, '../../..');
+const read = p => fs.readFileSync(path.join(root, p),'utf8');
+const blobSha = content => crypto.createHash('sha1')
+  .update('blob '+Buffer.byteLength(content,'utf8')+'\0')
+  .update(content,'utf8')
+  .digest('hex');
+const originalDashboard = read('apps/mobile/olli-settings-server-sync.js');
+const style = read('apps/mobile/olli-academy-dashboard.css');
+const copy = read('packages/common/olli-consultation-messages.js');
 const runtime = read('apps/mobile/olli-consultation-mobile-runtime.js');
-const css = read('apps/mobile/olli-academy-dashboard.css');
 const html = read('apps/mobile/index.html');
-const notices = read('packages/common/olli-consultation-messages.js');
-test('server consultation rows use the existing academy panel, list and card layout contracts', () => {
-  assert.match(runtime, /recordAcademyPanel recordAcademyConsultSection recordAcademyConsultationListMobile/);
-  assert.match(runtime, /recordAcademyPanelTitle recordAcademyMobileConsultationHeading/);
-  assert.match(runtime, /recordAcademyConsultGroups/);
-  assert.match(runtime, /recordAcademyList recordAcademyMobileConsultCards/);
-  assert.match(runtime, /recordAcademyListItem recordAcademyConsultListItem/);
-  assert.doesNotMatch(runtime, /recordAcademySectionHeader/);
+
+test('original consultation dashboard markup is preserved byte-for-byte', () => {
+  assert.equal(blobSha(originalDashboard), '50669abecffaf280205b7538a9196a6ec84edae5');
+  assert.match(originalDashboard, /function renderRecordAcademyManagementDashboard\(\)/);
+  assert.match(originalDashboard, /function renderAcademyConsultationList\(students\)/);
+  assert.match(originalDashboard, /recordAcademyStatGrid/);
+  assert.match(originalDashboard, /recordAcademyConsultGroups/);
+  assert.match(originalDashboard, /recordAcademyListItem recordAcademyConsultListItem/);
 });
-test('consultation action buttons are grouped, status is visibly differentiated, and student ID is stable', () => {
-  assert.match(runtime, /data-student-id/);
-  assert.match(runtime, /recordAcademyConsultActions/);
-  assert.match(runtime, /recordAcademyConsultStatusChip '/);
-  assert.match(runtime, /\['ready', 'generating', 'checking', 'error'\]/);
-  assert.match(runtime, /data-consult-preview/);
-  assert.match(runtime, /data-consult-ref/);
+test('original academy CSS is restored byte-for-byte', () => {
+  assert.equal(blobSha(style), '071040b9ba796a84b4664b9d761d3ea1123d4423');
 });
-test('mobile CSS keeps cards within viewport and actions in a wrapping row', () => {
-  assert.match(css, /\.recordAcademyConsultationListMobile \.recordAcademyConsultListItem \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column;[\s\S]*?min-width: 0;[\s\S]*?width: 100%/);
-  assert.match(css, /\.recordAcademyConsultationListMobile \.recordAcademyConsultActions \{[\s\S]*?width: 100%;[\s\S]*?flex-wrap: wrap;/);
-  assert.match(css, /@media \(max-width: 380px\)/);
+test('original consultation notice button location is restored, no redesign', () => {
+  assert.equal(blobSha(copy), '441eec890dd943fc21d0851d41c61a8c87294cc0');
+  assert.match(copy, /card\.insertBefore\(button, card\.firstChild\)/);
 });
-test('the owner copy button belongs in the mobile action row without changing the PC layout', () => {
-  assert.match(notices, /card\.closest\('\.recordAcademyConsultationListMobile'\)/);
-  assert.match(notices, /mobileActions\.appendChild\(button\)/);
-  assert.match(notices, /card\.insertBefore\(button, card\.firstChild\)/);
+test('new server keeps data synchronization but never overlays or replaces the old dashboard', () => {
+  assert.doesNotMatch(runtime, /renderOlliServerConsultationDashboard|recordAcademyConsultationListMobile|root\.prepend\(panel\)/);
+  assert.doesNotMatch(runtime, /window\.renderRecordAcademyManagementDashboard\s*=/);
+  assert.match(runtime, /window\.OlliConsultationServer\.readProgress\(\)/);
+  assert.match(runtime, /window\.OlliConsultationServer\.setCompleted\(/);
+  assert.match(runtime, /function initializeMobileConsultationServer\(\)/);
+  assert.match(runtime, /loadOlliConsultationProgressFromServer/);
 });
-test('new JS and CSS are versioned to reload existing installed apps', () => {
-  assert.match(html, /olli-academy-dashboard\.css\?v=20261024-consult-card-layout-hotfix-1/);
-  assert.match(html, /olli-consultation-mobile-runtime\.js\?v=20261024-consult-card-layout-hotfix-1/);
-  assert.match(html, /olli-consultation-messages\.js\?v=20261024-consult-card-copy-placement-1/);
+test('restored scripts and stylesheet are explicitly cache-busted for installed phones', () => {
+  assert.match(html,/olli-academy-dashboard\.css\?v=20261024-original-ui-restore-1/);
+  assert.match(html,/olli-consultation-mobile-runtime\.js\?v=20261024-original-ui-restore-1/);
+  assert.match(html,/olli-consultation-messages\.js\?v=20261024-original-ui-restore-1/);
 });

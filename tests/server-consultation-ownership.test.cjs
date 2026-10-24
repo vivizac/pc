@@ -70,10 +70,13 @@ test('consultation completion never treats a local optimistic button as confirme
  assert.doesNotMatch(code,/saveOlliConsultationProgressShared/);
  assert.doesNotMatch(code,/pressedBtn\.classList\.toggle/);
  assert.match(code,/catch \(error\)/);
- assert.match(mobileRuntime,/getThisMonthConsultationDueStudents/);
- assert.match(mobileRuntime,/previousMobileAcademyRenderer/);
- assert.match(mobileRuntime,/data-consult-preview/);
- assert.match(mobileRuntime,/renderAcademyConsultationSummaryPreview/);
+ // The original academy dashboard remains the sole screen renderer.
+ // The mobile server runtime only synchronizes progress; it must never overlay it.
+ const originalDashboard=read('apps/mobile/olli-settings-server-sync.js');
+ assert.match(originalDashboard,/function renderAcademyConsultationList\(students\)/);
+ assert.match(originalDashboard,/data-consult-preview|toggleAcademyConsultationSummaryPreview/);
+ assert.match(originalDashboard,/renderAcademyConsultationSummaryPreview/);
+ assert.doesNotMatch(mobileRuntime,/previousMobileAcademyRenderer|renderOlliServerConsultationDashboard/);
  assert.match(pc,/pendingGeneration/);
  assert.match(mobile,/pendingGeneration/);
  assert.match(mobileRuntime,/toggleAcademyConsultationCompleted/);
