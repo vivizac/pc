@@ -191,8 +191,8 @@ test('memo archive uses secure feedback reads and fixed survey visibility', () =
 
   // Analysis is intentionally available only for elementary memo records.
   // Kindergarten must not display a non-applicable analysis control.
-  assert.match(roster, /analysisBtn\\.hidden = currentMemoType !== 'elementary'/);
-  assert.match(roster, /analysisBtn\\.style\\.display = currentMemoType === 'elementary' \\? 'inline-flex' : 'none'/);
+  assert.match(roster, /analysisBtn\.hidden = currentMemoType !== 'elementary'/);
+  assert.match(roster, /analysisBtn\.style\.display = currentMemoType === 'elementary' \? 'inline-flex' : 'none'/);
   assert.match(roster, /analysisBtn\.style\.visibility = 'visible'/);
   assert.doesNotMatch(roster, /const showAnalysis = currentMemoType === 'elementary'/);
 

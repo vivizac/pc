@@ -14,11 +14,11 @@ test('PC material order runtime compiles after archive addition', () => {
 });
 
 test('PC archive moves requests on the day after needed_on, regardless of status', () => {
-  assert.match(js, /function isMaterialArchiveEligible\\(item, now = new Date\\(\\)\\)/);
-  assert.match(js, /const neededOn = clean\\(item\\?\\.needed_on\\)/);
-  assert.match(js, /neededOn < localDateKey\\(now\\)/);
-  assert.match(js, /state\\.items\\.filter\\(item => !isMaterialArchiveEligible\\(item\\)\\)/);
-  assert.match(js, /if \\(isMaterialArchiveEligible\\(item\\)\\) return false/);
+  assert.match(js, /function isMaterialArchiveEligible\(item, now = new Date\(\)\)/);
+  assert.match(js, /const neededOn = clean\(item\?\.needed_on\)/);
+  assert.match(js, /neededOn < localDateKey\(now\)/);
+  assert.match(js, /state\.items\.filter\(item => !isMaterialArchiveEligible\(item\)\)/);
+  assert.match(js, /if \(isMaterialArchiveEligible\(item\)\) return false/);
 
   // Run the pure production decision functions against a fixed date, not just string-match.
   const eligibleSource = js.slice(
@@ -30,7 +30,7 @@ test('PC archive moves requests on the day after needed_on, regardless of status
     js.indexOf('  function mondayKey(')
   );
   const sandbox = { Date, clean: value => String(value || '').trim() };
-  vm.runInNewContext(eligibleSource + dateSource + '\\nthis.isEligible=isMaterialArchiveEligible;', sandbox);
+  vm.runInNewContext(eligibleSource + dateSource + '\nthis.isEligible=isMaterialArchiveEligible;', sandbox);
   const today = new Date(2026, 9, 24, 12);
   assert.equal(sandbox.isEligible({needed_on:'2026-10-23',status:'requested'},today),true);
   assert.equal(sandbox.isEligible({needed_on:'2026-10-23',status:'arrived'},today),true);
@@ -78,13 +78,13 @@ test('PC archive is read-only and keeps original material rows', () => {
 });
 
 test('archive RPC checks academy membership and uses needed_on in Seoul date (same rule as list)', () => {
-  assert.match(migration, /public\\.olli_account_id_from_session\\(p_session_token\\)/);
-  assert.match(migration, /m\\.academy_id = p_academy_id/);
-  assert.match(migration, /r\\.needed_on < \\(now\\(\\) at time zone 'Asia\\/Seoul'\\)::date/);
-  assert.match(migration, /extract\\(year from r\\.needed_on\\)::integer/);
-  assert.match(migration, /r\\.needed_on is null or r\\.needed_on >= \\(now\\(\\) at time zone 'Asia\\/Seoul'\\)::date/);
+  assert.match(migration, /public\.olli_account_id_from_session\(p_session_token\)/);
+  assert.match(migration, /m\.academy_id = p_academy_id/);
+  assert.match(migration, /r\.needed_on < \(now\(\) at time zone 'Asia\/Seoul'\)::date/);
+  assert.match(migration, /extract\(year from r\.needed_on\)::integer/);
+  assert.match(migration, /r\.needed_on is null or r\.needed_on >= \(now\(\) at time zone 'Asia\/Seoul'\)::date/);
   assert.match(migration, /'archive_basis', 'needed_on_past'/);
-  assert.doesNotMatch(migration, /r\\.ordered_at <= now\\(\\) - interval '1 month'/);
+  assert.doesNotMatch(migration, /r\.ordered_at <= now\(\) - interval '1 month'/);
 });
 
 test('existing material list RPC remains the current-list source and archive has a dedicated reader', () => {

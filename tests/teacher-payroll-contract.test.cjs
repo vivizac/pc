@@ -63,10 +63,10 @@ test('settings entry and shared runtime are wired on PC and mobile', () => {
     assert.match(html, /학원 수입·지출 관리/);
     assert.match(html, /openOlliTeacherPayrollSettings\(\)/);
     // Shared assets must be cache-busted on both apps; the literal version changes with releases.
-    assert.match(html, /olli-teacher-payroll-common\\.js\\?v=[^"']+/);
-    assert.match(html, /olli-teacher-payroll-common\\.css\\?v=[^"']+/);
-    const jsVersion=html.match(/olli-teacher-payroll-common\\.js\\?v=([^"']+)/)?.[1];
-    const cssVersion=html.match(/olli-teacher-payroll-common\\.css\\?v=([^"']+)/)?.[1];
+    assert.match(html, /olli-teacher-payroll-common\.js\?v=[^"']+/);
+    assert.match(html, /olli-teacher-payroll-common\.css\?v=[^"']+/);
+    const jsVersion=html.match(/olli-teacher-payroll-common\.js\?v=([^"']+)/)?.[1];
+    const cssVersion=html.match(/olli-teacher-payroll-common\.css\?v=([^"']+)/)?.[1];
     assert.equal(jsVersion,cssVersion,'shared payroll JS/CSS cache versions must match');
   }
 });
@@ -74,8 +74,8 @@ test('settings entry and shared runtime are wired on PC and mobile', () => {
 test('team chat payroll statement opens only through the private statement RPC', () => {
   assert.match(common, /function isPayrollMessage\(item\)/);
   // A preview has a distinct label; real statements remain server-authorized.
-  assert.match(common, /button\\.textContent=preview\\?'미리보기 열기':'급여명세서 보기'/);
-  assert.match(common, /function isPayrollPreviewMessage\\(item\\)/);
+  assert.match(common, /button\.textContent=preview\?'미리보기 열기':'급여명세서 보기'/);
+  assert.match(common, /function isPayrollPreviewMessage\(item\)/);
   assert.match(common, /olli_teacher_payroll_statement_get/);
   assert.match(common, /function renderPayrollStatementModal\(payload\)/);
   const start = common.indexOf('function createTeamChatPayrollButton');
@@ -91,8 +91,8 @@ test('leaving and reopening Team Chat rebuilds payroll statement buttons from se
   assert.match(pcChat, /async function open\(\)[\s\S]*loadMessages\(\{ showLoading: true, followBottom: true \}\)/);
   assert.match(mobileChat, /async function openOlliTalkBetaPage\(event\)[\s\S]*renderOlliTalkServerMessages\(openCachedPayload/);
   // A preview has a distinct label; real statements remain server-authorized.
-  assert.match(common, /button\\.textContent=preview\\?'미리보기 열기':'급여명세서 보기'/);
-  assert.match(common, /function isPayrollPreviewMessage\\(item\\)/);
+  assert.match(common, /button\.textContent=preview\?'미리보기 열기':'급여명세서 보기'/);
+  assert.match(common, /function isPayrollPreviewMessage\(item\)/);
 });
 
 
@@ -310,8 +310,8 @@ test('preview message opens the same statement UI through a separate owner-only 
   assert.match(common, /olli_teacher_payroll_statement_preview_get/);
   assert.match(common, /payload\?\.preview===true/);
   // A preview must be visibly distinguished from an actual payment statement.
-  assert.match(common, /preview\\s*\\?\\s*'<span class="olliPayrollStatementPreviewBadge">미리보기<\\/span>'/);
-  assert.match(common, /const preview=payload\\?\\.preview===true/);
+  assert.match(common, /preview\s*\?\s*'<span class="olliPayrollStatementPreviewBadge">미리보기<\/span>'/);
+  assert.match(common, /const preview=payload\?\.preview===true/);
   assert.match(payrollPreviewMigration, /'preview',true/);
 });
 
