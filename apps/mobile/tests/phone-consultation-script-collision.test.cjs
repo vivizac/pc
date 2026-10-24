@@ -27,7 +27,7 @@ test('restore original cards with unchanged HTML/CSS and shared feedback-month s
   assert.match(legacy,/recordAcademyListItem recordAcademyConsultListItem/);
   assert.doesNotMatch(legacy,/consultationBtn|toggleAcademyConsultationCompleted/);
   assert.match(legacy,/function bindOlliGroupFeedbackMonthsSyncOnce\(\)/);
-  assert.match(html,/olli-settings-server-sync\.js\?v=20261024-month-only-1/);
+  assert.match(html,/olli-settings-server-sync\.js\?v=20261024-remove-consultation-entry-1/);
 });
 test('display original dashboard immediately without waiting for the server',()=>{
   const start=legacy.indexOf('function renderAcademyConsultationList(students){');
@@ -53,4 +53,32 @@ test('display original dashboard immediately without waiting for the server',()=
   assert.match(node.innerHTML,/recordAcademyStatGrid/);
   assert.match(node.innerHTML,/recordAcademyConsultSection/);
   assert.match(node.innerHTML,/이번 달 상담 예정 학생이 없습니다/);
+});
+
+test('mobile academy dashboard has no consultation booking notice shortcut, including for owners',()=>{
+  const start=legacy.indexOf('function renderAcademyConsultationList(students){');
+  assert.ok(start>=0,'original student list renderer still exists');
+  const source=legacy.slice(start);
+  const node={innerHTML:''};
+  const sandbox={
+    document:{getElementById:id=>id==='recordAcademyDashboard'?node:null},
+    getAcademyManagementStudentsForStats:()=>[],
+    isAcademyManagementActiveStudent:()=>false,
+    getStudentStatus:()=>'inactive',
+    getStudentEnrollmentDateForStats:()=>null,
+    getStudentWithdrawalDateForStats:()=>null,
+    isCurrentYearDate:()=>false,
+    isCurrentMonthYear:()=>false,
+    getThisMonthConsultationDueStudents:()=>[],
+    buildAcademyStatCard:label=>'<div class="recordAcademyStatCard">'+label+'</div>',
+    window:{OlliConsultationMessages:{isOwner:()=>true}},
+    escapeHtml:v=>String(v),
+    Date
+  };
+  vm.runInNewContext(source+'\nrenderRecordAcademyManagementDashboard();',sandbox);
+  assert.doesNotMatch(node.innerHTML,/상담 예약 안내|OlliConsultationMessages\.open\(/);
+  assert.match(node.innerHTML,/recordAcademyStatGrid/);
+  assert.match(node.innerHTML,/recordAcademyConsultSection/);
+  assert.match(node.innerHTML,/이번 달 상담 예정 학생이 없습니다/);
+  assert.match(html,/settingsRowTitle">상담 예약 안내<\/span>/,'settings entry must remain accessible');
 });
