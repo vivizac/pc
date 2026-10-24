@@ -30,10 +30,66 @@ test('original consultation dashboard markup is preserved byte-for-byte', () => 
 test('original academy CSS is restored byte-for-byte', () => {
   assert.equal(blobSha(style), '071040b9ba796a84b4664b9d761d3ea1123d4423');
 });
-test('original consultation notice button location is restored, no redesign', () => {
-  assert.equal(blobSha(copy), '441eec890dd943fc21d0851d41c61a8c87294cc0');
-  assert.match(copy, /card\.insertBefore\(button, card\.firstChild\)/);
+test('PC and mobile copy buttons share exact styling, but mobile sits before status', () => {
+  const vm = require('node:vm');
+  const start = copy.indexOf('function attachManualConsultationButtons() {');
+  const finish = copy.indexOf('function startManualConsultationButtons()', start);
+  assert.ok(start > 0 && finish > start);
+  const source = copy.slice(start, finish);
+  const render = isPc => {
+    const status = { textContent: '자료부족' };
+    const actions = {
+      children: [status],
+      querySelector: selector => selector === '.recordAcademyConsultStatusChip' ? status : null,
+      insertBefore(button, anchor) {
+        const i = this.children.indexOf(anchor);
+        assert.ok(i >= 0);
+        this.children.splice(i, 0, button);
+      }
+    };
+    const studentMain = { textContent: '김테스트 · 12개월' };
+    const card = {
+      children: [studentMain, actions],
+      firstChild: studentMain,
+      querySelector(selector) {
+        if (selector === '[data-consultation-manual-copy]') return null;
+        if (selector === '.recordAcademyConsultActions') return actions;
+        return null;
+      },
+      insertBefore(button, anchor) {
+        const i = this.children.indexOf(anchor);
+        assert.ok(i >= 0);
+        this.children.splice(i, 0, button);
+      }
+    };
+    let button;
+    const document = {
+      body: { classList: { contains: value => value === 'olliPcApp' && isPc } },
+      querySelectorAll: selector => selector === '.recordAcademyConsultListItem' ? [card] : [],
+      createElement(tag) {
+        assert.equal(tag, 'button');
+        button = {dataset: {}, style: {}, addEventListener(){}, setAttribute(){}};
+        return button;
+      }
+    };
+    vm.runInNewContext(source + '\nattachManualConsultationButtons();', { document, isOwner: () => true });
+    return { status, actions, studentMain, card, button };
+  };
+  const mobile = render(false);
+  const pc = render(true);
+  assert.deepEqual(mobile.actions.children, [mobile.button, mobile.status]);
+  assert.deepEqual(mobile.card.children, [mobile.studentMain, mobile.actions]);
+  assert.deepEqual(pc.card.children, [pc.button, pc.studentMain, pc.actions]);
+  assert.deepEqual(pc.actions.children, [pc.status]);
+  assert.equal(mobile.button.style.cssText, pc.button.style.cssText);
+  assert.match(mobile.button.style.cssText, /border-radius:8px;background:#fff;color:#343d4b/);
+  assert.match(mobile.button.style.cssText, /font-size:12px;font-weight:600/);
+  assert.equal(mobile.button.textContent, '안내문 복사');
+  assert.equal(mobile.button.dataset.consultationManualCopy, 'true');
+  assert.equal(blobSha(style), '071040b9ba796a84b4664b9d761d3ea1123d4423',
+    'the student card styling must remain byte-for-byte unchanged');
 });
+
 test('new server keeps data synchronization but never overlays or replaces the old dashboard', () => {
   assert.doesNotMatch(runtime, /renderOlliServerConsultationDashboard|recordAcademyConsultationListMobile|root\.prepend\(panel\)/);
   assert.doesNotMatch(runtime, /window\.renderRecordAcademyManagementDashboard\s*=/);
@@ -46,5 +102,5 @@ test('restored scripts and stylesheet are explicitly cache-busted for installed 
   assert.match(html,/olli-academy-dashboard\.css\?v=20261024-original-ui-restore-1/);
   assert.match(html,/olli-consultation-mobile-runtime\.js\?v=20261024-month-only-1/);
   assert.match(html,/olli-settings-server-sync\.js\?v=20261024-remove-consultation-entry-1/);
-  assert.match(html,/olli-consultation-messages\.js\?v=20261024-original-ui-restore-1/);
+  assert.match(html,/olli-consultation-messages\.js\?v=20261024-copy-beside-status-1/);
 });
