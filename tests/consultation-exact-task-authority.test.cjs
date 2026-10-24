@@ -27,7 +27,7 @@ function createClient(tasks) {
     location:{hostname:'vivizac-feedback.vercel.app'}
   };
   vm.runInNewContext(source,{window,Date,JSON,Number,Set,Error});
-  return {core:window.OlliConsultationServer,student:{id:studentId},academyId,map};
+  return {core:window.OlliConsultationServer,student:{id:studentId},academyId,map,window};
 }
 test('12-month analysis stays 12 months at 12, 24 and 36 months of enrollment',()=>{
   const tasks=[12,24,36].map((months,i)=>({
@@ -61,11 +61,13 @@ test('shared PC and Mobile client caches readiness by EXACT due task, never per 
 test('no ready status from malformed server response without linked feedback ID',async()=>{
   const id='3cc399c3-3ea2-4d4d-bef9-42af455bcf8d';
   const task={key:'id:'+id+'|after_1|2026-10',ruleKey:'after_1',dueMonth:'2026-10'};
-  const {core,student}=createClient([task]);
-  core.inspectSummary=async()=>({status:'ready',content:'orphan'});
-  // The public client is frozen; use the mock window fetch route instead in the next invocation.
+  const {core,student,window}=createClient([task]);
+  window.fetch=async()=>({ok:true,json:async()=>({ok:true,status:'ready',content:'orphan'})});
+  const inspected=await core.checkSummaryStatus(student,task);
+  assert.equal(inspected.status,'insufficient');
+  const key=core.getCacheKey('academy-test',task);
+  assert.equal(core.readCachedStatus(key).status,'insufficient');
   assert.equal(Object.isFrozen(core),true);
-  assert.match(source,/const verified=data\.status==='ready'&&Number\.isSafeInteger\(Number\(data\.feedbackId\)\)/);
 });
 test('server inspect requires linked row, no material heuristic, no old date fallback',()=>{
   const inspect=server.slice(server.indexOf("if(action==='inspect')"),server.indexOf("if(action==='revise')"));
