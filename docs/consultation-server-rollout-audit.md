@@ -8,12 +8,17 @@
 - [x] Archive/manual summary generation also requests the same server, validates selected saved feedback IDs, and writes at most one summary per student/period/month.
 - [x] Manual summary edits update the same stored summary by session-validated server RPC instead of inserting a second row.
 - [x] Database job key is unique per academy/student/rule/due month, with atomic claim token and expired lease reclamation.
-- [x] 12-month consultation requires final-period growth feedback (target last month or following month), not merely the existence of two historical records.
+- [x] 12-month consultation requires growth feedback for the *final lesson month*, not just any record written in the following month.
+- [x] New growth feedback saves on both apps ask for lesson target month (YYYY-MM), persisted through the secure feedback RPC to `feedbacks.target_month`.
+- [x] Legacy feedback target_month is left null rather than guessed from its creation date; late historical growth must be explicitly classified to unlock annual summaries.
 - [x] Consultation completion and rules use a session-validated RPC and are displayed consistently using shared calendar task policy.
 - [x] Mobile consultation content preview and manual summary editor are wired to shared server data.
 - [x] Preview builds cannot generate AI responses or save consultation completion against production Supabase without explicit authorization.
 - [x] Rejected/invalid session cannot access summary generator; DB execution privilege restricted to service_role only.
-- [x] Automated tests: mocked simultaneous requests, failed model, expired claim lease, missing selection, revision, preview mutation ban, and PC/mobile read regressions.
+- [x] Guarded mobile-server Vercel Cron (daily 02:00 UTC/11:00 KST) plus sessionless service_role-only candidate enumeration. Jobs are inactive without `CRON_SECRET` and `OLLI_CONSULTATION_CRON_ENABLED=enabled`.
+- [x] Server Cron considers unfinished consultation carry-over (up to 20 years) and uses the same idempotency/claim table. No automatic historical completion or correction.
+- [x] HTML responses carry no-store; modified PC and mobile growth/consultation runtime assets use cache-busted URLs; push service worker does not cache fetches.
+- [x] Automated tests: mocked simultaneous requests, failed model, expired claim lease, missing selection, revision, preview mutation ban, cron permissions, lesson month and PC/mobile read regressions.
 
 ## Production database applied, old rows preserved
 
@@ -22,6 +27,8 @@
 - [x] Manual job rule variants and in-place revision action installed.
 - [x] Invalid session is denied; new summary jobs table is empty after installation.
 - [x] Existing `summary_feedbacks.id` is a PostgreSQL IDENTITY column and needs no extra default/sequence migration.
+- [x] Additive `feedbacks.target_month` and protected feedback save RPC mapping installed; existing feedback rows unchanged.
+- [x] Service_role-only Cron candidate read and internal scheduler action installed. Verified candidate discovery in read-only test (no AI, no writes).
 
 ## Must pass before production release
 
@@ -36,8 +43,10 @@
 - [ ] Review existing `summary_feedbacks` historical duplicates, but do **not** automatically delete or merge them.
 - [ ] Review old direct legacy `summary_feedbacks` write path during rolling upgrade so old devices cannot race new server clients.
 - [ ] Confirm environment variables on both PC and Mobile server function deployments; verify central model prompt type and privacy gateway.
-- [ ] **Server-independent scheduler/Cron** is not implemented: at present app requests trigger server generation.
-- [ ] Target feedback month (`YYYY-MM`) is not persisted separately from creation date; March-written vs April-written final-month ambiguity remains.
+- [ ] **Activate server-independent scheduler/Cron** only after real-account E2E and release; Mobile production currently has neither `CRON_SECRET` nor `OLLI_CONSULTATION_CRON_ENABLED`. Existing production app is untouched; default Cron is off.
+- [ ] Existing historical growth feedback created in the next month has no `target_month`; do not auto-label it. Provide an explicit authorized backfill/edit flow for genuine legacy last-month records before release.
+- [ ] Shared secret `CRON_SECRET` must be generated securely and stored in **Mobile** production Vercel settings, not in code; enable the flag only after data tests.
+- [ ] Verify Cron's 11 AM KST execution on production with rate limit, observed logs and rollback/disable procedure.
 - [ ] Baseline global CI has independent monorepo, common source, and PC material archive failures; keep separate from consultation regressions.
 
 ## Deployment safety
