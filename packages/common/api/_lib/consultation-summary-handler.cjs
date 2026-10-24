@@ -114,9 +114,22 @@ async function main(body, context = {}) {
     ||!VALID_RULES.has(rule)||!parseMonth(dueMonth))fail(400,'상담 회차 또는 로그인 정보를 확인해 주세요.','INVALID_TASK');
   const key=serverKey();if(!key)fail(503,'서버 Supabase 키 설정이 없습니다.','SERVER_KEY_MISSING');
   const manual=/^manual_(1|3|6|12)$/.test(rule);
-  if(!['generate','revise','inspect'].includes(action))fail(400,'지원하지 않는 종합 피드백 요청입니다.','INVALID_ACTION');
+  if(!['generate','revise','inspect','link_legacy'].includes(action))fail(400,'지원하지 않는 종합 피드백 요청입니다.','INVALID_ACTION');
   const params={p_session_token:sessionToken,p_academy_id:academyId,p_student_id:studentId,
     p_rule_key:rule,p_due_month:dueMonth};
+  if(action==='link_legacy') {
+    const feedbackId=Number(body.feedbackId);
+    if(!Number.isSafeInteger(feedbackId)||feedbackId<=0||body.confirmExactRecord!==true)
+      fail(400,'기존 종합 피드백의 개별 기록과 상담 회차를 직접 확인해야 합니다.','CONFIRMATION_REQUIRED');
+    if(manual)fail(400,'수동 피드백은 정기 상담 연결 대상이 아닙니다.','INVALID_RULE');
+    const linked=await callRpc('olli_consultation_legacy_summary_link',{
+      p_session_token:sessionToken,p_academy_id:academyId,
+      p_student_id:studentId,p_rule_key:rule,p_due_month:dueMonth,
+      p_feedback_id:feedbackId,p_confirm_exact_record:true
+    },key);
+    return {ok:true,status:'ready',feedbackId:linked.feedback_id,taskKey,
+      alreadyLinked:linked.already_linked===true};
+  }
   if(action==='inspect') {
     // Only the exact consultation job can authorize "ready". Lesson-material
     // availability, old summary_months, year or creation date cannot.
