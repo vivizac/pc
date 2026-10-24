@@ -118,11 +118,12 @@ async function main(body, context = {}) {
   const params={p_session_token:sessionToken,p_academy_id:academyId,p_student_id:studentId,
     p_rule_key:rule,p_due_month:dueMonth};
   if(action==='inspect') {
-    // Reading the academy progress RPC authenticates the session and membership,
-    // without creating consultation jobs or invoking the AI generator.
+    // Only the exact consultation job can authorize "ready". Lesson-material
+    // availability, old summary_months, year or creation date cannot.
     await callRpc('olli_consultation_progress_access',{
       p_session_token:sessionToken,p_academy_id:academyId,p_action:'read'
     },key);
+    if(manual)fail(400,'수동 피드백은 정기 상담 상태 판정 대상이 아닙니다.','INVALID_RULE');
     const students=await getRows('students',{
       id:'eq.'+studentId,academy_id:'eq.'+academyId,
       select:'id,name,division,enrolled_at,status,is_deleted'
@@ -131,44 +132,35 @@ async function main(body, context = {}) {
     if(!student||student.status!=='active'||student.is_deleted)
       fail(404,'재원 학생을 찾을 수 없습니다.','STUDENT_NOT_FOUND');
     const due=parseMonth(dueMonth);
-    const months=manual ? Number(rule.slice(7)) : verifyDue(student,rule,due);
-    if(manual)fail(400,'수동 피드백은 자료 판정 대상이 아닙니다.','INVALID_RULE');
-
-    const base={academy_id:'eq.'+academyId,student_id:'eq.'+studentId,
-      is_deleted:'is.false',limit:'300'};
-    const feedbacks=await getRows('feedbacks',{...base,
-      select:'id,date,lesson_date,created_at,feedback_type,target_month,content'},key);
-    const failures=student.division==='kinder'&&months>1
-      ? await getRows('fail_feedbacks',{...base,select:'id,date,created_at,feedback_type,content'},key)
-      : [];
-    const material=relevantRows(feedbacks,failures,student.division,rule,due,months);
-    const summaries=await getRows('summary_feedbacks',{
+    const months=verifyDue(student,rule,due);
+    const jobs=await getRows('olli_consultation_summary_jobs',{
       academy_id:'eq.'+academyId,student_id:'eq.'+studentId,
-      is_deleted:'is.false',select:'id,content,summary_months,year,created_at,client_mutation_id',
-      order:'created_at.desc',limit:'80'
+      rule_key:'eq.'+rule,due_month:'eq.'+dueMonth,
+      select:'status,feedback_id',limit:'1'
     },key);
-    // Existing records are read only. No legacy row is linked to a task automatically.
-    const taskMutation='consultation:'+academyId+':'+studentId+':'+rule+':'+dueMonth;
-    const exact=summaries.find(row=>row.client_mutation_id===taskMutation);
-    const beginning=addMonth(due,-1).getTime(),ending=addMonth(due,2).getTime();
-    const candidates=summaries.filter(row=>{
-      const created=new Date(row.created_at||'').getTime();
-      return Number(row.summary_months)===months
-        && Number(row.year)===due.getFullYear()
-        && Number.isFinite(created)&&created>=beginning&&created<ending
-        && String(row.content||'').trim();
+    const job=jobs[0]||null;
+    const insufficient=(reason,reviewRequired=false)=>({
+      ok:true,status:'insufficient',taskKey,feedbackId:null,
+      savedSummaryStatus:reviewRequired?'legacy_review_required':'none',
+      reviewRequired,reason
     });
-    const saved=exact||candidates[0]||null;
-    return {
-      ok:true,status:material.status==='ready'||!!saved?'ready':'insufficient',
-      materialStatus:material.status,
-      savedSummaryStatus:exact?'linked':candidates.length?'legacy_unlinked':'none',
-      savedSummaryCount:summaries.length,
-      content:saved?String(saved.content||''):String(material.content||''),
-      mode:material.mode||'',
-      reason:material.status==='ready'?'':material.reason||'',
-      taskKey
-    };
+    if(job?.status!=='ready'||!job.feedback_id)
+      return insufficient(job?.status==='legacy_review_required'
+        ?'기존 종합 피드백이 있습니다. 이번 상담 회차와 연결 여부를 확인해야 합니다.'
+        :'이번 상담 회차에 연결된 종합 피드백이 없습니다.',
+        job?.status==='legacy_review_required');
+    const summaries=await getRows('summary_feedbacks',{
+      id:'eq.'+job.feedback_id,academy_id:'eq.'+academyId,
+      student_id:'eq.'+studentId,is_deleted:'is.false',
+      select:'id,content,summary_months,client_mutation_id',limit:'1'
+    },key);
+    const saved=summaries[0]||null;
+    if(!saved||!String(saved.content||'').trim()||Number(saved.summary_months)!==months)
+      return insufficient('현재 상담 회차에 연결된 종합 피드백이 유효하지 않습니다.');
+    // The database's (academy, student, rule, due_month) job identity and
+    // its feedback_id FK, not a guessed date, are the only readiness authority.
+    return {ok:true,status:'ready',taskKey,feedbackId:saved.id,
+      savedSummaryStatus:'linked',content:String(saved.content),summaryMonths:months};
   }
   if(action==='revise') {
     if(!manual)fail(403,'정기 상담 종합 피드백은 이 편집 경로로 수정할 수 없습니다.','REVISION_UNAVAILABLE');
