@@ -39,8 +39,10 @@ function parseNaverBookingConfirmation(input, {academyName, businessId: configur
   const subject=String(input.subject||'').trim();
   const prefix='[네이버 예약] ';
   const suffix=' 새로운 예약이 확정 되었습니다.';
-  if(!subject.startsWith(prefix)||!subject.endsWith(suffix)) throw problem('BOOKING_SUBJECT_UNRECOGNIZED');
-  const subjectAcademy=subject.slice(prefix.length, subject.length-suffix.length).trim();
+  const generic='[네이버 예약] 새로운 예약이 확정 되었습니다.';
+  if(subject!==generic&&(!subject.startsWith(prefix)||!subject.endsWith(suffix)))
+    throw problem('BOOKING_SUBJECT_UNRECOGNIZED');
+  const subjectAcademy=subject===generic?'':subject.slice(prefix.length, subject.length-suffix.length).trim();
   if(subjectAcademy.length>150 || (expectedAcademy&&subjectAcademy&&subjectAcademy!==expectedAcademy))
     throw problem('BOOKING_SUBJECT_UNRECOGNIZED');
   const body=String(input.body||'');
