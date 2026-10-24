@@ -149,3 +149,7 @@ body.olliPcApp #recordAcademyDashboard .recordAcademyConsultSection{
 #studentModal .olliTrialFeedbackList[hidden],#studentModal .olliTrialFeedbackSkip[hidden]{display:none}
 #studentModal .olliTrialFeedbackRecord{white-space:pre-wrap;overflow-wrap:anywhere;padding:9px 11px;border-radius:9px;background:#f6f8fa;font-size:12px;line-height:1.65}
 #studentModal .olliTrialFeedbackSkip{margin-top:10px;padding:9px 12px;border:1px solid #dbe2e8;border-radius:9px;background:#f7f8fa;color:#36414b;font:inherit;font-size:12px;cursor:pointer}
+
+.pcAcademyDetailPanel .recordAcademyConsultActions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+.pcAcademyDetailPanel .recordAcademyConsultLegacyReviewBtn{border:1px solid #d7e4f4;border-radius:999px;padding:6px 8px;font:inherit;font-size:10px;color:#3475bf;background:#fff;cursor:pointer}
+.pcAcademyDetailPanel .recordAcademyConsultLegacyReviewBtn[hidden]{display:none}

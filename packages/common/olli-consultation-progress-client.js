@@ -133,6 +133,31 @@
       if (!response.ok || !data.ok) throw new Error(data.message||data.error||'수동 종합 피드백 서버 오류');
       return {...data,taskKey};
     },
+    // Explicit owner review. Candidate retrieval cannot mark a task ready.
+    async listLegacyCandidates(studentId,taskKey) {
+      const {academyId,sessionToken}=context();
+      const response=await global.fetch('/api/consultation-summary',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({academyId,sessionToken,studentId,taskKey,action:'legacy_candidates'})
+      });
+      const data=await response.json();
+      if(!response.ok||!data.ok)throw new Error(data.message||data.error||'기존 피드백 조회 실패');
+      return data;
+    },
+    async linkLegacySummary(studentId,taskKey,feedbackId) {
+      assertProductionWriteHost();
+      if(!Number.isSafeInteger(Number(feedbackId))||Number(feedbackId)<=0)
+        throw new Error('연결할 피드백을 선택해 주세요.');
+      const {academyId,sessionToken}=context();
+      const response=await global.fetch('/api/consultation-summary',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({academyId,sessionToken,studentId,taskKey,
+          action:'link_legacy',feedbackId:Number(feedbackId),confirmExactRecord:true})
+      });
+      const data=await response.json();
+      if(!response.ok||!data.ok)throw new Error(data.message||data.error||'기존 피드백 연결 실패');
+      return data;
+    },
     async reviseManualSummary(studentId, taskKey, content) {
       const {academyId,sessionToken}=context();
       const response=await global.fetch('/api/consultation-summary',{

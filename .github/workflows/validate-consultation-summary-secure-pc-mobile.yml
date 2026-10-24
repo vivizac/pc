@@ -11,6 +11,11 @@ on:
       - 'apps/mobile/olli-record-student-picker-phone-adapter.js'
       - 'apps/mobile/olli-phone-base.css'
       - 'tests/consultation-summary-secure-pc-mobile.test.cjs'
+      - 'tests/consultation-legacy-owner-review.test.cjs'
+      - 'packages/common/api/_lib/consultation-summary-handler.cjs'
+      - 'packages/common/olli-consultation-progress-client.js'
+      - 'packages/common/olli-consultation-manual-summary-ui.js'
+      - 'supabase/migrations/*consultation_legacy_candidates_owner_review.sql'
       - '.github/workflows/validate-consultation-summary-secure-pc-mobile.yml'
   workflow_dispatch:
 permissions:
@@ -28,8 +33,11 @@ jobs:
           node --check apps/pc/olli-data-consultation-summary.js
           node --check apps/pc/pc-student-management.js
           node --check apps/mobile/olli-student-core.js
+          node --check packages/common/api/_lib/consultation-summary-handler.cjs
+          node --check packages/common/olli-consultation-progress-client.js
+          node --check packages/common/olli-consultation-manual-summary-ui.js
           node --check apps/mobile/olli-data-attendance-feedback.js
           node --check apps/mobile/elementary-analysis-phone-adapter.js
           node --check apps/mobile/olli-record-student-picker-phone-adapter.js
       - name: Test safe feedback reads, material selection, and archive
-        run: node --test tests/consultation-summary-secure-pc-mobile.test.cjs
+        run: node --test tests/consultation-summary-secure-pc-mobile.test.cjs tests/consultation-legacy-owner-review.test.cjs

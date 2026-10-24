@@ -1244,6 +1244,28 @@ async function requestConsultationSummaryFeedback(studentId, studentName, months
   if(!task){alert('상담예정 회차가 없습니다.');return;}
   if(btn){btn.disabled=true;btn.textContent='확인중...';}
   try{
+    // A deliberate button tap first checks old saved summaries, before any
+    // AI generation. Only an owner can confirm an exact legacy association.
+    if(['owner','super_admin'].includes(typeof getOlliCurrentRole==='function'?getOlliCurrentRole():'')
+      && window.OlliConsultationServer?.listLegacyCandidates
+      && window.OlliConsultationManualUI?.openLegacyReview){
+      const prior=await window.OlliConsultationServer.listLegacyCandidates(student.id,task.key);
+      if(Array.isArray(prior.candidates)&&prior.candidates.length){
+        await window.OlliConsultationManualUI.openLegacyReview({
+          studentId:student.id,studentName:student.name,taskKey:task.key,candidateData:prior,
+          onLinked:async verified=>{
+            const summaryMonths=window.OlliConsultationServer.getSummaryMonthsForTask(task);
+            const summaryKey=getAcademyConsultationSummaryKey(student,summaryMonths);
+            setAcademyConsultationSummaryItem(summaryKey,{
+              status:'ready',feedbackId:verified.feedbackId,content:String(verified.content||''),
+              reason:'',studentName:student.name,studentDivision:student.type,months:summaryMonths
+            });
+            if(typeof renderRecordAcademyManagementDashboard==='function')renderRecordAcademyManagementDashboard();
+          }
+        });
+        return;
+      }
+    }
     const result=await fetchConsultationSummaryFromServer(student,task);
     if(result.status==='insufficient'){alert(result.reason||'상담 자료가 부족합니다.');return;}
     if(result.status==='generating'){alert('공통 서버에서 종합 피드백을 생성하고 있습니다.');return;}
