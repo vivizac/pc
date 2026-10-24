@@ -35,6 +35,7 @@ function setup({auth=true,initialGenerating=false,failChat=false,preview=false,l
      if(params.p_action==='revise'){calls.revision++;row.content=params.p_content;return json({ok:true,status:'ready',feedback_id:21,content:row.content});}
    }
    if(address.includes('/rest/v1/students')){calls.studentFetches++;return json([{id:studentId,name:'Example',division:'elementary',enrolled_at:'2025-04-15',status:'active',is_deleted:false}]);}
+   if(address.includes('/rest/v1/fail_feedbacks'))return json([]);
    if(address.includes('/rest/v1/feedbacks'))return json([
      {id:1,date:'2025-07-01',feedback_type:'growth',content:'Growth observation',lesson_date:'2025-07-01'},
      {id:2,date:'2025-11-02',feedback_type:'growth',content:'Growth observation',lesson_date:'2025-11-02'},

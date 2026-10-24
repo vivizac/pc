@@ -79,3 +79,15 @@ test('untyped legacy growth records cannot pretend to be weekly Quick Notes',()=
   ],[],'kinder','every_12',due,12);
   assert.equal(r.status,'insufficient');
 });
+
+test('growth and failure observations are retained alongside Quick Note records for any division',()=>{
+  const due=month('2026-11');
+  const base=[f('2026-06-20','growth'),f('2026-10-03','class')];
+  const fail=[f('2026-07-15','fail')];
+  for(const division of ['kinder','elementary']){
+    const r=h.relevantRows(base,fail,division,'every_12',due,12);
+    assert.equal(r.status,'ready');
+    assert.equal(r.rows.length,3);
+    assert.ok(r.rows.some(x=>x.source_table==='fail_feedbacks'));
+  }
+});

@@ -235,7 +235,7 @@ async function main(body, context = {}) {
   // Both feedback tables may have different date columns; query only shared fields.
   const feedbacks=await getRows('feedbacks',Object.assign({},base,{select:'id,date,lesson_date,created_at,feedback_type,target_month,content'}),key);
   let failures=[];
-  if(student.division==='kinder' && months>1){
+  if(months>1){
     failures=await getRows('fail_feedbacks',Object.assign({},base,{select:'id,date,created_at,feedback_type,content'}),key);
   }
   let material;
