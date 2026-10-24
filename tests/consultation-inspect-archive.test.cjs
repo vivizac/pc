@@ -25,45 +25,54 @@ test('PC and mobile use inspectSummary on background checks; only explicit creat
   assert.match(client,/async requestSummary\(studentId, taskKey\)/);
   assert.match(between(pcData,'async function runAcademyConsultationSummaryAutoCheck()', 'window.toggleAcademyConsultationSummaryPreview'),/await inspectConsultationSummaryFromServer\(student,task\)/);
   assert.match(between(mobile,'async function runAcademyConsultationSummaryAutoCheck()', 'window.toggleAcademyConsultationSummaryPreview'),/await inspectConsultationSummaryFromServer\(student,task\)/);
-  assert.match(pc,/OlliConsultationServer\.inspectSummary\(student.id,task.key\)/);
+  assert.match(pc,/core\.checkSummaryStatus\(student,task\)/);
   assert.doesNotMatch(between(mobile,'async function runAcademyConsultationSummaryAutoCheck()', 'window.toggleAcademyConsultationSummaryPreview'),/fetchConsultationSummaryFromServer\(student,task\)/);
 });
 
-test('server inspection authenticates without writing jobs or generating AI, including preview deployments',async()=>{
-  const beforeKey=process.env.SUPABASE_SECRET_KEY;
-  const beforeEnv=process.env.VERCEL_ENV;
-  const fetchBefore=global.fetch;
-  const calls=[];
-  process.env.SUPABASE_SECRET_KEY='test-service-key';
-  process.env.VERCEL_ENV='preview';
+test('server inspection never treats lesson-material readiness or legacy-year candidates as a prepared consultation',async()=>{
+  const prevSecret=process.env.SUPABASE_SECRET_KEY,prevEnv=process.env.VERCEL_ENV,prevFetch=global.fetch;
   const academyId='6871d975-6c50-426d-97b1-81ac4e35ba27';
   const studentId='b552e5cc-4b22-45bb-b1d0-af6c51ab12ed';
-  const key='id:'+studentId+'|after_1|2026-05';
-  global.fetch=async (url,opts={})=>{
-    const u=new URL(String(url));calls.push({pathname:u.pathname,method:opts.method||'GET'});
-    const json=data=>({ok:true,status:200,text:async()=>JSON.stringify(data),json:async()=>data});
+  const taskKey='id:'+studentId+'|after_1|2026-05';
+  const calls=[];
+  let jobStatus='legacy_review_required', linkedId=null, summaryStudent=studentId;
+  process.env.SUPABASE_SECRET_KEY='test-key';process.env.VERCEL_ENV='preview';
+  const json=data=>({ok:true,status:200,text:async()=>JSON.stringify(data),json:async()=>data});
+  global.fetch=async(url,opts={})=>{
+    const u=new URL(String(url));calls.push({path:u.pathname,method:opts.method||'GET'});
     if(u.pathname.endsWith('/rpc/olli_consultation_progress_access'))return json({ok:true,progress:{}});
-    if(u.pathname.endsWith('/students'))return json([{id:studentId,name:'test',division:'kinder',enrolled_at:'2026-04-01',status:'active',is_deleted:false}]);
-    if(u.pathname.endsWith('/feedbacks'))return json([1,2,3,4].map(x=>({id:x,date:'2026-04-'+(10+x),content:'lesson '+x,feedback_type:'class'})));
-    if(u.pathname.endsWith('/summary_feedbacks'))return json([{id:9,summary_months:1,year:2026,created_at:'2026-05-07T04:00:00Z',content:'previously stored summary',client_mutation_id:null}]);
-    throw new Error('Unexpected outbound call '+u.pathname);
+    if(u.pathname.endsWith('/students'))return json([{id:studentId,division:'kinder',enrolled_at:'2026-04-01',status:'active',is_deleted:false}]);
+    if(u.pathname.endsWith('/olli_consultation_summary_jobs'))return json([{status:jobStatus,feedback_id:linkedId}]);
+    if(u.pathname.endsWith('/summary_feedbacks'))return json(summaryStudent===studentId
+      ?[{id:9,summary_months:1,content:'verified exact task summary'}]:[]);
+    throw Error('unexpected database request '+u.pathname);
+  };
+  const query=async()=>{
+    let value;
+    const res={setHeader(){},status(n){this.statusCode=n;return this},json(x){value=x;return this}};
+    await server({method:'POST',body:{action:'inspect',academyId,sessionToken:'token',studentId,taskKey}},res);
+    assert.equal(res.statusCode,200);return value;
   };
   try{
-    let response;
-    const res={setHeader(){},status(code){this.statusCode=code;return this},json(data){response=data;return this}};
-    await server({method:'POST',body:{action:'inspect',academyId,studentId,sessionToken:'test-session',taskKey:key}},res);
-    assert.equal(res.statusCode,200);
-    assert.equal(response.status,'ready');
-    assert.equal(response.materialStatus,'ready');
-    assert.equal(response.savedSummaryStatus,'legacy_unlinked');
-    assert.equal(response.content,'previously stored summary');
-    assert.equal(calls.filter(c=>c.method==='POST').length,1,'only session validation RPC may POST');
-    assert.ok(calls.every(c=>!c.pathname.includes('job_access')&&!c.pathname.includes('/chat')));
-    assert.equal(calls.filter(c=>c.pathname.includes('/summary_feedbacks')).length,1);
+    const old=await query();
+    assert.equal(old.status,'insufficient');
+    assert.equal(old.reviewRequired,true);
+    assert.equal(old.feedbackId,null);
+    assert.equal(calls.some(c=>c.path.endsWith('/feedbacks')||c.path.endsWith('/fail_feedbacks')),false);
+    assert.equal(calls.filter(c=>c.method==='POST').length,1);
+    jobStatus='ready';linkedId=9;
+    const exact=await query();
+    assert.equal(exact.status,'ready');assert.equal(exact.feedbackId,9);
+    assert.equal(exact.content,'verified exact task summary');
+    summaryStudent='different';
+    const foreign=await query();
+    assert.equal(foreign.status,'insufficient');
+    assert.equal(foreign.feedbackId,null);
+    assert.equal(calls.every(c=>!c.path.includes('summary_job_access')&&!c.path.endsWith('/chat')),true);
   }finally{
-    global.fetch=fetchBefore;
-    if(beforeKey===undefined)delete process.env.SUPABASE_SECRET_KEY;else process.env.SUPABASE_SECRET_KEY=beforeKey;
-    if(beforeEnv===undefined)delete process.env.VERCEL_ENV;else process.env.VERCEL_ENV=beforeEnv;
+    global.fetch=prevFetch;
+    if(prevSecret===undefined)delete process.env.SUPABASE_SECRET_KEY;else process.env.SUPABASE_SECRET_KEY=prevSecret;
+    if(prevEnv===undefined)delete process.env.VERCEL_ENV;else process.env.VERCEL_ENV=prevEnv;
   }
 });
 

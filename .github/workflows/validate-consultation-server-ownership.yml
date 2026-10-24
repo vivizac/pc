@@ -16,6 +16,8 @@ on:
       - 'apps/mobile/olli-student-core.js'
       - 'apps/mobile/olli-data-attendance-feedback.js'
       - 'tests/consultation-inspect-archive.test.cjs'
+      - 'tests/consultation-exact-task-authority.test.cjs'
+      - 'supabase/migrations/20261024170000_consultation_exact_summary_link_and_audit.sql'
       - 'apps/mobile/api/consultation-summary.js'
       - 'apps/pc/api/consultation-summary.js'
       - 'packages/common/olli-consultation-progress-client.js'
@@ -68,3 +70,4 @@ jobs:
           node --test apps/mobile/tests/phone-consultation-script-collision.test.cjs
           node --test tests/consultation-local-first-status.test.cjs
           node --test tests/consultation-inspect-archive.test.cjs
+          node --test tests/consultation-exact-task-authority.test.cjs

@@ -24,6 +24,7 @@ test('uncached consultation cards show 자료부족 immediately while server ref
       readAcademyConsultationSummarySnapshot: () => ({ items: {} }),
       normalizeAcademyConsultationSummaryStableItem: () => null,
       getAcademyConsultationSummaryKey: () => 'student',
+      window:{OlliConsultationServer:{readCachedStatus:()=>null}},
     }
   );
   assert.equal(getAcademyConsultationSummaryItemByKey('student').status, 'insufficient');
@@ -51,7 +52,7 @@ test('old insufficiency snapshot is invalidated when the material rule revision 
     normalizeAcademyConsultationSummarySignatureValue: v => v,
   });
   const parsed = JSON.parse(signature());
-  assert.equal(parsed.consultationMaterialsRevision, '20261023-secure-final-month-status-v2');
+  assert.equal(parsed.consultationMaterialsRevision, '20261024-exact-task-linked-summary-v3');
   const reader = between('function readAcademyConsultationSummarySnapshot(', 'function writeAcademyConsultationSummarySnapshot(');
   assert.match(reader, /raw.inputs_signature.*!== empty.inputs_signature/);
 });
@@ -66,5 +67,5 @@ test('background fetch can run without a visible 확인중 status', () => {
 });
 
 test('mobile HTML requests the newly versioned script', () => {
-  assert.match(html, /olli-student-core\.js\?v=20261024-unified-status-1/);
+  assert.match(html, /olli-student-core\.js\?v=20261024-exact-task-2/);
 });
