@@ -58,3 +58,40 @@ test('mismatched detail link is not trusted',()=>{
 test('refuses unsafe Gmail message identifiers',()=>{
  assert.throws(()=>parse({...mail,messageId:'../../hello'}),{code:'BOOKING_MESSAGE_ID_INVALID'});
 });
+
+
+test('generic unnamed email can be scoped to an already verified Naver booking business ID',()=>{
+ const generic={...mail,subject:'[네이버 예약] 새로운 예약이 확정 되었습니다.',
+   body:body.replace('\n'+academyName+'\n','\n')};
+ const out=parse(generic,{businessId:'937262'});
+ assert.equal(out.bookingNumber,number);
+ assert.equal(out.businessId,'937262');
+ assert.equal(out.academyName,null);
+ assert.equal(out.studentId,null);
+ const configured=parse(generic,{academyName,businessId:'937262'});
+ assert.equal(configured.academyName,academyName);
+});
+test('name-free messages must not enter Olli without registered business ID',()=>{
+ const generic={...mail,subject:'[네이버 예약] 새로운 예약이 확정 되었습니다.',
+  body:body.replace('\n'+academyName+'\n','\n')};
+ assert.throws(()=>parse(generic,{academyName}),{code:'BOOKING_BUSINESS_ID_REQUIRED'});
+ assert.throws(()=>parse(generic,{}),{code:'BOOKING_SCOPE_REQUIRED'});
+ assert.throws(()=>parse(generic,{businessId:'1'}),{code:'BOOKING_BUSINESS_ID_MISMATCH'});
+});
+test('another academy can use its own registered business ID without being named in configuration',()=>{
+ const other='새로운미술학원';
+ const otherMail={...mail,subject:'[네이버 예약] '+other+' 새로운 예약이 확정 되었습니다.',
+   body:body.replace(academyName,other)};
+ const out=parse(otherMail,{businessId:'937262'});
+ assert.equal(out.academyName,other);
+ assert.equal(out.businessId,'937262');
+ assert.throws(()=>parse(otherMail,{academyName}),{code:'BOOKING_SUBJECT_UNRECOGNIZED'});
+});
+test('shared mailboxes cannot assign another business reservation to this academy',()=>{
+ assert.throws(()=>parse(mail,{academyName,businessId:'937263'}),{code:'BOOKING_BUSINESS_ID_MISMATCH'});
+ assert.throws(()=>parse({...mail,body:body.replace('bookings/'+number,'bookings/9999999999')},{businessId:'937262'}),{code:'BOOKING_DETAIL_LINK_UNVERIFIED'});
+ assert.throws(()=>parse({...mail,body:body.replace('https://partner.booking.naver.com','https://malicious.example.com')},{businessId:'937262'}),{code:'BOOKING_DETAIL_LINK_UNVERIFIED'});
+});
+test('conflicting academy name in body is rejected even when business ID is present',()=>{
+ assert.throws(()=>parse({...mail,body:body.replace('\n'+academyName+'\n','\n다른미술학원\n')},{academyName,businessId:'937262'}),{code:'BOOKING_BODY_ACADEMY_MISMATCH'});
+});
