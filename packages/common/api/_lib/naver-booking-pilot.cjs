@@ -97,7 +97,17 @@ function createService({env=process.env,fetchImpl=globalThis.fetch}={}){
   if(studentId!==null&&!UUID.test(String(studentId||'')))throw problem('STUDENT_ID_INVALID');
   const {row,students}=await candidates(number);
   if(!row)throw problem('BOOKING_NOT_FOUND',404);
-  if(studentId!==null&&!students.some(s=>s.id===studentId))throw problem('STUDENT_ACADEMY_OR_NAME_MISMATCH',409);
+  const selected=students.find(s=>s.id===studentId);
+  if(studentId!==null&&!selected)throw problem('STUDENT_ACADEMY_OR_NAME_MISMATCH',409);
+  if(selected){
+   // An age/grade conflict must never be silently linked to another student.
+   const bookingValue=String(row.grade_or_age||'');
+   const targetNumbers=[selected.age,selected.grade].map(x=>String(x||'').trim()).filter(Boolean);
+   const bookingDigits=(bookingValue.match(/\d+/g)||[]).map(Number);
+   const targetDigits=targetNumbers.flatMap(x=>(x.match(/\d+/g)||[]).map(Number));
+   if(bookingDigits.length&&targetDigits.length&&!bookingDigits.some(n=>targetDigits.includes(n)))
+    throw problem('STUDENT_AGE_OR_GRADE_CONFLICT',409);
+  }
   const rows=await db(filter('&booking_number=eq.'+number+'&select=booking_number,matched_student_id'),{
    method:'PATCH',prefer:'return=representation',data:{matched_student_id:studentId}});
   if(!Array.isArray(rows)||rows.length!==1||rows[0].matched_student_id!==studentId)
