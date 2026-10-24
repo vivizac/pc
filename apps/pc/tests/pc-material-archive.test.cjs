@@ -6,18 +6,37 @@ const vm = require('node:vm');
 const js = fs.readFileSync('pc-team-talk-material-orders.js', 'utf8');
 const css = fs.readFileSync('pc-team-talk-material-orders.css', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
-const migration = fs.readFileSync('../../supabase/migrations/20261002065349_pc_material_order_archive.sql', 'utf8');
+// The October 12 policy replaced the earlier arrived/ordered_at archive cutoff.
+const migration = fs.readFileSync('../../supabase/migrations/20261012054737_material_archive_by_needed_date.sql', 'utf8');
 
 test('PC material order runtime compiles after archive addition', () => {
   assert.doesNotThrow(() => new vm.Script(js, { filename: 'pc-team-talk-material-orders.js' }));
 });
 
-test('arrived orders move out of the current PC list one calendar month after ordered_at', () => {
-  assert.match(js, /function materialArchiveCutoffMs\(now = new Date\(\)\)/);
-  assert.match(js, /function isMaterialArchiveEligible\(item, now = new Date\(\)\)/);
-  assert.match(js, /clean\(item\?\.status\) !== 'arrived'/);
-  assert.match(js, /item\?\.ordered_at/);
-  assert.match(js, /if \(isMaterialArchiveEligible\(item\)\) return false/);
+test('PC archive moves requests on the day after needed_on, regardless of status', () => {
+  assert.match(js, /function isMaterialArchiveEligible\\(item, now = new Date\\(\\)\\)/);
+  assert.match(js, /const neededOn = clean\\(item\\?\\.needed_on\\)/);
+  assert.match(js, /neededOn < localDateKey\\(now\\)/);
+  assert.match(js, /state\\.items\\.filter\\(item => !isMaterialArchiveEligible\\(item\\)\\)/);
+  assert.match(js, /if \\(isMaterialArchiveEligible\\(item\\)\\) return false/);
+
+  // Run the pure production decision functions against a fixed date, not just string-match.
+  const eligibleSource = js.slice(
+    js.indexOf('  function isMaterialArchiveEligible('),
+    js.indexOf('  function currentMaterialItems(')
+  );
+  const dateSource = js.slice(
+    js.indexOf('  function localDateKey('),
+    js.indexOf('  function mondayKey(')
+  );
+  const sandbox = { Date, clean: value => String(value || '').trim() };
+  vm.runInNewContext(eligibleSource + dateSource + '\\nthis.isEligible=isMaterialArchiveEligible;', sandbox);
+  const today = new Date(2026, 9, 24, 12);
+  assert.equal(sandbox.isEligible({needed_on:'2026-10-23',status:'requested'},today),true);
+  assert.equal(sandbox.isEligible({needed_on:'2026-10-23',status:'arrived'},today),true);
+  assert.equal(sandbox.isEligible({needed_on:'2026-10-24',status:'arrived'},today),false);
+  assert.equal(sandbox.isEligible({needed_on:'2026-10-25',status:'arrived'},today),false);
+  assert.equal(sandbox.isEligible({needed_on:null,status:'arrived'},today),false);
 });
 
 test('PC material archive entry sits beside the three summary status buttons', () => {
@@ -58,12 +77,14 @@ test('PC archive is read-only and keeps original material rows', () => {
   assert.doesNotMatch(js.slice(js.indexOf('function renderArchiveList'), js.indexOf('function renderArchive')), /data-material-set-status/);
 });
 
-test('archive RPC authenticates academy membership and selects only arrived month-old orders', () => {
-  assert.match(migration, /public\.olli_account_id_from_session\(p_session_token\)/);
-  assert.match(migration, /m\.academy_id = p_academy_id/);
-  assert.match(migration, /r\.status = 'arrived'/);
-  assert.match(migration, /r\.ordered_at <= now\(\) - interval '1 month'/);
-  assert.match(migration, /extract\(year from r\.ordered_at\)::integer/);
+test('archive RPC checks academy membership and uses needed_on in Seoul date (same rule as list)', () => {
+  assert.match(migration, /public\\.olli_account_id_from_session\\(p_session_token\\)/);
+  assert.match(migration, /m\\.academy_id = p_academy_id/);
+  assert.match(migration, /r\\.needed_on < \\(now\\(\\) at time zone 'Asia\\/Seoul'\\)::date/);
+  assert.match(migration, /extract\\(year from r\\.needed_on\\)::integer/);
+  assert.match(migration, /r\\.needed_on is null or r\\.needed_on >= \\(now\\(\\) at time zone 'Asia\\/Seoul'\\)::date/);
+  assert.match(migration, /'archive_basis', 'needed_on_past'/);
+  assert.doesNotMatch(migration, /r\\.ordered_at <= now\\(\\) - interval '1 month'/);
 });
 
 test('existing material list RPC remains the current-list source and archive has a dedicated reader', () => {
@@ -74,5 +95,5 @@ test('existing material list RPC remains the current-list source and archive has
 
 test('PC archive assets are cache-busted', () => {
   assert.match(html, /pc-team-talk-material-orders\.css\?v=20261002-material-archive-toolbar-1/);
-  assert.match(html, /pc-team-talk-material-orders\.js\?v=20261002-past-orders-page-title-1/);
+  assert.match(html, /pc-team-talk-material-orders\.js\?v=[^"']+/);
 });

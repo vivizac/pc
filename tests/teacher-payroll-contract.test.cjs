@@ -62,14 +62,20 @@ test('settings entry and shared runtime are wired on PC and mobile', () => {
   for (const html of [pcHtml, mobileHtml]) {
     assert.match(html, /학원 수입·지출 관리/);
     assert.match(html, /openOlliTeacherPayrollSettings\(\)/);
-    assert.match(html, /olli-teacher-payroll-common\.js\?v=20261015-finance-income-phase1/);
-    assert.match(html, /olli-teacher-payroll-common\.css\?v=20261015-finance-income-phase1/);
+    // Shared assets must be cache-busted on both apps; the literal version changes with releases.
+    assert.match(html, /olli-teacher-payroll-common\\.js\\?v=[^"']+/);
+    assert.match(html, /olli-teacher-payroll-common\\.css\\?v=[^"']+/);
+    const jsVersion=html.match(/olli-teacher-payroll-common\\.js\\?v=([^"']+)/)?.[1];
+    const cssVersion=html.match(/olli-teacher-payroll-common\\.css\\?v=([^"']+)/)?.[1];
+    assert.equal(jsVersion,cssVersion,'shared payroll JS/CSS cache versions must match');
   }
 });
 
 test('team chat payroll statement opens only through the private statement RPC', () => {
   assert.match(common, /function isPayrollMessage\(item\)/);
-  assert.match(common, /button\.textContent='급여명세서 보기'/);
+  // A preview has a distinct label; real statements remain server-authorized.
+  assert.match(common, /button\\.textContent=preview\\?'미리보기 열기':'급여명세서 보기'/);
+  assert.match(common, /function isPayrollPreviewMessage\\(item\\)/);
   assert.match(common, /olli_teacher_payroll_statement_get/);
   assert.match(common, /function renderPayrollStatementModal\(payload\)/);
   const start = common.indexOf('function createTeamChatPayrollButton');
@@ -84,7 +90,9 @@ test('team chat payroll statement opens only through the private statement RPC',
 test('leaving and reopening Team Chat rebuilds payroll statement buttons from server messages', () => {
   assert.match(pcChat, /async function open\(\)[\s\S]*loadMessages\(\{ showLoading: true, followBottom: true \}\)/);
   assert.match(mobileChat, /async function openOlliTalkBetaPage\(event\)[\s\S]*renderOlliTalkServerMessages\(openCachedPayload/);
-  assert.match(common, /button\.textContent='급여명세서 보기'/);
+  // A preview has a distinct label; real statements remain server-authorized.
+  assert.match(common, /button\\.textContent=preview\\?'미리보기 열기':'급여명세서 보기'/);
+  assert.match(common, /function isPayrollPreviewMessage\\(item\\)/);
 });
 
 
@@ -152,7 +160,7 @@ test('payroll period presentation reuses server-calculated boundaries without cl
   assert.match(migration, /'period_start',calc\.data->>'period_start'/);
   assert.match(migration, /'period_end',calc\.data->>'period_end'/);
   const start = common.indexOf('function payrollPeriodLabel');
-  const end = common.indexOf('\n  function paydayOptions', start);
+  const end = common.indexOf('\n  function todayDateValue', start);
   assert.ok(start >= 0 && end > start);
   const labelCode = common.slice(start, end);
   assert.doesNotMatch(labelCode, /setDate|Date\(|getDate|payday/);
@@ -267,7 +275,7 @@ test('payroll statement shows regular and substitute dates with holiday and abse
   assert.match(common, /olliPayrollStatementDate absent/);
   assert.match(common, /공휴일/);
   assert.match(common, /결근일/);
-  assert.match(common, /workedRows\.length\+'회 · '\+statementHours\(totalHours\)\+'시간'/);
+  assert.match(common, /workedRows\.length\+'회 · '\+statementHours\(totalHours\)\+'시간/);
 });
 
 test('payday edits remain live through the pay date and freeze on the following day', () => {
@@ -301,7 +309,9 @@ test('preview message opens the same statement UI through a separate owner-only 
   assert.match(common, /미리보기 열기/);
   assert.match(common, /olli_teacher_payroll_statement_preview_get/);
   assert.match(common, /payload\?\.preview===true/);
-  assert.match(common, /olliPayrollStatementPreviewBadge/);
+  // A preview must be visibly distinguished from an actual payment statement.
+  assert.match(common, /preview\\s*\\?\\s*'<span class="olliPayrollStatementPreviewBadge">미리보기<\\/span>'/);
+  assert.match(common, /const preview=payload\\?\\.preview===true/);
   assert.match(payrollPreviewMigration, /'preview',true/);
 });
 

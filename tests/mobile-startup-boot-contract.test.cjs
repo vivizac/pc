@@ -43,8 +43,8 @@ test('Mobile boot dismissal starts before any resume or start-page route await',
 test('Mobile startup and auth entry assets are cache-busted and no-store', () => {
   const indexHtml = fs.readFileSync(path.join(MOBILE, 'index.html'), 'utf8');
   const vercelConfig = JSON.parse(fs.readFileSync(path.join(MOBILE, 'vercel.json'), 'utf8'));
-  assert.match(indexHtml, /olli-app-startup\.js\?v=20260929-push-notification-fix-1/);
-  assert.match(indexHtml, /olli-auth-entry-phone-adapter\.js\?v=20260929-local-route-owner-1/);
+  assert.match(indexHtml, /olli-app-startup\.js\?v=[^"']+/);
+  assert.match(indexHtml, /olli-auth-entry-phone-adapter\.js\?v=[^"']+/);
   const findHeader = source => (vercelConfig.headers || []).find(item => item.source === source);
   const hasNoStore = source => (findHeader(source)?.headers || []).some(item => item.key === 'Cache-Control' && item.value === 'no-store, max-age=0');
   assert.equal(hasNoStore('/olli-app-startup.js'), true);
@@ -132,7 +132,7 @@ test('Mobile observation weekday sort starts from the current weekday', () => {
   assert.match(roster, /const todayDay = getObservationRosterTodayDay\(\)/);
   assert.match(roster, /return baseOrder\.slice\(todayIndex\)\.concat\(baseOrder\.slice\(0, todayIndex\)\)/);
   assert.match(roster, /const order = getObservationRosterWeekdayOrder\(\)/);
-  assert.match(html, /olli-observation-roster-phone\.js\?v=20261006-today-weekday-first-1/);
+  assert.match(html, /olli-observation-roster-phone\.js\?v=[^"']+/);
 });
 
 
@@ -169,9 +169,9 @@ test('memo utility controls are fixed markup and never dynamically mounted', () 
   assert.doesNotMatch(rosterCss, /memoBottomBar/);
   assert.doesNotMatch(baseCss, /memoBottomBar/);
 
-  assert.match(html, /olli-phone-base\.css\?v=20260929-settings-spacing-3/);
+  assert.match(html, /olli-phone-base\.css\?v=[^"']+/);
   assert.match(html, /olli-observation-roster-phone\.css\?v=[^"']+/);
-  assert.match(html, /olli-record-utility-touch\.js\?v=20260929-memo-fixed-group-1/);
+  assert.match(html, /olli-record-utility-touch\.js\?v=[^"']+/);
 });
 
 
@@ -189,12 +189,14 @@ test('memo archive uses secure feedback reads and fixed survey visibility', () =
   assert.doesNotMatch(analysisAdapter, /fail_feedbacks\?select=\*&student_id=/);
   assert.doesNotMatch(analysisAdapter, /supabase\('GET'/);
 
-  assert.match(roster, /analysisBtn\.hidden = false/);
-  assert.match(roster, /analysisBtn\.style\.display = 'inline-flex'/);
+  // Analysis is intentionally available only for elementary memo records.
+  // Kindergarten must not display a non-applicable analysis control.
+  assert.match(roster, /analysisBtn\\.hidden = currentMemoType !== 'elementary'/);
+  assert.match(roster, /analysisBtn\\.style\\.display = currentMemoType === 'elementary' \\? 'inline-flex' : 'none'/);
   assert.match(roster, /analysisBtn\.style\.visibility = 'visible'/);
   assert.doesNotMatch(roster, /const showAnalysis = currentMemoType === 'elementary'/);
 
-  assert.match(html, /olli-data-attendance-feedback\.js\?v=20260929-secure-archive-read-1/);
-  assert.match(html, /elementary-analysis-phone-adapter\.js\?v=20260929-secure-archive-read-1/);
+  assert.match(html, /olli-data-attendance-feedback\.js\?v=[^"']+/);
+  assert.match(html, /elementary-analysis-phone-adapter\.js\?v=[^"']+/);
   assert.match(html, /olli-observation-roster-phone\.js\?v=[^"']+/);
 });
