@@ -81,6 +81,7 @@
     const input = state.dialog.querySelector('[data-naver-booking-number]');
     const number = String(input?.value || '').trim();
     if (!/^\d{8,20}$/.test(number)) { notice('네이버 예약번호를 확인해 주세요.',true); return; }
+    if (!global.confirm('네이버 예약 상세정보를 조회합니다. 승인된 로그인 화면 자동화 비용이 발생할 수 있습니다. 진행할까요?')) return;
     state.busy=true;
     const btn = state.dialog.querySelector('[data-naver-booking-sync]');
     if (btn) btn.disabled=true;
