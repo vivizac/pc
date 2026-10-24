@@ -456,8 +456,22 @@
       const success = document.execCommand('copy'); field.remove();
       if (!success) throw new Error('복사 권한을 확인해 주세요.');
     }
-    button.textContent = '복사 완료';
-    setTimeout(() => { if (button.isConnected) button.textContent = '안내문 복사'; }, 1800);
+    const isIconButton = button.dataset.consultationCopyIcon === 'true';
+    if (isIconButton) {
+      button.innerHTML = '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>';
+      button.setAttribute('aria-label', '복사 완료');
+    } else button.textContent = '복사 완료';
+    setTimeout(() => {
+      if (!button.isConnected) return;
+      if (isIconButton) {
+        button.innerHTML = manualConsultationCopyIconSvg();
+        button.setAttribute('aria-label', '학생 상담 안내문 복사');
+      } else button.textContent = '안내문 복사';
+    }, 1800);
+  }
+  function manualConsultationCopyIconSvg() {
+    // Match the PC feedback copy control's monochrome, 20px outline icon.
+    return '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
   }
   function attachManualConsultationButtons() {
     if (!isOwner()) return;
@@ -468,7 +482,16 @@
       button.dataset.consultationManualCopy = 'true';
       button.textContent = '안내문 복사';
       button.setAttribute('aria-label', '학생 상담 안내문 복사');
-      button.style.cssText = 'flex-shrink:0;order:-1;border:1px solid #d8dce4;border-radius:8px;background:#fff;color:#343d4b;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer';
+      const mobile = !document.body.classList.contains('olliPcApp');
+      if (mobile) {
+        button.dataset.consultationCopyIcon = 'true';
+        button.innerHTML = manualConsultationCopyIconSvg();
+        button.title = '안내문 복사';
+        // Same 28px transparent, grey icon-button treatment as PC's recordHeadIconBtn.
+        button.style.cssText = 'flex:0 0 28px;order:-1;width:28px;height:28px;border:none;border-radius:50%;background:transparent;color:#7f7f7f;display:inline-flex;align-items:center;justify-content:center;padding:0;cursor:pointer';
+      } else {
+        button.style.cssText = 'flex-shrink:0;order:-1;border:1px solid #d8dce4;border-radius:8px;background:#fff;color:#343d4b;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer';
+      }
       button.addEventListener('click', async event => {
         event.preventDefault(); event.stopPropagation();
         button.disabled = true;
@@ -478,7 +501,7 @@
       });
       // Mobile student-management cards keep their status badge on the right.
       // Put the same copy button immediately before that badge; PC stays unchanged.
-      const mobileActions = !document.body.classList.contains('olliPcApp')
+      const mobileActions = mobile
         ? card.querySelector('.recordAcademyConsultActions') : null;
       const statusChip = mobileActions?.querySelector('.recordAcademyConsultStatusChip');
       if (statusChip) mobileActions.insertBefore(button, statusChip);
