@@ -59,3 +59,12 @@ Deploy Mobile + PC together only after the above blockers are resolved. Roll bac
 - [x] Added an unapplied migration to auto-adopt only exact task-key summaries. Ambiguous historic summaries are marked `legacy_review_required` without modifying or deleting the original summary record.
 - [x] Existing Cron candidate filter excludes review-required jobs from the daily 6-task processing budget.
 - [ ] Build an owner-authorized manual association/review workflow for old ambiguous reports. Do not infer a due month from a write date.
+
+## Historical growth lesson-month correction (staged, not live)
+- [x] Add dedicated session-validated owner/manager RPC for correcting `feedbacks.target_month` on saved growth records only.
+- [x] Prevent cross-academy/teacher/expired session changes, future months, deleted records, and stale concurrent edits.
+- [x] Audit original/updated month and account in an append-only restricted table in the same transaction.
+- [x] Expose PC and Mobile archive buttons that prompt for explicit month and show new month only after confirmed server save.
+- [x] Disable legacy PC summary regeneration path that deleted a saved summary before recreating it on the client.
+- [ ] Apply new migration only after real-user staging E2E; old 219 live growth rows remain unmodified.
+- [ ] Real owner-session test: PC→mobile and mobile→PC correction, stale revision conflict, server rollback after disconnected call.
