@@ -24,7 +24,7 @@ function verifyDue(student, rule, due) {
   const registeredMonth = new Date(enrolled.getFullYear(),enrolled.getMonth(),1);
   const difference=(due.getFullYear()-registeredMonth.getFullYear())*12+due.getMonth()-registeredMonth.getMonth();
   const months=rule==='after_1'?1:rule==='after_3'?3:rule==='every_6'?6:12;
-  if(difference<months || (rule==='every_12'?difference%12!==0:difference!==months))
+  if(difference<months || (rule==='every_12'?difference%12!==0:rule==='every_6'?difference%6!==0:difference!==months))
     fail(400,'등록일과 상담회차가 일치하지 않습니다.','DUE_MISMATCH');
   if(due>new Date(new Date().getFullYear(),new Date().getMonth(),1))
     fail(400,'아직 상담 대상 월이 아닙니다.','FUTURE_DUE');
@@ -98,9 +98,11 @@ async function generate(student,months,rows,dueMonth){
   return String(data.reply).trim();
 }
 async function main(body, context = {}) {
+  // Read-only inspection must work in previews without writing production data.
+  const action=String(body.action||'generate').trim();
   // All preview deployments share the production Supabase project.
   // Block real AI generation and updates in preview unless explicitly enabled for a controlled test.
-  if(process.env.VERCEL_ENV==='preview' && process.env.OLLI_ENABLE_PREVIEW_CONSULTATION_WRITES!=='enabled')
+  if(action!=='inspect' && process.env.VERCEL_ENV==='preview' && process.env.OLLI_ENABLE_PREVIEW_CONSULTATION_WRITES!=='enabled')
     fail(403,'미리보기 환경에서는 실제 상담 데이터 생성을 차단합니다.','PREVIEW_WRITE_BLOCKED');
   const academyId=String(body.academyId||'').trim(),
     sessionToken=context.scheduled===true?'__olli_server_cron_internal__':String(body.sessionToken||'').trim();
@@ -112,10 +114,62 @@ async function main(body, context = {}) {
     ||!VALID_RULES.has(rule)||!parseMonth(dueMonth))fail(400,'상담 회차 또는 로그인 정보를 확인해 주세요.','INVALID_TASK');
   const key=serverKey();if(!key)fail(503,'서버 Supabase 키 설정이 없습니다.','SERVER_KEY_MISSING');
   const manual=/^manual_(1|3|6|12)$/.test(rule);
-  const action=String(body.action||'generate').trim();
-  if(!['generate','revise'].includes(action))fail(400,'지원하지 않는 종합 피드백 요청입니다.','INVALID_ACTION');
+  if(!['generate','revise','inspect'].includes(action))fail(400,'지원하지 않는 종합 피드백 요청입니다.','INVALID_ACTION');
   const params={p_session_token:sessionToken,p_academy_id:academyId,p_student_id:studentId,
     p_rule_key:rule,p_due_month:dueMonth};
+  if(action==='inspect') {
+    // Reading the academy progress RPC authenticates the session and membership,
+    // without creating consultation jobs or invoking the AI generator.
+    await callRpc('olli_consultation_progress_access',{
+      p_session_token:sessionToken,p_academy_id:academyId,p_action:'read'
+    },key);
+    const students=await getRows('students',{
+      id:'eq.'+studentId,academy_id:'eq.'+academyId,
+      select:'id,name,division,enrolled_at,status,is_deleted'
+    },key);
+    const student=students[0];
+    if(!student||student.status!=='active'||student.is_deleted)
+      fail(404,'재원 학생을 찾을 수 없습니다.','STUDENT_NOT_FOUND');
+    const due=parseMonth(dueMonth);
+    const months=manual ? Number(rule.slice(7)) : verifyDue(student,rule,due);
+    if(manual)fail(400,'수동 피드백은 자료 판정 대상이 아닙니다.','INVALID_RULE');
+
+    const base={academy_id:'eq.'+academyId,student_id:'eq.'+studentId,
+      is_deleted:'is.false',limit:'300'};
+    const feedbacks=await getRows('feedbacks',{...base,
+      select:'id,date,lesson_date,created_at,feedback_type,target_month,content'},key);
+    const failures=student.division==='kinder'&&months>1
+      ? await getRows('fail_feedbacks',{...base,select:'id,date,created_at,feedback_type,content'},key)
+      : [];
+    const material=relevantRows(feedbacks,failures,student.division,rule,due,months);
+    const summaries=await getRows('summary_feedbacks',{
+      academy_id:'eq.'+academyId,student_id:'eq.'+studentId,
+      is_deleted:'is.false',select:'id,content,summary_months,year,created_at,client_mutation_id',
+      order:'created_at.desc',limit:'80'
+    },key);
+    // Existing records are read only. No legacy row is linked to a task automatically.
+    const taskMutation='consultation:'+academyId+':'+studentId+':'+rule+':'+dueMonth;
+    const exact=summaries.find(row=>row.client_mutation_id===taskMutation);
+    const beginning=addMonth(due,-1).getTime(),ending=addMonth(due,2).getTime();
+    const candidates=summaries.filter(row=>{
+      const created=new Date(row.created_at||'').getTime();
+      return Number(row.summary_months)===months
+        && Number(row.year)===due.getFullYear()
+        && Number.isFinite(created)&&created>=beginning&&created<ending
+        && String(row.content||'').trim();
+    });
+    const saved=exact||candidates[0]||null;
+    return {
+      ok:true,status:material.status==='ready'||!!saved?'ready':'insufficient',
+      materialStatus:material.status,
+      savedSummaryStatus:exact?'linked':candidates.length?'legacy_unlinked':'none',
+      savedSummaryCount:summaries.length,
+      content:saved?String(saved.content||''):String(material.content||''),
+      mode:material.mode||'',
+      reason:material.status==='ready'?'':material.reason||'',
+      taskKey
+    };
+  }
   if(action==='revise') {
     if(!manual)fail(403,'정기 상담 종합 피드백은 이 편집 경로로 수정할 수 없습니다.','REVISION_UNAVAILABLE');
     const content=String(body.content||'').trim();

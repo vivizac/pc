@@ -55,7 +55,8 @@ test('kinder first-month consultation requires four feedbacks',()=>{
 test('client auto-check uses single server endpoint, no client-side AI and auto-save',()=>{
  for(const source of [pc,mobile]) {
    const code=section(source,'async function runAcademyConsultationSummaryAutoCheck()','window.toggleAcademyConsultationSummaryPreview =');
-   assert.match(code,/fetchConsultationSummaryFromServer/);
+   assert.match(code,/inspectConsultationSummaryFromServer/);
+   assert.doesNotMatch(code,/fetchConsultationSummaryFromServer/);
    assert.doesNotMatch(code,/createSummaryFeedbackFromRows/);
    assert.doesNotMatch(code,/saveConsultationSummaryFeedbackAuto/);
    assert.match(code,/status:'error'/);
@@ -240,7 +241,7 @@ test('fresh PC and mobile HTML bypass stale runtime while old tabs require manua
    }
  }
  assert.match(read('apps/pc/index.html'),/olli-data-feedback\.js\?v=20261024-target-month-save-2/);
- assert.match(read('apps/mobile/index.html'),/olli-student-core\.js\?v=20261024-local-first-status-1/);
+ assert.match(read('apps/mobile/index.html'),/olli-student-core\.js\?v=20261024-unified-status-1/);
 });
 
 test('scheduler does not expire unfinished consultations after thirteen months',()=>{

@@ -146,18 +146,22 @@ async function loadAttendanceStudentFeedbackSheetItems(student) {
     if (request.type === 'summaries') summaries.push(...rows);
     else feedbacks.push(...rows);
   });
-  if (failedRequests.length) {
-    const err = new Error('피드백 조회가 일부 실패했습니다. 기존 보관함 기록을 유지합니다.');
-    err.code = 'PARTIAL_FEEDBACK_READ_FAILED';
-    err.tables = failedRequests;
-    throw err;
+  // Read-successful server categories are shown even if another read fails.
+  // Never hide saved summaries because the ordinary feedback request failed.
+  if(failedRequests.length===requests.length){
+    const err=new Error('모든 피드백 서버 조회가 실패했습니다. 기존 보관함 기록을 유지합니다.');
+    err.code='ALL_FEEDBACK_READ_FAILED';throw err;
   }
-  const sortByDateDesc = (a, b) => (new Date(b.createdAt || '').getTime() || 0) - (new Date(a.createdAt || '').getTime() || 0);
-  const data = {
-    feedbacks: feedbacks.sort(sortByDateDesc),
-    summaries: summaries.sort(sortByDateDesc)
+  const previous=readAttendanceFeedbackLocalFirstCache(student)||{};
+  const sortByDateDesc=(a,b)=>(new Date(b.createdAt||'').getTime()||0)-(new Date(a.createdAt||'').getTime()||0);
+  const data={
+    feedbacks:(failedRequests.some(t=>t==='feedbacks'||t==='fail_feedbacks')
+      ?(Array.isArray(previous.feedbacks)?previous.feedbacks:feedbacks):feedbacks).sort(sortByDateDesc),
+    summaries:(failedRequests.includes('summary_feedbacks')
+      ?(Array.isArray(previous.summaries)?previous.summaries:summaries):summaries).sort(sortByDateDesc),
+    partialErrorTables:failedRequests
   };
-  writeAttendanceFeedbackLocalFirstCache(student, data);
+  writeAttendanceFeedbackLocalFirstCache(student,data);
   return data;
 }
 
@@ -516,6 +520,7 @@ async function openAttendanceStudentFeedbackSheet(studentOrId) {
     const data = await loadAttendanceStudentFeedbackSheetItems(student);
     if (!sheet.classList.contains('show')) return;
     renderAttendanceStudentFeedbackSheet(student, data);
+    if(data.partialErrorTables?.length&&subtitleEl)subtitleEl.textContent='일부 기록 서버 조회 오류 · 저장된 기록 표시 중';
   } catch (err) {
     console.error('출석부 학생 피드백 불러오기 오류:', err);
     if (cached && subtitleEl) subtitleEl.textContent = '서버 조회 오류 · 저장된 기록 표시 중';

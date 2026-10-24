@@ -70,6 +70,6 @@ test('feedback archive keeps one bottom-sheet shell while server data refreshes 
   assert.match(adapter, /contentEl\.innerHTML = /);
   assert.doesNotMatch(adapter, /function renderMemoFeedbackArchiveSheet[\s\S]*?menu\.innerHTML = /);
   assert.doesNotMatch(adapter, /관찰노트 보관함 불러오기 오류:[\s\S]*?menu\.innerHTML = /);
-  assert.match(adapter, /renderMemoFeedbackArchiveLoadError\(menu, err\)/);
-  assert.match(adapter, /menu\.classList\.contains\('show'\) && menu\.querySelector\('\.memoFeedbackArchiveCard\.editing'\)/);
+  assert.match(adapter, /renderMemoFeedbackArchiveLoadError\(menu,\s*err\)/);
+  assert.match(adapter, /menu\.classList\.contains\('show'\)\s*&&\s*menu\.querySelector\('\.memoFeedbackArchiveCard\.editing'\)/);
 });

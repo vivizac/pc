@@ -59,11 +59,12 @@ test('old insufficiency snapshot is invalidated when the material rule revision 
 test('background fetch can run without a visible 확인중 status', () => {
   const source = between('async function runAcademyConsultationSummaryAutoCheck(', 'window.toggleAcademyConsultationSummaryPreview =');
   assert.doesNotMatch(source, /existingState.status === 'generating' \|\| existingState.status === 'checking'/);
-  assert.match(source, /fetchConsultationSummaryFromServer/);
-  assert.match(source, /await fetchConsultationSummaryFromServer/);
+  assert.match(source, /inspectConsultationSummaryFromServer/);
+  assert.match(source, /await inspectConsultationSummaryFromServer/);
+  assert.doesNotMatch(source,/await fetchConsultationSummaryFromServer/);
   assert.match(source, /status:'error'/);
 });
 
 test('mobile HTML requests the newly versioned script', () => {
-  assert.match(html, /olli-student-core\.js\?v=20261024-local-first-status-1/);
+  assert.match(html, /olli-student-core\.js\?v=20261024-unified-status-1/);
 });

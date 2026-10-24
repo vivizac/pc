@@ -92,6 +92,11 @@ function getMemoFeedbackArchivePurpose(item) {
   return 'legacy';
 }
 function getMemoFeedbackArchiveNoteTitle(item) {
+  if (getMemoFeedbackArchiveSourceTable(item)==='summary_feedbacks') {
+    const row=item?.row||{};
+    const months=Number(row.summary_months||row.period_months||item?.summary_months||0);
+    return months>0?months+'개월 종합 피드백':'종합 피드백';
+  }
   const purpose = getMemoFeedbackArchivePurpose(item);
   const label = purpose === 'class'
     ? '수업 피드백'
@@ -511,26 +516,68 @@ function getMemoFeedbackArchiveItemsSignature(items) {
   })).sort((a, b) => a.id.localeCompare(b.id) || a.createdAt.localeCompare(b.createdAt)));
 }
 
-function refreshElementaryRecordsMenuFromServer(menu, student, localItems) {
-  const studentId = String(student?.id || '');
-  const localSignature = getMemoFeedbackArchiveItemsSignature(localItems);
+function getArchiveServerRowKey(item) {
+  const table=getMemoFeedbackArchiveSourceTable(item);
+  const rowId=String(item?.row?.id||item?.rowId||'').trim();
+  return rowId?table+':'+rowId:table+':'+String(item?.id||'');
+}
+
+async function loadMemoArchiveWithServerSummaries(student, localItems) {
+  // Always reconcile all session-protected summary_feedbacks separately.
+  const [baseResult,summaryResult]=await Promise.allSettled([
+    Promise.resolve().then(()=>loadMemoFeedbackArchiveItemsFromSupabase(student)),
+    loadAttendanceFeedbackRowsSecure('summary_feedbacks',student,100)
+  ]);
+  if(baseResult.status==='rejected'&&summaryResult.status==='rejected')
+    throw baseResult.reason||summaryResult.reason;
+  const source=baseResult.status==='fulfilled'&&Array.isArray(baseResult.value)
+    ?baseResult.value:(Array.isArray(localItems)?localItems:[]);
+  const summaries=summaryResult.status==='fulfilled'
+    ?normalizeAttendanceFeedbackRows(summaryResult.value,'summary_feedbacks'):[];
+  // A successful summary read supersedes only old summary items, not lesson records.
+  const base=summaryResult.status==='fulfilled'
+    ?source.filter(item=>getMemoFeedbackArchiveSourceTable(item)!=='summary_feedbacks')
+    :source;
+  const unique=new Map();
+  for(const item of [...base,...summaries]){
+    const key=getArchiveServerRowKey(item);
+    if(!unique.has(key))unique.set(key,item);
+  }
+  return {
+    items:[...unique.values()].sort((a,b)=>
+      (new Date(getMemoFeedbackArchiveSavedAt(b)).getTime()||0)
+      -(new Date(getMemoFeedbackArchiveSavedAt(a)).getTime()||0)),
+    partial:baseResult.status==='rejected'||summaryResult.status==='rejected'
+  };
+}
+
+function refreshElementaryRecordsMenuFromServer(menu,student,localItems) {
+  const studentId=String(student?.id||'');
+  const localSignature=getMemoFeedbackArchiveItemsSignature(localItems);
   Promise.resolve()
-    .then(() => loadMemoFeedbackArchiveItemsFromSupabase(student))
-    .then(remoteItems => {
-      if (!currentMemoStudent || String(currentMemoStudent.id || '') !== studentId) return false;
-      const safeRemoteItems = Array.isArray(remoteItems) ? remoteItems : [];
-      if (getMemoFeedbackArchiveItemsSignature(safeRemoteItems) === localSignature) return true;
-      if (menu.classList.contains('show') && menu.querySelector('.memoFeedbackArchiveCard.editing')) return true;
-      renderMemoFeedbackArchiveSheet(menu, student, safeRemoteItems, '', menu.dataset.memoArchiveSelectedMonth || '');
+    .then(()=>loadMemoArchiveWithServerSummaries(student,localItems))
+    .then(({items,partial})=>{
+      if(!currentMemoStudent||String(currentMemoStudent.id||'')!==studentId)return false;
+      if(menu.classList.contains('show')&&menu.querySelector('.memoFeedbackArchiveCard.editing'))return true;
+      if(getMemoFeedbackArchiveItemsSignature(items)!==localSignature) {
+        // Keep UI actions (copy/edit) bound to the same server-confirmed items
+        // the visible archive uses. Never write an unverified server response.
+        setMemoFeedbackArchiveItems(student,items);
+        renderMemoFeedbackArchiveSheet(menu,student,items,'',menu.dataset.memoArchiveSelectedMonth||'');
+      }
+      if(partial){
+        const sub=menu.querySelector('.memoFeedbackArchiveSubtitle');
+        if(sub)sub.textContent='일부 기록 서버 조회 오류 · 저장된 기록 표시 중';
+      }
       return true;
     })
-    .catch(err => {
-      console.error('관찰노트 보관함 불러오기 오류:', err);
-      if (!currentMemoStudent || String(currentMemoStudent.id || '') !== studentId) return false;
-      if (!localItems.length) renderMemoFeedbackArchiveLoadError(menu, err);
-      else {
-        const subtitle = menu.querySelector('.memoFeedbackArchiveSubtitle');
-        if (subtitle) subtitle.textContent = '서버 조회 오류 · 저장된 기록 표시 중';
+    .catch(err=>{
+      console.error('관찰노트 보관함 불러오기 오류:',err);
+      if(!currentMemoStudent||String(currentMemoStudent.id||'')!==studentId)return false;
+      if(!localItems.length)renderMemoFeedbackArchiveLoadError(menu,err);
+      else{
+        const sub=menu.querySelector('.memoFeedbackArchiveSubtitle');
+        if(sub)sub.textContent='서버 조회 오류 · 저장된 기록 표시 중';
       }
       return false;
     });

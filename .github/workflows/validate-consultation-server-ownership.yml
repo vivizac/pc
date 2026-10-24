@@ -14,6 +14,8 @@ on:
       - 'packages/common/olli-consultation-messages.js'
       - 'apps/mobile/tests/phone-consultation-dashboard-layout.test.cjs'
       - 'apps/mobile/olli-student-core.js'
+      - 'apps/mobile/olli-data-attendance-feedback.js'
+      - 'tests/consultation-inspect-archive.test.cjs'
       - 'apps/mobile/api/consultation-summary.js'
       - 'apps/pc/api/consultation-summary.js'
       - 'packages/common/olli-consultation-progress-client.js'
@@ -45,6 +47,7 @@ jobs:
           node --check apps/mobile/olli-consultation-mobile-runtime.js
           node --check apps/mobile/olli-settings-server-sync.js
           node --check apps/mobile/olli-student-core.js
+          node --check apps/mobile/olli-data-attendance-feedback.js
           node --check apps/pc/api/consultation-summary.js
           node --check apps/mobile/api/consultation-summary.js
           node --check packages/common/olli-consultation-progress-client.js
@@ -64,3 +67,4 @@ jobs:
           node --test apps/mobile/tests/phone-consultation-dashboard-layout.test.cjs
           node --test apps/mobile/tests/phone-consultation-script-collision.test.cjs
           node --test tests/consultation-local-first-status.test.cjs
+          node --test tests/consultation-inspect-archive.test.cjs
