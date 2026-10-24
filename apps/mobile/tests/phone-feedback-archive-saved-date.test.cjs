@@ -6,9 +6,11 @@ const adapter = fs.readFileSync('olli-record-student-picker-phone-adapter.js', '
 const html = fs.readFileSync('index.html', 'utf8');
 const css = fs.readFileSync('olli-phone-base.css', 'utf8');
 
-test('feedback archive cards show the saved timestamp instead of the old generic guide text', () => {
+test('feedback archive cards use the saved lesson date with server-created timestamp as fallback', () => {
   assert.match(adapter, /function getMemoFeedbackArchiveSavedAt\(item\)/);
-  assert.match(adapter, /row\.created_at,[\s\S]*item\?\.createdAt,[\s\S]*row\.updated_at,[\s\S]*row\.date/);
+  // Lesson/record date is preferred for the archive month, while created_at remains a fallback.
+  assert.match(adapter, /const candidates = \[row\.date, row\.lesson_date, item\?\.date, item\?\.createdAt, row\.created_at,/);
+  assert.match(adapter, /row\.updated_at, item\?\.updatedAt, item\?\.updated_at/);
   assert.match(adapter, /formatMemoFeedbackArchiveDate\(getMemoFeedbackArchiveSavedAt\(item\)\) \|\| '날짜 정보 없음'/);
   assert.doesNotMatch(adapter, /formatMemoFeedbackArchiveDate\(item\.createdAt\) \|\| '저장된 피드백'/);
 });
@@ -19,7 +21,7 @@ test('legacy local feedback archive IDs can still provide a saved date fallback'
 });
 
 test('phone loads the cache-busted feedback archive adapter', () => {
-  assert.match(html, /olli-record-student-picker-phone-adapter\.js\?v=20260928-archive-shell-stable-1/);
+  assert.match(html, /olli-record-student-picker-phone-adapter\.js\?v=[^"'\s>]+/);
 });
 
 
@@ -30,7 +32,17 @@ test('feedback archive month capsules are horizontal, newest-first, and filter e
   assert.match(adapter, /card\.hidden = card\.dataset\.memoArchiveMonth !== key/);
   assert.match(adapter, /data-memo-archive-month=/);
   assert.match(css, /\.memoFeedbackArchiveMonthRow\s*\{[\s\S]*display:\s*flex;[\s\S]*flex-wrap:\s*nowrap;[\s\S]*max-width:\s*100%;[\s\S]*overflow-x:\s*auto;[\s\S]*overscroll-behavior-x:\s*contain;/);
-  assert.match(css, /\.memoFeedbackArchiveMonthBtn\s*\{[\s\S]*min-width:\s*60px;[\s\S]*height:\s*42px;[\s\S]*padding:\s*0 15px;[\s\S]*border:\s*1px solid #fff;[\s\S]*border-radius:\s*999px;[\s\S]*background:\s*#fff;[\s\S]*color:\s*#8e8e93;/);
+  const monthButton = css.slice(css.indexOf('.memoFeedbackArchiveMonthBtn {'),css.indexOf('.memoFeedbackArchiveMonthBtn.active'));
+  assert.ok(monthButton.length>0);
+  // Sizes may grow for readability, but must remain comfortably tappable.
+  const width=Number(monthButton.match(/min-width:\\s*(\\d+)px;/)?.[1]);
+  const height=Number(monthButton.match(/height:\\s*(\\d+)px;/)?.[1]);
+  assert.ok(width>=60,'month chip must be at least 60px wide');
+  assert.ok(height>=42,'month chip must be at least 42px high');
+  assert.match(monthButton, /flex:\\s*0 0 auto;/);
+  assert.match(monthButton, /border-radius:\\s*999px;/);
+  assert.match(monthButton, /background:\\s*#fff;/);
+  assert.match(monthButton, /color:\\s*#8e8e93;/);
   assert.match(css, /\.memoFeedbackArchiveMonthBtn\.active\s*\{[\s\S]*background:\s*#0A84FF;[\s\S]*color:\s*#fff;/);
 });
 

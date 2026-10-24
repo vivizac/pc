@@ -90,7 +90,7 @@ test('archive RPC checks academy membership and uses needed_on in Seoul date (sa
 test('existing material list RPC remains the current-list source and archive has a dedicated reader', () => {
   assert.match(js, /rpc\('olli_team_material_requests_list'/);
   assert.match(js, /rpc\('olli_team_material_requests_archive'/);
-  assert.match(migration, /create or replace function public\.olli_team_material_requests_archive/);
+  assert.match(migration, /create or replace function public\.olli_team_material_requests_archive/i);
 });
 
 test('PC archive assets are cache-busted', () => {
