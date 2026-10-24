@@ -214,6 +214,15 @@ async function main(body, context = {}) {
     const saved=await callRpc('olli_consultation_summary_job_access',{...params,p_action:'revise',p_content:content},key);
     return {ok:true,status:'ready',content:saved.content,feedbackId:saved.feedback_id,taskKey};
   }
+  // Hard stop for stale clients and direct API requests: old unfinished tasks
+  // cannot trigger a new summary, even if their original task key is still known.
+  // Inspection and explicit historical linking remain available separately.
+  if(!manual){
+    const kstNow=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Seoul'}));
+    if(dueMonth!==monthKey(kstNow))
+      return {ok:true,status:'insufficient',code:'OUTSIDE_CONSULTATION_MONTH',
+        reason:'종합 피드백은 원래 상담 기준월에만 생성할 수 있습니다.'};
+  }
   const status=await callRpc('olli_consultation_summary_job_access',{...params,p_action:'read'},key);
   if(status.status==='legacy_review_required') return {ok:true,status:'insufficient',reason:'기존 종합 피드백이 발견되어 자동 생성하지 않았습니다. 과거 기록과 상담 회차를 확인해 주세요.'};
   if(status.status==='ready'&&status.feedback_id){
