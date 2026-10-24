@@ -1349,9 +1349,9 @@
       operation: 'post',
       createIfMissing: false,
       identityColumns: ['academy_id', 'student_id'],
-      valueColumns: ['student_name', 'content', 'feedback_type', 'future_direction', 'year', 'date', 'lesson_date', 'member_id', 'client_mutation_id'],
+      valueColumns: ['student_name', 'content', 'feedback_type', 'future_direction', 'year', 'date', 'lesson_date', 'target_month', 'member_id', 'client_mutation_id'],
       requiredColumns: ['academy_id', 'student_id', 'student_name', 'content'],
-      selectColumns: ['id', 'academy_id', 'student_id', 'student_name', 'content', 'feedback_type', 'future_direction', 'year', 'date', 'created_at']
+      selectColumns: ['id', 'academy_id', 'student_id', 'student_name', 'content', 'feedback_type', 'future_direction', 'year', 'date', 'target_month', 'created_at']
     },
     verification: { mode: 'custom_returned_row', compareFields: ['academy_id', 'student_id', 'content'] },
     conflict: { policy: 'append_only', protectPendingLocal: true },

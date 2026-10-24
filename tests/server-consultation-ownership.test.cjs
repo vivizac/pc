@@ -213,3 +213,15 @@ test('cron can only run in production with secret and explicit enable flag',()=>
  const config=JSON.parse(read('apps/mobile/vercel.json'));
  assert.ok(config.crons.some(x=>x.path==='/api/consultation-summary-cron'));
 });
+
+test('growth feedback target_month reaches the protected server storage layer on PC and mobile',()=>{
+ for(const app of ['pc','mobile']) {
+   const source=read('apps/'+app+'/olli-storage-core.js');
+   const feature=source.slice(source.indexOf("feature: 'general_feedback'"),source.indexOf("feature: 'general_feedback'")+1800);
+   assert.match(feature,/valueColumns:[^\n]*'target_month'/);
+   assert.match(feature,/selectColumns:[^\n]*'target_month'/);
+ }
+ const sql=read('supabase/migrations/20261024110500_feedback_target_month_rpc.sql');
+ assert.match(sql,/lesson_date, target_month, member_id/);
+ assert.match(sql,/p_payload->>'target_month'/);
+});
