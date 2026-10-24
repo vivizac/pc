@@ -1,5 +1,9 @@
 'use strict';
 // Stage 1: confirmed notification email only. Student identity needs booking detail.
+// Caller MUST scope each invocation to the authenticated Olli academy using
+// configured academyName and/or a previously verified Naver booking business ID.
+// Mail sender/subject fields are NOT proof of authentication; the Gmail ingestion
+// layer must separately verify provider authentication and mailbox authorization.
 const SENDER = 'naverbooking_noreply@navercorp.com';
 function problem(code) { const e=new Error(code); e.code=code; return e; }
 function fromAddress(value) {
@@ -25,16 +29,33 @@ function parseKoreanTime(text) {
   const hh=h%12+(m[5]==='오후'?12:0);
   return String(y)+'-'+two(mo)+'-'+two(d)+'T'+two(hh)+':'+two(mi)+':00+09:00';
 }
-function parseNaverBookingConfirmation(input, {academyName}={}) {
+function parseNaverBookingConfirmation(input, {academyName, businessId: configuredBusinessId}={}) {
   if(!input||typeof input!=='object') throw problem('BOOKING_MAIL_REQUIRED');
   if(fromAddress(input.from)!==SENDER) throw problem('BOOKING_SENDER_UNVERIFIED');
-  const academy=String(academyName||'').trim();
-  if(!academy||academy.length>150) throw problem('BOOKING_ACADEMY_REQUIRED');
-  if(String(input.subject||'').trim()!=='[네이버 예약] '+academy+' 새로운 예약이 확정 되었습니다.')
+  const expectedAcademy=String(academyName||'').trim();
+  const expectedBusinessId=String(configuredBusinessId||'').trim();
+  if(expectedAcademy.length>150||expectedBusinessId&&!/^\d{1,20}$/.test(expectedBusinessId)) throw problem('BOOKING_SCOPE_INVALID');
+  if(!expectedAcademy&&!expectedBusinessId) throw problem('BOOKING_SCOPE_REQUIRED');
+  const subject=String(input.subject||'').trim();
+  const prefix='[네이버 예약] ';
+  const suffix=' 새로운 예약이 확정 되었습니다.';
+  if(!subject.startsWith(prefix)||!subject.endsWith(suffix)) throw problem('BOOKING_SUBJECT_UNRECOGNIZED');
+  const subjectAcademy=subject.slice(prefix.length, subject.length-suffix.length).trim();
+  if(subjectAcademy.length>150 || (expectedAcademy&&subjectAcademy&&subjectAcademy!==expectedAcademy))
     throw problem('BOOKING_SUBJECT_UNRECOGNIZED');
   const body=String(input.body||'');
-  if(!body||body.length>150000||!body.includes(academy)||!body.includes('새로운 예약이 확정'))
+  if(!body||body.length>150000||!body.includes('새로운 예약이 확정 되었습니다.'))
     throw problem('BOOKING_BODY_INVALID');
+  const lines=body.replace(/\r/g,'').split('\n').map(s=>s.trim()).filter(Boolean);
+  const heading=lines.indexOf('새로운 예약이 확정 되었습니다.');
+  if(heading<0) throw problem('BOOKING_BODY_INVALID');
+  let bodyAcademy=heading>0?lines[heading-1]:'';
+  if(!bodyAcademy||bodyAcademy==='NAVER 예약'||bodyAcademy.startsWith('[NAVER 예약]'))
+    bodyAcademy='';
+  if(bodyAcademy.length>150 || (expectedAcademy&&bodyAcademy&&bodyAcademy!==expectedAcademy))
+    throw problem('BOOKING_BODY_ACADEMY_MISMATCH');
+  if(subjectAcademy&&bodyAcademy&&subjectAcademy!==bodyAcademy)
+    throw problem('BOOKING_ACADEMY_CONFLICT');
   const number=getField(body,'예약번호');
   if(!/^\d{8,20}$/.test(number)) throw problem('BOOKING_NUMBER_INVALID');
   const product=getField(body,'예약상품');
@@ -54,9 +75,17 @@ function parseNaverBookingConfirmation(input, {academyName}={}) {
       detailUrl=u.href; businessId=parts[1];
     }
   }
+  if(expectedBusinessId) {
+    if(!businessId) throw problem('BOOKING_DETAIL_LINK_UNVERIFIED');
+    if(businessId!==expectedBusinessId) throw problem('BOOKING_BUSINESS_ID_MISMATCH');
+  } else if(!subjectAcademy&&!bodyAcademy) {
+    // No academy evidence in email: only previously verified business ID can scope it.
+    throw problem('BOOKING_BUSINESS_ID_REQUIRED');
+  }
   return {
     source:'naver_booking_email', sourceMessageId:rawId||null,
-    academyName:academy, bookingNumber:number, businessId, detailUrl,
+    academyName:subjectAcademy||bodyAcademy||expectedAcademy||null,
+    bookingNumber:number, businessId, detailUrl,
     status:'confirmed', product, startAt, appliedAtRaw:appliedAt,
     maskedBooker:getField(body,'예약자명').slice(0,100)||null,
     studentName:null, studentAgeOrGrade:null, studentId:null,
