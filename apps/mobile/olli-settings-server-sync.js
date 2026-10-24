@@ -270,7 +270,6 @@ function renderRecordAcademyManagementDashboard(){
       ${buildAcademyStatCard('올해 등록', thisYearRegistered.length, thisYearRegistered.length, 'red', { sub: `이달 등록 ${thisMonthRegistered.length}명 · 이달 퇴원 ${thisMonthWithdrawn.length}명` })}
       ${buildAcademyStatCard('올해 퇴원', thisYearWithdrawn.length, thisYearWithdrawn.length, 'red', { sub: `휴원 ${pausedStudents.length}명 · 퇴원 ${thisYearWithdrawn.length}명` })}
     </div>
-    ${window.OlliConsultationMessages?.isOwner() ? '<button type="button" class="recordAcademyConsultCompleteBtn" onclick="OlliConsultationMessages.open()">상담 예약 안내</button>' : ''}
     <div class="recordAcademyConsultSection">${renderAcademyConsultationList(students)}</div>
   `;
 }
