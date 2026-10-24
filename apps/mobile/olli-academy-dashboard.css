@@ -506,3 +506,96 @@
 #recordRoomScreen.record-academy-management-mode .recordRoomScreenFloatingBar {
   display: none;
 }
+
+/* Consultation screen: preserve the academy dashboard card/grid structure on phones.
+   The server-owned dashboard is rendered after its CSS, and never changes saved data. */
+.recordAcademyConsultationListMobile {
+  min-width: 0;
+  width: 100%;
+  margin: 0 0 12px;
+}
+.recordAcademyConsultationListMobile .recordAcademyMobileConsultationHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 10px;
+}
+.recordAcademyConsultationListMobile .recordAcademyMobileConsultationHeading strong {
+  min-width: 0;
+  font: inherit;
+  font-weight: 750;
+}
+.recordAcademyConsultationListMobile .recordAcademyMobileConsultationHeading span {
+  flex: 0 0 auto;
+  color: #777;
+  font-size: calc(12px * var(--olli-text-scale, 1));
+  font-weight: 500;
+}
+.recordAcademyConsultationListMobile .recordAcademyMobileConsultCards {
+  min-width: 0;
+  width: 100%;
+  gap: 8px;
+}
+.recordAcademyConsultationListMobile .recordAcademyConsultListItem {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  min-width: 0;
+  width: 100%;
+  gap: 9px;
+  padding: 12px;
+}
+.recordAcademyConsultationListMobile .recordAcademyConsultStudentMain {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  width: 100%;
+  min-width: 0;
+  gap: 8px;
+}
+.recordAcademyConsultationListMobile .recordAcademyConsultStudentMain .recordAcademyListName {
+  min-width: 0;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recordAcademyConsultationListMobile .recordAcademyChipRow {
+  min-width: 0;
+  flex: 0 1 auto;
+  justify-content: flex-start;
+}
+.recordAcademyConsultationListMobile .recordAcademyInfoChip {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recordAcademyConsultationListMobile .recordAcademyConsultActions {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex: 0 1 auto;
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.recordAcademyConsultationListMobile .recordAcademyConsultActions [data-consultation-manual-copy] {
+  order: 3;
+  min-height: 27px;
+  padding: 5px 9px;
+  font-size: calc(10.5px * var(--olli-text-scale, 1));
+}
+.recordAcademyConsultationListMobile .recordAcademyConsultGroupTitle {
+  padding-top: 6px;
+}
+@media (max-width: 380px) {
+  .recordAcademyConsultationListMobile .recordAcademyConsultStudentMain {
+    flex-wrap: wrap;
+  }
+  .recordAcademyConsultationListMobile .recordAcademyConsultStudentMain .recordAcademyListName {
+    max-width: 100%;
+  }
+}
