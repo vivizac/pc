@@ -124,6 +124,7 @@ async function main(body, context = {}) {
     return {ok:true,status:'ready',content:saved.content,feedbackId:saved.feedback_id,taskKey};
   }
   const status=await callRpc('olli_consultation_summary_job_access',{...params,p_action:'read'},key);
+  if(status.status==='legacy_review_required') return {ok:true,status:'insufficient',reason:'기존 종합 피드백이 발견되어 자동 생성하지 않았습니다. 과거 기록과 상담 회차를 확인해 주세요.'};
   if(status.status==='ready'&&status.feedback_id){
     const rows=await getRows('summary_feedbacks',{id:'eq.'+status.feedback_id,academy_id:'eq.'+academyId,select:'id,content'},key);
     if(rows[0])return {ok:true,status:'ready',content:rows[0].content,feedbackId:rows[0].id};
@@ -168,6 +169,7 @@ async function main(body, context = {}) {
     const rows=await getRows('summary_feedbacks',{id:'eq.'+claim.feedback_id,academy_id:'eq.'+academyId,select:'id,content'},key);
     return{ok:true,status:'ready',content:rows[0]?.content||'',feedbackId:claim.feedback_id};
   }
+  if(claim.status==='legacy_review_required') return {ok:true,status:'insufficient',reason:'기존 종합 피드백이 발견되어 자동 생성하지 않았습니다. 과거 기록과 상담 회차를 확인해 주세요.'};
   if(claim.status!=='claimed')return{ok:true,status:'generating'};
   try {
     const text=await generate(student,months,material.rows,dueMonth);

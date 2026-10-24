@@ -7,7 +7,7 @@ const source=fs.readFileSync(path.resolve(__dirname,'../packages/common/api/_lib
 const studentId='11111111-1111-4111-8111-111111111111';
 const academyId='22222222-2222-4222-8222-222222222222';
 const validKey='id:'+studentId+'|every_12|2026-04';
-function setup({auth=true,initialGenerating=false,failChat=false,preview=false}={}){
+function setup({auth=true,initialGenerating=false,failChat=false,preview=false,legacyReview=false}={}){
  const calls={ai:0,claims:0,finishes:0,reads:0,studentFetches:0,errors:0,revision:0};
  const row={id:21,content:'First server-managed summary',summary_months:12};
  let status=initialGenerating?'generating':'pending';
@@ -19,7 +19,7 @@ function setup({auth=true,initialGenerating=false,failChat=false,preview=false}=
    if(address.includes('/rpc/olli_consultation_summary_job_access')){
      const params=JSON.parse(options.body||'{}');
      if(!auth)return json({ok:false,code:'SESSION_INVALID'});
-     if(params.p_action==='read'){calls.reads++;return json({ok:true,status,feedback_id:feedbackId});}
+     if(params.p_action==='read'){calls.reads++;return json({ok:true,status:legacyReview?'legacy_review_required':status,feedback_id:feedbackId});}
      if(params.p_action==='claim'){
        calls.claims++;
        if(status==='generating'&&!initialGenerating)return json({ok:true,status:'generating'});
@@ -102,4 +102,12 @@ test('preview deployments refuse live DB job mutations',async()=>{
  const result=await s.call({studentId,academyId,sessionToken:'valid',taskKey:validKey});
  assert.equal(result.http,403);assert.equal(result.error,'PREVIEW_WRITE_BLOCKED');
  assert.equal(s.calls.claims,0);assert.equal(s.calls.ai,0);
+});
+
+test('legacy summary without exact task identity is not regenerated',async()=>{
+ const s=setup({legacyReview:true});
+ const result=await s.call({studentId,academyId,sessionToken:'valid',taskKey:validKey});
+ assert.equal(result.http,200);assert.equal(result.status,'insufficient');
+ assert.match(result.reason,/기존 종합 피드백/);
+ assert.equal(s.calls.ai,0);assert.equal(s.calls.claims,0);assert.equal(s.calls.finishes,0);
 });

@@ -247,3 +247,14 @@ test('scheduler does not expire unfinished consultations after thirteen months',
  assert.match(s,/tracking_started_month/);
  assert.match(s,/completed/);
 });
+
+test('historical consultation adoption must match exact task identity',()=>{
+ const sql=read('supabase/migrations/20261024130000_consultation_legacy_summary_adoption_guard.sql');
+ assert.match(sql,/legacy_review_required/);
+ assert.match(sql,/client_mutation_id='consultation:'/);
+ assert.match(sql,/sf\.client_mutation_id is distinct from/);
+ assert.match(sql,/last_error='LEGACY_SUMMARY_REVIEW'/);
+ const handler=read('packages/common/api/_lib/consultation-summary-handler.cjs');
+ assert.match(handler,/if\(status\.status==='legacy_review_required'\)/);
+ assert.match(handler,/if\(claim\.status==='legacy_review_required'\)/);
+});

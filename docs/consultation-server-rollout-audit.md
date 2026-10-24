@@ -52,3 +52,10 @@
 ## Deployment safety
 
 Deploy Mobile + PC together only after the above blockers are resolved. Roll back both Vercel app deployments if any authenticated test fails. Leave additive database schema in place during app rollback; do not drop jobs or modify old feedbacks. Never expose service_role secrets to browser code. Verify job count, summary row count, and consultation completion RPC logs after release.
+
+## Historical summary identity safety (next stage)
+
+- [x] Read-only database inspection: 45 active historical summary rows without the new consultation task identity; no job rows were present at inspection time.
+- [x] Added an unapplied migration to auto-adopt only exact task-key summaries. Ambiguous historic summaries are marked `legacy_review_required` without modifying or deleting the original summary record.
+- [x] Existing Cron candidate filter excludes review-required jobs from the daily 6-task processing budget.
+- [ ] Build an owner-authorized manual association/review workflow for old ambiguous reports. Do not infer a due month from a write date.
