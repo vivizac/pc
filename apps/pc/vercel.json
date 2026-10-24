@@ -14,6 +14,9 @@
   "functions": {
     "api/consultation-messages.js": {
       "maxDuration": 300
+    },
+    "api/naver-booking.js": {
+      "maxDuration": 180
     }
   }
 }
