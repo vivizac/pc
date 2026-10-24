@@ -82,6 +82,8 @@
     "api/_lib/consultation-messages-handler.cjs",
     "olli-student-guardian-contact.js",
     "olli-student-guardian-contact.css",
-    "olli-consultation-message-templates.js"
+    "olli-consultation-message-templates.js",
+    "api/_lib/naver-booking-pilot.cjs",
+    "api/_lib/naver-booking-pilot-handler.cjs"
   ]
 }
