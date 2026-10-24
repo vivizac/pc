@@ -79,7 +79,7 @@ function createService({env=process.env,fetchImpl=globalThis.fetch}={}){
   const old=await get(number);
   if(old && Date.now()-Date.parse(old.verified_at)<30*60*1000)return {row:old,cached:true};
   const detail=await readFromNaver(number);
-  const linked=old?.student_name===detail.student_name?old.matched_student_id:null;
+  const linked=old?.student_name===detail.student_name && old?.grade_or_age===detail.grade_or_age ? old.matched_student_id : null;
   const rows=await db('/rest/v1/olli_naver_booking_pilot_reservations?on_conflict=academy_id,booking_number',{
    method:'POST',prefer:'resolution=merge-duplicates,return=representation',data:{
     academy_id:cfg.academyId,...detail,matched_student_id:linked,verified_at:new Date().toISOString()}});
