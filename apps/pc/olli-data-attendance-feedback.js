@@ -584,7 +584,7 @@ function renderAttendanceFeedbackSheetCards(items, emptyText, student, options =
     const growthMonthAction=kind==='feedback'
       && window.OlliFeedbackTargetMonth?.isGrowthRecord(item.row,item.sourceTable)
       && item.row?.id
-      ? '<button type="button" class="attendanceFeedbackSheetActionBtn" onclick="changeAttendanceGrowthTargetMonth(\\''+itemId+'\\', event)">수업 월 '+escapeHtml(String(item.row.target_month||'미지정'))+' · 정정</button>'
+      ? `<button type="button" class="attendanceFeedbackSheetActionBtn" onclick="changeAttendanceGrowthTargetMonth('${itemId}', event)">수업 월 ${escapeHtml(String(item.row.target_month||'미지정'))} · 정정</button>`
       : '';
     // Legacy regeneration deletes historical records before saving; server-owned summaries must not use it.
     const summaryRegenerateButton = '';

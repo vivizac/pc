@@ -213,7 +213,7 @@ function buildMemoFeedbackArchiveCards(items, emptyMessage = '아직 저장된 �
         const hiddenAttr = selectedMonthKey && monthInfo.key !== selectedMonthKey ? ' hidden' : '';
         const growthMonthAction=window.OlliFeedbackTargetMonth?.isGrowthRecord(item.row,getMemoFeedbackArchiveSourceTable(item))
           && item.row?.id
-          ? '<button type="button" class="memoFeedbackArchiveActionBtn" onclick="changeMemoArchiveGrowthMonth(\\''+escapeHtml(String(cardId))+'\\',this)">수업 월 '+escapeHtml(String(item.row.target_month||'미지정'))+' · 정정</button>'
+          ? `<button type="button" class="memoFeedbackArchiveActionBtn" onclick="changeMemoArchiveGrowthMonth('${escapeHtml(String(cardId))}',this)">수업 월 ${escapeHtml(String(item.row.target_month||'미지정'))} · 정정</button>`
           : '';
         return `<article class="memoFeedbackArchiveCard" data-memo-archive-id="${escapeHtml(String(cardId))}" data-memo-archive-month="${escapeHtml(monthInfo.key)}"${hiddenAttr} onclick="toggleMemoFeedbackArchiveCard('${escapeHtml(String(cardId))}')">
           <div class="memoFeedbackArchiveText" data-memo-preview="${escapeHtml(noteTitle)}">${escapeHtml(noteTitle)}</div>

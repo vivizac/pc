@@ -46,11 +46,11 @@
     const id=String(recordId||'').trim();
     if(!/^[1-9][0-9]*$/.test(id)||!studentId)throw new Error('서버에 저장된 성장 피드백 식별값이 없습니다.');
     const previous=String(row.target_month||'').trim()||null;
-    const supplied=global.prompt('이 성장 피드백이 실제로 다루는 수업 월을 YYYY-MM으로 입력하세요.\\n기존 수업 기록을 확인해 직접 지정해야 하며 작성일로 자동 추정하지 않습니다.\\n현재 대상 월: '+(previous||'미지정'),previous||'');
+    const supplied=global.prompt('이 성장 피드백이 실제로 다루는 수업 월을 YYYY-MM으로 입력하세요.\n기존 수업 기록을 확인해 직접 지정해야 하며 작성일로 자동 추정하지 않습니다.\n현재 대상 월: '+(previous||'미지정'),previous||'');
     if(supplied===null)return null;
     const next=validateHistoricalMonth(supplied);
     if(next===previous)return null;
-    if(!global.confirm('성장 피드백의 수업 대상 월을 '+next+'로 변경할까요?\\n피드백 본문과 작성일은 변경하지 않습니다.'))return null;
+    if(!global.confirm('성장 피드백의 수업 대상 월을 '+next+'로 변경할까요?\n피드백 본문과 작성일은 변경하지 않습니다.'))return null;
     assertLiveHost();
     const academyId=String(typeof global.getOlliCurrentAcademyId==='function'?global.getOlliCurrentAcademyId():'').trim();
     const sessionToken=String(global.localStorage?.getItem('olli_account_session_token_v1')||'').trim();

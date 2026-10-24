@@ -11,6 +11,11 @@ on:
       - 'packages/common/olli-consultation-progress-client.js'
       - 'tests/server-consultation-ownership.test.cjs'
       - 'tests/server-consultation-concurrency.test.cjs'
+      - 'tests/growth-target-month-correction.test.cjs'
+      - 'packages/common/olli-feedback-target-month.js'
+      - 'apps/pc/olli-data-attendance-feedback.js'
+      - 'apps/mobile/olli-record-student-picker-phone-adapter.js'
+      - 'supabase/migrations/20261024135000_growth_feedback_target_month_correction.sql'
       - 'supabase/migrations/20261023193000_consultation_server_source_of_truth.sql'
       - '.github/workflows/validate-consultation-server-ownership.yml'
   workflow_dispatch:
@@ -33,6 +38,9 @@ jobs:
           node --check apps/pc/api/consultation-summary.js
           node --check apps/mobile/api/consultation-summary.js
           node --check packages/common/olli-consultation-progress-client.js
+          node --check apps/pc/olli-data-attendance-feedback.js
+          node --check apps/mobile/olli-record-student-picker-phone-adapter.js
+          node --check packages/common/olli-feedback-target-month.js
       - name: Stage shared scripts in both application builds
         run: |
           node apps/pc/scripts/stage-common.cjs
@@ -41,4 +49,5 @@ jobs:
         run: |
           node --test tests/server-consultation-ownership.test.cjs
           node --test tests/server-consultation-concurrency.test.cjs
+          node --test tests/growth-target-month-correction.test.cjs
           node --test tests/consultation-summary-secure-pc-mobile.test.cjs
