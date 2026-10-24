@@ -30,9 +30,9 @@ test('original consultation dashboard markup is preserved byte-for-byte', () => 
 test('original academy CSS is restored byte-for-byte', () => {
   assert.equal(blobSha(style), '071040b9ba796a84b4664b9d761d3ea1123d4423');
 });
-test('PC and mobile copy buttons share exact styling, but mobile sits before status', () => {
+test('mobile notice is a PC-style copy icon immediately left of status; PC untouched', () => {
   const vm = require('node:vm');
-  const start = copy.indexOf('function attachManualConsultationButtons() {');
+  const start = copy.indexOf('function manualConsultationCopyIconSvg() {');
   const finish = copy.indexOf('function startManualConsultationButtons()', start);
   assert.ok(start > 0 && finish > start);
   const source = copy.slice(start, finish);
@@ -68,7 +68,8 @@ test('PC and mobile copy buttons share exact styling, but mobile sits before sta
       querySelectorAll: selector => selector === '.recordAcademyConsultListItem' ? [card] : [],
       createElement(tag) {
         assert.equal(tag, 'button');
-        button = {dataset: {}, style: {}, addEventListener(){}, setAttribute(){}};
+        button = {dataset: {}, style: {}, attrs: {}, addEventListener(){},
+          setAttribute(key,value){this.attrs[key]=value;}};
         return button;
       }
     };
@@ -81,13 +82,18 @@ test('PC and mobile copy buttons share exact styling, but mobile sits before sta
   assert.deepEqual(mobile.card.children, [mobile.studentMain, mobile.actions]);
   assert.deepEqual(pc.card.children, [pc.button, pc.studentMain, pc.actions]);
   assert.deepEqual(pc.actions.children, [pc.status]);
-  assert.equal(mobile.button.style.cssText, pc.button.style.cssText);
-  assert.match(mobile.button.style.cssText, /border-radius:8px;background:#fff;color:#343d4b/);
-  assert.match(mobile.button.style.cssText, /font-size:12px;font-weight:600/);
-  assert.equal(mobile.button.textContent, '안내문 복사');
-  assert.equal(mobile.button.dataset.consultationManualCopy, 'true');
-  assert.equal(blobSha(style), '071040b9ba796a84b4664b9d761d3ea1123d4423',
-    'the student card styling must remain byte-for-byte unchanged');
+  assert.equal(mobile.button.dataset.consultationCopyIcon,'true');
+  assert.match(mobile.button.innerHTML, /<svg /);
+  assert.match(mobile.button.innerHTML, /<rect x="8" y="8"/);
+  assert.match(mobile.button.innerHTML, /stroke-width="1\.9"/);
+  assert.equal(mobile.button.attrs['aria-label'], '학생 상담 안내문 복사');
+  assert.equal(mobile.button.title, '안내문 복사');
+  assert.match(mobile.button.style.cssText, /width:28px;height:28px;border:none;border-radius:50%/);
+  assert.match(mobile.button.style.cssText, /background:transparent;color:#7f7f7f/);
+  assert.equal(pc.button.textContent,'안내문 복사','desktop creation behavior is unchanged');
+  assert.match(pc.button.style.cssText,/border-radius:8px;background:#fff;color:#343d4b/);
+  assert.match(copy,/button\.innerHTML = manualConsultationCopyIconSvg\(\)/,'icon restored after success');
+  assert.equal(blobSha(style), '071040b9ba796a84b4664b9d761d3ea1123d4423');
 });
 
 test('new server keeps data synchronization but never overlays or replaces the old dashboard', () => {
@@ -102,5 +108,5 @@ test('restored scripts and stylesheet are explicitly cache-busted for installed 
   assert.match(html,/olli-academy-dashboard\.css\?v=20261024-original-ui-restore-1/);
   assert.match(html,/olli-consultation-mobile-runtime\.js\?v=20261024-month-only-1/);
   assert.match(html,/olli-settings-server-sync\.js\?v=20261024-remove-consultation-entry-1/);
-  assert.match(html,/olli-consultation-messages\.js\?v=20261024-copy-beside-status-1/);
+  assert.match(html,/olli-consultation-messages\.js\?v=20261025-mobile-copy-icon-1/);
 });
