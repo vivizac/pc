@@ -34,14 +34,15 @@ test('calendar month calculation: April 2025 enrollment means April 2026 due',()
  assert.throws(()=>h.verifyDue(enrolled,'every_12',h.parseMonth('2026-03')),/등록일/);
  assert.throws(()=>h.verifyDue(enrolled,'after_3',due),/등록일/);
 });
-test('elementary annual summary requires March or April final growth (2 other records not sufficient)',()=>{
+test('elementary annual summary requires last lesson-month growth even if recorded in April',()=>{
  const h=getHelpers(),due=h.parseMonth('2026-04');
  const row=(date,feedback_type='growth')=>({date,feedback_type,content:'growth example'});
  const prior=[row('2025-06-20'),row('2025-09-13'),row('2025-12-12')];
  assert.equal(h.relevantRows(prior,[],'elementary','every_12',due,12).status,'insufficient');
  const march=h.relevantRows([...prior,row('2026. 3. 28.')],[],'elementary','every_12',due,12);
  assert.equal(march.status,'ready');
- assert.equal(h.relevantRows([...prior,row('2026-04-08')],[],'elementary','every_12',due,12).status,'ready');
+ assert.equal(h.relevantRows([...prior,row('2026-04-08')],[],'elementary','every_12',due,12).status,'insufficient');
+ assert.equal(h.relevantRows([...prior,{...row('2026-04-08'),target_month:'2026-03'}],[],'elementary','every_12',due,12).status,'ready');
  assert.equal(h.relevantRows([...prior,row('2026-05-08')],[],'elementary','every_12',due,12).status,'insufficient');
  assert.equal(h.relevantRows([...prior,row('2026-04-08','class')],[],'elementary','every_12',due,12).status,'insufficient');
 });
