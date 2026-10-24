@@ -49,3 +49,12 @@
 .olliConsultationMessages .ocm-switch-control input:checked+.ocm-switch-track::before{transform:translateX(18px)}
 .olliConsultationMessages .ocm-switch-control input:focus-visible+.ocm-switch-track{outline:2px solid #508d80;outline-offset:3px}
 .olliConsultationMessages .ocm-switch-control input:disabled+.ocm-switch-track{opacity:.5}
+
+/* Naver booking pilot: compact four-tab layout on phones, keep student details readable. */
+.olliConsultationMessages .ocm-tabs{flex-wrap:wrap}
+.olliConsultationMessages .ocm-tabs button{flex:1 1 43%;min-width:0;white-space:normal;line-height:1.35}
+.olliConsultationMessages [data-panel=naver] .ocm-history-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0;flex-wrap:wrap}
+.olliConsultationMessages [data-panel=naver] .ocm-history-row strong{display:block;font-size:14px}
+.olliConsultationMessages [data-panel=naver] .ocm-history-row small{display:block;font-size:12px;line-height:1.55;white-space:normal;overflow-wrap:anywhere}
+.olliConsultationMessages [data-panel=naver] button{margin-top:8px}
+.olliConsultationMessages [data-naver-match]{margin-top:14px}

@@ -1,0 +1,35 @@
+name: Validate Naver booking mail parser
+on:
+  pull_request:
+    paths:
+      - 'packages/common/api/_lib/naver-booking-mail.cjs'
+      - 'tests/naver-booking-mail.test.cjs'
+      - '.github/workflows/validate-naver-booking-mail.yml'
+      - 'packages/common/api/_lib/naver-booking-pilot*.cjs'
+      - 'packages/common/olli-consultation-messages.js'
+      - 'apps/pc/api/naver-booking.js'
+      - 'apps/mobile/api/naver-booking.js'
+      - 'tests/naver-booking-pilot.test.cjs'
+      - 'supabase/migrations/*naver_booking_pilot*.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parser-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate source syntax
+        run: node --check packages/common/api/_lib/naver-booking-mail.cjs
+      - name: Check pilot server and UI syntax
+        run: |
+          node --check packages/common/api/_lib/naver-booking-pilot.cjs
+          node --check packages/common/api/_lib/naver-booking-pilot-handler.cjs
+          node --check packages/common/olli-consultation-messages.js
+      - name: Verify email parsing, owner guard and booking detail sync
+        run: node --test tests/naver-booking-mail.test.cjs tests/naver-booking-pilot.test.cjs
