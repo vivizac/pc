@@ -67,5 +67,5 @@ test('background fetch can run without a visible 확인중 status', () => {
 });
 
 test('mobile HTML requests the newly versioned script', () => {
-  assert.match(html, /olli-student-core\.js\?v=20261024-exact-task-1/);
+  assert.match(html, /olli-student-core\.js\?v=20261024-exact-task-2/);
 });
