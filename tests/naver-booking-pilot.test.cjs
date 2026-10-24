@@ -87,3 +87,11 @@ test('bad booking identifiers and fake cross-academy student IDs fail closed',as
  await assert.rejects(h.service.sync('../admin'),{code:'BOOKING_NUMBER_INVALID'});
  await assert.rejects(h.service.match(number,otherId),{code:'STUDENT_ACADEMY_OR_NAME_MISMATCH'});
 });
+
+
+test('age or grade change clears an old confirmed student association',async()=>{
+ const h=harness({old:{...record,grade_or_age:'8세',matched_student_id:studentId}});
+ await h.service.sync(number);
+ assert.equal(h.saved.length,1);
+ assert.equal(h.saved[0].matched_student_id,null);
+});
