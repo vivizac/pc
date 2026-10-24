@@ -225,3 +225,17 @@ test('growth feedback target_month reaches the protected server storage layer on
  assert.match(sql,/lesson_date, target_month, member_id/);
  assert.match(sql,/p_payload->>'target_month'/);
 });
+
+test('fresh PC and mobile HTML bypass stale runtime while old tabs require manual refresh',()=>{
+ for(const app of ['pc','mobile']){
+   const html=read('apps/'+app+'/index.html');
+   const cfg=JSON.parse(read('apps/'+app+'/vercel.json'));
+   assert.match(html,/olli-storage-core\.js\?v=20261024-target-month-save-2/);
+   for(const source of ['/','/index.html']){
+     const header=cfg.headers.find(x=>x.source===source);
+     assert.match(header.headers.find(x=>x.key==='Cache-Control').value,/no-store/);
+   }
+ }
+ assert.match(read('apps/pc/index.html'),/olli-data-feedback\.js\?v=20261024-target-month-save-2/);
+ assert.match(read('apps/mobile/index.html'),/olli-student-core\.js\?v=20261024-target-month-save-2/);
+});
