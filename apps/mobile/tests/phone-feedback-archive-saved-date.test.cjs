@@ -15,9 +15,19 @@ test('feedback archive cards use the saved lesson date with server-created times
   assert.doesNotMatch(adapter, /formatMemoFeedbackArchiveDate\(item\.createdAt\) \|\| '저장된 피드백'/);
 });
 
-test('legacy local feedback archive IDs can still provide a saved date fallback', () => {
-  assert.match(adapter, /\^memo_feedback_\(\d\{10,\}\)_/);
-  assert.match(adapter, /Number\.isFinite\(timestamp\)/);
+test('legacy local feedback archive IDs still recover timestamp as a last resort', () => {
+  const vm=require('node:vm');
+  const begin=adapter.indexOf('function getMemoFeedbackArchiveSavedAt(item)');
+  const end=adapter.indexOf('function getMemoFeedbackArchiveMonthInfo(item)',begin);
+  assert.ok(begin>=0&&end>begin,'the real archive date resolver must exist');
+  const sandbox={
+    normalizeMemoFeedbackArchiveDate:()=>'', // simulate no saved server dates
+    formatMemoFeedbackArchiveDate:value=>Number.isFinite(value)?'valid-date':''
+  };
+  vm.runInNewContext(adapter.slice(begin,end)+'\nthis.getSavedAt=getMemoFeedbackArchiveSavedAt;',sandbox);
+  const id='memo_feedback_1761300000000_legacy';
+  assert.equal(sandbox.getSavedAt({id}),1761300000000);
+  assert.equal(sandbox.getSavedAt({id:'legacy-without-timestamp'}),'');
 });
 
 test('phone loads the cache-busted feedback archive adapter', () => {
