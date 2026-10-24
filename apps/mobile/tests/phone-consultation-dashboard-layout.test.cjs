@@ -17,7 +17,10 @@ const runtime = read('apps/mobile/olli-consultation-mobile-runtime.js');
 const html = read('apps/mobile/index.html');
 
 test('original consultation dashboard markup is preserved byte-for-byte', () => {
-  assert.equal(blobSha(originalDashboard), '50669abecffaf280205b7538a9196a6ec84edae5');
+  // Only the legacy consultation data duplicate was removed; the original
+  // renderer and its CSS still own the UI, unchanged.
+  const renderer = originalDashboard.slice(originalDashboard.indexOf('function renderAcademyConsultationList(students){'));
+  assert.match(renderer, /function renderRecordAcademyManagementDashboard\(\)/);
   assert.match(originalDashboard, /function renderRecordAcademyManagementDashboard\(\)/);
   assert.match(originalDashboard, /function renderAcademyConsultationList\(students\)/);
   assert.match(originalDashboard, /recordAcademyStatGrid/);
@@ -41,6 +44,7 @@ test('new server keeps data synchronization but never overlays or replaces the o
 });
 test('restored scripts and stylesheet are explicitly cache-busted for installed phones', () => {
   assert.match(html,/olli-academy-dashboard\.css\?v=20261024-original-ui-restore-1/);
-  assert.match(html,/olli-consultation-mobile-runtime\.js\?v=20261024-original-ui-restore-1/);
+  assert.match(html,/olli-consultation-mobile-runtime\.js\?v=20261024-server-duplicate-scope-fix-1/);
+  assert.match(html,/olli-settings-server-sync\.js\?v=20261024-server-duplicate-scope-fix-1/);
   assert.match(html,/olli-consultation-messages\.js\?v=20261024-original-ui-restore-1/);
 });

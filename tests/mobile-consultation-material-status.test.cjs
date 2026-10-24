@@ -15,7 +15,7 @@ function between(begin, end) {
   return core.slice(start, stop);
 }
 
-test('unchecked consultation cards default to checking instead of insufficient', () => {
+test('uncached consultation cards show 자료부족 immediately while server refreshes', () => {
   const code = between('function getAcademyConsultationSummaryItemByKey(', 'function setAcademyConsultationSummaryItem(');
   const { getAcademyConsultationSummaryItemByKey } = vm.runInNewContext(
     code + '\n({getAcademyConsultationSummaryItemByKey})',
@@ -26,19 +26,19 @@ test('unchecked consultation cards default to checking instead of insufficient',
       getAcademyConsultationSummaryKey: () => 'student',
     }
   );
-  assert.equal(getAcademyConsultationSummaryItemByKey('student').status, 'checking');
+  assert.equal(getAcademyConsultationSummaryItemByKey('student').status, 'insufficient');
 });
 
-test('labels distinguish checking, actual insufficiency, errors, and ready', () => {
+test('local-first labels show only 자료부족 before server response, retaining ready and errors', () => {
   const code = between('function getAcademyConsultationSummaryStatusLabel(', 'function isSummaryFeedbackRowForMonth(');
   const value = vm.runInNewContext(code + '\n({label:getAcademyConsultationSummaryStatusLabel,display:getAcademyConsultationSummaryDisplayStatus})');
-  assert.equal(value.label('checking'), '확인중');
+  assert.equal(value.label('checking'), '자료부족');
   assert.equal(value.label('insufficient'), '자료부족');
   assert.equal(value.label('error'), '확인오류');
   assert.equal(value.label('ready'), '준비완료');
-  assert.equal(value.label('generating'), '생성중');
-  assert.equal(value.display('checking'), 'checking');
-  assert.equal(value.display('generating'), 'generating');
+  assert.equal(value.label('generating'), '자료부족');
+  assert.equal(value.display('checking'), 'insufficient');
+  assert.equal(value.display('generating'), 'insufficient');
   assert.equal(value.display('ready'), 'ready');
   assert.equal(value.display('error'), 'error');
 });
@@ -56,7 +56,7 @@ test('old insufficiency snapshot is invalidated when the material rule revision 
   assert.match(reader, /raw.inputs_signature.*!== empty.inputs_signature/);
 });
 
-test('a stuck checking status does not block subsequent server recheck', () => {
+test('background fetch can run without a visible 확인중 status', () => {
   const source = between('async function runAcademyConsultationSummaryAutoCheck(', 'window.toggleAcademyConsultationSummaryPreview =');
   assert.doesNotMatch(source, /existingState.status === 'generating' \|\| existingState.status === 'checking'/);
   assert.match(source, /fetchConsultationSummaryFromServer/);
@@ -65,5 +65,5 @@ test('a stuck checking status does not block subsequent server recheck', () => {
 });
 
 test('mobile HTML requests the newly versioned script', () => {
-  assert.match(html, /olli-student-core\.js\?v=20261024-target-month-save-2/);
+  assert.match(html, /olli-student-core\.js\?v=20261024-local-first-status-1/);
 });

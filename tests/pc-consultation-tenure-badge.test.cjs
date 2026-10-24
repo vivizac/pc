@@ -42,7 +42,8 @@ for (const months of [1, 6, 12, 18, 24, 30]) {
     const html = renderConsultationCard(months, ['6개월마다', '12개월마다']);
     assert.match(html, new RegExp('recordAcademyRuleChip">' + months + '개월</span>'));
     assert.equal((html.match(/recordAcademyRuleChip/g) || []).length, 1, 'only the elapsed-month badge is shown');
-    assert.match(html, /recordAcademyConsultStatusChip checking/);
+    assert.match(html, /recordAcademyConsultStatusChip insufficient/);
+    assert.match(html, /자료부족/);
   });
 }
 

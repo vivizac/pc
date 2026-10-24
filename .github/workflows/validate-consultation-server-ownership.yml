@@ -4,7 +4,11 @@ on:
     paths:
       - 'apps/pc/olli-consultation-runtime.js'
       - 'apps/pc/olli-data-consultation-summary.js'
+      - 'apps/pc/pc-student-management.js'
+      - 'tests/consultation-local-first-status.test.cjs'
       - 'apps/mobile/olli-consultation-mobile-runtime.js'
+      - 'apps/mobile/olli-settings-server-sync.js'
+      - 'apps/mobile/tests/phone-consultation-script-collision.test.cjs'
       - 'apps/mobile/olli-academy-dashboard.css'
       - 'apps/mobile/index.html'
       - 'packages/common/olli-consultation-messages.js'
@@ -37,7 +41,9 @@ jobs:
         run: |
           node --check apps/pc/olli-consultation-runtime.js
           node --check apps/pc/olli-data-consultation-summary.js
+          node --check apps/pc/pc-student-management.js
           node --check apps/mobile/olli-consultation-mobile-runtime.js
+          node --check apps/mobile/olli-settings-server-sync.js
           node --check apps/mobile/olli-student-core.js
           node --check apps/pc/api/consultation-summary.js
           node --check apps/mobile/api/consultation-summary.js
@@ -56,3 +62,5 @@ jobs:
           node --test tests/growth-target-month-correction.test.cjs
           node --test tests/consultation-summary-secure-pc-mobile.test.cjs
           node --test apps/mobile/tests/phone-consultation-dashboard-layout.test.cjs
+          node --test apps/mobile/tests/phone-consultation-script-collision.test.cjs
+          node --test tests/consultation-local-first-status.test.cjs
