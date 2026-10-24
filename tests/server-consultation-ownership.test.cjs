@@ -241,7 +241,7 @@ test('fresh PC and mobile HTML bypass stale runtime while old tabs require manua
    }
  }
  assert.match(read('apps/pc/index.html'),/olli-data-feedback\.js\?v=20261024-target-month-save-2/);
- assert.match(read('apps/mobile/index.html'),/olli-student-core\.js\?v=20261024-unified-status-1/);
+ assert.match(read('apps/mobile/index.html'),/olli-student-core\.js\?v=20261024-exact-task-1/);
 });
 
 test('scheduler does not expire unfinished consultations after thirteen months',()=>{

@@ -24,6 +24,7 @@ test('uncached consultation cards show 자료부족 immediately while server ref
       readAcademyConsultationSummarySnapshot: () => ({ items: {} }),
       normalizeAcademyConsultationSummaryStableItem: () => null,
       getAcademyConsultationSummaryKey: () => 'student',
+      window:{OlliConsultationServer:{readCachedStatus:()=>null}},
     }
   );
   assert.equal(getAcademyConsultationSummaryItemByKey('student').status, 'insufficient');
@@ -66,5 +67,5 @@ test('background fetch can run without a visible 확인중 status', () => {
 });
 
 test('mobile HTML requests the newly versioned script', () => {
-  assert.match(html, /olli-student-core\.js\?v=20261024-unified-status-1/);
+  assert.match(html, /olli-student-core\.js\?v=20261024-exact-task-1/);
 });
