@@ -458,24 +458,24 @@ function getAcademyConsultationMonthKey(date = new Date()) {
 }
 
 function getAcademyConsultationSummaryKey(student, months) {
-  const academyId = (typeof getOlliCurrentAcademyId === 'function') ? getOlliCurrentAcademyId() : '';
-  const safeMonths = Number(months) || 1;
-  const studentPart = student?.id
-    ? `id:${student.id}`
-    : `name:${String(student?.name || '').trim()}`;
-  return `${academyId}|${getAcademyConsultationMonthKey()}|${safeMonths}|${studentPart}`;
+  const academyId=typeof getOlliCurrentAcademyId==='function'?getOlliCurrentAcademyId():'';
+  const core=window.OlliConsultationServer;
+  const task=core?.getPrimaryTask?.(student,months);
+  return core?.getCacheKey?.(academyId,task)||'unbound|'+String(academyId)+'|'+String(student?.id||'');
 }
 
 function getAcademyConsultationSummaryItem(student, months) {
   const key = getAcademyConsultationSummaryKey(student, months);
-  return academyConsultationSummaryState.items[key] || { status: 'insufficient' };
+  return academyConsultationSummaryState.items[key]
+    || window.OlliConsultationServer?.readCachedStatus?.(key)
+    || { status: 'insufficient' };
 }
 
 function setAcademyConsultationSummaryItem(key, patch) {
-  academyConsultationSummaryState.items[key] = {
-    ...(academyConsultationSummaryState.items[key] || {}),
-    ...(patch || {})
-  };
+  const previous=academyConsultationSummaryState.items[key]||{};
+  academyConsultationSummaryState.items[key]={...previous,...(patch||{})};
+  if(['ready','insufficient'].includes(patch?.status))
+    window.OlliConsultationServer?.writeCachedStatus?.(key,academyConsultationSummaryState.items[key]);
 }
 
 function getAcademyConsultationSummaryStatusLabel(status) {
@@ -591,23 +591,14 @@ function toggleAcademyConsultationSummaryPreview(key) {
 }
 
 function getConsultationSummaryServerTask(student, requestedMonths) {
-  if (typeof getConsultationDueTasksForStudent !== 'function') return null;
-  const tasks = getConsultationDueTasksForStudent(student)
-    .filter(task => task?.key && ['after_1','after_3','every_6','every_12'].includes(task.ruleKey))
-    .sort((a,b) => Number(b.occurrenceMonths||0) - Number(a.occurrenceMonths||0));
-  const months = Number(requestedMonths) || 0;
-  return tasks.find(task => {
-    const optionMonths = task.ruleKey === 'every_12' ? 12
-      : task.ruleKey === 'every_6' ? 6 : task.ruleKey === 'after_3' ? 3 : 1;
-    return !months || months === optionMonths;
-  }) || tasks[0] || null;
+  return window.OlliConsultationServer?.getPrimaryTask?.(student,requestedMonths)||null;
 }
 
 async function inspectConsultationSummaryFromServer(student, task) {
   const server=window.OlliConsultationServer;
   if(!server?.inspectSummary)throw new Error('종합 피드백 서버 조회 기능이 준비되지 않았습니다.');
   if(!student?.id||!task?.key)throw new Error('상담 학생 또는 회차 정보가 없습니다.');
-  return server.inspectSummary(student.id,task.key);
+  return server.checkSummaryStatus(student,task);
 }
 
 async function fetchConsultationSummaryFromServer(student, task) {

@@ -205,11 +205,19 @@
   }
 
   function consultationStatusKey(student, labels) {
-    return consultationStudentRef(student)+'|'+(Array.isArray(labels) ? labels.join('|') : '');
+    const months=typeof getConsultationSummaryMonthsFromLabels==='function'
+      ?getConsultationSummaryMonthsFromLabels(labels):0;
+    const task=global.OlliConsultationServer?.getPrimaryTask?.(student,months);
+    const academyId=typeof global.getOlliCurrentAcademyId==='function'
+      ?global.getOlliCurrentAcademyId():'';
+    return global.OlliConsultationServer?.getCacheKey?.(academyId,task)
+      || 'unbound|'+String(academyId)+'|'+consultationStudentRef(student);
   }
 
   function consultationStatusChipHtml(student, labels) {
-    const cached = consultationStatusCache.get(consultationStatusKey(student, labels));
+    const key=consultationStatusKey(student,labels);
+    const cached=consultationStatusCache.get(key)
+      || global.OlliConsultationServer?.readCachedStatus?.(key);
     // PC도 로컬 캐시를 먼저 그리고, 서버 응답이 오면 조용히 갱신합니다.
     const status = cached?.status === 'ready' ? 'ready' : (cached?.status === 'error' ? 'error' : 'insufficient');
     const label = status === 'ready' ? '준비완료' : (status === 'error' ? '확인오류' : '자료부족');
@@ -220,7 +228,10 @@
     const ref = consultationStudentRef(student);
     const normalizedStatus = status === 'ready' ? 'ready' : (status === 'insufficient' ? 'insufficient' : 'error');
     const label = normalizedStatus === 'ready' ? '준비완료' : (normalizedStatus === 'insufficient' ? '자료부족' : '확인오류');
-    consultationStatusCache.set(consultationStatusKey(student, labels), { status: normalizedStatus, reason: String(reason || ''), checkedAt: Date.now() });
+    const key=consultationStatusKey(student,labels);
+    consultationStatusCache.set(key,{status:normalizedStatus,reason:String(reason||''),checkedAt:Date.now()});
+    if(normalizedStatus!=='error')
+      global.OlliConsultationServer?.writeCachedStatus?.(key,{status:normalizedStatus});
     document.querySelectorAll('#pcAcademyDetailPanel .recordAcademyConsultListItem').forEach((row) => {
       if (String(row.dataset.pcStudentRef || '') !== ref) return;
       const chip = row.querySelector('.recordAcademyConsultStatusChip');
@@ -239,16 +250,21 @@
     if (consultationStatusInFlight.has(key)) return consultationStatusInFlight.get(key);
     const promise = (async () => {
       try {
-        const task=typeof getConsultationSummaryServerTask==='function'
-          ? getConsultationSummaryServerTask(student) : null;
-        if(!task?.key||!global.OlliConsultationServer?.inspectSummary)
+        const core=global.OlliConsultationServer;
+        const months=typeof getConsultationSummaryMonthsFromLabels==='function'
+          ?getConsultationSummaryMonthsFromLabels(labels):0;
+        const task=core?.getPrimaryTask?.(student,months);
+        if(!task?.key||!core?.checkSummaryStatus)
           throw new Error('상담 공통 서버 조회를 준비하지 못했습니다.');
-        const material=await global.OlliConsultationServer.inspectSummary(student.id,task.key);
-        const status=material?.status==='ready'?'ready':'insufficient';
+        const material=await core.checkSummaryStatus(student,task);
+        const status=material.status;
         updateConsultationStatusChip(student,labels,status,material?.reason||'');
       } catch (error) {
         console.warn('PC 상담 자료 상태 확인 실패:', student?.name || '', error?.message || error);
-        updateConsultationStatusChip(student, labels, 'error', error?.message || '상담 자료 상태를 확인하지 못했습니다.');
+        const key=consultationStatusKey(student,labels);
+        const cached=consultationStatusCache.get(key)||global.OlliConsultationServer?.readCachedStatus?.(key);
+        if(cached?.status!=='ready')
+          updateConsultationStatusChip(student, labels, 'error', error?.message || '상담 자료 상태를 확인하지 못했습니다.');
       }
     })().finally(() => consultationStatusInFlight.delete(key));
     consultationStatusInFlight.set(key, promise);
