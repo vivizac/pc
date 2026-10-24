@@ -1,0 +1,24 @@
+name: Validate Naver booking mail parser
+on:
+  pull_request:
+    paths:
+      - 'packages/common/api/_lib/naver-booking-mail.cjs'
+      - 'tests/naver-booking-mail.test.cjs'
+      - '.github/workflows/validate-naver-booking-mail.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parser-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate source syntax
+        run: node --check packages/common/api/_lib/naver-booking-mail.cjs
+      - name: Verify read-only reservation email parser
+        run: node --test tests/naver-booking-mail.test.cjs
