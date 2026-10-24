@@ -55,7 +55,8 @@ test('kinder first-month consultation requires four feedbacks',()=>{
 test('client auto-check uses single server endpoint, no client-side AI and auto-save',()=>{
  for(const source of [pc,mobile]) {
    const code=section(source,'async function runAcademyConsultationSummaryAutoCheck()','window.toggleAcademyConsultationSummaryPreview =');
-   assert.match(code,/fetchConsultationSummaryFromServer/);
+   assert.match(code,/inspectConsultationSummaryFromServer/);
+   assert.doesNotMatch(code,/fetchConsultationSummaryFromServer/);
    assert.doesNotMatch(code,/createSummaryFeedbackFromRows/);
    assert.doesNotMatch(code,/saveConsultationSummaryFeedbackAuto/);
    assert.match(code,/status:'error'/);

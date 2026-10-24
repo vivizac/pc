@@ -160,14 +160,16 @@ test('PC and mobile do not mistake missing Supabase configuration for an empty a
   assert.match(files.archive, /if \(!isSupabaseConfigured\(\)\) throw new Error\('Supabase 연결을 확인해 주세요.'\)/);
 });
 
-test('mobile feedback sheet normalizes legacy dates and refuses incomplete cache writes', async () => {
+test('mobile feedback sheet normalizes legacy dates and preserves successful server summaries on partial failures', async () => {
   const src = files.mobileSheet;
   const dates = section(src, 'function normalizeAttendanceFeedbackDate(', 'function formatAttendanceFeedbackSheetDate(');
   const getDate = evaluate(dates, 'getAttendanceFeedbackRowDate');
   assert.equal(getDate({ date: '2025-05-01', created_at: '2026-10-02T00:00:00Z' }), '2025-05-01');
   assert.equal(getDate({ date: '2026. 9. 22.' }), '2026-09-22');
   assert.match(src, /failedRequests\.push\(request\.table\)/);
-  assert.match(src, /error\.code = 'PARTIAL_FEEDBACK_READ_FAILED'|err\.code = 'PARTIAL_FEEDBACK_READ_FAILED'/);
+  assert.match(src,/if\(failedRequests.length===requests.length\)/);
+  assert.match(src,/partialErrorTables:failedRequests/);
+  assert.match(src,/readAttendanceFeedbackLocalFirstCache\(student\)/);
   const inFunction = section(src, 'async function loadAttendanceStudentFeedbackSheetItems(', '\nconst attendanceStudentFeedbackSheetState');
   assert.ok(inFunction.indexOf('throw err;') < inFunction.indexOf('writeAttendanceFeedbackLocalFirstCache('));
 });
