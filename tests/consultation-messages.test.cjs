@@ -104,14 +104,24 @@ test('concurrent workers and repeated jobs send overlapping tasks exactly once',
 for(const [mode,state] of [['timeout','unknown'],['gateway','unknown'],['reject','failed'],['empty','unknown']]) test(mode+' preserves durable deduplication and never retries an ambiguous send',async()=>{
   const h=harness(mode);await h.service.run();await h.service.run();assert.equal(h.sends,1);assert.equal(h.row.status,state);
 });
-test('disabled automation, completed consultation and missing credentials produce no send',async()=>{
-  for(const variant of ['disabled','completed','credentials']) {
+test('disabled automation and missing credentials produce no send',async()=>{
+  for(const variant of ['disabled','credentials']) {
     const h=harness();const data=snapshot();
     if(variant==='disabled') data.settings.enabled=false;
-    if(variant==='completed') data.progress.completed=Object.fromEntries(server.pendingTasks(data,data.students[0],server.koreaDate(now)).map(t=>[t.key,{completed_month:'2026-10'}]));
     if(variant==='credentials') data.settings.academy_id='other-academy';
     h.setData(data);await h.service.run();assert.equal(h.sends,0,variant);
   }
+});
+test('retired consultation completion flags cannot prevent a monthly notice',async()=>{
+  const h=harness(),data=snapshot();
+  data.progress.completed=Object.fromEntries(
+    server.pendingTasks(data,data.students[0],server.koreaDate(now))
+      .map(task=>[task.key,{completed_month:'2026-10'}]));
+  h.setData(data);
+  await h.service.run();
+  assert.equal(h.sends,1);
+  await h.service.run();
+  assert.equal(h.sends,1,'durable monthly delivery reservation still prevents duplicates');
 });
 
 test('refresh polls provider results without sending another notice',async()=>{

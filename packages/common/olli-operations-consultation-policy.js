@@ -223,16 +223,11 @@ function getOlliConsultationRulesLabel(type){
   return `초등부 ${elementary} / 유치부 ${kinder}`;
 }
 
-function getConsultationCompletedItem(taskKey, progress = getOlliConsultationProgress()){
-  return progress?.completed?.[taskKey] || null;
-}
-
 function getConsultationDueTasksForStudent(student, referenceDate = new Date()){
   if (getStudentStatus(student) !== 'active') return [];
   return calculateOlliConsultationTasks(student, {
     enrolled: getStudentEnrollmentDateForStats(student),
     now: referenceDate,
-    progress: getOlliConsultationProgress(),
     rules: getOlliConsultationRules(student?.type)
   });
 }
@@ -241,7 +236,3 @@ function getDueConsultationRuleLabelsForStudent(student){
   return Array.from(new Set(getConsultationDueTasksForStudent(student).map(task => task.label).filter(Boolean)));
 }
 
-function isAcademyConsultationCompletedForCurrentList(student){
-  const tasks = getConsultationDueTasksForStudent(student);
-  return tasks.length > 0 && tasks.every(task => task.completed);
-}

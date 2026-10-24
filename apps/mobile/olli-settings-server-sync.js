@@ -78,8 +78,6 @@ if (document.readyState === 'loading') {
   setTimeout(bindOlliGroupFeedbackMonthsSyncOnce, 0);
 }
 
-// The canonical toggleAcademyConsultationCompleted implementation is in
-// olli-consultation-mobile-runtime.js; never reintroduce local-first writes here.
 function updateOlliConsultationSettingUI(){
   const value = document.getElementById('settingsConsultationMonthsValue');
   if (value) value.textContent = getOlliConsultationRulesLabel() || '미설정';
@@ -227,10 +225,7 @@ function renderAcademyConsultationList(students){
           const preview = academyConsultationSummaryState.expandedKey === summaryKey
             ? renderAcademyConsultationSummaryPreview(summaryKey)
             : '';
-          const consultationCompleted = isAcademyConsultationCompletedForCurrentList(student);
-          const consultationStudentRef = student.id ? `id:${student.id}` : `name:${String(student.name || '').trim()}`;
-          const consultationBtn = `<button type="button" class="recordAcademyConsultCompleteBtn${consultationCompleted ? ' active' : ''}" aria-pressed="${consultationCompleted ? 'true' : 'false'}" onclick="toggleAcademyConsultationCompleted('${escapeJsSingleQuote(consultationStudentRef)}', event)">상담</button>`;
-          return `<div class="recordAcademyListItem recordAcademyConsultListItem" onclick="toggleAcademyConsultationSummaryPreview('${escapedKey}')"><div class="recordAcademyConsultStudentMain"><div class="recordAcademyListName">${escapeHtml(student.name)}</div><div class="recordAcademyChipRow">${chips.map(label => `<span class="recordAcademyInfoChip recordAcademyRuleChip">${escapeHtml(label)}</span>`).join('')}</div></div><div class="recordAcademyConsultActions">${consultationBtn}<span class="recordAcademyConsultStatusChip ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span></div></div>${preview}`;
+          return `<div class="recordAcademyListItem recordAcademyConsultListItem" onclick="toggleAcademyConsultationSummaryPreview('${escapedKey}')"><div class="recordAcademyConsultStudentMain"><div class="recordAcademyListName">${escapeHtml(student.name)}</div><div class="recordAcademyChipRow">${chips.map(label => `<span class="recordAcademyInfoChip recordAcademyRuleChip">${escapeHtml(label)}</span>`).join('')}</div></div><div class="recordAcademyConsultActions"><span class="recordAcademyConsultStatusChip ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span></div></div>${preview}`;
         }).join('') + '</div>'
       : '<div class="recordAcademyConsultGroupEmpty">상담 예정 학생 없음</div>';
     return `<div class="recordAcademyConsultGroup"><div class="recordAcademyConsultGroupTitle"><span>${escapeHtml(group.label)}</span></div>${rows}</div>`;

@@ -9,7 +9,7 @@ const vm = require('node:vm');
 const consultationCore = fs.readFileSync(path.join(__dirname, '../packages/common/olli-consultation-task-core.js'), 'utf8');
 const managementUI = fs.readFileSync(path.join(__dirname, '../apps/pc/pc-student-management.js'), 'utf8');
 
-function renderConsultationCard(enrolledMonthsAgo, ruleLabels, completed = false) {
+function renderConsultationCard(enrolledMonthsAgo, ruleLabels) {
   const panel = { innerHTML: '' };
   const now = new Date();
   const enrollmentDate = enrolledMonthsAgo == null
@@ -27,7 +27,6 @@ function renderConsultationCard(enrolledMonthsAgo, ruleLabels, completed = false
     getDueConsultationRuleLabelsForStudent: () => ruleLabels,
     getStudentEnrollmentDateForStats: () => enrollmentDate,
     getOlliConsultationRuleShortLabel: (label) => String(label).replace(/(후|마다)$/, ''),
-    isAcademyConsultationCompletedForCurrentList: () => completed,
     escapeHtml: (value) => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;')
   };
   vm.createContext(context);
@@ -47,13 +46,12 @@ for (const months of [1, 6, 12, 18, 24, 30]) {
   });
 }
 
-test('completion state remains independent from the displayed tenure badge', () => {
-  const html = renderConsultationCard(24, ['6개월마다'], true);
-  assert.match(html, /recordAcademyRuleChip">24개월</);
-  assert.match(html, /aria-pressed="true"/);
-  assert.match(html, />완료<\/button>/);
+test('consultation card keeps tenure and summary status without any completion button',()=>{
+  const html=renderConsultationCard(24,['6개월마다']);
+  assert.match(html,/recordAcademyRuleChip">24개월</);
+  assert.match(html,/자료부족/);
+  assert.doesNotMatch(html,/aria-pressed="true"|onclick="toggleAcademyConsultationCompleted|>완료<\/button>/);
 });
-
 test('unknown enrollment date falls back to existing rule label', () => {
   const html = renderConsultationCard(null, ['6개월마다']);
   assert.match(html, /recordAcademyRuleChip">6개월</);

@@ -414,15 +414,11 @@
       const rows = group.students.length ? group.students.map((student) => {
         const dueLabels = dueLabelsForStudent(student);
         const chips = consultationTenureChips(student, dueLabels);
-        let completed = false;
-        try { completed = typeof isAcademyConsultationCompletedForCurrentList === 'function' && isAcademyConsultationCompletedForCurrentList(student); } catch (_) {}
         const ref = consultationStudentRef(student);
-        const refJs = jsSingleQuote(ref);
         return '<div class="recordAcademyConsultListItem" data-pc-student-ref="'+escape(ref)+'">'
           + '<div class="recordAcademyConsultStudentMain"><div class="recordAcademyListName">'+escape(student.name)+'</div><div class="recordAcademyChipRow">'+chips.map((label) => '<span class="recordAcademyInfoChip recordAcademyRuleChip">'+escape(label)+'</span>').join('')+'</div></div>'
           + '<div class="recordAcademyConsultActions">'
           + consultationStatusChipHtml(student, dueLabels)
-          + '<button type="button" class="recordAcademyConsultCompleteBtn'+(completed ? ' active' : '')+'" aria-pressed="'+(completed ? 'true' : 'false')+'" onclick="toggleAcademyConsultationCompleted(\''+refJs+'\', event)">'+(completed ? '완료' : '상담')+'</button>'
           + '</div></div>';
       }).join('') : '<div class="recordAcademyConsultGroupEmpty">예정 학생 없음</div>';
       return '<div class="recordAcademyConsultGroup" data-pc-division="'+group.type+'"><div class="recordAcademyConsultGroupTitle"><span>'+group.label+'</span><span>'+group.students.length+'명</span></div><div class="recordAcademyList">'+rows+'</div></div>';
@@ -433,8 +429,6 @@
     const panel = document.getElementById('pcAcademyDetailPanel');
     if (!panel) return;
     panel.innerHTML = '<div class="pcAcademySectionHeader pcAcademyConsultHeader"><div><div class="pcAcademyDetailName">상담예정 학생</div><div class="pcAcademyDetailSub">이번 달 상담이 필요한 학생</div></div><span class="pcAcademySectionCount">'+due.length+'명</span></div>'
-      + (typeof getOlliConsultationPendingRecovery === 'function' && getOlliConsultationPendingRecovery().length
-        ? '<button type="button" class="recordAcademyConsultCompleteBtn" onclick="restoreOlliConsultationPendingRecovery()">이 PC의 완료 기록 복구 ('+getOlliConsultationPendingRecovery().length+'건)</button>' : '')
       + (global.OlliConsultationMessages?.isOwner() ? '<button type="button" class="recordAcademyConsultCompleteBtn" onclick="OlliConsultationMessages.open()">상담 예약 안내</button>' : '')
       + '<div class="pcAcademyConsultationList">'+consultationListHtml(due)+'</div>';
     refreshConsultationMaterialStatuses(due);
@@ -573,20 +567,6 @@
     return null;
   }
 
-  function refreshConsultationCompletionState() {
-    if (core().state.section !== 'academy') return;
-    document.querySelectorAll('#pcAcademyDetailPanel .recordAcademyConsultListItem').forEach((row) => {
-      const student = resolveStudent(String(row.dataset.pcStudentRef || ''));
-      const button = row.querySelector('.recordAcademyConsultCompleteBtn');
-      if (!student || !button) return;
-      const completed = isAcademyConsultationCompletedForCurrentList(student);
-      button.classList.toggle('active', completed);
-      button.setAttribute('aria-pressed', completed ? 'true' : 'false');
-      button.textContent = completed ? '완료' : '상담';
-    });
-    renderTodoCard();
-  }
-
   function bindRows() {
     const app = core();
     if (app.state.section !== 'academy') return;
@@ -619,7 +599,7 @@
     if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') renderDashboard();
   }
 
-  global.OlliPcStudentManagement = { renderContext, renderDashboard, renderTodoCard, renderMaterialOrders, renderConsultationPanel, loadServerTodos, loadMaterialOrders, open, filter, handleSearch, resolveStudent, refreshConsultationCompletionState, bindRows, start };
+  global.OlliPcStudentManagement = { renderContext, renderDashboard, renderTodoCard, renderMaterialOrders, renderConsultationPanel, loadServerTodos, loadMaterialOrders, open, filter, handleSearch, resolveStudent, bindRows, start };
   global.pcOpenAcademyMaterials = openMaterials;
   global.pcAddAcademyTodo = addTodo;
   global.pcToggleAcademyTodo = toggleTodo;

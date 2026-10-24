@@ -38,13 +38,13 @@ test('new server keeps data synchronization but never overlays or replaces the o
   assert.doesNotMatch(runtime, /renderOlliServerConsultationDashboard|recordAcademyConsultationListMobile|root\.prepend\(panel\)/);
   assert.doesNotMatch(runtime, /window\.renderRecordAcademyManagementDashboard\s*=/);
   assert.match(runtime, /window\.OlliConsultationServer\.readProgress\(\)/);
-  assert.match(runtime, /window\.OlliConsultationServer\.setCompleted\(/);
+  assert.doesNotMatch(runtime, /window\.OlliConsultationServer\.setCompleted\(|toggleAcademyConsultationCompleted/);
   assert.match(runtime, /function initializeMobileConsultationServer\(\)/);
   assert.match(runtime, /loadOlliConsultationProgressFromServer/);
 });
 test('restored scripts and stylesheet are explicitly cache-busted for installed phones', () => {
   assert.match(html,/olli-academy-dashboard\.css\?v=20261024-original-ui-restore-1/);
-  assert.match(html,/olli-consultation-mobile-runtime\.js\?v=20261024-server-duplicate-scope-fix-1/);
-  assert.match(html,/olli-settings-server-sync\.js\?v=20261024-server-duplicate-scope-fix-1/);
+  assert.match(html,/olli-consultation-mobile-runtime\.js\?v=20261024-month-only-1/);
+  assert.match(html,/olli-settings-server-sync\.js\?v=20261024-month-only-1/);
   assert.match(html,/olli-consultation-messages\.js\?v=20261024-original-ui-restore-1/);
 });

@@ -3,45 +3,23 @@
 let olliConsultationProgressRefreshPromise = null;
 let olliConsultationProgressLastRefreshAt = 0;
 function normalizeOlliConsultationProgress(value){
-  let raw = value;
-  if (typeof raw === 'string') {
-    try { raw = JSON.parse(raw); } catch(e) { raw = {}; }
-  }
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) raw = {};
-  const completedRaw = raw.completed && typeof raw.completed === 'object' && !Array.isArray(raw.completed)
-    ? raw.completed
-    : {};
-  const completed = {};
-  Object.keys(completedRaw).forEach(key => {
-    const item = completedRaw[key];
-    if (item && typeof item === 'object' && !Array.isArray(item)) {
-      completed[key] = {
-        completed_at: String(item.completed_at || item.completedAt || ''),
-        completed_month: String(item.completed_month || item.completedMonth || '')
-      };
-    } else if (item) {
-      completed[key] = { completed_at: '', completed_month: '' };
-    }
-  });
-  const todosRaw = Array.isArray(raw.todos) ? raw.todos : [];
-  const todos = todosRaw.map((item, index) => {
-    if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
-    const text = String(item.text || '').trim().slice(0, 80);
-    if (!text) return null;
+  let raw=value;
+  if(typeof raw==='string'){try{raw=JSON.parse(raw)}catch(e){raw={}}}
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))raw={};
+  const todosRaw=Array.isArray(raw.todos)?raw.todos:[];
+  const todos=todosRaw.map((item,index)=>{
+    if(!item||typeof item!=='object'||Array.isArray(item))return null;
+    const text=String(item.text||'').trim().slice(0,80);
+    if(!text)return null;
     return {
-      id: String(item.id || `todo_legacy_${index}`).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80),
-      text,
-      completed: !!item.completed,
-      created_at: String(item.created_at || item.createdAt || ''),
-      completed_at: String(item.completed_at || item.completedAt || '')
+      id:String(item.id||`todo_legacy_${index}`).replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,80),
+      text,completed:!!item.completed,
+      created_at:String(item.created_at||item.createdAt||''),
+      completed_at:String(item.completed_at||item.completedAt||'')
     };
-  }).filter(Boolean).slice(0, 100);
-  return {
-    version: 1,
-    tracking_started_month: String(raw.tracking_started_month || raw.trackingStartedMonth || ''),
-    completed,
-    todos
-  };
+  }).filter(Boolean).slice(0,100);
+  // Only academy todo records use this legacy progress storage now.
+  return {version:1,todos};
 }
 
 function getOlliConsultationProgressMirrorKey(academyId){
@@ -69,9 +47,7 @@ function writeOlliConsultationProgressMirror(academyId, progress){
 }
 
 function hasOlliConsultationProgressData(progress){
-  if (!progress || typeof progress !== 'object') return false;
-  if (String(progress.tracking_started_month || '').trim()) return true;
-  return !!(progress.completed && typeof progress.completed === 'object' && Object.keys(progress.completed).length);
+  return Array.isArray(progress?.todos) && progress.todos.length>0;
 }
 
 function getOlliConsultationProgress(){
@@ -99,7 +75,7 @@ function writeOlliConsultationProgressLocal(progress, syncStatus = 'pending'){
   const normalized = normalizeOlliConsultationProgress(progress);
   if (!academyId) return normalized;
 
-  // 화면 재진입 시 서버 조회 전에도 상담 완료 상태를 즉시 복원하기 위한 동기 로컬 미러입니다.
+  // Academy todo records keep a local-first mirror.
   writeOlliConsultationProgressMirror(academyId, normalized);
 
   if (typeof writeOlliLocal === 'function') {
@@ -113,23 +89,15 @@ function writeOlliConsultationProgressLocal(progress, syncStatus = 'pending'){
   return normalized;
 }
 
-function ensureOlliConsultationProgressTrackingStart(progress){
-  const normalized = normalizeOlliConsultationProgress(progress);
-  if (!normalized.tracking_started_month) {
-    normalized.tracking_started_month = getAcademyConsultationMonthKey();
-  }
-  return normalized;
-}
-
 async function saveOlliConsultationProgressShared(progress){
   const normalized = normalizeOlliConsultationProgress(progress);
   if (!window.OlliConsultationServer) throw new Error('상담 공통 서버가 준비되지 않았습니다.');
-  // 완료 상태는 반드시 setCompleted로 키별 저장합니다. 전체 스냅샷으로 덮어쓰지 않습니다.
+  // Only academy todo entries are updated; consultation completion no longer exists.
   const serverValue = await window.OlliConsultationServer.setTodos(normalized.todos || []);
   writeOlliConsultationProgressLocal(serverValue, 'synced');
   if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') {
-    if (document.body?.classList?.contains('olliPcApp') && typeof window.pcRefreshAcademyConsultationCompletionState === 'function') {
-      window.pcRefreshAcademyConsultationCompletionState();
+    if (document.body?.classList?.contains('olliPcApp') && typeof window.OlliPcStudentManagement?.renderTodoCard === 'function') {
+      window.OlliPcStudentManagement.renderTodoCard();
     } else if (typeof renderRecordAcademyManagementDashboard === 'function') renderRecordAcademyManagementDashboard();
   }
   return normalizeOlliConsultationProgress(serverValue);
@@ -145,14 +113,14 @@ async function loadOlliConsultationProgressFromServer(options = {}){
     writeOlliConsultationProgressLocal(normalizeOlliConsultationProgress(latest), 'synced');
     const changed = previous !== JSON.stringify(getOlliConsultationProgress());
     if (changed && currentRecordView === 'academy') {
-      if (document.body?.classList?.contains('olliPcApp') && typeof window.pcRefreshAcademyConsultationCompletionState === 'function') {
-        window.pcRefreshAcademyConsultationCompletionState();
+      if (document.body?.classList?.contains('olliPcApp') && typeof window.OlliPcStudentManagement?.renderTodoCard === 'function') {
+        window.OlliPcStudentManagement.renderTodoCard();
       } else if (typeof renderRecordAcademyManagementDashboard === 'function') renderRecordAcademyManagementDashboard();
     }
     return changed;
   })().catch(err => {
     console.warn('상담 상태 서버 확인 실패:',err);
-    if (typeof showPushToast === 'function') showPushToast('상담완료 서버 동기화에 실패했습니다. 새로고침하여 다시 확인해 주세요.');
+    if (typeof showPushToast === 'function') showPushToast('학원 할 일 동기화에 실패했습니다. 새로고침하여 다시 확인해 주세요.');
     return false;
   }).finally(() => { olliConsultationProgressRefreshPromise = null; });
   return olliConsultationProgressRefreshPromise;
@@ -242,48 +210,6 @@ function getThisMonthConsultationDueStudents(students){
     .filter(isAcademyManagementActiveStudent)
     .filter(student => getDueConsultationRuleLabelsForStudent(student).length > 0);
 }
-
-async function toggleAcademyConsultationCompleted(studentRef, event){
-  if (event) { event.preventDefault(); event.stopPropagation(); }
-  const role = typeof getOlliEffectiveStorageRole === 'function' ? getOlliEffectiveStorageRole() : (typeof getOlliCurrentRole === 'function' ? getOlliCurrentRole() : '');
-  if (!['owner','manager','super_admin'].includes(role)) {
-    if (typeof showPushToast === 'function') showPushToast('원장 또는 관리자만 상담완료를 변경할 수 있습니다.');
-    return;
-  }
-  const ref = String(studentRef || '');
-  const student = getAcademyManagementStudentsForStats().find(item =>
-    (ref.startsWith('id:') && String(item.id) === ref.slice(3))
-    || (ref.startsWith('name:') && String(item.name || '').trim() === ref.slice(5).trim()));
-  if (!student) return;
-  const tasks = getConsultationDueTasksForStudent(student);
-  if (!tasks.length) return;
-  const pressedBtn = event?.currentTarget || null;
-  if (pressedBtn) { pressedBtn.disabled = true; pressedBtn.textContent = '저장중...'; }
-  try {
-    if (!window.OlliConsultationServer) throw new Error('상담 관리 서버가 준비되지 않았습니다.');
-    // PC와 모바일이 동시에 눌러도 현재 서버 상태에서 완료/취소를 계산합니다.
-    const latest = normalizeOlliConsultationProgress(await window.OlliConsultationServer.readProgress());
-    const nextCompleted = !tasks.every(task => !!latest.completed[task.key]);
-    const saved = await window.OlliConsultationServer.setCompleted(tasks.map(task => task.key), nextCompleted);
-    writeOlliConsultationProgressLocal(normalizeOlliConsultationProgress(saved), 'synced');
-    if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') {
-      if (document.body?.classList?.contains('olliPcApp') && typeof window.pcRefreshAcademyConsultationCompletionState === 'function') {
-        window.pcRefreshAcademyConsultationCompletionState();
-      } else if (typeof renderRecordAcademyManagementDashboard === 'function') renderRecordAcademyManagementDashboard();
-    }
-    if (typeof showPushToast === 'function') showPushToast(nextCompleted ? '상담완료를 서버에 저장했습니다.' : '상담완료를 취소했습니다.');
-  } catch (error) {
-    if (typeof showPushToast === 'function') showPushToast('상담완료 저장 실패: ' + (error.message || error));
-    else alert('상담완료 저장 실패: ' + (error.message || error));
-  } finally {
-    if (pressedBtn?.isConnected) pressedBtn.disabled = false;
-    if (typeof window.pcRefreshAcademyConsultationCompletionState === 'function') {
-      window.pcRefreshAcademyConsultationCompletionState();
-    }
-  }
-}
-window.toggleAcademyConsultationCompleted = toggleAcademyConsultationCompleted;
-
 
 function initializeMobileConsultationServer() {
   if (!window.OlliConsultationServer) return;

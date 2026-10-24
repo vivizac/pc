@@ -65,25 +65,20 @@ test('client auto-check uses single server endpoint, no client-side AI and auto-
  assert.match(client,/requestSummary\(studentId, taskKey\)/);
  assert.match(client,/\/api\/consultation-summary/);
 });
-test('consultation completion never treats a local optimistic button as confirmed write',()=>{
- const code=section(pcRuntime,'async function toggleAcademyConsultationCompleted(','function updateOlliConsultationSettingUI(');
- assert.match(code,/OlliConsultationServer\.readProgress\(/);
- assert.match(code,/OlliConsultationServer\.setCompleted\(/);
- assert.doesNotMatch(code,/saveOlliConsultationProgressShared/);
- assert.doesNotMatch(code,/pressedBtn\.classList\.toggle/);
- assert.match(code,/catch \(error\)/);
- // The original academy dashboard remains the sole screen renderer.
- // The mobile server runtime only synchronizes progress; it must never overlay it.
- const originalDashboard=read('apps/mobile/olli-settings-server-sync.js');
- assert.match(originalDashboard,/function renderAcademyConsultationList\(students\)/);
- assert.match(originalDashboard,/data-consult-preview|toggleAcademyConsultationSummaryPreview/);
- assert.match(originalDashboard,/renderAcademyConsultationSummaryPreview/);
- assert.doesNotMatch(mobileRuntime,/previousMobileAcademyRenderer|renderOlliServerConsultationDashboard/);
- assert.match(pc,/pendingGeneration/);
- assert.match(mobile,/pendingGeneration/);
- assert.match(mobileRuntime,/toggleAcademyConsultationCompleted/);
- assert.match(mobileRuntime,/loadOlliConsultationProgressFromServer/);
- assert.match(pcRuntime,/restoreOlliConsultationPendingRecovery/);
+test('consultation completion is removed from PC and mobile; todo and SMS remain',()=>{
+  const desktop=read('apps/pc/pc-student-management.js');
+  const dashboard=read('apps/mobile/olli-settings-server-sync.js');
+  assert.doesNotMatch(pcRuntime,/toggleAcademyConsultationCompleted|restoreOlliConsultationPendingRecovery|getOlliConsultationPendingRecovery/);
+  assert.doesNotMatch(mobileRuntime,/toggleAcademyConsultationCompleted|OlliConsultationServer\.setCompleted/);
+  assert.doesNotMatch(desktop,/toggleAcademyConsultationCompleted|refreshConsultationCompletionState|restoreOlliConsultationPendingRecovery/);
+  assert.doesNotMatch(dashboard,/consultationBtn|toggleAcademyConsultationCompleted/);
+  assert.doesNotMatch(client,/setCompleted|set_completed/);
+  assert.match(client,/setTodos:/);
+  assert.match(dashboard,/function renderAcademyConsultationList\(students\)/);
+  assert.match(dashboard,/renderAcademyConsultationSummaryPreview/);
+  assert.match(pc,/pendingGeneration/);
+  assert.match(mobile,/pendingGeneration/);
+  assert.match(mobileRuntime,/loadOlliConsultationProgressFromServer/);
 });
 test('database enforces single job per academy student rule and due-month with atomic claim',()=>{
  assert.match(migration,/primary key \(academy_id, student_id, rule_key, due_month\)/);
@@ -105,26 +100,28 @@ test('PC API proxies mobile shared server, without its own AI generation',()=>{
  assert.doesNotMatch(proxy,/api\.openai\.com/);
 });
 
-test('consultation carry-over uses the same calendar task core on both devices',()=>{
- const source=read('packages/common/olli-consultation-task-core.js');
- const calculate=vm.runInNewContext(source+'\ncalculateOlliConsultationTasks',{Date,Set});
- const enrolled=new Date(2025,3,14), reference=new Date(2026,9,23);
- const rules=['after_1','every_12'];
- const active=calculate({type:'elementary',id:'00000000-0000-4000-8000-000000000001'},{
-   now:reference,enrolled,rules,progress:{tracking_started_month:'2026-04',completed:{}}
- });
- assert.equal(active.filter(x=>x.ruleKey==='every_12').length,1);
- assert.equal(active.find(x=>x.ruleKey==='every_12').dueMonth,'2026-04');
- const task=active.find(x=>x.ruleKey==='every_12');
- const done={completed_at:'2026-10-22T11:00:00Z',completed_month:'2026-10'};
- const sameMonth=calculate({type:'elementary',id:'00000000-0000-4000-8000-000000000001'},{
-   now:reference,enrolled,rules,progress:{tracking_started_month:'2026-04',completed:{[task.key]:done}}
- });
- assert.equal(sameMonth.find(x=>x.key===task.key)?.completed,true);
- const afterMonth=calculate({type:'elementary',id:'00000000-0000-4000-8000-000000000001'},{
-   now:new Date(2026,10,1),enrolled,rules,progress:{tracking_started_month:'2026-04',completed:{[task.key]:done}}
- });
- assert.equal(afterMonth.some(x=>x.key===task.key),false);
+test('consultations appear exclusively in original due month, never carry into later months',()=>{
+  const source=read('packages/common/olli-consultation-task-core.js');
+  const calculate=vm.runInNewContext(source+'\ncalculateOlliConsultationTasks',{Date,Set});
+  const student={type:'elementary',id:'00000000-0000-4000-8000-000000000001'};
+  const enrolled=new Date(2025,3,14),rules=['after_1','every_12'];
+  const april=calculate(student,{now:new Date(2026,3,20),enrolled,rules,
+    progress:{completed:{},tracking_started_month:'2025-04'}});
+  assert.equal(april.length,1);
+  assert.equal(april[0].dueMonth,'2026-04');
+  assert.equal(april[0].occurrenceMonths,12);
+  assert.equal('completed' in april[0],false);
+  const oldKey=april[0].key;
+  const may=calculate(student,{now:new Date(2026,4,1),enrolled,rules,
+    progress:{completed:{[oldKey]:{}},tracking_started_month:'2025-04'}});
+  assert.equal(may.length,0,'April cannot roll over into May, regardless of obsolete progress');
+  const october=calculate(student,{now:new Date(2026,9,23),enrolled,rules});
+  assert.equal(october.length,0,'Old April consultation cannot roll into October');
+  const nextYear=calculate(student,{now:new Date(2027,3,15),enrolled,rules});
+  assert.equal(nextYear.length,1);
+  assert.equal(nextYear[0].dueMonth,'2027-04');
+  assert.equal(nextYear[0].occurrenceMonths,24);
+  assert.notEqual(nextYear[0].key,oldKey);
 });
 test('summary claim RPC is executable only by service role',()=>{
  const migration=read('supabase/migrations/20261023233000_consultation_job_server_only.sql');
@@ -159,7 +156,8 @@ test('preview deployments cannot mutate production consultation progress or gene
  assert.match(server,/process\.env\.VERCEL_ENV==='preview'/);
  assert.match(server,/PREVIEW_WRITE_BLOCKED/);
  assert.match(client,/assertProductionWriteHost/);
- assert.match(client,/setCompleted: \(taskKeys, completed\) => \{ assertProductionWriteHost\(\)/);
+ assert.doesNotMatch(client,/setCompleted|set_completed/);
+ assert.match(client,/setTodos: todos => \{ assertProductionWriteHost\(\)/);
 });
 test('manual record selection can only generate on shared server from validated saved IDs',()=>{
  const handler=read('packages/common/api/_lib/consultation-summary-handler.cjs');
@@ -245,14 +243,17 @@ test('fresh PC and mobile HTML bypass stale runtime while old tabs require manua
  assert.match(read('apps/mobile/index.html'),/olli-student-core\.js\?v=20261024-exact-task-2/);
 });
 
-test('scheduler does not expire unfinished consultations after thirteen months',()=>{
- const s=read('supabase/migrations/20261024114000_consultation_cron_unfinished_carryover.sql');
- assert.match(s,/generate_series\(1,240\)/);
- assert.doesNotMatch(s,/interval '13 months'/);
- assert.match(s,/tracking_started_month/);
- assert.match(s,/completed/);
+test('cron schedules current due month only and never retries an overdue consultation',()=>{
+ const sql=read('supabase/migrations/20261024183500_consultation_cron_due_month_only.sql');
+ assert.match(sql,/sc\.due_month = to_char\(now\(\) at time zone 'Asia\/Seoul','YYYY-MM'\)/);
+ assert.doesNotMatch(sql,/sc\.due_month >= coalesce/);
+ assert.doesNotMatch(sql,/tracking_started_month|progress->'completed'/);
+ assert.match(sql,/j\.status='pending'/);
+ const rpc=read('supabase/migrations/20261024183000_consultation_month_only_no_completion.sql');
+ assert.match(rpc,/p_action not in \('read','set_todos','read_rules','set_rules'\)/);
+ assert.doesNotMatch(rpc,/p_action='set_completed'/);
+ assert.match(rpc,/coalesce\(v_progress->'todos','\[\]'::jsonb\)/);
 });
-
 test('historical consultation adoption must match exact task identity',()=>{
  const sql=read('supabase/migrations/20261024130000_consultation_legacy_summary_adoption_guard.sql');
  assert.match(sql,/legacy_review_required/);

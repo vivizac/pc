@@ -13,8 +13,8 @@ test('both real mobile scripts parse together, exactly as loaded in index.html',
   assert.ok(first>=0&&second>first,'Scripts must be checked in browser load order');
   assert.doesNotThrow(()=>new vm.Script(server+'\n'+legacy,{filename:'mobile-consultation-runtime-and-original-dashboard.js'}));
 });
-test('only the server runtime owns consultation completion and progress writes',()=>{
-  assert.match(server,/window\.OlliConsultationServer\.setCompleted\(/);
+test('mobile runtime only synchronizes rules and academy todos; no consultation completion',()=>{
+  assert.doesNotMatch(server,/setCompleted|toggleAcademyConsultationCompleted/);
   assert.match(server,/window\.OlliConsultationServer\.readProgress\(/);
   assert.match(server,/window\.OlliConsultationServer\.readRules\(/);
   assert.doesNotMatch(legacy,/function\s+(?:getOlliConsultationProgress|normalizeOlliConsultationProgress|loadOlliConsultationRulesFromServer|loadOlliConsultationProgressFromServer|toggleAcademyConsultationCompleted)\s*\(/);
@@ -25,8 +25,9 @@ test('restore original cards with unchanged HTML/CSS and shared feedback-month s
   assert.match(legacy,/function renderAcademyConsultationList\(students\)/);
   assert.match(legacy,/recordAcademyStatGrid/);
   assert.match(legacy,/recordAcademyListItem recordAcademyConsultListItem/);
+  assert.doesNotMatch(legacy,/consultationBtn|toggleAcademyConsultationCompleted/);
   assert.match(legacy,/function bindOlliGroupFeedbackMonthsSyncOnce\(\)/);
-  assert.match(html,/olli-settings-server-sync\.js\?v=20261024-server-duplicate-scope-fix-1/);
+  assert.match(html,/olli-settings-server-sync\.js\?v=20261024-month-only-1/);
 });
 test('display original dashboard immediately without waiting for the server',()=>{
   const start=legacy.indexOf('function renderAcademyConsultationList(students){');

@@ -17,8 +17,6 @@
       p_session_token: sessionToken,
       p_academy_id: academyId,
       p_action: action,
-      p_task_keys: options.taskKeys || null,
-      p_completed: options.completed === true ? true : options.completed === false ? false : null,
       p_todos: options.todos || null,
       p_rules: options.rules || null
     });
@@ -79,7 +77,6 @@
   }
   global.OlliConsultationServer = Object.freeze({
     readProgress: () => request('read'),
-    setCompleted: (taskKeys, completed) => { assertProductionWriteHost(); return request('set_completed', {taskKeys,completed}); },
     setTodos: todos => { assertProductionWriteHost(); return request('set_todos', {todos}); },
     readRules: () => request('read_rules'),
     setRules: rules => { assertProductionWriteHost(); return request('set_rules', {rules}); },
