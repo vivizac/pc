@@ -92,6 +92,11 @@ function getMemoFeedbackArchivePurpose(item) {
   return 'legacy';
 }
 function getMemoFeedbackArchiveNoteTitle(item) {
+  if (getMemoFeedbackArchiveSourceTable(item)==='summary_feedbacks') {
+    const row=item?.row||{};
+    const months=Number(row.summary_months||row.period_months||item?.summary_months||0);
+    return months>0?months+'개월 종합 피드백':'종합 피드백';
+  }
   const purpose = getMemoFeedbackArchivePurpose(item);
   const label = purpose === 'class'
     ? '수업 피드백'
@@ -554,8 +559,12 @@ function refreshElementaryRecordsMenuFromServer(menu,student,localItems) {
     .then(({items,partial})=>{
       if(!currentMemoStudent||String(currentMemoStudent.id||'')!==studentId)return false;
       if(menu.classList.contains('show')&&menu.querySelector('.memoFeedbackArchiveCard.editing'))return true;
-      if(getMemoFeedbackArchiveItemsSignature(items)!==localSignature)
+      if(getMemoFeedbackArchiveItemsSignature(items)!==localSignature) {
+        // Keep UI actions (copy/edit) bound to the same server-confirmed items
+        // the visible archive uses. Never write an unverified server response.
+        setMemoFeedbackArchiveItems(student,items);
         renderMemoFeedbackArchiveSheet(menu,student,items,'',menu.dataset.memoArchiveSelectedMonth||'');
+      }
       if(partial){
         const sub=menu.querySelector('.memoFeedbackArchiveSubtitle');
         if(sub)sub.textContent='일부 기록 서버 조회 오류 · 저장된 기록 표시 중';

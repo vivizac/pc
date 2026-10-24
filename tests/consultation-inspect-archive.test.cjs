@@ -92,6 +92,11 @@ test('archive independently requests all saved summaries and preserves local les
   assert.equal(result.partial,true);
 });
 
+test('archive saves the merged server items locally before rendering, preserving copy and edit actions',()=>{
+  assert.match(archive,/setMemoFeedbackArchiveItems\(student,items\);[\s\S]*?renderMemoFeedbackArchiveSheet\(menu,student,items/);
+  assert.match(archive,/getMemoFeedbackArchiveNoteTitle\(item\)[\s\S]*?summary_feedbacks/);
+});
+
 test('attendance student archive keeps successful summaries when regular feedback retrieval fails',async()=>{
   const code=between(attendance,'async function loadAttendanceStudentFeedbackSheetItems(student) {','const attendanceStudentFeedbackSheetState');
   const existing={feedbacks:[{id:'cached-feedback',createdAt:'2026-10-12'}],summaries:[]};
