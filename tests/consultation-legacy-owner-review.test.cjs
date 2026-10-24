@@ -9,7 +9,7 @@ const client=read('packages/common/olli-consultation-progress-client.js');
 const ui=read('packages/common/olli-consultation-manual-summary-ui.js');
 const pc=read('apps/pc/pc-student-management.js');
 const mobile=read('apps/mobile/olli-student-core.js');
-const migration=read('supabase/migrations/20261025111000_consultation_legacy_candidates_owner_review.sql');
+const migration=read('supabase/migrations/20261024172732_consultation_legacy_candidates_owner_review.sql');
 test('owner candidates are strictly read-only; period and ownership rules remain enforced',()=>{
   assert.match(migration,/m\.role in \('owner','super_admin'\)/);
   assert.match(migration,/not exists\(select 1 from public\.olli_consultation_summary_jobs j/);
