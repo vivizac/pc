@@ -113,10 +113,6 @@ function calculateOlliConsultationTasks(student, context = {}){
 
   const now = referenceDate instanceof Date && !isNaN(referenceDate.getTime()) ? referenceDate : new Date();
   const currentMonth = consultationMonthKey(now);
-  const currentIndex = getConsultationMonthIndex(currentMonth);
-  const progress = (context.progress || {});
-  const trackingStart = progress.tracking_started_month || currentMonth;
-  const trackingStartIndex = getConsultationMonthIndex(trackingStart);
   const elapsedMonths = monthsBetweenByCalendar(enrolled, now);
   // Follow each division's feedback settings during the first year.
   // After the first year annual consultations continue regardless of selections.
@@ -125,25 +121,15 @@ function calculateOlliConsultationTasks(student, context = {}){
 
   const pushTask = (option, dueDate, occurrenceMonths) => {
     const dueMonth = consultationMonthKey(dueDate);
-    const dueIndex = getConsultationMonthIndex(dueMonth);
-    if (!Number.isFinite(dueIndex) || dueIndex > currentIndex) return;
-    // 기능 적용 이전 달의 과거 상담을 한꺼번에 미완료로 만들지 않습니다.
-    if (Number.isFinite(trackingStartIndex) && dueIndex < trackingStartIndex) return;
-    const taskKey = getConsultationTaskKey(student, option.key, dueMonth);
-    const completedItem = (progress.completed || {})[taskKey];
-    const completedMonth = String(completedItem?.completed_month || '');
-    const isCurrentDue = dueMonth === currentMonth;
-    const completedThisMonth = completedMonth === currentMonth;
-    // 현재 달 상담은 완료 후에도 검정 버튼 상태를 확인할 수 있게 이번 달 동안 유지합니다.
-    if (!isCurrentDue && completedItem && !completedThisMonth) return;
+    // Only the student's ORIGINAL scheduled month is visible.
+    // There is no consultation completion state or overdue carryover.
+    if (dueMonth !== currentMonth) return;
     tasks.push({
-      key: taskKey,
+      key: getConsultationTaskKey(student, option.key, dueMonth),
       ruleKey: option.key,
       label: option.label,
       dueMonth,
-      occurrenceMonths: Number(occurrenceMonths) || 0,
-      completed: !!completedItem,
-      completedMonth
+      occurrenceMonths: Number(occurrenceMonths) || 0
     });
   };
 
