@@ -14,7 +14,9 @@ const mobileRuntime=read('apps/mobile/olli-consultation-mobile-runtime.js');
 const migration=read('supabase/migrations/20261023193000_consultation_server_source_of_truth.sql');
 
 function getHelpers() {
-  const js=api.replace('module.exports=handler;', '').replace('module.exports.__test=', 'const __test =');
+  const js=api.replace('module.exports=handler;', '')
+    .replace('module.exports.runScheduled=(task)=>main(task,{scheduled:true});', '')
+    .replace('module.exports.__test=', 'const __test =');
   return vm.runInNewContext(js+'\n__test',{Date,URL,Set,console,process:{env:{}},fetch:()=>{throw Error('No network allowed in unit tests')}});
 }
 function section(source,begin,end) {
