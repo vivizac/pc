@@ -293,20 +293,23 @@ function renderOlliServerConsultationDashboard() {
   if (!panel) {
     panel = document.createElement('section');
     panel.setAttribute('data-olli-mobile-consultations', '');
-    panel.className = 'recordAcademyConsultationListMobile';
+    panel.className = 'recordAcademyPanel recordAcademyConsultSection recordAcademyConsultationListMobile';
     root.prepend(panel);
   }
   const esc = v => String(v == null ? '' : v)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-  let result = '<div class="recordAcademySectionHeader"><strong>상담예정 학생</strong>'
-    + '<span>' + due.length + '명</span></div>';
+  let result = '<div class="recordAcademyPanelTitle recordAcademyMobileConsultationHeading">'
+    + '<strong>상담예정 학생</strong><span>' + due.length + '명</span></div>'
+    + '<div class="recordAcademyConsultGroups">';
   if (!due.length) result += '<div class="recordAcademyConsultGroupEmpty">예정된 상담이 없습니다.</div>';
   for (const type of ['elementary','kinder']) {
     const rows = due.filter(student => student.type === type);
     if (!rows.length) continue;
-    result += '<div class="recordAcademyConsultGroup"><div class="recordAcademyConsultGroupTitle">'
-      + (type === 'kinder' ? '유치부' : '초등부') + ' ' + rows.length + '명</div>';
+    result += '<section class="recordAcademyConsultGroup"><div class="recordAcademyConsultGroupTitle">'
+      + '<span>' + (type === 'kinder' ? '유치부' : '초등부') + '</span>'
+      + '<span class="recordAcademyConsultGroupCount">' + rows.length + '명</span>'
+      + '</div><div class="recordAcademyList recordAcademyMobileConsultCards">';
     for (const student of rows) {
       const tasks = getConsultationDueTasksForStudent(student);
       const done = tasks.length > 0 && tasks.every(task => task.completed);
@@ -323,11 +326,13 @@ function renderOlliServerConsultationDashboard() {
         && academyConsultationSummaryState.expandedKey === feedbackKey;
       const statusText = typeof getAcademyConsultationSummaryStatusLabel === 'function'
         ? getAcademyConsultationSummaryStatusLabel(state) : '확인중';
-      result += '<div class="recordAcademyConsultListItem">'
+      result += '<div class="recordAcademyListItem recordAcademyConsultListItem" data-student-id="' + esc(student.id) + '">'
         + '<div class="recordAcademyConsultStudentMain"><div class="recordAcademyListName">'
         + esc(student.name) + '</div><div class="recordAcademyChipRow"><span class="recordAcademyInfoChip">'
         + esc(labels || '정기 상담') + '</span></div></div><div class="recordAcademyConsultActions">'
-        + '<span class="recordAcademyConsultStatusChip">' + esc(statusText) + '</span>'
+        + '<span class="recordAcademyConsultStatusChip ' + esc(
+          ['ready', 'generating', 'checking', 'error'].includes(state) ? state : 'insufficient'
+        ) + '">' + esc(statusText) + '</span>'
         + (feedbackKey ? '<button type="button" class="recordAcademyConsultFeedbackBtn" data-consult-preview="'
           + esc(feedbackKey) + '" aria-expanded="' + !!previewExpanded + '">'
           + (previewExpanded ? '접기' : '내용 보기') + '</button>' : '')
@@ -338,8 +343,9 @@ function renderOlliServerConsultationDashboard() {
         result += renderAcademyConsultationSummaryPreview(feedbackKey);
       }
     }
-    result += '</div>';
+    result += '</div></section>';
   }
+  result += '</div>';
   panel.innerHTML = result;
   panel.querySelectorAll('[data-consult-ref]').forEach(button => {
     button.addEventListener('click', event =>

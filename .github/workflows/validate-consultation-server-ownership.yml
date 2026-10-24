@@ -5,6 +5,10 @@ on:
       - 'apps/pc/olli-consultation-runtime.js'
       - 'apps/pc/olli-data-consultation-summary.js'
       - 'apps/mobile/olli-consultation-mobile-runtime.js'
+      - 'apps/mobile/olli-academy-dashboard.css'
+      - 'apps/mobile/index.html'
+      - 'packages/common/olli-consultation-messages.js'
+      - 'apps/mobile/tests/phone-consultation-dashboard-layout.test.cjs'
       - 'apps/mobile/olli-student-core.js'
       - 'apps/mobile/api/consultation-summary.js'
       - 'apps/pc/api/consultation-summary.js'
@@ -51,3 +55,4 @@ jobs:
           node --test tests/server-consultation-concurrency.test.cjs
           node --test tests/growth-target-month-correction.test.cjs
           node --test tests/consultation-summary-secure-pc-mobile.test.cjs
+          node --test apps/mobile/tests/phone-consultation-dashboard-layout.test.cjs
