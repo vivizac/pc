@@ -629,7 +629,8 @@ async function runAcademyConsultationSummaryAutoCheck() {
         // 서버에서 '생성중'이라도 이미 저장된 준비완료 기록을 가리지 않습니다.
         if (status !== 'generating' || getAcademyConsultationSummaryItem(student, summaryMonths).status !== 'ready') {
           setAcademyConsultationSummaryItem(key,{
-            status,mode:result.mode||'',content:status==='ready'?String(result.content||''):'',
+            status,feedbackId:status==='ready'?result.feedbackId:null,
+            mode:result.mode||'',content:status==='ready'?String(result.content||''):'',
             reason:result.reason||'',studentName:student.name,studentDivision:student.type,months:summaryMonths
           });
         }
@@ -667,7 +668,9 @@ async function requestConsultationSummaryFeedback(studentId, studentName, months
     const summaryMonths=task.ruleKey==='every_12'?12:task.ruleKey==='every_6'?6:task.ruleKey==='after_3'?3:1;
     const key=getAcademyConsultationSummaryKey(student,summaryMonths);
     setAcademyConsultationSummaryItem(key,{
-      status:'ready',mode:result.mode||'',content:String(result.content||''),
+      status:result.feedbackId?'ready':'insufficient',feedbackId:result.feedbackId||null,
+      mode:result.mode||'',content:String(result.content||''),
+      reason:result.feedbackId?'':'이번 상담 회차에 저장된 종합 피드백이 없습니다.',
       studentName:student.name,studentDivision:student.type,months:summaryMonths
     });
     academyConsultationSummaryState.expandedKey=key;

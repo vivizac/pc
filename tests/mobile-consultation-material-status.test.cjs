@@ -52,7 +52,7 @@ test('old insufficiency snapshot is invalidated when the material rule revision 
     normalizeAcademyConsultationSummarySignatureValue: v => v,
   });
   const parsed = JSON.parse(signature());
-  assert.equal(parsed.consultationMaterialsRevision, '20261023-secure-final-month-status-v2');
+  assert.equal(parsed.consultationMaterialsRevision, '20261024-exact-task-linked-summary-v3');
   const reader = between('function readAcademyConsultationSummarySnapshot(', 'function writeAcademyConsultationSummarySnapshot(');
   assert.match(reader, /raw.inputs_signature.*!== empty.inputs_signature/);
 });

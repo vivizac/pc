@@ -65,11 +65,13 @@
     try {
       const saved=JSON.parse(global.localStorage?.getItem(localCacheName(key))||'null');
       if(!saved||!['ready','insufficient'].includes(saved.status))return null;
+      if(saved.status==='ready'&&(!Number.isSafeInteger(Number(saved.feedbackId))||Number(saved.feedbackId)<=0))return null;
       return {status:saved.status,feedbackId:saved.feedbackId||null,checkedAt:saved.checkedAt||''};
     }catch(_){return null}
   }
   function writeCachedStatus(key,value) {
     if(!key||!['ready','insufficient'].includes(value?.status))return false;
+    if(value.status==='ready'&&(!Number.isSafeInteger(Number(value.feedbackId))||Number(value.feedbackId)<=0))return false;
     const data={status:value.status,feedbackId:value.status==='ready'?value.feedbackId||null:null,
       checkedAt:new Date().toISOString()};
     try {global.localStorage?.setItem(localCacheName(key),JSON.stringify(data));return true}
