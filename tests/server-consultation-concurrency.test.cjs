@@ -92,7 +92,7 @@ test('failure before finish releases job through fail action',async()=>{
 });
 test('manual generation rejects missing selection and never calls model',async()=>{
  const s=setup();
- const result=await s.call({studentId,academyId,sessionToken:'valid',taskKey:'id:'+studentId+'|manual_6|2026-10',selectedFeedbackIds:[]});
+ const result=await s.call({studentId,academyId,sessionToken:'valid',taskKey:'id:'+studentId+'|manual_6|2026-04',selectedFeedbackIds:[]});
  assert.equal(result.http,400);assert.equal(result.error,'SELECTION_INVALID');
  assert.equal(s.calls.ai,0);assert.equal(s.calls.finishes,0);
 });
