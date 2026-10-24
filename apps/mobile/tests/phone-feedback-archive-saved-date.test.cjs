@@ -16,7 +16,7 @@ test('feedback archive cards use the saved lesson date with server-created times
 });
 
 test('legacy local feedback archive IDs can still provide a saved date fallback', () => {
-  assert.match(adapter, /\^memo_feedback_\(\\d\{10,\}\)_/);
+  assert.match(adapter, /\^memo_feedback_\(\d\{10,\}\)_/);
   assert.match(adapter, /Number\.isFinite\(timestamp\)/);
 });
 
@@ -35,14 +35,14 @@ test('feedback archive month capsules are horizontal, newest-first, and filter e
   const monthButton = css.slice(css.indexOf('.memoFeedbackArchiveMonthBtn {'),css.indexOf('.memoFeedbackArchiveMonthBtn.active'));
   assert.ok(monthButton.length>0);
   // Sizes may grow for readability, but must remain comfortably tappable.
-  const width=Number(monthButton.match(/min-width:\\s*(\\d+)px;/)?.[1]);
-  const height=Number(monthButton.match(/height:\\s*(\\d+)px;/)?.[1]);
+  const width=Number(monthButton.match(/min-width:\s*(\d+)px;/)?.[1]);
+  const height=Number(monthButton.match(/height:\s*(\d+)px;/)?.[1]);
   assert.ok(width>=60,'month chip must be at least 60px wide');
   assert.ok(height>=42,'month chip must be at least 42px high');
-  assert.match(monthButton, /flex:\\s*0 0 auto;/);
-  assert.match(monthButton, /border-radius:\\s*999px;/);
-  assert.match(monthButton, /background:\\s*#fff;/);
-  assert.match(monthButton, /color:\\s*#8e8e93;/);
+  assert.match(monthButton, /flex:\s*0 0 auto;/);
+  assert.match(monthButton, /border-radius:\s*999px;/);
+  assert.match(monthButton, /background:\s*#fff;/);
+  assert.match(monthButton, /color:\s*#8e8e93;/);
   assert.match(css, /\.memoFeedbackArchiveMonthBtn\.active\s*\{[\s\S]*background:\s*#0A84FF;[\s\S]*color:\s*#fff;/);
 });
 
