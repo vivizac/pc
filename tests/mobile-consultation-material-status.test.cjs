@@ -65,5 +65,5 @@ test('a stuck checking status does not block subsequent server recheck', () => {
 });
 
 test('mobile HTML requests the newly versioned script', () => {
-  assert.match(html, /olli-student-core\.js\?v=20261024-server-manual-1/);
+  assert.match(html, /olli-student-core\.js\?v=20261024-target-month-save-2/);
 });
