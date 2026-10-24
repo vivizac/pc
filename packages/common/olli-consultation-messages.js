@@ -476,7 +476,13 @@
         catch(error) { alert(error.message || '안내문 복사에 실패했습니다.'); }
         finally { button.disabled = false; }
       });
-      card.insertBefore(button, card.firstChild);
+      // Mobile student-management cards keep their status badge on the right.
+      // Put the same copy button immediately before that badge; PC stays unchanged.
+      const mobileActions = !document.body.classList.contains('olliPcApp')
+        ? card.querySelector('.recordAcademyConsultActions') : null;
+      const statusChip = mobileActions?.querySelector('.recordAcademyConsultStatusChip');
+      if (statusChip) mobileActions.insertBefore(button, statusChip);
+      else card.insertBefore(button, card.firstChild);
     });
   }
   function startManualConsultationButtons() {
