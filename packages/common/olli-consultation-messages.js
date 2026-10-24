@@ -39,6 +39,89 @@
     if (!res.ok || !result.ok) throw new Error(result.error === 'PRODUCTION_ONLY' ? '운영 배포 후 발송업체 연결 상태를 확인할 수 있습니다.' : result.error || '발송 서버에 연결하지 못했습니다.');
     return result;
   }
+
+  // One-academy pilot: the server authenticates the owner and enforces its configured academy ID.
+  async function bookingPilot(action, extra = {}, state = active) {
+    if (!state || !sameContext(state.ctx)) throw new Error('학원 또는 로그인 계정이 바뀌었습니다.');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), action === 'sync' ? 165000 : 30000);
+    try {
+      const res = await fetch('/api/naver-booking', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({...state.ctx, action, ...extra}), signal: controller.signal
+      });
+      const value = await res.json();
+      if (!sameContext(state.ctx) || active !== state) throw new Error('학원 또는 로그인 계정이 바뀌었습니다.');
+      if (!res.ok || value?.ok !== true) {
+        if (value?.error === 'PILOT_ACADEMY_NOT_ENABLED') throw new Error('현재 비비작 테스트 학원에만 준비된 기능입니다.');
+        if (value?.error === 'NAVER_PILOT_NOT_CONFIGURED') throw new Error('네이버 자동 조회 연결 설정이 완료되지 않았습니다.');
+        throw new Error('예약 정보를 불러오지 못했습니다. (' + String(value?.error || res.status) + ')');
+      }
+      return value;
+    } finally { clearTimeout(timeout); }
+  }
+  function bookingRowsHtml(rows) {
+    if (!rows?.length) return '<p class="ocm-muted">아직 가져온 네이버 상담 예약이 없습니다.</p>';
+    return rows.map(row => {
+      const date = row.starts_at ? new Date(row.starts_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}) : '시간 미확인';
+      const linked = row.matched_student_id ? '재원생 연결됨' : '재원생 연결 필요';
+      return '<div class="ocm-history-row"><div><strong>' + escape(row.student_name) +
+        '</strong><small>' + escape(row.grade_or_age) + ' · ' + escape(date) +
+        ' · 예약번호 ' + escape(row.booking_number) + ' · ' + escape(linked) +
+        '</small></div><button type="button" data-naver-candidates="' + escape(row.booking_number) + '">학생 연결</button></div>';
+    }).join('');
+  }
+  async function loadBookingRows(state) {
+    const list = await bookingPilot('list',{},state);
+    const el = state.dialog.querySelector('[data-naver-booking-rows]');
+    if (el) el.innerHTML = bookingRowsHtml(list.rows || []);
+  }
+  async function naverImportClick(state) {
+    if (state.busy) return;
+    const input = state.dialog.querySelector('[data-naver-booking-number]');
+    const number = String(input?.value || '').trim();
+    if (!/^\d{8,20}$/.test(number)) { notice('네이버 예약번호를 확인해 주세요.',true); return; }
+    state.busy=true;
+    const btn = state.dialog.querySelector('[data-naver-booking-sync]');
+    if (btn) btn.disabled=true;
+    try {
+      notice('네이버 예약 상세정보를 읽고 있습니다. 이 작업은 유료 브라우저 사용량이 발생할 수 있습니다.');
+      await bookingPilot('sync',{bookingNumber:number},state);
+      await loadBookingRows(state);
+      notice('예약 상세정보를 가져왔습니다. 이름과 학년·나이를 확인하고 학생을 연결해 주세요.');
+    } catch(err) { if(active===state) notice(err.message,true); }
+    finally {state.busy=false;if(btn&&btn.isConnected)btn.disabled=false;}
+  }
+  async function showBookingCandidates(state,number) {
+    if(state.busy)return;
+    state.busy=true;
+    try {
+      const data=await bookingPilot('candidates',{bookingNumber:number},state);
+      const target=state.dialog.querySelector('[data-naver-match]');
+      if(!target)return;
+      const opts=(data.students||[]).map(s=>'<option value="'+escape(s.id)+'">'+escape(s.name)+' · '+escape(s.division)+' · '+escape(s.grade||s.age||'학년 미등록')+'</option>').join('');
+      target.innerHTML = '<p>예약 학생: <strong>'+escape(data.row?.student_name||'')+'</strong> ('+escape(data.row?.grade_or_age||'')+')</p>'+
+        (opts ? '<label>재원생 선택 <select data-naver-student-id><option value="">학생을 선택해 주세요</option>'+opts+'</select></label>'+
+          '<button type="button" data-naver-match-save="'+escape(number)+'">선택한 학생 연결 저장</button>'
+          : '<p class="ocm-muted">이름이 일치하는 재원생을 찾지 못했습니다. 자동 연결하지 않습니다.</p>');
+    } catch(err) { if(active===state) notice(err.message,true); }
+    finally {state.busy=false;}
+  }
+  async function saveBookingMatch(state,number) {
+    if(state.busy)return;
+    const studentId=state.dialog.querySelector('[data-naver-student-id]')?.value;
+    if(!studentId){notice('연결할 학생을 선택해 주세요.',true);return;}
+    state.busy=true;
+    try {
+      await bookingPilot('match',{bookingNumber:number,studentId},state);
+      await loadBookingRows(state);
+      const target=state.dialog.querySelector('[data-naver-match]');
+      if(target)target.textContent='재원생 연결이 저장되었습니다.';
+      notice('학생 연결을 저장했습니다.');
+    } catch(err){if(active===state)notice(err.message,true);}
+    finally{state.busy=false;}
+  }
+
   function historyHtml(payload) {
     const names = new Map(payload.students.map((s) => [s.id,s.name]));
     if (!payload.deliveries.length) return '<p class="ocm-muted">아직 발송 내역이 없습니다.</p>';
@@ -67,6 +150,7 @@
         <button type="button" data-tab="settings" aria-pressed="true">발송 설정</button>
         <button type="button" data-tab="contacts" aria-pressed="false">발송 대상</button>
         <button type="button" data-tab="history" aria-pressed="false">발송 내역</button>
+        <button type="button" data-tab="naver" aria-pressed="false">네이버 상담 예약 (시험)</button>
       </nav>
       <section data-panel="settings">
         <p class="ocm-muted">상담 대상 학부모에게 네이버 예약 링크가 담긴 알림톡을 자동 발송합니다. 예약 여부는 네이버에서 확인해 주세요.</p>
@@ -115,6 +199,14 @@
         <button type="button" data-refresh>발송 결과 새로고침</button>
         <p class="ocm-muted">‘접수 완료’는 발송업체가 요청을 받은 상태입니다. ‘발송 성공’은 업체가 확인한 발송 결과이며 읽음이나 상담 예약을 뜻하지 않습니다. 결과 확인이 필요한 건은 중복 발송을 막기 위해 자동으로 다시 보내지 않습니다.</p>
         <div data-history>${historyHtml(payload)}</div>
+      </section>
+      <section data-panel="naver" hidden>
+        <p class="ocm-muted">비비작 한 학원에서만 테스트합니다. 승인된 네이버 예약 관리 화면을 읽습니다. 수집·조회 작업에는 비용이 발생할 수 있으며 자동 실행은 하지 않습니다.</p>
+        <label>네이버 예약번호 <input data-naver-booking-number inputmode="numeric" maxlength="20" placeholder="네이버 예약번호"></label>
+        <button type="button" data-naver-booking-sync>예약 상세 가져오기</button>
+        <button type="button" data-naver-booking-refresh>저장된 예약 확인</button>
+        <div data-naver-booking-rows class="ocm-contact-list"></div>
+        <div data-naver-match></div>
       </section>`;
     state.dialog.querySelector('[data-settings]').addEventListener('submit', saveSettings);
     state.dialog.querySelector('.ocm-manual-editor')?.addEventListener('click', saveManualNotice);
@@ -161,6 +253,21 @@
     state.dialog.querySelectorAll('[data-send]').forEach((button) => button.addEventListener('click', () => send(button)));
     state.dialog.querySelectorAll('[data-test-send]').forEach((button) => button.addEventListener('click', () => testSend(button)));
     state.dialog.querySelector('[data-refresh]').addEventListener('click', refresh);
+    state.dialog.querySelector('[data-naver-booking-sync]').addEventListener('click',()=>naverImportClick(state));
+    state.dialog.querySelector('[data-naver-booking-refresh]').addEventListener('click',async()=>{
+      try{await loadBookingRows(state);notice('저장된 네이버 상담 예약을 확인했습니다.');}
+      catch(e){if(active===state)notice(e.message,true);}
+    });
+    state.dialog.querySelector('[data-panel=naver]').addEventListener('click',async e=>{
+      const number=e.target.closest('[data-naver-candidates]')?.dataset.naverCandidates;
+      const save=e.target.closest('[data-naver-match-save]')?.dataset.naverMatchSave;
+      if(number)await showBookingCandidates(state,number);
+      if(save)await saveBookingMatch(state,save);
+    });
+    state.dialog.querySelector('[data-tab=naver]').addEventListener('click',async()=>{
+      try{await loadBookingRows(state);}
+      catch(e){if(active===state)notice(e.message,true);}
+    });
     state.dialog.querySelector('[data-auth-check]').addEventListener('click', async () => { const state=active;if(!state||state.busy)return;state.busy=true;const el=state.dialog.querySelector('[data-auth-result]');el.textContent='인증 확인 중…';try{const x=await server('auth-check',null,state);const d=x.result?.diagnostics||{};const flags=[d.apiKeySurroundingWhitespace?'API Key 앞뒤 공백 있음':null,d.apiSecretSurroundingWhitespace?'API Secret 앞뒤 공백 있음':null,d.apiKeyContainsQuotationMarks?'API Key 내부 따옴표 있음':null,d.apiSecretContainsQuotationMarks?'API Secret 내부 따옴표 있음':null].filter(Boolean);el.textContent=(x.result?.authenticated?'솔라피 API 인증 성공 (메시지 발송 없음)':'솔라피 API 인증 실패: '+(x.result?.code||'UNKNOWN')+' / 상세 분류: '+(x.result?.authCategory||'확인 불가')+' / 응답 형식: '+(x.result?.responseKind||'UNKNOWN'))+' / 입력 형식 검사: '+(flags.length?flags.join(', '):'공백·따옴표 이상 없음')+' / 공식 SDK 잔액 조회: '+(x.result?.sdk?.authenticated?'인증 성공':'인증 실패 ('+(x.result?.sdk?.code||'확인 불가')+', HTTP: '+(x.result?.sdk?.status??'미확인')+', 분류: '+(x.result?.sdk?.category||'확인 불가')+', 응답: '+(x.result?.sdk?.responseKind||'UNKNOWN')+')');}catch(e){el.textContent='인증 확인 실패: '+e.message;}finally{state.busy=false;} });
     if (settings.enabled) server('status', null, state).then((r) => {
       if (active !== state || state.payload.settings?.enabled !== true) return;
