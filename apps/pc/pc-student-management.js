@@ -238,17 +238,14 @@
     const key = consultationStatusKey(student, labels);
     if (consultationStatusInFlight.has(key)) return consultationStatusInFlight.get(key);
     const promise = (async () => {
-      if (typeof prepareConsultationFeedbackMaterial !== 'function') {
-        updateConsultationStatusChip(student, labels, 'error', '상담 자료 확인 기능을 불러오지 못했습니다.');
-        return;
-      }
       try {
-        const months = typeof getConsultationSummaryMonthsFromLabels === 'function'
-          ? getConsultationSummaryMonthsFromLabels(labels)
-          : 1;
-        const material = await prepareConsultationFeedbackMaterial(student, months, labels);
-        const status = material?.status === 'ready' ? 'ready' : 'insufficient';
-        updateConsultationStatusChip(student, labels, status, material?.reason || '');
+        const task=typeof getConsultationSummaryServerTask==='function'
+          ? getConsultationSummaryServerTask(student) : null;
+        if(!task?.key||!global.OlliConsultationServer?.inspectSummary)
+          throw new Error('상담 공통 서버 조회를 준비하지 못했습니다.');
+        const material=await global.OlliConsultationServer.inspectSummary(student.id,task.key);
+        const status=material?.status==='ready'?'ready':'insufficient';
+        updateConsultationStatusChip(student,labels,status,material?.reason||'');
       } catch (error) {
         console.warn('PC 상담 자료 상태 확인 실패:', student?.name || '', error?.message || error);
         updateConsultationStatusChip(student, labels, 'error', error?.message || '상담 자료 상태를 확인하지 못했습니다.');

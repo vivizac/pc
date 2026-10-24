@@ -603,6 +603,13 @@ function getConsultationSummaryServerTask(student, requestedMonths) {
   }) || tasks[0] || null;
 }
 
+async function inspectConsultationSummaryFromServer(student, task) {
+  const server=window.OlliConsultationServer;
+  if(!server?.inspectSummary)throw new Error('종합 피드백 서버 조회 기능이 준비되지 않았습니다.');
+  if(!student?.id||!task?.key)throw new Error('상담 학생 또는 회차 정보가 없습니다.');
+  return server.inspectSummary(student.id,task.key);
+}
+
 async function fetchConsultationSummaryFromServer(student, task) {
   const server = window.OlliConsultationServer;
   if (!server) throw new Error('종합 피드백 공통 서버가 준비되지 않았습니다.');
@@ -625,8 +632,8 @@ async function runAcademyConsultationSummaryAutoCheck() {
       const key = getAcademyConsultationSummaryKey(student,summaryMonths);
       // 서버 재조회 중에는 마지막 로컬 상담 상태를 그대로 보여 줍니다.
       try {
-        const result = await fetchConsultationSummaryFromServer(student,task);
-        const status = result.status === 'ready'?'ready':result.status === 'insufficient'?'insufficient':'generating';
+        const result = await inspectConsultationSummaryFromServer(student,task);
+        const status = result.status === 'ready'?'ready':'insufficient';
         if(status==='generating') pendingGeneration = true;
         // 서버에서 '생성중'이라도 이미 저장된 준비완료 기록을 가리지 않습니다.
         if (status !== 'generating' || getAcademyConsultationSummaryItem(student, summaryMonths).status !== 'ready') {

@@ -1176,6 +1176,13 @@ function getConsultationSummaryServerTask(student, requestedMonths) {
   }) || tasks[0] || null;
 }
 
+async function inspectConsultationSummaryFromServer(student, task) {
+  const server=window.OlliConsultationServer;
+  if(!server?.inspectSummary)throw new Error('종합 피드백 서버 조회 기능이 준비되지 않았습니다.');
+  if(!student?.id||!task?.key)throw new Error('상담 학생 또는 회차 정보가 없습니다.');
+  return server.inspectSummary(student.id,task.key);
+}
+
 async function fetchConsultationSummaryFromServer(student, task) {
   const server = window.OlliConsultationServer;
   if (!server) throw new Error('종합 피드백 공통 서버가 준비되지 않았습니다.');
@@ -1207,8 +1214,8 @@ async function runAcademyConsultationSummaryAutoCheck() {
       // 로컬 저장 상태를 먼저 렌더한 채 서버는 뒤에서 조회합니다.
       // 화면에 '확인중'을 표시하거나 준비완료 캐시를 덮어쓰지 않습니다.
       try {
-        const value=await fetchConsultationSummaryFromServer(student,task);
-        const status=value.status==='ready'?'ready':value.status==='insufficient'?'insufficient':'generating';
+        const value=await inspectConsultationSummaryFromServer(student,task);
+        const status=value.status==='ready'?'ready':'insufficient';
         if(status==='generating') pendingGeneration=true;
         const r=setAcademyConsultationSummaryItem(key,{
           ...basic,status,mode:value.mode||'',content:status==='ready'?String(value.content||''):'',
