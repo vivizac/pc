@@ -49,7 +49,11 @@ function setup({auth=true,initialGenerating=false,failChat=false,preview=false,l
    }
    throw new Error('Unexpected fetch '+address);
  };
- const sandbox={process:{env:{SUPABASE_SERVICE_ROLE_KEY:'test-key',VERCEL_ENV:preview?'preview':'production'}},console,Date,URL,Set,fetch,module:{exports:{} }};
+ const TestClock=class extends Date {
+   constructor(...args){super(...(args.length?args:['2026-04-20T08:00:00Z']));}
+   static now(){return new Date('2026-04-20T08:00:00Z').getTime();}
+ };
+ const sandbox={process:{env:{SUPABASE_SERVICE_ROLE_KEY:'test-key',VERCEL_ENV:preview?'preview':'production'}},console,Date:TestClock,URL,Set,fetch,module:{exports:{} }};
  vm.runInNewContext(source,sandbox);
  const handler=sandbox.module.exports;
  async function call(body){
@@ -88,7 +92,7 @@ test('failure before finish releases job through fail action',async()=>{
 });
 test('manual generation rejects missing selection and never calls model',async()=>{
  const s=setup();
- const result=await s.call({studentId,academyId,sessionToken:'valid',taskKey:'id:'+studentId+'|manual_6|2026-10',selectedFeedbackIds:[]});
+ const result=await s.call({studentId,academyId,sessionToken:'valid',taskKey:'id:'+studentId+'|manual_6|2026-04',selectedFeedbackIds:[]});
  assert.equal(result.http,400);assert.equal(result.error,'SELECTION_INVALID');
  assert.equal(s.calls.ai,0);assert.equal(s.calls.finishes,0);
 });
@@ -111,4 +115,16 @@ test('legacy summary without exact task identity is not regenerated',async()=>{
  assert.equal(result.http,200);assert.equal(result.status,'insufficient');
  assert.match(result.reason,/기존 종합 피드백/);
  assert.equal(s.calls.ai,0);assert.equal(s.calls.claims,0);assert.equal(s.calls.finishes,0);
+});
+
+test('stale month cannot regenerate old overdue consultation from any client',async()=>{
+ const s=setup();
+ const overdue='id:'+studentId+'|every_12|2026-03';
+ const result=await s.call({studentId,academyId,sessionToken:'valid',taskKey:overdue});
+ assert.equal(result.status,'insufficient');
+ assert.equal(result.code,'OUTSIDE_CONSULTATION_MONTH');
+ assert.equal(s.calls.ai,0);
+ assert.equal(s.calls.claims,0);
+ assert.equal(s.calls.finishes,0);
+ assert.equal(s.calls.reads,0);
 });
