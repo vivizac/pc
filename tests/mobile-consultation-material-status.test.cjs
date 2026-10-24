@@ -59,11 +59,11 @@ test('old insufficiency snapshot is invalidated when the material rule revision 
 test('a stuck checking status does not block subsequent server recheck', () => {
   const source = between('async function runAcademyConsultationSummaryAutoCheck(', 'window.toggleAcademyConsultationSummaryPreview =');
   assert.doesNotMatch(source, /existingState.status === 'generating' \|\| existingState.status === 'checking'/);
-  assert.match(source, /existingState.status === 'generating'/);
-  assert.match(source, /await prepareConsultationFeedbackMaterial/);
-  assert.match(source, /status: 'error'/);
+  assert.match(source, /fetchConsultationSummaryFromServer/);
+  assert.match(source, /await fetchConsultationSummaryFromServer/);
+  assert.match(source, /status:'error'/);
 });
 
 test('mobile HTML requests the newly versioned script', () => {
-  assert.match(html, /olli-student-core\.js\?v=20261023-consult-status-refresh-2/);
+  assert.match(html, /olli-student-core\.js\?v=20261024-target-month-save-2/);
 });

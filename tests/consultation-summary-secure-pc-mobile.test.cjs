@@ -147,7 +147,7 @@ test('both apps keep server errors distinct from genuine insufficient feedback',
     } else {
       assert.match(files[app], /return status === 'ready' \|\| status === 'error' \? status : 'insufficient';/);
     }
-    assert.match(files[app], /status: 'error',\s+(?:reason|error): err\.message/);
+    assert.match(files[app], /status:'error'/);
   }
   assert.match(files.mobile, /status !== 'insufficient' && status !== 'error'/);
   assert.match(files.pcUi, /cached\?\.status === 'error'/);

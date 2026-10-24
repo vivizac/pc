@@ -211,6 +211,10 @@ function buildMemoFeedbackArchiveCards(items, emptyMessage = '아직 저장된 �
         const noteTitle = getMemoFeedbackArchiveNoteTitle(item);
         const monthInfo = getMemoFeedbackArchiveMonthInfo(item);
         const hiddenAttr = selectedMonthKey && monthInfo.key !== selectedMonthKey ? ' hidden' : '';
+        const growthMonthAction=window.OlliFeedbackTargetMonth?.isGrowthRecord(item.row,getMemoFeedbackArchiveSourceTable(item))
+          && item.row?.id
+          ? `<button type="button" class="memoFeedbackArchiveActionBtn" onclick="changeMemoArchiveGrowthMonth('${escapeHtml(String(cardId))}',this)">수업 월 ${escapeHtml(String(item.row.target_month||'미지정'))} · 정정</button>`
+          : '';
         return `<article class="memoFeedbackArchiveCard" data-memo-archive-id="${escapeHtml(String(cardId))}" data-memo-archive-month="${escapeHtml(monthInfo.key)}"${hiddenAttr} onclick="toggleMemoFeedbackArchiveCard('${escapeHtml(String(cardId))}')">
           <div class="memoFeedbackArchiveText" data-memo-preview="${escapeHtml(noteTitle)}">${escapeHtml(noteTitle)}</div>
           <div class="memoFeedbackArchiveDate">${escapeHtml(dateText)}</div>
@@ -218,6 +222,7 @@ function buildMemoFeedbackArchiveCards(items, emptyMessage = '아직 저장된 �
           <textarea class="memoFeedbackArchiveEditArea" onclick="event.stopPropagation()">${escapeHtml(content)}</textarea>
           <div class="memoFeedbackArchiveActions" onclick="event.stopPropagation()">
             <button type="button" class="memoFeedbackArchiveActionBtn memoFeedbackArchiveCopyBtn" onclick="copyMemoFeedbackArchiveItem('${escapeHtml(String(cardId))}', this)">복사</button>
+            ${growthMonthAction}
             <button type="button" class="memoFeedbackArchiveActionBtn memoFeedbackArchiveEditBtn" onclick="enterMemoFeedbackArchiveEdit('${escapeHtml(String(cardId))}')">수정</button>
             <button type="button" class="memoFeedbackArchiveActionBtn memoFeedbackArchiveCancelBtn" onclick="cancelMemoFeedbackArchiveEdit('${escapeHtml(String(cardId))}')">취소</button>
             <button type="button" class="memoFeedbackArchiveActionBtn primary memoFeedbackArchiveSaveBtn" onclick="saveMemoFeedbackArchiveEdit('${escapeHtml(String(cardId))}', this)">저장</button>
@@ -323,6 +328,34 @@ function getMemoFeedbackArchiveSourceTable(item) {
   const type = String(item?.feedbackType || item?.row?.feedback_type || '').toLowerCase();
   return type === 'fail' ? 'fail_feedbacks' : 'feedbacks';
 }
+async function changeMemoArchiveGrowthMonth(id,btn){
+  const student=currentMemoStudent;
+  const item=getMemoFeedbackArchiveItemById(id);
+  if(!student||!item||!window.OlliFeedbackTargetMonth?.isGrowthRecord(item.row,getMemoFeedbackArchiveSourceTable(item))){
+    alert('저장된 성장 피드백을 선택해 주세요.');return;
+  }
+  if(btn)btn.disabled=true;
+  try{
+    const saved=await window.OlliFeedbackTargetMonth.changeSavedMonth({
+      studentId:student.id,recordId:item.row?.id,row:item.row
+    });
+    if(!saved)return;
+    // Save server first, then update the existing archive item. No optimistic overwrite.
+    replaceMemoFeedbackArchiveItem(student,id,{row:{...item.row,...saved},targetMonth:saved.target_month});
+    const menu=document.getElementById('elementaryRecordsDropup');
+    if(menu){
+      const items=getMemoFeedbackArchiveItems(student);
+      renderMemoFeedbackArchiveSheet(menu,student,items,'',menu.dataset.memoArchiveSelectedMonth||'');
+      refreshElementaryRecordsMenuFromServer(menu,student,items);
+    }
+    if(typeof showPushToast==='function')showPushToast('수업 대상 월을 '+saved.target_month+'로 수정했어요.');
+  }catch(error){
+    console.error('성장 피드백 수업 대상 월 수정 실패:',error);
+    alert('대상 월을 저장하지 못했습니다.\\n'+(error.message||error));
+  }finally{if(btn?.isConnected)btn.disabled=false;}
+}
+window.changeMemoArchiveGrowthMonth=changeMemoArchiveGrowthMonth;
+
 function getMemoFeedbackArchiveEditFeature(tableName) {
   const table = String(tableName || '').trim();
   if (table === 'feedbacks') return 'general_feedback_edit';
@@ -473,7 +506,8 @@ function getMemoFeedbackArchiveItemsSignature(items) {
     lessonDate: String(item?.row?.date || item?.row?.lesson_date || ''),
     sourceTable: String(item?.sourceTable || item?.row?.source_table || ''),
     updatedAt: String(item?.updatedAt || item?.updated_at || item?.row?.updated_at || ''),
-    feedbackType: String(item?.feedbackType || item?.feedback_type || item?.row?.feedback_type || '')
+    feedbackType: String(item?.feedbackType || item?.feedback_type || item?.row?.feedback_type || ''),
+    targetMonth: String(item?.row?.target_month || item?.targetMonth || '')
   })).sort((a, b) => a.id.localeCompare(b.id) || a.createdAt.localeCompare(b.createdAt)));
 }
 

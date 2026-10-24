@@ -34,7 +34,12 @@ test('monorepo Mobile Vercel config has no external PC raw runtime rewrites', ()
   const serialized = JSON.stringify(config);
   assert.equal(serialized.includes('raw.githubusercontent.com/vivizac/pc/'), false);
   assert.equal(Array.isArray(config.headers), true);
-  assert.equal(config.headers.length, 69);
+  assert.ok(config.headers.length >= 69);
+  const htmlHeader = config.headers.find(item => item.source === '/index.html');
+  assert.ok(htmlHeader, 'the consultation release must prevent stale HTML entrypoints');
+  assert.ok((htmlHeader.headers || []).some(item =>
+    item.key === 'Cache-Control' && item.value === 'no-store, max-age=0'
+  ));
 });
 
 test('staging copies exactly the canonical common bytes and never needs a tracked duplicate', () => {

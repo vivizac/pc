@@ -147,6 +147,7 @@ async function autoSaveGeneratedFeedback(text, options = {}, btn = null) {
       student_name: savedStudent.name || name,
       content,
       feedback_type: feedbackType,
+      ...(feedbackType === 'growth' ? {target_month:getOlliFeedbackTargetMonthForSave(feedbackType,options.targetMonth)} : {}),
       year,
       date
     }, tableName === 'fail_feedbacks' ? '실패·성장 피드백 저장' : '피드백 저장');

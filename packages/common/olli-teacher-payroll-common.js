@@ -1225,6 +1225,7 @@
     overlay.innerHTML='<section class="olliPayrollStatementPanel" role="dialog" aria-modal="true" aria-label="'+esc(payLabel+' 지급 급여명세서')+'">'
       + '<div class="olliPayrollStatementHead">'
       + '<div><div class="olliPayrollStatementTitle">' +esc(payLabel)+' 지급 급여명세서</div>'
+      + (preview ? '<span class="olliPayrollStatementPreviewBadge">미리보기</span>' : '')
       + '<div class="olliPayrollStatementSub">'+esc(teacherName)+(periodStart&&periodEnd?' · 계산기간 '+esc(periodStart+'~'+periodEnd):'')+'</div></div>'
       + '<button type="button" class="olliPayrollStatementClose" aria-label="닫기">×</button></div>'
       + '<div class="olliPayrollStatementScroll">'

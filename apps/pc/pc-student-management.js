@@ -419,6 +419,8 @@
     const panel = document.getElementById('pcAcademyDetailPanel');
     if (!panel) return;
     panel.innerHTML = '<div class="pcAcademySectionHeader pcAcademyConsultHeader"><div><div class="pcAcademyDetailName">상담예정 학생</div><div class="pcAcademyDetailSub">이번 달 상담이 필요한 학생</div></div><span class="pcAcademySectionCount">'+due.length+'명</span></div>'
+      + (typeof getOlliConsultationPendingRecovery === 'function' && getOlliConsultationPendingRecovery().length
+        ? '<button type="button" class="recordAcademyConsultCompleteBtn" onclick="restoreOlliConsultationPendingRecovery()">이 PC의 완료 기록 복구 ('+getOlliConsultationPendingRecovery().length+'건)</button>' : '')
       + (global.OlliConsultationMessages?.isOwner() ? '<button type="button" class="recordAcademyConsultCompleteBtn" onclick="OlliConsultationMessages.open()">상담 예약 안내</button>' : '')
       + '<div class="pcAcademyConsultationList">'+consultationListHtml(due)+'</div>';
     refreshConsultationMaterialStatuses(due);

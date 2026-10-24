@@ -278,6 +278,7 @@ async function saveElementaryFeedbackDirectly(text, options = {}) {
     student_name: savedStudent.name || studentName,
     content,
     feedback_type: feedbackType,
+    ...(feedbackType === 'growth' ? {target_month:getOlliFeedbackTargetMonthForSave(feedbackType)} : {}),
     year: now.getFullYear(),
     date: now.toLocaleDateString('ko-KR')
   }, tableName === 'fail_feedbacks' ? '실패-성장 피드백 저장' : '성장 피드백 저장');

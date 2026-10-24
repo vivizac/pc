@@ -207,43 +207,9 @@ async function softDeleteAttendanceSummaryFeedback(item) {
   return await window.OlliRecordTrash.move('summary_feedbacks', recordId, 'summary_feedback_regenerated');
 }
 
-async function regenerateAttendanceSummaryFeedback(itemId, event) {
-  if (event) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-  if (loading) return;
-  const state = attendanceStudentFeedbackSheetState;
-  const student = state.student;
-  const item = (state.data?.summaries || []).find(summary => String(summary.id || '') === String(itemId || '')) || null;
-  if (!student || !item) {
-    alert('재생성할 종합 성장 기록을 찾을 수 없습니다. 성향 기록지를 다시 열어 주세요.');
-    return;
-  }
-  const btn = event?.currentTarget || null;
-  const summaryMonths = getSummaryMonthsFromAttendanceItem(item);
-  const labels = [`${summaryMonths}개월`];
-  loading = true;
-  if (btn) btn.disabled = true;
-  try { showFeedbackLoading('summary'); } catch (_) {}
-  try {
-    const material = await prepareConsultationFeedbackMaterial(student, summaryMonths, labels);
-    if (material.mode === 'elementary_one_month_records') throw new Error('초등부 1개월 상담은 종합 성장 기록 재생성 대상이 아닙니다.');
-    if (material.status !== 'ready' || !material.rows.length) throw new Error(material.reason || `최근 ${summaryMonths}개월 안에 사용할 수 있는 저장 피드백이 없습니다.`);
-    const reply = await createSummaryFeedbackFromRows(student, summaryMonths, material.rows, labels);
-    await softDeleteAttendanceSummaryFeedback(item);
-    await saveConsultationSummaryFeedbackAuto(student, summaryMonths, reply);
-    const refreshed = await loadAttendanceStudentFeedbackSheetItems(student);
-    renderAttendanceStudentFeedbackSheet(student, refreshed);
-    try { showPushToast('종합 성장 기록을 다시 생성했어요.'); } catch (_) {}
-  } catch (err) {
-    console.error('종합 성장 기록 재생성 오류:', err);
-    alert(`종합 성장 기록 재생성 중 오류가 발생했어요.\n\n${err.message || '알 수 없는 오류입니다.'}`);
-  } finally {
-    try { hideFeedbackLoading(); } catch (_) {}
-    if (btn) btn.disabled = false;
-    loading = false;
-  }
+async function regenerateAttendanceSummaryFeedback(itemId,event){
+  if(event){event.preventDefault();event.stopPropagation();}
+  alert('종합 피드백은 서버에서 관리합니다. 기존 기록을 삭제하는 재생성 기능은 중지되었습니다. 서버에서 제공하는 수정 기능을 사용해 주세요.');
 }
 
 window.regenerateAttendanceSummaryFeedback = regenerateAttendanceSummaryFeedback;
@@ -327,6 +293,33 @@ function getAttendanceFeedbackEditFeature(tableName) {
   if (table === 'summary_feedbacks') return 'summary_feedback_edit';
   return '';
 }
+
+async function changeAttendanceGrowthTargetMonth(itemId, event){
+  if(event){event.preventDefault();event.stopPropagation();}
+  const item=getAttendanceFeedbackSheetItemById(itemId,'feedback');
+  const student=attendanceStudentFeedbackSheetState.student;
+  if(!item||!student||!window.OlliFeedbackTargetMonth?.isGrowthRecord(item.row,item.sourceTable)){
+    alert('일반 성장 피드백 기록을 먼저 선택해 주세요.');return;
+  }
+  const btn=event?.currentTarget||null;
+  if(btn)btn.disabled=true;
+  try{
+    const saved=await window.OlliFeedbackTargetMonth.changeSavedMonth({
+      studentId:student.id,recordId:item.row?.id||item.rowId,row:item.row
+    });
+    if(!saved)return;
+    // UI refresh happens only after the server commits successfully.
+    const updated=await loadAttendanceStudentFeedbackSheetItems(student);
+    if(window.OlliPcPersonalityRecords?.refreshSelected&&document.getElementById('pcAttendanceCombinedBody')){
+      await window.OlliPcPersonalityRecords.refreshSelected();
+    }else renderAttendanceStudentFeedbackSheet(student,updated);
+    if(typeof showPushToast==='function')showPushToast('수업 대상 월을 '+saved.target_month+'로 수정했습니다.');
+  }catch(error){
+    console.error('성장 피드백 대상 월 변경 실패:',error);
+    alert('수업 대상 월을 변경하지 못했습니다.\\n'+(error.message||error));
+  }finally{if(btn?.isConnected)btn.disabled=false;}
+}
+window.changeAttendanceGrowthTargetMonth=changeAttendanceGrowthTargetMonth;
 
 function getAttendanceFeedbackActionCard(itemId, event) {
   const directCard = event?.currentTarget?.closest?.('.attendanceFeedbackSheetCard');
@@ -588,9 +581,13 @@ function renderAttendanceFeedbackSheetCards(items, emptyText, student, options =
     const dateText = formatAttendanceFeedbackSheetDate(item.createdAt || item.row?.date || '');
     const content = item.content || '';
     const preview = content.replace(/\s+/g, ' ').trim();
-    const summaryRegenerateButton = kind === 'summary'
-      ? `<button type="button" class="attendanceSummaryRegenerateBtn" onclick="regenerateAttendanceSummaryFeedback('${itemId}', event)" aria-label="종합 성장 기록 재생성">${getSummaryRegenerateIconSvg()}</button>`
+    const growthMonthAction=kind==='feedback'
+      && window.OlliFeedbackTargetMonth?.isGrowthRecord(item.row,item.sourceTable)
+      && item.row?.id
+      ? `<button type="button" class="attendanceFeedbackSheetActionBtn" onclick="changeAttendanceGrowthTargetMonth('${itemId}', event)">수업 월 ${escapeHtml(String(item.row.target_month||'미지정'))} · 정정</button>`
       : '';
+    // Legacy regeneration deletes historical records before saving; server-owned summaries must not use it.
+    const summaryRegenerateButton = '';
     const summaryBadge = showSummaryBadge && kind === 'summary'
       ? '<span class="attendanceFeedbackSummaryBadge">종합성장기록</span>'
       : '';
@@ -620,6 +617,7 @@ function renderAttendanceFeedbackSheetCards(items, emptyText, student, options =
       ${editArea}
       <div class="attendanceFeedbackSheetCardActions attendanceFeedbackSheetViewActions" onclick="event.stopPropagation()">
         <button type="button" class="attendanceFeedbackSheetActionBtn" onclick="copyAttendanceFeedbackSheetItem('${itemId}', '${kind}', event)">복사</button>
+        ${growthMonthAction}
         ${editButton}
         <button type="button" class="attendanceFeedbackSheetActionBtn delete" onclick="openAttendanceRecordDeleteOverlay('${itemId}', '${kind}', event)">삭제</button>
       </div>

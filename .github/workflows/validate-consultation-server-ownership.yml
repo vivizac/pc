@@ -1,0 +1,53 @@
+name: Validate consultation server ownership
+on:
+  pull_request:
+    paths:
+      - 'apps/pc/olli-consultation-runtime.js'
+      - 'apps/pc/olli-data-consultation-summary.js'
+      - 'apps/mobile/olli-consultation-mobile-runtime.js'
+      - 'apps/mobile/olli-student-core.js'
+      - 'apps/mobile/api/consultation-summary.js'
+      - 'apps/pc/api/consultation-summary.js'
+      - 'packages/common/olli-consultation-progress-client.js'
+      - 'tests/server-consultation-ownership.test.cjs'
+      - 'tests/server-consultation-concurrency.test.cjs'
+      - 'tests/growth-target-month-correction.test.cjs'
+      - 'packages/common/olli-feedback-target-month.js'
+      - 'apps/pc/olli-data-attendance-feedback.js'
+      - 'apps/mobile/olli-record-student-picker-phone-adapter.js'
+      - 'supabase/migrations/20261024135000_growth_feedback_target_month_correction.sql'
+      - 'supabase/migrations/20261023193000_consultation_server_source_of_truth.sql'
+      - '.github/workflows/validate-consultation-server-ownership.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax
+        run: |
+          node --check apps/pc/olli-consultation-runtime.js
+          node --check apps/pc/olli-data-consultation-summary.js
+          node --check apps/mobile/olli-consultation-mobile-runtime.js
+          node --check apps/mobile/olli-student-core.js
+          node --check apps/pc/api/consultation-summary.js
+          node --check apps/mobile/api/consultation-summary.js
+          node --check packages/common/olli-consultation-progress-client.js
+          node --check apps/pc/olli-data-attendance-feedback.js
+          node --check apps/mobile/olli-record-student-picker-phone-adapter.js
+          node --check packages/common/olli-feedback-target-month.js
+      - name: Stage shared scripts in both application builds
+        run: |
+          node apps/pc/scripts/stage-common.cjs
+          node apps/mobile/scripts/stage-common.cjs
+      - name: Contract tests
+        run: |
+          node --test tests/server-consultation-ownership.test.cjs
+          node --test tests/server-consultation-concurrency.test.cjs
+          node --test tests/growth-target-month-correction.test.cjs
+          node --test tests/consultation-summary-secure-pc-mobile.test.cjs
