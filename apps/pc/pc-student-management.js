@@ -242,6 +242,8 @@
       chip.textContent = label;
       if (reason) chip.title = String(reason);
       else chip.removeAttribute('title');
+      const legacyButton = row.querySelector('.recordAcademyConsultLegacyReviewBtn');
+      if(legacyButton) legacyButton.hidden = normalizedStatus === 'ready';
     });
   }
 
@@ -419,12 +421,29 @@
           + '<div class="recordAcademyConsultStudentMain"><div class="recordAcademyListName">'+escape(student.name)+'</div><div class="recordAcademyChipRow">'+chips.map((label) => '<span class="recordAcademyInfoChip recordAcademyRuleChip">'+escape(label)+'</span>').join('')+'</div></div>'
           + '<div class="recordAcademyConsultActions">'
           + consultationStatusChipHtml(student, dueLabels)
+          + (['owner','super_admin'].includes(typeof global.getOlliCurrentRole==='function'?global.getOlliCurrentRole():'')
+            ? '<button type="button" class="recordAcademyConsultLegacyReviewBtn"'
+              +' onclick="OlliPcStudentManagement.openLegacyReview(\''+jsSingleQuote(student.id)+'\')"'
+              +(consultationStatusCache.get(consultationStatusKey(student,dueLabels))?.status==='ready'?' hidden':'')
+              +'>기존 기록 연결</button>' : '')
           + '</div></div>';
       }).join('') : '<div class="recordAcademyConsultGroupEmpty">예정 학생 없음</div>';
       return '<div class="recordAcademyConsultGroup" data-pc-division="'+group.type+'"><div class="recordAcademyConsultGroupTitle"><span>'+group.label+'</span><span>'+group.students.length+'명</span></div><div class="recordAcademyList">'+rows+'</div></div>';
     }).join('');
   }
 
+  async function openLegacyReview(studentId){
+    if(!['owner','super_admin'].includes(typeof global.getOlliCurrentRole==='function'?global.getOlliCurrentRole():''))return;
+    const student=consultationStudents().find(s=>String(s.id||'')===String(studentId||''));
+    const task=global.OlliConsultationServer?.getPrimaryTask?.(student);
+    if(!student||!task||!global.OlliConsultationManualUI?.openLegacyReview){
+      alert('학생 또는 기존 피드백 연결 화면을 확인해 주세요.');return;
+    }
+    await global.OlliConsultationManualUI.openLegacyReview({
+      studentId:student.id,studentName:student.name,taskKey:task.key,
+      onLinked:async()=>{renderConsultationPanel();await resolveConsultationStatus(student,dueLabelsForStudent(student));}
+    });
+  }
   function renderConsultationPanel(due = consultationStudents()) {
     const panel = document.getElementById('pcAcademyDetailPanel');
     if (!panel) return;
@@ -599,7 +618,7 @@
     if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') renderDashboard();
   }
 
-  global.OlliPcStudentManagement = { renderContext, renderDashboard, renderTodoCard, renderMaterialOrders, renderConsultationPanel, loadServerTodos, loadMaterialOrders, open, filter, handleSearch, resolveStudent, bindRows, start };
+  global.OlliPcStudentManagement = { renderContext, renderDashboard, renderTodoCard, renderMaterialOrders, renderConsultationPanel, openLegacyReview, loadServerTodos, loadMaterialOrders, open, filter, handleSearch, resolveStudent, bindRows, start };
   global.pcOpenAcademyMaterials = openMaterials;
   global.pcAddAcademyTodo = addTodo;
   global.pcToggleAcademyTodo = toggleTodo;
