@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const migration=fs.readFileSync(path.join(__dirname,'..','supabase','migrations',
- '20261025120000_link_unique_october_2026_archived_consultation_summaries.sql'),'utf8');
+ '20261025002758_link_unique_october_2026_archived_consultation_summaries.sql'),'utf8');
 test('historical recovery is scoped to one academy, one due month, original-month fbm reports',()=>{
   assert.match(migration,/j\.academy_id = '6871d975-6c50-426d-97b1-81ac4e35ba27'/);
   assert.match(migration,/j\.due_month = '2026-10'/);

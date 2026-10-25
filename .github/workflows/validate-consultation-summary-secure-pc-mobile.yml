@@ -13,7 +13,7 @@ on:
       - 'tests/consultation-summary-secure-pc-mobile.test.cjs'
       - 'tests/consultation-legacy-owner-review.test.cjs'
       - 'tests/consultation-october-exact-backfill.test.cjs'
-      - 'supabase/migrations/20261025120000_link_unique_october_2026_archived_consultation_summaries.sql'
+      - 'supabase/migrations/20261025002758_link_unique_october_2026_archived_consultation_summaries.sql'
       - 'packages/common/api/_lib/consultation-summary-handler.cjs'
       - 'packages/common/olli-consultation-progress-client.js'
       - 'packages/common/olli-consultation-manual-summary-ui.js'
