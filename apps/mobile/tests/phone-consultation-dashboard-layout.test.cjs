@@ -88,9 +88,10 @@ test('mobile notice is a PC-style copy icon immediately left of status; PC untou
   assert.match(mobile.button.innerHTML, /stroke-width="1\.9"/);
   assert.equal(mobile.button.attrs['aria-label'], '학생 상담 안내문 복사');
   assert.equal(mobile.button.title, '안내문 복사');
-  assert.match(mobile.button.style.cssText, /width:28px;height:28px;border:none;border-radius:50%/);
+  assert.match(mobile.button.style.cssText, /width:28px;height:24px;min-height:24px;box-sizing:border-box;border:none;border-radius:50%/);
   assert.match(mobile.button.style.cssText, /background:transparent;color:#7f7f7f/);
   assert.equal(pc.button.textContent,'안내문 복사','desktop creation behavior is unchanged');
+  assert.match(pc.button.style.cssText,/height:24px;min-height:24px;box-sizing:border-box/);
   assert.match(pc.button.style.cssText,/border-radius:8px;background:#fff;color:#343d4b/);
   assert.match(copy,/button\.innerHTML = manualConsultationCopyIconSvg\(\)/,'icon restored after success');
   assert.equal(blobSha(style), '071040b9ba796a84b4664b9d761d3ea1123d4423');
@@ -108,5 +109,5 @@ test('restored scripts and stylesheet are explicitly cache-busted for installed 
   assert.match(html,/olli-academy-dashboard\.css\?v=20261024-original-ui-restore-1/);
   assert.match(html,/olli-consultation-mobile-runtime\.js\?v=20261024-month-only-1/);
   assert.match(html,/olli-settings-server-sync\.js\?v=20261024-remove-consultation-entry-1/);
-  assert.match(html,/olli-consultation-messages\.js\?v=20261025-mobile-copy-icon-1/);
+  assert.match(html,/olli-consultation-messages\.js\?v=20261025-copy-height-24-1/);
 });

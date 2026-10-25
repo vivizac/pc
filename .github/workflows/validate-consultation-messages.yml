@@ -11,6 +11,10 @@ on:
       - 'supabase/migrations/*consultation_message_templates.sql'
       - 'supabase/migrations/*consultation_message_usage_switch.sql'
       - 'tests/consultation-messages*'
+      - 'tests/consultation-copy-button-height.test.cjs'
+      - 'apps/mobile/tests/phone-consultation-dashboard-layout.test.cjs'
+      - 'apps/mobile/index.html'
+      - 'apps/pc/index.html'
       - 'tests/consultation-messages/**'
       - '.github/workflows/validate-consultation-messages.yml'
   workflow_dispatch:
@@ -26,4 +30,5 @@ jobs:
           node-version: '24'
       - run: npm ci --prefix tests/consultation-messages --ignore-scripts
       - run: node --test tests/consultation-messages.test.cjs tests/consultation-messages-db.test.cjs tests/consultation-messages-provider-sync.test.cjs
+      - run: node --test tests/consultation-copy-button-height.test.cjs apps/mobile/tests/phone-consultation-dashboard-layout.test.cjs
       - run: node --test tests/pc-build-closure.test.cjs tests/pc-self-contained-build.test.cjs tests/mobile-self-contained-build.test.cjs tests/vercel-monorepo-separation-contract.test.cjs
