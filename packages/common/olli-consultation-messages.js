@@ -487,10 +487,10 @@
         button.dataset.consultationCopyIcon = 'true';
         button.innerHTML = manualConsultationCopyIconSvg();
         button.title = '안내문 복사';
-        // Same 28px transparent, grey icon-button treatment as PC's recordHeadIconBtn.
-        button.style.cssText = 'flex:0 0 28px;order:-1;width:28px;height:28px;border:none;border-radius:50%;background:transparent;color:#7f7f7f;display:inline-flex;align-items:center;justify-content:center;padding:0;cursor:pointer';
+        // Keep the 28px horizontal icon target, but match the 24px status badge height.
+        button.style.cssText = 'flex:0 0 28px;order:-1;width:28px;height:24px;min-height:24px;box-sizing:border-box;border:none;border-radius:50%;background:transparent;color:#7f7f7f;display:inline-flex;align-items:center;justify-content:center;padding:0;cursor:pointer';
       } else {
-        button.style.cssText = 'flex-shrink:0;order:-1;border:1px solid #d8dce4;border-radius:8px;background:#fff;color:#343d4b;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer';
+        button.style.cssText = 'flex-shrink:0;order:-1;height:24px;min-height:24px;box-sizing:border-box;border:1px solid #d8dce4;border-radius:8px;background:#fff;color:#343d4b;padding:0 10px;font-size:12px;font-weight:600;line-height:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer';
       }
       button.addEventListener('click', async event => {
         event.preventDefault(); event.stopPropagation();
