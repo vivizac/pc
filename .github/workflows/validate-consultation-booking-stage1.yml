@@ -1,0 +1,60 @@
+name: Validate consultation booking stage 1
+on:
+  push:
+    branches:
+      - feature/olli-self-consultation-booking-20261025
+    paths:
+      - 'packages/common/olli-booking-policy.cjs'
+      - 'supabase/migrations/*_olli_booking_core_stage1.sql'
+      - 'tests/consultation-booking-stage1*'
+      - '.github/workflows/validate-consultation-booking-stage1.yml'
+  pull_request:
+    paths:
+      - 'packages/common/olli-booking-policy.cjs'
+      - 'supabase/migrations/*_olli_booking_core_stage1.sql'
+      - 'tests/consultation-booking-stage1*'
+      - '.github/workflows/validate-consultation-booking-stage1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: booking-stage1-local-only
+          POSTGRES_DB: booking_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d booking_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: booking-stage1-local-only
+      PGDATABASE: booking_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test slot policy and schema contract
+        run: node --test tests/consultation-booking-stage1.test.cjs
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+      - name: Bootstrap isolated Postgres
+        run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage1.bootstrap.sql
+      - name: Apply migration to isolated Postgres (never production)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261025150000_olli_booking_core_stage1.sql
+      - name: Integration tests — tenant safety, schedules, overlap, retry
+        run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage1.integration.sql
