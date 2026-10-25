@@ -1,4 +1,4 @@
-name: Validate consultation booking stage 1
+name: Validate consultation booking stages 1 and 2
 on:
   push:
     branches:
