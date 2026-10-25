@@ -5,11 +5,21 @@ on:
       - feature/olli-self-consultation-booking-20261025
     paths:
       - 'packages/common/olli-booking-policy.cjs'
+      - 'packages/common/api/_lib/olli-booking-handler.cjs'
       - 'supabase/migrations/*_olli_booking_core_stage1.sql'
+      - 'supabase/migrations/*_olli_booking_parent_stage2.sql'
       - 'tests/consultation-booking-stage1*'
+      - 'tests/consultation-booking-stage2*'
       - '.github/workflows/validate-consultation-booking-stage1.yml'
+      - 'packages/common/*-runtime-manifest.json'
+      - 'apps/*/api/olli-booking.js'
   pull_request:
     paths:
+      - 'packages/common/api/_lib/olli-booking-handler.cjs'
+      - 'supabase/migrations/*_olli_booking_parent_stage2.sql'
+      - 'tests/consultation-booking-stage2*'
+      - 'packages/common/*-runtime-manifest.json'
+      - 'apps/*/api/olli-booking.js'
       - 'packages/common/olli-booking-policy.cjs'
       - 'supabase/migrations/*_olli_booking_core_stage1.sql'
       - 'tests/consultation-booking-stage1*'
@@ -58,3 +68,11 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261025150000_olli_booking_core_stage1.sql
       - name: Integration tests — tenant safety, schedules, overlap, retry
         run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage1.integration.sql
+      - name: Apply stage 2 to isolated Postgres
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261025183000_olli_booking_parent_stage2.sql
+      - name: Test guardian API and schema contract
+        run: node --test tests/consultation-booking-stage2.test.cjs
+      - name: Test guardian scoped mutations and revocation
+        run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage2.integration.sql
+      - name: Test true concurrent booking collision
+        run: bash tests/consultation-booking-stage2.concurrent.sh
