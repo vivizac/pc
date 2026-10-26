@@ -245,7 +245,7 @@ function renderElementaryStudentRows(students, searchMode = false) {
       <div class="elementaryRowInner">
         ${renderPhoneElementaryAttendanceLeadIcon(student)}
         <span class="studentTextWrap">
-          <span>${escapeHtml(student.name)}</span>
+          <span>${escapeHtml(student.name)}${renderOlliStudentWeekendBadges(student)}</span>
           ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
         </span>
       </div>
@@ -280,7 +280,7 @@ function renderKinderStudentRows(students, searchMode = false) {
       <div class="kinderRowInner">
         ${renderPhoneKinderAttendanceLeadIcon(student)}
         <span class="studentTextWrap">
-          <span>${escapeHtml(student.name)}</span>
+          <span>${escapeHtml(student.name)}${renderOlliStudentWeekendBadges(student)}</span>
           ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
         </span>
       </div>
