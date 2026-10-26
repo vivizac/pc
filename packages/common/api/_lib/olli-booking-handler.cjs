@@ -117,7 +117,8 @@ function createHandler({fetchFn,env}={}){
     const args={p_token_hash:digest,p_date:null,p_start_at:null,
      p_request_key:null,p_reservation_id:null};
     // Authenticate at the same server boundary before any month response.
-    await rpc('olli_booking_parent_request',{...args,p_action:'snapshot'},fetchFn,env);
+    const snapshot=await rpc('olli_booking_parent_request',{...args,p_action:'snapshot'},fetchFn,env);
+    if(snapshot?.ok!==true)throw problem('ACCESS_DENIED',403);
     const cfg=await rpc('olli_booking_public_info',{p_slug:slug},fetchFn,env);
     if(cfg?.ok!==true)throw problem('ACADEMY_NOT_FOUND',404);
     let schedule;
