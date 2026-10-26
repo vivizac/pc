@@ -1642,7 +1642,7 @@
 <link rel="stylesheet" href="olli-booking-owner-ui.css?v=20261026-stage3">
 <link rel="stylesheet" href="pc-attendance.css?v=20261026-month-unset-guide-1">
 <link rel="stylesheet" href="pc-record-editor.css?v=20260930-record-colors-3">
-<link rel="stylesheet" href="pc-student-management.css?v=20261012-academy-work-orders-1">
+<link rel="stylesheet" href="pc-student-management.css?v=20261026-consultation-panel-1">
 <link rel="stylesheet" href="pc-trash.css">
 <link rel="stylesheet" href="consultation-survey.css">
 <link rel="stylesheet" href="pc-team-talk.css?v=20261008-avatar-picker-1">
@@ -1667,9 +1667,6 @@
     </button>
     <button class="olliPcNavBtn" data-pc-nav="consultation" type="button" onclick="pcOpenSection('consultation')">
       <svg viewBox="0 0 24 24"><path d="M6 4.5h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-4.5 3v-3H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"></path><path d="M8 9h8M8 13h5"></path></svg><span>상담기록</span>
-    </button>
-    <button class="olliPcNavBtn" data-pc-nav="booking" type="button" onclick="pcOpenSection('booking')">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="14" rx="2"></rect><path d="M8 4v4M16 4v4M4 11h16M8 15h3"></path></svg><span>상담 현황</span>
     </button>
     <div class="olliPcScheduleNavRow" id="olliPcScheduleNavRow">
     <button class="olliPcNavBtn" data-pc-nav="schedule" type="button" onclick="pcOpenSection('schedule')">
@@ -1711,8 +1708,6 @@
     <input class="olliPcSearch" id="olliPcSearch" type="search" placeholder="학생 검색" oninput="pcHandleTopSearch(this.value)">
   </div>
 </div>
-<!-- PAGE: Olli self-booking. Distinct from existing consultation feedback record. -->
-<div class="pageScreen olliBookingPcScreen" id="olliBookingPcScreen" aria-label="상담 현황" style="display:none"></div>
 <!-- PAGE: PC 팀톡 -->
 <div aria-hidden="true" class="pageScreen" data-page-key="pc-team-talk" data-page-name="업무" id="olliPcTeamTalkScreen">
   <div class="olliPcTeamTalkPage">
@@ -2138,7 +2133,7 @@
 <script src="olli-consultation-task-core.js?v=20261024-month-only-1"></script>
 <script src="olli-operations-consultation-policy.js?v=20261024-month-only-1"></script>
 <script src="olli-consultation-message-templates.js"></script>
-<script src="olli-consultation-messages.js?v=20261025-copy-height-24-1"></script>
+<script src="olli-consultation-messages.js?v=20261026-pc-copy-capsule-1"></script>
 <script src="olli-student-guardian-contact.js"></script>
 <link rel="stylesheet" href="olli-student-guardian-contact.css">
 <link rel="stylesheet" href="olli-student-weekend-badge.css?v=20261026-month-unset-guide-1">
@@ -4681,7 +4676,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <script src="pc-team-talk.js?v=20261008-avatar-picker-1"></script>
 <script src="pc-team-talk-material-orders.js?v=20261012-needed-date-archive-1"></script>
 <script src="pc-shell.js?v=20261019-sidebar-anchor-2"></script>
-<script src="pc-student-management.js?v=20261024-month-only-1"></script>
+<script src="pc-student-management.js?v=20261026-consultation-panel-1"></script>
 <script src="olli-feedback-photo-storage-common.js"></script>\n<script src="pc-kinder-feedback.js"></script>
 <script src="pc-note-voice.js?v=20260929-pc-notes-1"></script>
 <script src="pc-kcf-class-mode.js?v=20260929-pc-notes-1"></script>

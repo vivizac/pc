@@ -7,7 +7,7 @@
  if(!root)return;
  const KST='Asia/Seoul';
  const slug=String(new URLSearchParams(global.location.search).get('academy')||'');
- const state={phase:'booking',name:'',phone:'',
+ const state={phase:'choice',name:'',phone:'',
    session:'',month:'',day:'',start:'',slots:[],reservation:null,canReschedule:false,
    canCancel:false,loading:false,message:'',error:'',expiresAt:0,
    academyName:'',weeks:[2,3],weekdays:[1,2,3,4,5],slotStatus:'idle',demo:false};
@@ -43,6 +43,7 @@
     ACADEMY_NOT_FOUND:'학원 예약 링크가 올바르지 않습니다. 학원에 문의해 주세요.',
     DEMO_NOT_BOOKABLE:'화면 확인용 미리보기에서는 실제 예약이 저장되지 않습니다.',
     MATCH_NOT_FOUND:'학생 이름 또는 보호자 휴대전화번호가 올바르지 않습니다. 다시 입력해 주세요.',
+    BOOKING_NOT_FOUND:'해당 정보로 예약된 상담이 없습니다. 이름과 전화번호를 다시 확인해 주세요.',
     TOO_MANY_ATTEMPTS:'예약 시도가 많습니다. 잠시 후 다시 시도해 주세요.',
     ACCESS_DENIED:'인증이 만료되었습니다. 학생 확인부터 다시 진행해 주세요.',
     SLOT_UNAVAILABLE:'해당 시간은 다른 예약으로 마감되었습니다. 다른 시간을 선택해 주세요.',
@@ -54,7 +55,7 @@
   };return map[code]||'요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
  }
  function header(){
-  return '<header class="ogbBrand"><strong>'+esc(state.academyName||'학원명 확인 중')+'</strong><span>상담 예약</span></header>';
+  return '<header class="ogbBrand"><strong>'+esc(state.academyName||'학원명 확인 중')+'</strong>'+(state.phase==='choice'?'':'<span>상담 예약</span>')+'</header>';
  }
  function contactHtml(){
   if(state.session)return '';
@@ -114,10 +115,24 @@
   const d=koreaDate(new Date(r.start_at));
   return '<div class="ogbReserved"><strong>현재 예약</strong><p>'+esc(label(d.date))+' · '+esc(d.hm)+'</p></div>';
  }
+ function choiceHtml(){
+  return '<section class="ogbPanel ogbChoicePanel"><div class="ogbChoiceActions">'+
+      '<button type="button" class="ogbPrimary" data-action="choose-book">상담 예약하기</button>'+
+      '<button type="button" class="ogbSecondary" data-action="choose-change">기존 예약 변경하기</button>'+
+    '</div></section>';
+ }
+ function lookupHtml(){
+  return '<section class="ogbPanel"><div class="ogbTitleBand"><h1>예약 변경</h1></div>'+
+   '<p class="ogbMuted">예약하실 때 등록한 학생 이름과 보호자 휴대전화번호를 입력해 주세요.</p>'+
+   contactHtml()+
+   '<div class="ogbActions"><button type="button" class="ogbPrimary" data-action="lookup" '+
+      (state.loading?'disabled':'')+'>기존 예약 확인하기</button>'+
+     '<button type="button" class="ogbSecondary" data-action="choice">돌아가기</button></div></section>';
+ }
  function bookingHtml(){
   const res=state.reservation,modifying=state.phase==='change';
-  return '<section class="ogbPanel"><div class="ogbEyebrow">상담 예약</div>'+
-   '<h1>'+(modifying?'상담 일정 변경':res?'예약이 완료되었습니다':'상담 예약')+'</h1>'+
+  return '<section class="ogbPanel"><div class="ogbTitleBand"><h1>'+
+   (modifying?'상담 일정 변경':res?'예약이 완료되었습니다':'상담 예약')+'</h1></div>'+
    (state.demo?'<p class="ogbPreviewNote">화면 확인용 미리보기입니다. 표시된 시간은 예시이며 예약은 저장되지 않습니다.</p>':'')+
    (res?reservationHtml():'')+
    (res&&!modifying?'<p class="ogbMuted">예약을 변경하거나 취소하려면 아래 버튼을 선택해 주세요.</p>'+
@@ -138,13 +153,14 @@
  }
  function render(){
    root.innerHTML=header()+(state.phase==='invalid'?
-    '<section class="ogbPanel"><h1>상담 예약 주소를 확인해 주세요</h1></section>':bookingHtml())+
+    '<section class="ogbPanel"><h1>상담 예약 주소를 확인해 주세요</h1></section>':
+    state.phase==='choice'?choiceHtml():state.phase==='lookup'?lookupHtml():bookingHtml())+
     (state.error?info(state.error,'error'):'')+(state.message?info(state.message):'')+
     '<footer class="ogbFooter">예약이 어려우시다면 학원으로 문의해 주세요.</footer>';
  }
  function reset(){
    state.session='';state.name='';state.phone='';state.reservation=null;state.slots=[];
-   state.start='';state.day='';state.month=firstBookableMonth();state.phase='booking';state.slotStatus='idle';
+   state.start='';state.day='';state.month=firstBookableMonth();state.phase='choice';state.slotStatus='idle';
    state.error='';state.message='';render();
  }
  async function loadSnapshot(){
@@ -198,6 +214,30 @@
    }catch(e){state.error=explain(e.message);}
    finally{state.loading=false;render();}
  }
+ async function lookupExisting(){
+   if(state.loading||state.session)return;
+   const name=root.querySelector('[name="student_name"]');
+   const phone=root.querySelector('[name="guardian_phone"]');
+   if(!name?.reportValidity()||!phone?.reportValidity())return;
+   state.name=name.value.trim();state.phone=phone.value.trim();
+   if(!state.name||!state.phone)return;
+   state.loading=true;state.error='';state.message='';render();
+   try{
+     const result=await api('/api/olli-booking-public',{action:'lookup',
+       academy:slug,student_name:state.name,guardian_phone:state.phone});
+     state.session=result.session_token;
+     await loadSnapshot();
+     if(!state.reservation){
+       state.session='';state.phase='lookup';
+       state.error=explain('BOOKING_NOT_FOUND');
+     }else{
+       // A returning parent goes straight into the existing reschedule screen.
+       state.phase=state.canReschedule?'change':'booking';
+       if(!state.canReschedule)state.message='이 예약은 학원에서 변경을 허용하지 않았습니다.';
+     }
+   }catch(e){state.session='';state.error=explain(e.message);state.phase='lookup';}
+   finally{state.loading=false;render();}
+ }
  async function cancel(){
    if(!state.reservation||!state.canCancel||state.loading)return;
    if(!global.confirm('현재 상담 예약을 취소하시겠습니까?'))return;
@@ -208,7 +248,7 @@
      await loadSnapshot();
      // A fresh booking after cancellation must match name and phone again.
      state.session='';state.name='';state.phone='';state.month=firstBookableMonth();
-     state.message='예약을 취소했습니다.';
+     state.phase='choice';state.message='예약을 취소했습니다.';
    }catch(e){state.error=explain(e.message);}
    finally{state.loading=false;render();}
  }
@@ -222,6 +262,10 @@
    if(node.hasAttribute('data-date')){await available(node.dataset.date);return;}
    if(node.hasAttribute('data-start')){state.start=node.dataset.start;render();return;}
    switch(node.dataset.action){
+   case 'choose-book':state.phase='booking';state.error='';render();break;
+   case 'choose-change':state.phase='lookup';state.error='';render();break;
+   case 'lookup':await lookupExisting();break;
+   case 'choice':reset();break;
    case 'restart':reset();break;
    case 'prev':state.month=monthShift(state.month,-1);state.day='';state.start='';state.slots=[];render();break;
    case 'next':state.month=monthShift(state.month,1);state.day='';state.start='';state.slots=[];render();break;

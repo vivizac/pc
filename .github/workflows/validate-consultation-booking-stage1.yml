@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/olli-self-consultation-booking-20261025
+      - feature/olli-consultation-tabs-20261026
     paths:
       - 'packages/common/olli-booking-policy.cjs'
       - 'packages/common/api/_lib/olli-booking-handler.cjs'
@@ -22,6 +23,10 @@ on:
       - 'apps/*/consultation-booking.html'
       - 'apps/*/api/olli-booking-public.js'
       - 'tests/consultation-booking-stage4*'
+      - 'supabase/migrations/*_olli_booking_revisit_stage5.sql'
+      - 'tests/consultation-booking-stage5*'
+      - 'apps/pc/consultation-survey-core.js'
+      - 'apps/pc/consultation-survey.css'
       - 'tests/consultation-manual-copy-booking-link.test.cjs'
       - 'tests/consultation-booking-browser.test.cjs'
       - 'packages/common/olli-consultation-messages.js'
@@ -110,6 +115,17 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026140000_olli_booking_public_academy_stage4.sql
       - name: Verify name-and-guardian-phone-only matching and OTP safety
         run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage4.integration.sql
+      - name: Apply read-only existing booking lookup support (isolated DB)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026173000_olli_booking_revisit_stage5.sql
+      - name: Verify existing booking identity and security (isolated DB)
+        run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage5.integration.sql
+      - name: Verify combined PC consultation panel and copy button behavior
+        run: node --test tests/consultation-copy-button-height.test.cjs tests/pc-consultation-tenure-badge.test.cjs
+      - name: Validate consultation records tabs
+        run: |
+          node --check apps/pc/consultation-survey-core.js
+          node --check apps/pc/pc-shell.js
+          node --test tests/consultation-booking-stage3-ui.test.cjs
       - name: Check academy-wide public booking API and screens
         run: |
           node --check packages/common/api/_lib/olli-booking-public-handler.cjs

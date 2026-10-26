@@ -21,12 +21,20 @@ function makeApi(fetchFn,envOverride={}){
   headers:{host:'booking.example.org',origin:'https://booking.example.org'},body,
   socket:{remoteAddress:'192.0.2.12'}},res);return res;};
 }
-test('calendar is immediate; name and phone precede calendar; no OTP, age or grade',()=>{
+test('choice screen precedes calendar; booking shows name and phone before calendar; no OTP',()=>{
  for(const p of ['apps/pc/consultation-booking.html','apps/mobile/consultation-booking.html']){
   const html=fs.readFileSync(path.join(base,p),'utf8');
   assert.match(html,/olli-booking-guardian\.js/);assert.match(html,/noindex,nofollow/);
  }
- assert.match(guardian,/phase:'booking'/);
+ assert.match(guardian,/phase:'choice'/);
+ assert.match(guardian,/data-action="choose-book"/);
+ assert.match(guardian,/data-action="choose-change"/);
+ assert.match(guardian,/ogbChoicePanel/);
+ assert.doesNotMatch(guardian,/ogbTitleBand"><h1>상담 예약<\/h1><\/div>/);
+ const styles=fs.readFileSync(path.join(base,'packages/common/olli-booking-guardian.css'),'utf8');
+ assert.match(styles,/--ogb-survey-green:#079eb3/);
+ assert.match(styles,/\.ogbChoicePanel \.ogbChoiceActions \.ogbSecondary/);
+ assert.match(guardian,/action:'lookup'/);
  assert.match(guardian,/credentials:'same-origin'/);
  assert.doesNotMatch(guardian,/credentials:'omit'/);
  assert.match(guardian,/PREVIEW_ACCESS_REQUIRED/);
@@ -38,6 +46,7 @@ test('calendar is immediate; name and phone precede calendar; no OTP, age or gra
  assert.doesNotMatch(guardian,/localStorage\.|sessionStorage\./);
  assert.match(guardian,/action:'slots',academy:slug,date/);
  assert.match(guardian,/state.academyName/);
+ assert.doesNotMatch(guardian,/ogbEyebrow">상담 예약/);
  assert.doesNotMatch(guardian,/학생 정보 확인|상담 예약하기를 누르면 올리에 등록된 학생 정보와 대조합니다/);
  assert.match(guardian,/slotStatus==='error'/);
  assert.match(guardian,/allowedDay\(day\)/);
@@ -166,4 +175,34 @@ test('QA health probe verifies real preview mode, without DB access or productio
   env:{...env,VERCEL_ENV:'production',OLLI_BOOKING_QA_DEMO:'1'}});
  const r2=mock();await prod(req,r2);
  assert.equal(r2.statusCode,404);
+});
+
+test('reopened booking can be looked up only after exact name and phone match',async()=>{
+ let called;
+ const fn=makeApi(async(url,opt)=>{
+  called={url,params:JSON.parse(opt.body)};
+  return {ok:true,json:async()=>({ok:true})};
+ });
+ const r=await fn({action:'lookup',academy:slug,student_name:'김하늘',guardian_phone:'010-1234-5678'});
+ assert.equal(r.statusCode,200);
+ assert.match(r.body.session_token,/^[A-Za-z0-9_-]{43}$/);
+ assert.match(called.url,/olli_booking_public_lookup/);
+ assert.equal(called.params.p_guardian_phone,'01012345678');
+ assert.deepEqual(Object.keys(called.params).sort(),[
+  'p_slug','p_student_name','p_guardian_phone','p_session_hash','p_ip_digest'].sort());
+ assert.ok(!JSON.stringify(r.body).includes('01012345678'));
+});
+test('a nonexistent booking or wrong number cannot receive a scoped token',async()=>{
+ const forCode=code=>makeApi(async()=>({ok:true,json:async()=>({ok:false,code})}));
+ const request={action:'lookup',academy:slug,student_name:'김하늘',guardian_phone:'01012345678'};
+ const missing=await (forCode('BOOKING_NOT_FOUND'))(request);
+ assert.equal(missing.statusCode,404);assert.equal(missing.body.code,'BOOKING_NOT_FOUND');
+ const wrong=await (forCode('MATCH_NOT_FOUND'))(request);
+ assert.equal(wrong.statusCode,400);assert.equal(wrong.body.code,'MATCH_NOT_FOUND');
+ assert.ok(!('session_token' in missing.body)&&!('session_token' in wrong.body));
+ const schema=fs.readFileSync(path.join(base,'supabase/migrations/20261026173000_olli_booking_revisit_stage5.sql'),'utf8');
+ assert.match(schema,/v_matches<>1/);
+ assert.match(schema,/status='confirmed'/);
+ assert.match(schema,/TOO_MANY_ATTEMPTS/);
+ assert.match(schema,/from public,anon,authenticated/);
 });

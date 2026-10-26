@@ -144,14 +144,10 @@
     }
     // 이전 PC 관찰노트 route/탭 호출은 성향기록부로 안전하게 흡수합니다.
     if (section === 'feedback' || section === 'observation') section = SECTION.PERSONALITY_RECORDS;
+    // Old booking navigation remains compatible, but now routes to 상담기록 tabs.
+    if (section === SECTION.BOOKING) section = SECTION.CONSULTATION;
     if (section !== SECTION.PERSONALITY_RECORDS) personalityRecordsFeature()?.unmountEditor?.();
     setChrome(section);
-    if (section === SECTION.BOOKING) {
-      hideMainScreensExcept('olliBookingPcScreen');
-      return feature('OlliBookingDashboard')?.open('pc');
-    }
-    const bookingPage = document.getElementById('olliBookingPcScreen');
-    if (bookingPage) bookingPage.style.display = 'none';
 
     if (section === SECTION.ACADEMY) return feature('OlliPcStudentManagement')?.open();
     if (section === SECTION.PERSONALITY_RECORDS) return personalityRecordsFeature()?.open();
@@ -215,7 +211,7 @@
   setTimeout(bindPcTopSearchStability, 0);
 
   function visibleMainPage() {
-    const ids = ['recordRoomScreen', 'studentMemoScreen', 'kinderChatFeedbackScreen', 'olliBookingPcScreen'];
+    const ids = ['recordRoomScreen', 'studentMemoScreen', 'kinderChatFeedbackScreen', 'consultationSurveyScreen'];
     return ids.find((id) => {
       const element = document.getElementById(id);
       return element && getComputedStyle(element).display !== 'none';
@@ -238,8 +234,8 @@
     const page = visibleMainPage();
     if (!page) return;
     let nextSection = state.section;
-    if (page === 'olliBookingPcScreen') {
-      nextSection = SECTION.BOOKING;
+    if (page === 'consultationSurveyScreen') {
+      nextSection = SECTION.CONSULTATION;
     } else if (page === 'recordRoomScreen' && !['academy', 'attendance', 'schedule'].includes(nextSection)) {
       nextSection = typeof currentRecordView !== 'undefined' && currentRecordView === 'academy' ? 'academy' : 'attendance';
     } else if (page === 'studentMemoScreen' || page === 'kinderChatFeedbackScreen') {

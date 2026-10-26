@@ -23,6 +23,7 @@ let selectedId='';
 let pollTimer=null;
 let analysisLoadPromise=null;
 const detailTabById=new Map();
+let activePageTab='booking';
 const consultationScriptBase=(document.currentScript&&document.currentScript.src)?document.currentScript.src:location.href;
 const ROWS_CACHE_PREFIX='olli_consultation_rows_cache_v1';
 
@@ -80,10 +81,16 @@ function ensureScreen(){
   screen.className='pageScreen';
   screen.id='consultationSurveyScreen';
   screen.dataset.pageKey='consultation-survey';
-  screen.dataset.pageName='상담 설문';
+  screen.dataset.pageName='상담기록';
   screen.innerHTML=`<div class="consultationManagerPage">
+    <div class="consultationPageTabs" role="tablist" aria-label="상담기록 화면 선택">
+      <button type="button" class="consultationPageTab" role="tab" id="consultationPageTabBooking" aria-controls="olliConsultationBookingPanel" aria-selected="true" data-consultation-page-tab="booking" onclick="setConsultationPageTab('booking')">상담예약현황</button>
+      <button type="button" class="consultationPageTab" role="tab" id="consultationPageTabSurvey" aria-controls="olliConsultationSurveyPanel" aria-selected="false" data-consultation-page-tab="survey" onclick="setConsultationPageTab('survey')">설문기록</button>
+    </div>
+    <section id="olliConsultationBookingPanel" class="olliConsultationBookingPanel" role="tabpanel" aria-labelledby="consultationPageTabBooking" hidden></section>
+    <section id="olliConsultationSurveyPanel" class="olliConsultationSurveyPanel" role="tabpanel" aria-labelledby="consultationPageTabSurvey" hidden>
     <div class="consultationManagerHead">
-      <div><div class="consultationManagerTitle">상담 설문</div><div class="consultationManagerDesc">학부모가 설문을 제출하면 이곳에 학생 명단이 표시됩니다.</div></div>
+      <div><div class="consultationManagerDesc">학부모가 설문을 제출하면 이곳에 학생 명단이 표시됩니다.</div></div>
       <div class="consultationManagerActions">
         <button class="consultationRefreshBtn" type="button" onclick="refreshConsultationSurveyManager()"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"></path><path d="M20 5v6h-6"></path></svg><span>새로고침</span></button>
         <button class="consultationLinkCopyBtn" type="button" onclick="copyConsultationSurveyLink()"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="10" height="10" rx="2"></rect><path d="M15 9V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"></path></svg><span>설문지 페이지 링크 복사</span></button>
@@ -94,6 +101,7 @@ function ensureScreen(){
       <section class="consultationListCard"><div class="consultationListHeader"><span>학생</span><span>나이/학년</span><span>제출일</span><span>상태</span></div><div class="consultationListBody" id="consultationSurveyListBody"><div class="consultationEmpty">아직 제출된 상담 설문이 없습니다.<br>오른쪽 위의 링크 복사 버튼으로 학부모에게 설문을 보내주세요.</div></div></section>
       <aside class="consultationDetailCard" id="consultationSurveyDetailCard"><div class="consultationDetailEmpty">명단에서 학생을 선택하면<br>설문 응답과 분석 준비 내용을 확인할 수 있습니다.</div></aside>
     </div>
+    </section>
   </div>`;
   document.body.appendChild(screen);
 }
@@ -118,8 +126,13 @@ async function loadRows(){
 function renderContext(){
   const shell=document.getElementById('olliPcShell');if(shell?.dataset.pcSection!=='consultation')return;
   const title=document.getElementById('olliPcContextTitle');const body=document.getElementById('olliPcContextBody');
-  if(title)title.textContent='설문 명단 '+rows.length;
-  if(body){const done=rows.filter(r=>String(r.status||'survey_completed')==='survey_completed').length;body.innerHTML=`<button class="olliPcQuickBtn active" onclick="refreshConsultationSurveyManager()"><span>전체 제출</span><span>${rows.length}</span></button><button class="olliPcQuickBtn" onclick="refreshConsultationSurveyManager()"><span>설문 완료</span><span>${done}</span></button>`;}
+  if(activePageTab==='booking'){
+    if(title)title.textContent='상담 예약 관리';
+    if(body)body.innerHTML='';
+  }else{
+    if(title)title.textContent='설문 명단 '+rows.length;
+    if(body){const done=rows.filter(r=>String(r.status||'survey_completed')==='survey_completed').length;body.innerHTML=`<button class="olliPcQuickBtn active" onclick="refreshConsultationSurveyManager()"><span>전체 제출</span><span>${rows.length}</span></button><button class="olliPcQuickBtn" onclick="refreshConsultationSurveyManager()"><span>설문 완료</span><span>${done}</span></button>`;}
+  }
   const topTitle=document.getElementById('olliPcTopbarTitle');if(topTitle)topTitle.textContent='상담기록';
 }
 function render(){
@@ -171,20 +184,39 @@ window.copyConsultationSurveyLink=async function(){
   catch(_){const ta=document.createElement('textarea');ta.value=link;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert('상담 설문 링크를 복사했습니다.');}
 };
 
-function showConsultationScreen(){
+function setPageTab(tab){
+  ensureScreen();
+  activePageTab=tab==='survey'?'survey':'booking';
+  const booking=document.getElementById('olliConsultationBookingPanel');
+  const survey=document.getElementById('olliConsultationSurveyPanel');
+  if(booking)booking.hidden=activePageTab!=='booking';
+  if(survey)survey.hidden=activePageTab!=='survey';
+  document.querySelectorAll('#consultationSurveyScreen [data-consultation-page-tab]').forEach(button=>{
+    const active=button.dataset.consultationPageTab===activePageTab;
+    button.classList.toggle('active',active);
+    button.setAttribute('aria-selected',String(active));
+    button.tabIndex=active?0:-1;
+  });
+  if(activePageTab==='booking' && document.getElementById('consultationSurveyScreen').style.display!=='none')
+    window.OlliBookingDashboard?.open('pc');
+  renderContext();
+}
+window.setConsultationPageTab=setPageTab;
+function showConsultationScreen(tab){
   ensureScreen();document.querySelectorAll('.pageScreen').forEach(s=>s.style.display=s.id==='consultationSurveyScreen'?'flex':'none');
   const activeAcademyId=academyId();
   if(rowsAcademyId!==activeAcademyId){rows=readRowsCache();rowsAcademyId=activeAcademyId;}
   render();
-  window.refreshConsultationSurveyManager();
+  setPageTab(tab||activePageTab);
+  if(activePageTab==='survey')window.refreshConsultationSurveyManager();
 }
 function installPcHook(){
   if(typeof window.pcOpenSection!=='function'||window.pcOpenSection.__consultationHook)return;
   const original=window.pcOpenSection;
   const wrapped=async function(section){
-    if(section==='consultation'){
-      await original.call(this,section);
-      showConsultationScreen();
+    if(section==='consultation'||section==='booking'){
+      await original.call(this,'consultation');
+      showConsultationScreen(section==='booking'?'booking':activePageTab);
       return;
     }
     const screen=document.getElementById('consultationSurveyScreen');if(screen)screen.style.display='none';
@@ -192,7 +224,10 @@ function installPcHook(){
   };
   wrapped.__consultationHook=true;window.pcOpenSection=wrapped;
 }
-function startPolling(){clearInterval(pollTimer);pollTimer=setInterval(()=>{const screen=document.getElementById('consultationSurveyScreen');if(screen&&getComputedStyle(screen).display!=='none')window.refreshConsultationSurveyManager();},20000);}
+function startPolling(){clearInterval(pollTimer);pollTimer=setInterval(()=>{
+  const screen=document.getElementById('consultationSurveyScreen');
+  if(screen&&getComputedStyle(screen).display!=='none'&&activePageTab==='survey')window.refreshConsultationSurveyManager();
+},20000);}
 function init(){ensureScreen();installPcHook();startPolling();loadAnalysisEngine().catch(()=>{});}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();

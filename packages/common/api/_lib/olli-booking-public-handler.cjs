@@ -139,6 +139,31 @@ function createHandler({fetchFn=fetch,env=process.env}={}){
     const d=await rpc('olli_booking_public_slots',{p_slug:slug,p_date:date},fetchFn,env);
     return out(res,200,{ok:true,slots:Array.isArray(d?.slots)?d.slots:[]});
    }
+   if(action==='lookup'){
+    // Lookup is allowed only after the parent enters both student name and
+    // the confirmed guardian mobile. Never return student PII or booking data
+    // until a fresh short-lived scoped token has been issued.
+    if(qaPreview(env,slug))throw error('DEMO_NOT_BOOKABLE',503);
+    const name=String(body.student_name||'').trim();
+    const phone=String(body.guardian_phone||'').replace(/[-\s]/g,'');
+    if(name.length<2||name.length>60||!DIGITS.test(phone))
+      throw error('FORM_INVALID');
+    const secret=authSecret(env);
+    const token=crypto.randomBytes(32).toString('base64url');
+    const d=await rpc('olli_booking_public_lookup',{
+      p_slug:slug,p_student_name:name,p_guardian_phone:phone,
+      p_session_hash:crypto.createHash('sha256').update(token).digest('hex'),
+      p_ip_digest:ipDigest(req,secret,env)
+    },fetchFn,env);
+    if(d?.ok!==true){
+      const code=['MATCH_NOT_FOUND','BOOKING_NOT_FOUND','TOO_MANY_ATTEMPTS']
+        .includes(d?.code)?d.code:'BOOKING_NOT_AVAILABLE';
+      const status={MATCH_NOT_FOUND:400,BOOKING_NOT_FOUND:404,
+        TOO_MANY_ATTEMPTS:429}[code]||503;
+      return out(res,status,{ok:false,code});
+    }
+    return out(res,200,{ok:true,session_token:token});
+   }
    if(action==='reserve'){
     if(qaPreview(env,slug))throw error('DEMO_NOT_BOOKABLE',503);
     const name=String(body.student_name||'').trim();

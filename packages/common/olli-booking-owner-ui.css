@@ -27,10 +27,15 @@
 .obmListHeader{display:flex;justify-content:space-between;align-items:center;margin:12px 2px}
 .obmListHeader strong{font-size:17px}
 .obmRows{background:#fff;border:1px solid #eaedf1;border-radius:14px;overflow:hidden}
-.obmRow{display:grid;grid-template-columns:128px minmax(0,1fr) auto;align-items:center;padding:16px 18px;gap:18px;border-bottom:1px solid #f0f1f4}
+.obmRow{display:grid;grid-template-columns:195px minmax(0,1fr) auto;align-items:center;padding:16px 18px;gap:18px;border-bottom:1px solid #f0f1f4}
 .obmRow:last-child{border-bottom:0}
-.obmRowTime,.obmRowMain{display:flex;flex-direction:column;gap:5px}
-.obmRowTime strong{font-size:17px;color:#1d7fdf}
+.obmRowTime{display:flex;align-items:center;min-width:0}
+.obmRowMain{display:flex;flex-direction:row;align-items:center;gap:12px;min-width:0;flex-wrap:nowrap}
+.obmRowMain strong,.obmRowMain span{white-space:nowrap}
+.obmRowMain strong{overflow:hidden;text-overflow:ellipsis}
+.obmRowTime strong{display:block;font-size:15px;color:#1d7fdf;white-space:nowrap;font-weight:750}
+.obmRowDate{color:#202b3b}
+.obmRowClock{color:#1687ff;margin-left:3px}
 .obmRowTime small,.obmRowMain span{font-size:12px;color:#858c95}
 .obmRowMain strong{font-size:15px}
 .obmRowActions{display:flex;gap:7px}
@@ -84,3 +89,14 @@
 }
 
 .obmLinkRow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.obmLinkRow button{border:1px solid #d8e2ed;background:#fff;border-radius:9px;padding:10px 14px;color:#187bdb;font-size:12px;font-weight:750;cursor:pointer}.obmLinkAddress{word-break:break-all;padding:10px 13px;border-radius:9px;background:#fff;color:#546172;border:1px solid #e7eaef;font-size:12px;user-select:all}
+
+#olliConsultationBookingPanel[hidden]{display:none!important}
+#olliConsultationBookingPanel{width:100%;min-width:0}
+#olliConsultationBookingPanel .obmLayout{max-width:none}
+#olliConsultationBookingPanel .obmHeader{margin-top:0}
+@media(max-width:800px){
+ #olliConsultationBookingPanel .obmRow{grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:14px}
+ #olliConsultationBookingPanel .obmRowTime{grid-column:1/-1}
+ #olliConsultationBookingPanel .obmRowMain{grid-column:1}
+ #olliConsultationBookingPanel .obmRowActions{grid-column:2;grid-row:2}
+}

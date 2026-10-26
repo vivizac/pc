@@ -23,24 +23,26 @@ function setup(owner=true){
     settings:{weeks:[2,3],weekdays:[1,2,3,4,5],start_time:'11:00:00',end_time:'17:00:00',slot_minutes:30,
       allow_parent_cancel:true,allow_parent_reschedule:true,revision:1}};
  },crypto:{randomUUID:()=>'11111111-1111-4111-8111-111111111111'}};
- const document={readyState:'loading',addEventListener(){},getElementById:(id)=>id==='olliBookingPcScreen'?root:null};
+ const document={readyState:'loading',addEventListener(){},getElementById:(id)=>id==='olliConsultationBookingPanel'?root:null};
  const localStorage={getItem:(key)=>({'olli_current_academy_id':'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   'olli_account_session_token_v1':'owner-session'})[key]||''};
  vm.runInNewContext(source,{window,document,localStorage,Intl,Date,console,MutationObserver:class{}});
  return {window,root,calls};
 }
 
-test('PC new independent sidebar route does not replace 상담기록 or student management',()=>{
+test('PC consultation booking is a tab inside 상담기록, not standalone sidebar route',()=>{
  assert.match(pc,/data-pc-nav="consultation"[^>]*[\s\S]*?<span>상담기록<\/span>/);
- assert.match(pc,/data-pc-nav="booking"[^>]*[\s\S]*?<span>상담 현황<\/span>/);
- assert.match(pc,/id="olliBookingPcScreen"/);
+ assert.doesNotMatch(pc,/data-pc-nav="booking"/);
+ assert.doesNotMatch(pc,/id="olliBookingPcScreen"/);
  assert.match(shell,/BOOKING:\s*'booking'/);
- assert.match(shell,/hideMainScreensExcept\('olliBookingPcScreen'\)/);
- assert.match(shell,/feature\('OlliBookingDashboard'\)\?\.open\('pc'\)/);
- assert.match(shell,/nextSection = SECTION\.BOOKING/);
+ assert.match(source,/getElementById\('olliConsultationBookingPanel'\)/);
+ assert.doesNotMatch(shell,/hideMainScreensExcept\('olliBookingPcScreen'\)/);
  assert.match(pc,/olli-booking-owner-ui\.js/);
+ const survey=require('node:fs').readFileSync(require('node:path').join(__dirname,'../apps/pc/consultation-survey-core.js'),'utf8');
+ assert.match(survey,/상담예약현황/);
+ assert.match(survey,/설문기록/);
+ assert.match(survey,/role="tabpanel"/);
 });
-
 test('mobile dashboard shortcut is additive and uses dedicated mobile view',()=>{
  assert.match(mobile,/id="recordAcademyDashboard"/);
  assert.match(mobile,/olli-booking-owner-ui\.css/);
@@ -70,6 +72,9 @@ test('PC starts owner-scoped data load, month is YYYY-MM, no fake reservations',
  assert.match(calls[0].body.p_month,/^\d{4}-(0[1-9]|1[0-2])$/);
  assert.match(root.innerHTML,/상담 현황/);
  assert.match(root.innerHTML,/예약 아이/);
+ assert.match(root.innerHTML,/11월 9일\(월\)/);
+ assert.match(root.innerHTML,/11:00/);
+ assert.doesNotMatch(root.innerHTML,/<small>11월 9일/);
  assert.match(root.innerHTML,/캘린더/);
  assert.match(root.innerHTML,/예약 설정/);
  assert.doesNotMatch(root.innerHTML,/데모 데이터|가상 예약/);
