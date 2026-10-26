@@ -31,6 +31,7 @@ on:
       - 'apps/pc/pc-shell.js'
       - 'tests/consultation-manual-copy-booking-link.test.cjs'
       - 'tests/consultation-booking-browser.test.cjs'
+      - 'tests/consultation-topbar-browser.test.cjs'
       - 'packages/common/olli-consultation-messages.js'
       - '.github/workflows/validate-consultation-booking-stage1.yml'
       - 'packages/common/*-runtime-manifest.json'
@@ -149,4 +150,4 @@ jobs:
       - name: Install headless Chromium
         run: tests/consultation-messages/node_modules/.bin/playwright install --with-deps chromium
       - name: Exercise PC and mobile width in headless browser with all API calls mocked
-        run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-booking-browser.test.cjs
+        run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-booking-browser.test.cjs tests/consultation-topbar-browser.test.cjs
