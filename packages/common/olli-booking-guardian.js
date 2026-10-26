@@ -10,7 +10,7 @@
  const slug=String(params.get('academy')||'');
  // An explicit opt-in shows safe status codes without exposing personal inputs.
  const diagnosticMode=params.get('booking_debug')==='1';
- const state={phase:'choice',name:'',phone:'',
+ const state={phase:'choice',academyStatus:'loading',name:'',phone:'',
    session:'',month:'',day:'',start:'',slots:[],reservation:null,canReschedule:false,
    canCancel:false,loading:false,message:'',error:'',expiresAt:0,
    academyName:'',weeks:[2,3],weekdays:[1,2,3,4,5],slotStatus:'idle',monthLoading:false,demo:false};
@@ -190,12 +190,51 @@
    (res?'<button type="button" class="ogbTextBtn" data-action="restart">다른 상담 예약하기</button>':'')+
    '</section>';
  }
+ function bootLoadingHtml(){
+   return '<div class="ogbBoot" role="status" aria-live="polite" aria-busy="true">'+
+     '<div class="ogbBootContent"><strong class="ogbBootLogo">OLLI</strong>'+
+     '<span class="ogbBootSpinner" aria-hidden="true"></span>'+
+     '<p>상담 예약 페이지를 준비하고 있습니다.</p></div></div>';
+ }
  function render(){
+   if(state.academyStatus==='loading'){
+    root.innerHTML=bootLoadingHtml();
+    return;
+   }
+   if(state.academyStatus==='error'){
+    root.innerHTML='<div class="ogbLoadError"><strong class="ogbLoadErrorLogo">OLLI</strong>'+
+      '<section class="ogbPanel"><h1>상담 예약 페이지를 열 수 없습니다.</h1>'+
+      '<p class="ogbMuted">연결 상태를 확인한 뒤 다시 시도해 주세요.</p>'+
+      '<button type="button" class="ogbPrimary" data-action="retry-academy">다시 시도하기</button></section>'+
+      (state.error?info(state.error,'error'):'')+
+      '<footer class="ogbFooter">예약이 어려우시다면 학원으로 문의해 주세요.</footer></div>';
+    return;
+   }
    root.innerHTML=header()+(state.phase==='invalid'?
     '<section class="ogbPanel"><h1>상담 예약 주소를 확인해 주세요</h1></section>':
     state.phase==='choice'?choiceHtml():state.phase==='lookup'?lookupHtml():bookingHtml())+
     (state.error?info(state.error,'error'):'')+(state.message?info(state.message):'')+
     '<footer class="ogbFooter">예약이 어려우시다면 학원으로 문의해 주세요.</footer>';
+ }
+ async function loadAcademy(){
+   state.academyStatus='loading';
+   state.error='';render();
+   try{
+    const r=await api('/api/olli-booking-public',{action:'info',academy:slug});
+    const academyName=String(r.academy_name||'').trim();
+    if(!academyName)throw new Error('ACADEMY_NOT_FOUND');
+    state.academyName=academyName;
+    state.weeks=Array.isArray(r.weeks)?r.weeks:[2,3];
+    state.weekdays=Array.isArray(r.weekdays)?r.weekdays:[1,2,3,4,5];
+    state.demo=r.demo===true;
+    if(!state.day&&!state.reservation)state.month=firstBookableMonth();
+    state.academyStatus='ready';
+    render();
+   }catch(e){
+    state.academyStatus='error';
+    state.error=errorMessage(e);
+    render();
+   }
  }
  function reset(){
    state.session='';state.name='';state.phone='';state.reservation=null;state.slots=[];
@@ -365,6 +404,7 @@
    if(node.hasAttribute('data-date')){available(node.dataset.date);return;}
    if(node.hasAttribute('data-start')){state.start=node.dataset.start;render();return;}
    switch(node.dataset.action){
+   case 'retry-academy':void loadAcademy();break;
    case 'choose-book':state.phase='booking';state.error='';render();void loadMonth();break;
    case 'choose-change':state.phase='lookup';state.error='';render();break;
    case 'lookup':await lookupExisting();break;
@@ -379,21 +419,13 @@
    case 'cancel':await cancel();break;
    }
  });
- if(!/^[0-9a-f]{36}$/.test(slug)){state.phase='invalid';state.error='올바른 학원 상담 예약 주소가 아닙니다.';}
  state.month=today().slice(0,7);
- render();
- if(state.phase!=='invalid'){
-  api('/api/olli-booking-public',{action:'info',academy:slug}).then(r=>{
-    state.academyName=String(r.academy_name||'').trim();
-    state.weeks=Array.isArray(r.weeks)?r.weeks:[2,3];
-    state.weekdays=Array.isArray(r.weekdays)?r.weekdays:[1,2,3,4,5];
-    state.demo=r.demo===true;
-    const previousMonth=state.month;
-    if(!state.day&&!state.reservation)state.month=firstBookableMonth();
-    render();
-    if(previousMonth!==state.month&&(state.phase==='booking'||state.phase==='change'))
-     void loadMonth();
-  }).catch(e=>{state.academyName='학원명 확인 불가';state.error=errorMessage(e);render();});
+ if(!/^[0-9a-f]{36}$/.test(slug)){
+  state.phase='invalid';state.academyStatus='ready';
+  state.error='올바른 학원 상담 예약 주소가 아닙니다.';
+  render();
+ }else{
+  void loadAcademy();
  }
 
  global.OlliGuardianBooking=Object.freeze({parseAcademy:()=>slug});
