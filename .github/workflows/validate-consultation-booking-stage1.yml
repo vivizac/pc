@@ -133,6 +133,7 @@ jobs:
           node --check packages/common/olli-booking-guardian.js
           node --check packages/common/olli-booking-owner-ui.js
           node --test tests/consultation-booking-stage4.test.cjs
+          node --test tests/consultation-booking-stage4-info-diagnostics.test.cjs
           node --test apps/pc/tests/olli-guardian-month-slots.test.cjs
           node --test tests/consultation-manual-copy-booking-link.test.cjs
 
