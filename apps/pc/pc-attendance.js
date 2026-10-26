@@ -314,7 +314,7 @@
   function renderPlainRows(students, division) {
     try {
       const renderer = division === 'kinder' ? global.renderKinderStudentRows || renderKinderStudentRows : global.renderElementaryStudentRows || renderElementaryStudentRows;
-      const html = typeof renderer === 'function' ? renderer(students) : '';
+      const html = typeof renderer === 'function' ? renderer(students, { showRosterMarkers: true }) : '';
       return String(html || '').replace(/\s+groupBreak(?=[\s"])/g, '');
     } catch (_) {
       return '';
