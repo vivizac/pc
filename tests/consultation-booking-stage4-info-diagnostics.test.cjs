@@ -42,7 +42,7 @@ test('successful info response and both page entry points remain unchanged',asyn
  assert.doesNotMatch(ok,/진단:|학원명 확인 불가/);
  for(const page of ['apps/pc/consultation-booking.html','apps/mobile/consultation-booking.html']){
   const html=fs.readFileSync(path.join(base,page),'utf8');
-  assert.match(html,/olli-booking-guardian\.js\?v=20261026-diagnostics-1/);
+  assert.match(html,/olli-booking-guardian\.js\?v=20261027-ios-origin-1/);
  }
  assert.doesNotMatch(source,/localStorage\.|sessionStorage\./);
 });
@@ -125,4 +125,32 @@ test('Origin security denies unapproved domains, spoofed forwarding and non-Verc
    body:{action:'info',academy}},res);
   assert.equal(res.statusCode,403);
  }finally{console.warn=originalWarn;}
+});
+
+
+test('guardian POST preserves browser Origin under no-referrer policy without relaxing credential scope',async()=>{
+ let captured=null;
+ const html=await render((url,options)=>{
+  captured={url,options};
+  return Promise.resolve({ok:true,status:200,json:async()=>({
+   ok:true,academy_name:'비비작아이성향미술학원',
+   weeks:[2,3],weekdays:[1,2,3,4,5]
+  })});
+ },false);
+ assert.match(html,/비비작아이성향미술학원/);
+ assert.equal(captured.url,'/api/olli-booking-public');
+ assert.equal(captured.options.method,'POST');
+ assert.equal(captured.options.mode,'cors');
+ assert.equal(captured.options.credentials,'same-origin');
+ assert.equal(captured.options.cache,'no-store');
+ assert.equal(captured.options.headers['Content-Type'],'application/json');
+ const payload=JSON.parse(captured.options.body);
+ assert.deepEqual(payload,{action:'info',academy});
+ for(const page of ['apps/pc/consultation-booking.html','apps/mobile/consultation-booking.html']){
+  const sourceHtml=fs.readFileSync(path.join(base,page),'utf8');
+  assert.match(sourceHtml,/meta name="referrer" content="no-referrer"/);
+  assert.match(sourceHtml,/connect-src 'self'/);
+  assert.match(sourceHtml,/olli-booking-guardian\.js\?v=20261027-ios-origin-1/);
+ }
+ assert.doesNotMatch(source,/localStorage\.|sessionStorage\./);
 });
