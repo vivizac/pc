@@ -29,20 +29,35 @@
     }).join('');
   }
 
-  function renderOlliStudentGroupUnset(student) {
-    if (!student) return '';
+  function isOlliStudentGroupUnset(student) {
+    if (!student) return false;
     const validGroup = [student.group, student.group_no, student.groupNo]
       .map((value) => String(value == null ? '' : value).trim())
       .some((value) => value !== '' && value !== '0' && value !== '미지정');
-    if (validGroup) return '';
-    return '<span class="olliStudentGroupUnset"><span class="olliStudentGroupUnsetDot" aria-hidden="true"></span>그룹미정</span>';
+    return !validGroup;
+  }
+
+  function renderOlliStudentRosterGuideMeta(student, rawText, escapeText) {
+    const escape = typeof escapeText === 'function'
+      ? escapeText
+      : (value) => String(value).replace(/[&<>"']/g, (ch) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+    const text = String(rawText == null ? '' : rawText).trim();
+    if (!isOlliStudentGroupUnset(student)) return text ? escape(text) : '';
+    const parts = text.split(/\s*\/\s*/).map((part) => part.trim())
+      .filter((part) => part && !part.startsWith('발송월'));
+    const prefix = parts.map((part) => escape(part)).join(' / ');
+    const month = '<span class="olliStudentFeedbackMonthUnset">발송월미정</span>';
+    return prefix ? prefix + ' / ' + month : month;
   }
 
   function renderOlliStudentRosterMarkers(student) {
-    return renderOlliStudentWeekendBadges(student) + renderOlliStudentGroupUnset(student);
+    return renderOlliStudentWeekendBadges(student);
   }
 
   global.renderOlliStudentRosterMarkers = renderOlliStudentRosterMarkers;
+  global.isOlliStudentGroupUnset = isOlliStudentGroupUnset;
+  global.renderOlliStudentRosterGuideMeta = renderOlliStudentRosterGuideMeta;
   global.getOlliStudentWeekendDays = getOlliStudentWeekendDays;
   global.renderOlliStudentWeekendBadges = renderOlliStudentWeekendBadges;
 })(window);
