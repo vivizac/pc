@@ -7,7 +7,7 @@
  if(!root)return;
  const KST='Asia/Seoul';
  const slug=String(new URLSearchParams(global.location.search).get('academy')||'');
- const state={phase:'identify',name:'',phone:'',challengeId:'',
+ const state={phase:'booking',name:'',phone:'',
    session:'',month:'',day:'',start:'',slots:[],reservation:null,canReschedule:false,
    canCancel:false,loading:false,message:'',error:'',expiresAt:0};
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -32,7 +32,8 @@
  function explain(code){
   const map={
     FORM_INVALID:'입력한 학생 정보와 연락처를 확인해 주세요.',
-    OTP_INVALID:'인증번호가 올바르지 않거나 만료되었습니다. 다시 확인해 주세요.',
+    MATCH_NOT_FOUND:'학생 이름 또는 보호자 휴대전화번호가 올바르지 않습니다. 다시 입력해 주세요.',
+    TOO_MANY_ATTEMPTS:'예약 시도가 많습니다. 잠시 후 다시 시도해 주세요.',
     ACCESS_DENIED:'인증이 만료되었습니다. 학생 확인부터 다시 진행해 주세요.',
     SLOT_UNAVAILABLE:'해당 시간은 다른 예약으로 마감되었습니다. 다른 시간을 선택해 주세요.',
     BOOKING_INVALID:'예약 가능 기간이나 시간을 다시 확인해 주세요.',
@@ -45,22 +46,13 @@
  function header(){
   return '<header class="ogbBrand"><strong>OLLI</strong><span>학원 상담 예약</span></header>';
  }
- function identifyHtml(){
-  return '<section class="ogbPanel"><div class="ogbEyebrow">상담 예약</div><h1>학생 정보를 확인할게요</h1>'+
-   '<p class="ogbMuted">올리에 등록된 학생 이름과 보호자 휴대전화번호를 입력해 주세요.</p>'+
-   '<form id="ogbIdentify" class="ogbForm" autocomplete="off">'+
+ function contactHtml(){
+  if(state.session)return '';
+  return '<div class="ogbContact"><h2 class="ogbSubheading">학생 정보 확인</h2>'+
+   '<p class="ogbMuted">상담 예약하기를 누르면 올리에 등록된 학생 정보와 대조합니다.</p>'+
    '<label>학생 이름<input name="student_name" type="text" maxlength="60" required placeholder="학생의 이름" autocomplete="off" value="'+esc(state.name)+'"></label>'+
    '<label>보호자 휴대전화번호<input name="guardian_phone" type="tel" inputmode="tel" maxlength="15" required placeholder="01012345678" autocomplete="tel" value="'+esc(state.phone)+'"></label>'+
-   '<p class="ogbNote"><strong>비비작 채널 알림톡을 받고 계신 휴대전화번호를 입력해 주세요.</strong> 올리에 등록된 번호로 인증문자가 발송됩니다. 이름과 전화번호만으로는 예약이 열리지 않으며 인증번호 확인이 필요합니다.</p>'+
-   '<button class="ogbPrimary" type="submit" '+(state.loading?'disabled':'')+'>'+(state.loading?'확인 중…':'인증번호 받기')+'</button>'+
-   '</form></section>';
- }
- function otpHtml(){
-  return '<section class="ogbPanel"><div class="ogbEyebrow">보호자 확인</div><h1>인증번호를 입력해 주세요</h1>'+
-    '<p class="ogbMuted">올리에 등록된 보호자 번호로 6자리 문자를 전송합니다. 도착하지 않는다면 학원에 등록된 연락처를 확인해 주세요.</p>'+
-    '<form id="ogbVerify" class="ogbForm"><label>6자리 인증번호<input name="otp" type="text" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="인증번호 6자리"></label>'+
-    '<button type="submit" class="ogbPrimary" '+(state.loading?'disabled':'')+'>'+(state.loading?'확인 중…':'본인 확인')+'</button></form>'+
-    '<button type="button" class="ogbTextBtn" data-action="restart">다시 입력하기</button></section>';
+   '<p class="ogbNote">비비작 채널 알림톡을 받고 계신 휴대전화번호를 입력해 주세요.</p></div>';
  }
  function calendarHtml(){
    const [y,m]=state.month.split('-').map(Number);
@@ -107,7 +99,7 @@
      '<p class="ogbMuted">원하는 날짜를 누르면 예약 가능한 시간을 확인할 수 있습니다.</p>'+
      calendarHtml()+
      '<h2 class="ogbSubheading">'+(state.day?esc(label(state.day))+' · 시간 선택':'예약 시간 선택')+'</h2>'+
-     slotsHtml()+
+     slotsHtml()+contactHtml()+
      '<div class="ogbActions"><button class="ogbPrimary" type="button" data-action="commit" '+(!state.start||state.loading?'disabled':'')+'>'+
        (state.loading?'처리 중…':modifying?'변경 저장':'상담 예약하기')+'</button>'+
        (modifying?'<button type="button" class="ogbSecondary" data-action="back">돌아가기</button>':'')+'</div>'
@@ -115,16 +107,15 @@
    '<button type="button" class="ogbTextBtn" data-action="restart">학생 확인 처음부터</button></section>';
  }
  function render(){
-   const content=state.phase==='identify'?identifyHtml():
-       state.phase==='otp'?otpHtml():bookingHtml();
-   root.innerHTML=header()+content+(state.error?info(state.error,'error'):'')+
-    (state.message?info(state.message):'')+
+   root.innerHTML=header()+(state.phase==='invalid'?
+    '<section class="ogbPanel"><h1>상담 예약 주소를 확인해 주세요</h1></section>':bookingHtml())+
+    (state.error?info(state.error,'error'):'')+(state.message?info(state.message):'')+
     '<footer class="ogbFooter">예약이 어려우시다면 학원으로 문의해 주세요.</footer>';
  }
  function reset(){
-   state.session='';state.challengeId='';state.reservation=null;state.slots=[];
-   state.start='';state.day='';state.phase='identify';state.error='';state.message='';
-   render();
+   state.session='';state.name='';state.phone='';state.reservation=null;state.slots=[];
+   state.start='';state.day='';state.month=today().slice(0,7);state.phase='booking';
+   state.error='';state.message='';render();
  }
  async function loadSnapshot(){
    const r=await api('/api/olli-booking',{action:'snapshot',token:state.session});
@@ -137,7 +128,9 @@
    state.day=date;state.start='';state.loading=true;state.error='';state.message='';
    render();
    try{
-     const r=await api('/api/olli-booking',{action:'slots',token:state.session,date});
+     const r=state.session?
+      await api('/api/olli-booking',{action:'slots',token:state.session,date}):
+      await api('/api/olli-booking-public',{action:'slots',academy:slug,date});
      if(state.day!==date)return;
      state.slots=Array.isArray(r.slots)?r.slots:[];
    }catch(err){state.slots=[];state.error=explain(err.message);}
@@ -146,15 +139,32 @@
  async function mutate(){
    const editing=state.phase==='change';
    if(!state.start||state.loading)return;
-   const action=editing?'reschedule':'reserve';
+   if(!state.session){
+     const name=root.querySelector('[name="student_name"]');
+     const phone=root.querySelector('[name="guardian_phone"]');
+     if(!name?.reportValidity()||!phone?.reportValidity())return;
+     state.name=name.value.trim();state.phone=phone.value.trim();
+     if(!state.name||!state.phone)return;
+   }
    if(!global.confirm((editing?'변경한':'선택한')+' 일정으로 상담 예약을 저장하시겠습니까?'))return;
-   const payload={action,token:state.session,start_at:state.start,request_key:global.crypto.randomUUID()};
-   if(editing)payload.reservation_id=state.reservation?.id;
+   const payload={action:editing?'reschedule':'reserve',start_at:state.start,
+     request_key:global.crypto.randomUUID()};
    state.loading=true;state.error='';state.message='';render();
    try{
-     await api('/api/olli-booking',payload);
-     await loadSnapshot();
-     state.message=editing?'예약 시간을 변경했습니다.':'상담 예약이 완료되었습니다.';
+     if(!state.session){
+       const r=await api('/api/olli-booking-public',{
+         ...payload,academy:slug,student_name:state.name,guardian_phone:state.phone});
+       state.session=r.session_token;
+       await loadSnapshot();
+       state.message=r.existing?'이미 예약된 상담이 있습니다. 예약 내용을 확인해 주세요.':
+         '상담 예약이 완료되었습니다.';
+     }else{
+       payload.token=state.session;
+       if(editing)payload.reservation_id=state.reservation?.id;
+       await api('/api/olli-booking',payload);
+       await loadSnapshot();
+       state.message=editing?'예약 시간을 변경했습니다.':'상담 예약이 완료되었습니다.';
+     }
    }catch(e){state.error=explain(e.message);}
    finally{state.loading=false;render();}
  }
@@ -169,32 +179,9 @@
    }catch(e){state.error=explain(e.message);}
    finally{state.loading=false;render();}
  }
- root.addEventListener('submit',async event=>{
-   event.preventDefault();if(state.loading)return;
-   const form=event.target;
-   if(form.id==='ogbIdentify'){
-     const data=new global.FormData(form);
-     state.name=String(data.get('student_name')||'').trim();
-     state.phone=String(data.get('guardian_phone')||'').trim();
-     state.loading=true;state.error='';state.message='';render();
-     try{
-       const r=await api('/api/olli-booking-public',{action:'begin',academy:slug,
-         student_name:state.name,guardian_phone:state.phone});
-       state.challengeId=r.challenge_id;state.phase='otp';
-     }catch(e){state.error=explain(e.message);}
-     finally{state.loading=false;render();}
-   }
-   if(form.id==='ogbVerify'){
-     const code=String(new global.FormData(form).get('otp')||'').trim();
-     state.loading=true;state.error='';render();
-     try{
-       const r=await api('/api/olli-booking-public',{action:'verify',
-         challenge_id:state.challengeId,code});
-       state.session=r.session_token;
-       await loadSnapshot();
-     }catch(e){state.error=explain(e.message);}
-     finally{state.loading=false;render();}
-   }
+ root.addEventListener('input',event=>{
+  if(event.target?.name==='student_name')state.name=event.target.value;
+  if(event.target?.name==='guardian_phone')state.phone=event.target.value;
  });
  root.addEventListener('click',async event=>{
    const node=event.target.closest('[data-action],[data-date],[data-start]');
@@ -211,7 +198,7 @@
    case 'cancel':await cancel();break;
    }
  });
- if(!/^[0-9a-f]{36}$/.test(slug)){state.error='올바른 학원 상담 예약 주소가 아닙니다.';}
+ if(!/^[0-9a-f]{36}$/.test(slug)){state.phase='invalid';state.error='올바른 학원 상담 예약 주소가 아닙니다.';}
  state.month=today().slice(0,7);
  render();
  global.OlliGuardianBooking=Object.freeze({parseAcademy:()=>slug});
