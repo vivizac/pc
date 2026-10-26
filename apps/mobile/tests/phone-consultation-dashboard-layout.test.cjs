@@ -80,8 +80,9 @@ test('mobile notice is a PC-style copy icon immediately left of status; PC untou
   const pc = render(true);
   assert.deepEqual(mobile.actions.children, [mobile.button, mobile.status]);
   assert.deepEqual(mobile.card.children, [mobile.studentMain, mobile.actions]);
-  assert.deepEqual(pc.card.children, [pc.button, pc.studentMain, pc.actions]);
-  assert.deepEqual(pc.actions.children, [pc.status]);
+  // PC and mobile now both place the copy control immediately before the status chip.
+  assert.deepEqual(pc.card.children, [pc.studentMain, pc.actions]);
+  assert.deepEqual(pc.actions.children, [pc.button, pc.status]);
   assert.equal(mobile.button.dataset.consultationCopyIcon,'true');
   assert.match(mobile.button.innerHTML, /<svg /);
   assert.match(mobile.button.innerHTML, /<rect x="8" y="8"/);
