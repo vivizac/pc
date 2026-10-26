@@ -46,7 +46,7 @@ function cleanIso(s){
  return s;
 }
 async function rpc(name,payload,fetchFn=fetch,env=process.env){
- const key=env.SUPABASE_SERVICE_ROLE_KEY;
+ const key=env.SUPABASE_SECRET_KEY||env.SUPABASE_SERVICE_ROLE_KEY;
  if(!key)throw problem('SERVER_NOT_CONFIGURED',503);
  const r=await fetchFn((env.SUPABASE_URL||SUPABASE_URL)+'/rest/v1/rpc/'+name,{
   method:'POST',
