@@ -13,7 +13,7 @@
     }
     if (!student) return [];
     const source = student.lesson_day || student.lessonDay || student.class_day
-      || student.classDay || student.days || student.weekdays || student.day || '';
+      || student.classDay || student.days || student.weekdays || '';
     const entries = Array.isArray(source) ? source : [source];
     const dayText = entries.map((entry) => String(entry == null ? '' : entry).replace(/요일/g, '')).join(' ');
     return WEEKEND.filter((entry) =>
