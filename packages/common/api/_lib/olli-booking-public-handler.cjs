@@ -83,6 +83,13 @@ function createHandler({fetchFn=fetch,env=process.env}={}){
    }
    const slug=String(body.academy||'');
    if(!SLUG.test(slug))throw error('FORM_INVALID');
+   if(action==='info'){
+    const d=await rpc('olli_booking_public_info',{p_slug:slug},fetchFn,env);
+    if(d?.ok!==true)throw error('ACADEMY_NOT_FOUND',404);
+    return out(res,200,{ok:true,academy_name:String(d.academy_name||''),
+      weeks:Array.isArray(d.weeks)?d.weeks:[2,3],
+      weekdays:Array.isArray(d.weekdays)?d.weekdays:[1,2,3,4,5]});
+   }
    if(action==='slots'){
     const date=parseDate(body.date);
     const d=await rpc('olli_booking_public_slots',{p_slug:slug,p_date:date},fetchFn,env);
