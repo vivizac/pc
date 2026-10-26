@@ -63,8 +63,8 @@ test('Saturday and Sunday markers stay in order; missing month remains before th
  const weekends={...example,group:'',lesson_day:'토 일'};
  const guide=api.renderOlliStudentRosterGuideMeta(weekends,'한샘 / 2학년 / 발송월10월');
  const output=guide+api.renderOlliStudentRosterMarkers(weekends);
- assert.match(output,/한샘 \/ 2학년 \/ <span class="olliStudentFeedbackMonthUnset">발송월미정<\/span>/);
- assert.ok(output.indexOf('발송월미정')<output.indexOf('olliStudentWeekendBadge'));
+ assert.match(output,/한샘 \/ 2학년 \/ <span class="olliStudentFeedbackMonthUnset">발송월 미정<\/span>/);
+ assert.ok(output.indexOf('발송월 미정')<output.indexOf('olliStudentWeekendBadge'));
  assert.deepEqual(api.getOlliStudentWeekendDays(weekends).join(','),'토,일');
  assert.equal((output.match(/olliStudentWeekendBadge/g)||[]).length,2);
  assert.equal(api.renderOlliStudentRosterMarkers({...example,lesson_day:'월'}),'');
