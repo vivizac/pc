@@ -28,7 +28,7 @@ function validFutureDates(){
  return found;
 }
 for(const width of [390,1280]){
- test('calendar first at '+width+'px: validate identity on reserve, mismatch retry, change and cancel',async()=>{
+ test('choice first at '+width+'px: book, reopen page, lookup by phone, change and cancel',async()=>{
   const [date,date2]=validFutureDates();
   const first=date+'T11:00:00+09:00',second=date2+'T11:30:00+09:00';
   let current=null,requests=[],reservationSeq=0;
@@ -52,6 +52,12 @@ for(const width of [390,1280]){
      if(url.pathname==='/api/olli-booking-public'){
       if(body.action==='info')return route.fulfill({json:{ok:true,academy_name:'비비작아이성향미술학원',weeks:[2,3],weekdays:[1,2,3,4,5]}});
       if(body.action==='slots')return route.fulfill({json:{ok:true,slots:[{start_at:body.date===date?first:second}]}});
+      if(body.action==='lookup'){
+       if(body.guardian_phone!=='01012345678'||body.student_name!=='김하늘')
+        return route.fulfill({status:400,json:{ok:false,code:'MATCH_NOT_FOUND'}});
+       if(!current)return route.fulfill({status:404,json:{ok:false,code:'BOOKING_NOT_FOUND'}});
+       return route.fulfill({json:{ok:true,session_token:'mock-guardian-session'}});
+      }
       if(body.action==='reserve'){
        if(body.guardian_phone!=='01012345678'||body.student_name!=='김하늘')
         return route.fulfill({status:400,json:{ok:false,code:'MATCH_NOT_FOUND'}});
@@ -72,6 +78,13 @@ for(const width of [390,1280]){
    await page.goto('https://olli-booking.test/consultation-booking.html?academy='+slug);
    await page.getByRole('heading',{name:'상담 예약',exact:true}).waitFor();
    await page.getByText('비비작아이성향미술학원',{exact:true}).waitFor();
+   assert.equal(await page.locator('input[name=student_name]').count(),0);
+   assert.equal(await page.locator('.ogbCalendar').count(),0);
+   assert.equal(await page.getByRole('button',{name:'기존 예약 변경하기'}).count(),1);
+   // Both green controls use the same survey green, and the old eyebrow is gone.
+   assert.equal(await page.locator('.ogbEyebrow').count(),0);
+   assert.equal(await page.locator('.ogbTitleBand').count(),1);
+   await page.getByRole('button',{name:'상담 예약하기'}).click();
    assert.ok((await page.locator('.ogbMonth strong').innerText()).includes(Number(date.slice(5,7))+'월'),
      'initial calendar must show next available booking month');
    assert.equal(await page.locator('input[name=student_name]').count(),1);
@@ -103,7 +116,17 @@ for(const width of [390,1280]){
    await page.getByRole('button',{name:'상담 예약하기'}).click();
    await page.getByRole('heading',{name:'예약이 완료되었습니다'}).waitFor();
    assert.ok(await page.getByText('현재 예약').isVisible());
-   await page.getByRole('button',{name:'예약 변경'}).click();
+   // Returning parents lost the ephemeral session, so a fresh navigation
+   // must still allow them to find and change a previously saved booking.
+   await page.reload();
+   await page.getByRole('button',{name:'기존 예약 변경하기'}).click();
+   await page.locator('[name=student_name]').fill('김하늘');
+   await page.locator('[name=guardian_phone]').fill('01099999999');
+   await page.getByRole('button',{name:'기존 예약 확인하기'}).click();
+   await page.getByText('학생 이름 또는 보호자 휴대전화번호가 올바르지 않습니다. 다시 입력해 주세요.').waitFor();
+   await page.locator('[name=guardian_phone]').fill('01012345678');
+   await page.getByRole('button',{name:'기존 예약 확인하기'}).click();
+   await page.getByRole('heading',{name:'상담 일정 변경'}).waitFor();
    await selectDate(date2);
    await page.locator('[data-start="'+second+'"]').click();
    await page.getByRole('button',{name:'변경 저장'}).click();
@@ -113,6 +136,8 @@ for(const width of [390,1280]){
    assert.equal(current,null);
    assert.deepEqual(requests.filter(x=>['reserve','reschedule','cancel'].includes(x.action)).map(x=>x.action),
      ['reserve','reserve','reschedule','cancel']);
+   assert.deepEqual(requests.filter(x=>x.action==='lookup').map(x=>x.guardian_phone),
+     ['01099999999','01012345678']);
    assert.ok(!requests.some(x=>['begin','verify'].includes(x.action)));
    assert.equal(requests.find(x=>x.action==='reserve').academy,slug);
    assert.equal(await page.evaluate(()=>localStorage.length),0);

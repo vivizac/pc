@@ -171,3 +171,33 @@ test('QA health probe verifies real preview mode, without DB access or productio
  const r2=mock();await prod(req,r2);
  assert.equal(r2.statusCode,404);
 });
+
+test('reopened booking can be looked up only after exact name and phone match',async()=>{
+ let called;
+ const fn=makeApi(async(url,opt)=>{
+  called={url,params:JSON.parse(opt.body)};
+  return {ok:true,json:async()=>({ok:true})};
+ });
+ const r=await fn({action:'lookup',academy:slug,student_name:'김하늘',guardian_phone:'010-1234-5678'});
+ assert.equal(r.statusCode,200);
+ assert.match(r.body.session_token,/^[A-Za-z0-9_-]{43}$/);
+ assert.match(called.url,/olli_booking_public_lookup/);
+ assert.equal(called.params.p_guardian_phone,'01012345678');
+ assert.deepEqual(Object.keys(called.params).sort(),[
+  'p_slug','p_student_name','p_guardian_phone','p_session_hash','p_ip_digest'].sort());
+ assert.ok(!JSON.stringify(r.body).includes('01012345678'));
+});
+test('a nonexistent booking or wrong number cannot receive a scoped token',async()=>{
+ const forCode=code=>makeApi(async()=>({ok:true,json:async()=>({ok:false,code})}));
+ const request={action:'lookup',academy:slug,student_name:'김하늘',guardian_phone:'01012345678'};
+ const missing=await (forCode('BOOKING_NOT_FOUND'))(request);
+ assert.equal(missing.statusCode,404);assert.equal(missing.body.code,'BOOKING_NOT_FOUND');
+ const wrong=await (forCode('MATCH_NOT_FOUND'))(request);
+ assert.equal(wrong.statusCode,400);assert.equal(wrong.body.code,'MATCH_NOT_FOUND');
+ assert.ok(!('session_token' in missing.body)&&!('session_token' in wrong.body));
+ const schema=fs.readFileSync(path.join(base,'supabase/migrations/20261026173000_olli_booking_revisit_stage5.sql'),'utf8');
+ assert.match(schema,/v_matches<>1/);
+ assert.match(schema,/status='confirmed'/);
+ assert.match(schema,/TOO_MANY_ATTEMPTS/);
+ assert.match(schema,/from public,anon,authenticated/);
+});
