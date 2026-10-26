@@ -58,7 +58,7 @@ function getRecordAttendanceGuideHtml(student) {
   }
 }
 
-function renderElementaryStudentRows(students) {
+function renderElementaryStudentRows(students, options = {}) {
   const cycleGroups = getElementaryCycleGroups(students);
   let previousSectionKey = '';
   return students.map((student, index) => {
@@ -79,7 +79,7 @@ function renderElementaryStudentRows(students) {
       <div class="elementaryRowInner${leadIcon ? ' hasLeadIcon' : ''}">
         ${leadIcon}
         <span class="studentTextWrap">
-          <span>${escapeHtml(student.name)}</span>
+          <span>${escapeHtml(student.name)}${options.showRosterMarkers === true ? renderOlliStudentRosterMarkers(student) : ''}</span>
           ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
         </span>
       </div>
@@ -87,7 +87,7 @@ function renderElementaryStudentRows(students) {
   }).join('');
 }
 
-function renderKinderStudentRows(students) {
+function renderKinderStudentRows(students, options = {}) {
   let previousSectionKey = '';
   return students.map((student, index) => {
     const metaBits = getKinderMetaBits(student);
@@ -107,7 +107,7 @@ function renderKinderStudentRows(students) {
       <div class="kinderRowInner${leadIcon ? ' hasLeadIcon' : ''}">
         ${leadIcon}
         <span class="studentTextWrap">
-          <span>${escapeHtml(student.name)}</span>
+          <span>${escapeHtml(student.name)}${options.showRosterMarkers === true ? renderOlliStudentRosterMarkers(student) : ''}</span>
           ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
         </span>
       </div>
