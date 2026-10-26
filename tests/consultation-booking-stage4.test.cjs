@@ -41,7 +41,7 @@ test('guardian front end has name and phone ONLY and exact Bibi channel guidance
  assert.match(guardian,/action:'verify'/);
  assert.match(guardian,/action:'snapshot'/);
  assert.match(guardian,/'reschedule':'reserve'/);
- assert.match(guardian,/action:'reschedule'/);
+ assert.match(guardian,/const action=editing\?'reschedule':'reserve'/);
  assert.match(guardian,/action:'cancel'/);
 });
 test('Postgres matching signature has no age or grade; confirmed contact and ambiguity guards',()=>{
