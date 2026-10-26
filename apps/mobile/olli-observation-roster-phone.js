@@ -556,7 +556,7 @@ function renderObservationMemoRoster() {
     const meta = getObservationRosterMeta(student);
     return `<div class="memoBodyRosterRow">
       <button type="button" class="memoBodyRosterStudentBtn" onclick="openObservationMemoStudentFromRoster('${studentId}')">
-        <span class="memoBodyRosterText"><span class="memoBodyRosterName">${escapeHtml(student?.name || '이름 없음')}${renderOlliStudentWeekendBadges(student)}</span>${meta ? `<span class="memoBodyRosterMeta">${escapeHtml(meta)}</span>` : ''}</span>
+        <span class="memoBodyRosterText"><span class="memoBodyRosterName">${escapeHtml(student?.name || '이름 없음')}${renderOlliStudentRosterMarkers(student)}</span>${meta ? `<span class="memoBodyRosterMeta">${escapeHtml(meta)}</span>` : ''}</span>
       </button>
     </div>`;
   }).join('');
