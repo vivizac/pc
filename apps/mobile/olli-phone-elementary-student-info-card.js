@@ -87,7 +87,7 @@
 
   function cardHtml(student) {
     return `<div class="phonePcStudentInfoShell" onclick="event.stopPropagation()"><div class="pcStudentInfoCard" data-division="elementary" data-source="pc-student-info-card">
-      <div class="pcStudentInfoCardIntro"><strong>${esc(student && student.name || '학생')}${global.renderOlliStudentWeekendBadges(student)} 학생정보</strong><span>요일·시간은 시간표 기준으로 저장됩니다.</span></div>
+      <div class="pcStudentInfoCardIntro"><strong>${esc(student && student.name || '학생')} 학생정보</strong><span>요일·시간은 시간표 기준으로 저장됩니다.</span></div>
       <div class="pcStudentInfoForm">
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoNameInput" placeholder="학생이름"></div>
