@@ -27,6 +27,9 @@ test('calendar is immediate; name and phone precede calendar; no OTP, age or gra
   assert.match(html,/olli-booking-guardian\.js/);assert.match(html,/noindex,nofollow/);
  }
  assert.match(guardian,/phase:'booking'/);
+ assert.match(guardian,/credentials:'same-origin'/);
+ assert.doesNotMatch(guardian,/credentials:'omit'/);
+ assert.match(guardian,/PREVIEW_ACCESS_REQUIRED/);
  assert.match(guardian,/name="student_name"/);
  assert.match(guardian,/name="guardian_phone"/);
  assert.match(guardian,/비비작 채널 알림톡을 받고 계신 휴대전화번호를 입력해 주세요/);

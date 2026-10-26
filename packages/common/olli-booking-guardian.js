@@ -23,16 +23,22 @@
  function label(date){if(!date)return '';const [y,m,d]=date.split('-').map(Number);return new Intl.DateTimeFormat('ko-KR',{timeZone:KST,month:'long',day:'numeric',weekday:'short'}).format(new Date(Date.UTC(y,m-1,d,3)));}
  function info(text,kind=''){return '<p class="ogbNotice '+(kind==='error'?'isError':'')+'" role="status">'+esc(text)+'</p>';}
  async function api(endpoint,body){
-  const res=await global.fetch(endpoint,{method:'POST',mode:'same-origin',credentials:'omit',
+  const res=await global.fetch(endpoint,{method:'POST',mode:'same-origin',credentials:'same-origin',
     cache:'no-store',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body)});
-  const result=await res.json().catch(()=>({}));
+  const result=await res.json().catch(()=>null);
+  // A protected Vercel preview can return an HTML login page instead of JSON.
+  if(!result && (res.status===401 || res.status===403))
+    throw new Error('PREVIEW_ACCESS_REQUIRED');
+  if(!result)throw new Error('SERVICE_RESPONSE_INVALID');
   if(!res.ok||result?.ok!==true)throw new Error(result.code||'REQUEST_FAILED');
   return result;
  }
  function explain(code){
   const map={
     FORM_INVALID:'입력한 학생 정보와 연락처를 확인해 주세요.',
+    PREVIEW_ACCESS_REQUIRED:'미리보기 페이지 접근 인증이 만료되었습니다. 공유 링크를 다시 열어 주세요.',
+    SERVICE_RESPONSE_INVALID:'예약 서버가 올바른 응답을 보내지 않았습니다. 다시 접속해 주세요.',
     DATABASE_NOT_CONFIGURED:'상담 예약 서버가 연결되지 않았습니다. 학원에 문의해 주세요.',
     ACADEMY_NOT_FOUND:'학원 예약 링크가 올바르지 않습니다. 학원에 문의해 주세요.',
     DEMO_NOT_BOOKABLE:'화면 확인용 미리보기에서는 실제 예약이 저장되지 않습니다.',

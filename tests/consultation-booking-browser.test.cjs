@@ -35,6 +35,10 @@ for(const width of [390,1280]){
   const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
   try{
    const page=await browser.newPage({viewport:{width,height:850}});
+   // Vercel protected previews use a same-origin authentication cookie.
+   // API requests without this cookie must be rejected by the mocked preview gate.
+   await page.context().addCookies([{name:'_vercel_share_session',
+     value:'qa-sso-session',domain:'olli-booking.test',path:'/',secure:true,sameSite:'Lax'}]);
    const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
    await page.route('https://olli-booking.test/**',async route=>{
     const req=route.request(),url=new URL(req.url());
@@ -42,6 +46,8 @@ for(const width of [390,1280]){
     if(url.pathname==='/olli-booking-guardian.css')return route.fulfill({contentType:'text/css',body:css});
     if(url.pathname==='/consultation-booking.html')return route.fulfill({contentType:'text/html',body:html});
     if(url.pathname.startsWith('/api/')){
+     if(!String(req.headers().cookie||'').includes('_vercel_share_session=qa-sso-session'))
+       return route.fulfill({status:401,contentType:'text/html',body:'<html>Vercel Authentication</html>'});
      const body=req.postDataJSON();requests.push({endpoint:url.pathname,...body});
      if(url.pathname==='/api/olli-booking-public'){
       if(body.action==='info')return route.fulfill({json:{ok:true,academy_name:'비비작아이성향미술학원',weeks:[2,3],weekdays:[1,2,3,4,5]}});
