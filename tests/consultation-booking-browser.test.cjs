@@ -76,7 +76,7 @@ for(const width of [390,1280]){
     return route.fulfill({status:404,body:'not found'});
    });
    await page.goto('https://olli-booking.test/consultation-booking.html?academy='+slug);
-   await page.getByRole('heading',{name:'상담 예약',exact:true}).waitFor();
+   await page.getByRole('button',{name:'상담 예약하기',exact:true}).waitFor();
    await page.getByText('비비작아이성향미술학원',{exact:true}).waitFor();
    assert.equal(await page.locator('input[name=student_name]').count(),0);
    assert.equal(await page.locator('.ogbCalendar').count(),0);
