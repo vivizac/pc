@@ -21,12 +21,15 @@ function makeApi(fetchFn,envOverride={}){
   headers:{host:'booking.example.org',origin:'https://booking.example.org'},body,
   socket:{remoteAddress:'192.0.2.12'}},res);return res;};
 }
-test('calendar is immediate; name and phone precede calendar; no OTP, age or grade',()=>{
+test('choice screen precedes calendar; booking shows name and phone before calendar; no OTP',()=>{
  for(const p of ['apps/pc/consultation-booking.html','apps/mobile/consultation-booking.html']){
   const html=fs.readFileSync(path.join(base,p),'utf8');
   assert.match(html,/olli-booking-guardian\.js/);assert.match(html,/noindex,nofollow/);
  }
- assert.match(guardian,/phase:'booking'/);
+ assert.match(guardian,/phase:'choice'/);
+ assert.match(guardian,/data-action="choose-book"/);
+ assert.match(guardian,/data-action="choose-change"/);
+ assert.match(guardian,/action:'lookup'/);
  assert.match(guardian,/credentials:'same-origin'/);
  assert.doesNotMatch(guardian,/credentials:'omit'/);
  assert.match(guardian,/PREVIEW_ACCESS_REQUIRED/);
@@ -38,6 +41,7 @@ test('calendar is immediate; name and phone precede calendar; no OTP, age or gra
  assert.doesNotMatch(guardian,/localStorage\.|sessionStorage\./);
  assert.match(guardian,/action:'slots',academy:slug,date/);
  assert.match(guardian,/state.academyName/);
+ assert.doesNotMatch(guardian,/ogbEyebrow">상담 예약/);
  assert.doesNotMatch(guardian,/학생 정보 확인|상담 예약하기를 누르면 올리에 등록된 학생 정보와 대조합니다/);
  assert.match(guardian,/slotStatus==='error'/);
  assert.match(guardian,/allowedDay\(day\)/);

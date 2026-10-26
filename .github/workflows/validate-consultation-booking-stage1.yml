@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/olli-self-consultation-booking-20261025
+      - feature/olli-consultation-tabs-20261026
     paths:
       - 'packages/common/olli-booking-policy.cjs'
       - 'packages/common/api/_lib/olli-booking-handler.cjs'
@@ -22,6 +23,10 @@ on:
       - 'apps/*/consultation-booking.html'
       - 'apps/*/api/olli-booking-public.js'
       - 'tests/consultation-booking-stage4*'
+      - 'supabase/migrations/*_olli_booking_revisit_stage5.sql'
+      - 'tests/consultation-booking-stage5*'
+      - 'apps/pc/consultation-survey-core.js'
+      - 'apps/pc/consultation-survey.css'
       - 'tests/consultation-manual-copy-booking-link.test.cjs'
       - 'tests/consultation-booking-browser.test.cjs'
       - 'packages/common/olli-consultation-messages.js'
