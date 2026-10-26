@@ -70,3 +70,17 @@ begin
   raise exception 'ANON_CAN_RESERVE';exception when insufficient_privilege then null;end;
 end $$;
 reset role;
+
+-- School name and scheduling policy must be scoped to this academy only.
+do $$
+declare v_info jsonb;
+begin
+ v_info:=public.olli_booking_public_info(
+  (select slug from public.olli_booking_public_academies limit 1));
+ if v_info->>'ok'<>'true' or v_info->>'academy_name' is null
+ then raise exception 'PUBLIC_INFO_MISSING_ACADEMY_NAME: %',v_info;end if;
+ if jsonb_array_length(v_info->'weeks')=0 or jsonb_array_length(v_info->'weekdays')=0
+ then raise exception 'PUBLIC_INFO_NO_BOOKING_POLICY';end if;
+ if (public.olli_booking_public_info(repeat('0',36))->>'ok')<>'false'
+ then raise exception 'NON_EXISTENT_ACADEMY_INFO_EXPOSED';end if;
+end $$;

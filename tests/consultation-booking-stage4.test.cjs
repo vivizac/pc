@@ -21,7 +21,7 @@ function makeApi(fetchFn,envOverride={}){
   headers:{host:'booking.example.org',origin:'https://booking.example.org'},body,
   socket:{remoteAddress:'192.0.2.12'}},res);return res;};
 }
-test('calendar is immediate; no OTP, age or grade inputs; name and phone at end',()=>{
+test('calendar is immediate; name and phone precede calendar; no OTP, age or grade',()=>{
  for(const p of ['apps/pc/consultation-booking.html','apps/mobile/consultation-booking.html']){
   const html=fs.readFileSync(path.join(base,p),'utf8');
   assert.match(html,/olli-booking-guardian\.js/);assert.match(html,/noindex,nofollow/);
@@ -34,6 +34,10 @@ test('calendar is immediate; no OTP, age or grade inputs; name and phone at end'
  assert.doesNotMatch(guardian,/name="age"|name="grade"|name="level"|name="division"/);
  assert.doesNotMatch(guardian,/localStorage\.|sessionStorage\./);
  assert.match(guardian,/action:'slots',academy:slug,date/);
+ assert.match(guardian,/state.academyName/);
+ assert.doesNotMatch(guardian,/학생 정보 확인|상담 예약하기를 누르면 올리에 등록된 학생 정보와 대조합니다/);
+ assert.match(guardian,/slotStatus==='error'/);
+ assert.match(guardian,/allowedDay(day)/);
  assert.match(guardian,/student_name:state.name,guardian_phone:state.phone/);
  assert.match(guardian,/action:'snapshot'/);
  assert.match(guardian,/action:'cancel'/);
@@ -107,4 +111,36 @@ test('guardian and public API never leak service key or use SMS',()=>{
  assert.match(parent._test.tokenHash('A'.repeat(43)),/^[0-9a-f]{64}$/);
  assert.doesNotMatch(guardian,/SERVICE_ROLE|SUPABASE_SECRET_KEY|Bearer \+/);
  assert.match(owner,/\/api\/olli-booking-public/);
+});
+
+test('public info returns academy_name and booking weekdays, never student data',async()=>{
+ let rpcName,params;const fn=makeApi(async(url,opt)=>{
+  rpcName=url;params=JSON.parse(opt.body);
+  return {ok:true,json:async()=>({ok:true,academy_name:'비비작아이성향미술학원',weeks:[2,3],weekdays:[1,2,3,4,5]})};
+ });
+ const r=await fn({action:'info',academy:slug});
+ assert.equal(r.statusCode,200);
+ assert.equal(r.body.academy_name,'비비작아이성향미술학원');
+ assert.deepEqual(r.body.weeks,[2,3]);assert.deepEqual(r.body.weekdays,[1,2,3,4,5]);
+ assert.match(rpcName,/olli_booking_public_info/);
+ assert.deepEqual(params,{p_slug:slug});
+ assert.equal('student_name' in r.body,false);
+ const sql=fs.readFileSync(path.join(base,'supabase/migrations/20261026140000_olli_booking_public_academy_stage4.sql'),'utf8');
+ assert.match(sql,/a\.academy_name/);
+});
+test('QA-only preview supplies visibly marked sample slots, never accepts booking',async()=>{
+ const fake=makeApi(async()=>{throw Error('Preview must never reach the real database');},
+  {VERCEL_ENV:'preview',OLLI_BOOKING_QA_DEMO:'1',OLLI_BOOKING_QA_ACADEMY_NAME:'비비작아이성향미술학원'});
+ const info=await fake({action:'info',academy:slug});
+ assert.equal(info.body.demo,true);assert.equal(info.body.academy_name,'비비작아이성향미술학원');
+ const date='2026-11-10';
+ const slots=await fake({action:'slots',academy:slug,date});
+ assert.equal(slots.statusCode,200);assert.equal(slots.body.demo,true);
+ assert.equal(slots.body.slots.length,12);
+ const request={action:'reserve',academy:slug,student_name:'김하늘',guardian_phone:'01022224444',start_at:'2026-11-10T11:00:00+09:00',request_key};
+ const reserve=await fake(request);
+ assert.equal(reserve.statusCode,503);assert.equal(reserve.body.code,'DEMO_NOT_BOOKABLE');
+ const normal=makeApi(async()=>{throw Error('No DB');},{VERCEL_ENV:'production',OLLI_BOOKING_QA_DEMO:'1'});
+ const noPreview=await normal(request);
+ assert.notEqual(noPreview.body.code,'DEMO_NOT_BOOKABLE');
 });

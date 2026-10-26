@@ -15,9 +15,21 @@ function futureDate(days){
  const map=Object.fromEntries(parts.map(x=>[x.type,x.value]));
  return new Date(Date.UTC(+map.year,+map.month-1,+map.day+days)).toISOString().slice(0,10);
 }
+function validFutureDates(){
+ const found=[];
+ for(let offset=1;offset<=120&&found.length<2;offset++){
+  const date=futureDate(offset);
+  const [year,month,day]=date.split('-').map(Number);
+  const dt=new Date(Date.UTC(year,month-1,day));
+  const week=Math.floor((day-1+(new Date(Date.UTC(year,month-1,1)).getUTCDay()+6)%7)/7)+1;
+  const weekday=(dt.getUTCDay()+6)%7+1;
+  if([2,3].includes(week)&&weekday<=5)found.push(date);
+ }
+ return found;
+}
 for(const width of [390,1280]){
  test('calendar first at '+width+'px: validate identity on reserve, mismatch retry, change and cancel',async()=>{
-  const date=futureDate(7),date2=futureDate(8);
+  const [date,date2]=validFutureDates();
   const first=date+'T11:00:00+09:00',second=date2+'T11:30:00+09:00';
   let current=null,requests=[],reservationSeq=0;
   const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
@@ -32,6 +44,7 @@ for(const width of [390,1280]){
     if(url.pathname.startsWith('/api/')){
      const body=req.postDataJSON();requests.push({endpoint:url.pathname,...body});
      if(url.pathname==='/api/olli-booking-public'){
+      if(body.action==='info')return route.fulfill({json:{ok:true,academy_name:'비비작아이성향미술학원',weeks:[2,3],weekdays:[1,2,3,4,5]}});
       if(body.action==='slots')return route.fulfill({json:{ok:true,slots:[{start_at:body.date===date?first:second}]}});
       if(body.action==='reserve'){
        if(body.guardian_phone!=='01012345678'||body.student_name!=='김하늘')
@@ -51,11 +64,18 @@ for(const width of [390,1280]){
     return route.fulfill({status:404,body:'not found'});
    });
    await page.goto('https://olli-booking.test/consultation-booking.html?academy='+slug);
-   await page.getByRole('heading',{name:'상담 날짜를 골라 주세요'}).waitFor();
+   await page.getByRole('heading',{name:'상담 예약',exact:true}).waitFor();
+   await page.getByText('비비작아이성향미술학원',{exact:true}).waitFor();
    assert.equal(await page.locator('input[name=student_name]').count(),1);
    assert.equal(await page.locator('input[name=guardian_phone]').count(),1);
    assert.equal(await page.locator('input[name=otp],input[name=age],input[name=grade]').count(),0);
    assert.ok(await page.getByText('비비작 채널 알림톡을 받고 계신 휴대전화번호를 입력해 주세요.').isVisible());
+   assert.equal(await page.getByText('학생 정보 확인').count(),0);
+   assert.equal(await page.getByText('상담 예약하기를 누르면 올리에 등록된 학생 정보와 대조합니다.').count(),0);
+   const namePosition=await page.locator('[name=student_name]').boundingBox();
+   const calendarPosition=await page.locator('.ogbCalendar').boundingBox();
+   assert.ok(namePosition.y<calendarPosition.y,'student name and phone must appear before calendar');
+   assert.ok((await page.locator('.ogbBrand strong').innerText()).includes('비비작'));
    const bounds=await page.locator('.ogbPanel').boundingBox();
    assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width+1);
    await page.locator('[name=student_name]').fill('김하늘');
@@ -81,7 +101,7 @@ for(const width of [390,1280]){
    await page.getByRole('button',{name:'변경 저장'}).click();
    await page.getByRole('heading',{name:'예약이 완료되었습니다'}).waitFor();
    await page.getByRole('button',{name:'예약 취소'}).click();
-   await page.getByRole('heading',{name:'상담 날짜를 골라 주세요'}).waitFor();
+   await page.getByRole('heading',{name:'상담 예약',exact:true}).waitFor();
    assert.equal(current,null);
    assert.deepEqual(requests.filter(x=>['reserve','reschedule','cancel'].includes(x.action)).map(x=>x.action),
      ['reserve','reserve','reschedule','cancel']);
