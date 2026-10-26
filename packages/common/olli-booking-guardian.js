@@ -236,7 +236,7 @@
        state.phase=state.canReschedule?'change':'booking';
        if(!state.canReschedule)state.message='이 예약은 학원에서 변경을 허용하지 않았습니다.';
      }
-   }catch(e){state.error=explain(e.message);state.phase='lookup';}
+   }catch(e){state.session='';state.error=explain(e.message);state.phase='lookup';}
    finally{state.loading=false;render();}
  }
  async function cancel(){
