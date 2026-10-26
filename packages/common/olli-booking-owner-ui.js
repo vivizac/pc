@@ -282,7 +282,7 @@
    if(!dashboard||!dashboard.classList.contains('show')||dashboard.querySelector('[data-olli-booking-entry]'))return;
    const entry=el('button','obmAcademyEntry');
    entry.type='button';entry.dataset.olliBookingEntry='true';
-   entry.innerHTML='<span><strong>상담 예약 현황</strong><small>오늘·이번 주 일정 및 예약 관리</small></span><span aria-hidden="true">›</span>';
+   entry.innerHTML='<span class="obmAcademyEntryContent"><strong>상담 예약 현황</strong><small>오늘·이번 주 일정 및 예약 관리</small></span><span class="obmAcademyEntryArrowBox" aria-hidden="true"><span class="obmAcademyEntryArrow">›</span></span>';
    entry.addEventListener('click',()=>open('mobile'));
    const header=dashboard.querySelector('.recordAcademyDashboardHeader');
    if(header)header.insertAdjacentElement('afterend',entry);
