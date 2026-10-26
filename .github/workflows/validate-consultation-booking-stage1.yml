@@ -119,6 +119,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026173000_olli_booking_revisit_stage5.sql
       - name: Verify existing booking identity and security (isolated DB)
         run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage5.integration.sql
+      - name: Verify combined PC consultation panel and copy button behavior
+        run: node --test tests/consultation-copy-button-height.test.cjs tests/pc-consultation-tenure-badge.test.cjs
       - name: Validate consultation records tabs
         run: |
           node --check apps/pc/consultation-survey-core.js
