@@ -103,10 +103,26 @@ test('Origin security denies unapproved domains, spoofed forwarding and non-Verc
    assert.equal(res.statusCode,403,'must reject '+headers.origin);
    assert.deepEqual(res.body,{ok:false,code:'ORIGIN_FORBIDDEN'});
   }
-  const handler=server.createHandler({env:{VERCEL:'0',OLLI_BOOKING_PUBLIC_ORIGIN:canonical},
-   fetchFn:async()=>{throw Error('Must reject before network');}});
+  // Missing optional Vercel system variables must not block a strictly
+  // configured public HTTPS origin. The canonical allowlist still applies.
+  for(const flag of [undefined,'0','1']){
+   const runtime={OLLI_BOOKING_PUBLIC_ORIGIN:canonical,SUPABASE_SECRET_KEY:'test-only'};
+   if(flag!==undefined)runtime.VERCEL=flag;
+   const handler=server.createHandler({env:runtime,fetchFn:async()=>({
+    ok:true,json:async()=>({ok:true,academy_name:'비비작아이성향미술학원'})
+   })});
+   const res=makeRes();
+   await handler({method:'POST',headers:{origin:canonical,host:'different.vercel.app'},
+    body:{action:'info',academy}},res);
+   assert.equal(res.statusCode,200,'configured origin must work with VERCEL='+flag);
+   assert.equal(res.body.academy_name,'비비작아이성향미술학원');
+  }
+  // No configured allowlist means internal-Host mismatches still fail closed.
+  const handler=server.createHandler({env:{VERCEL:'1'},
+   fetchFn:async()=>{throw Error('Should not reach database');}});
   const res=makeRes();
-  await handler({method:'POST',headers:{origin:canonical,host:'different.vercel.app'},body:{action:'info',academy}},res);
+  await handler({method:'POST',headers:{origin:canonical,host:'different.vercel.app'},
+   body:{action:'info',academy}},res);
   assert.equal(res.statusCode,403);
  }finally{console.warn=originalWarn;}
 });
