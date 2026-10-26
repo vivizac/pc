@@ -212,7 +212,24 @@ function createHandler({fetchFn=fetch,env=process.env}={}){
    return out(res,400,{ok:false,code:'INVALID_ACTION'});
   }catch(e){
    if(e.message==='MONTH_INVALID')return out(res,400,{ok:false,code:'MONTH_INVALID'});
-   if(!e.code)console.warn('OLLI_BOOKING_PUBLIC_REQUEST_FAILED',e?.name||'Error');
+   // Log only safe classifications. Never log request bodies, student/guardian details,
+   // session tokens, full origins, or raw exception strings.
+   if(e.code==='ORIGIN_FORBIDDEN'){
+    let originMatchesHost=false;
+    try{originMatchesHost=new URL(String(req.headers?.origin)).host===req.headers?.host;}catch{}
+    console.warn('OLLI_BOOKING_PUBLIC_ORIGIN_REJECTED',{
+     originPresent:Boolean(req.headers?.origin),
+     hostPresent:Boolean(req.headers?.host),
+     originMatchesHost,
+     forwardedHostPresent:Boolean(req.headers?.['x-forwarded-host'])
+    });
+   }else if(req.body?.action==='info'){
+    console.warn('OLLI_BOOKING_PUBLIC_INFO_FAILED',{
+     code:e.code||'INTERNAL_ERROR',status:e.status||500
+    });
+   }else if(!e.code){
+    console.warn('OLLI_BOOKING_PUBLIC_REQUEST_FAILED',e?.name||'Error');
+   }
    return out(res,e.status||500,{ok:false,code:e.code||'INTERNAL_ERROR'});
   }
  };
