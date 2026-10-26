@@ -84,15 +84,16 @@
  function calendarHtml(){
    const [y,m]=state.month.split('-').map(Number);
    const days=new Date(Date.UTC(y,m,0)).getUTCDate();
-   const pad=(new Date(Date.UTC(y,m-1,1)).getUTCDay()+6)%7;
-   const heads=['월','화','수','목','금','토','일'].map(d=>'<span>'+d+'</span>').join('');
+   const pad=new Date(Date.UTC(y,m-1,1)).getUTCDay();
+   const heads=['일','월','화','수','목','금','토'].map(d=>'<span>'+d+'</span>').join('');
    const blanks=Array.from({length:pad},()=>'<i aria-hidden="true"></i>').join('');
    let cells='';
    for(let n=1;n<=days;n++){
      const day=state.month+'-'+String(n).padStart(2,'0');
      const disabled=day<today()||day>maxDate()||!allowedDay(day);
+     const sunday=new Date(Date.UTC(y,m-1,n)).getUTCDay()===0;
      cells+='<button type="button" data-date="'+day+'" '+(disabled?'disabled':'')+
-      ' class="'+(state.day===day?'selected':'')+'" aria-pressed="'+(state.day===day)+'">'+n+'</button>';
+      ' class="'+[state.day===day?'selected':'',sunday?'sunday':''].filter(Boolean).join(' ')+'" aria-pressed="'+(state.day===day)+'">'+n+'</button>';
    }
    return '<div class="ogbMonth"><button type="button" data-action="prev" aria-label="이전 달" '+(state.month<=today().slice(0,7)?'disabled':'')+'>‹</button>'+
      '<strong>'+esc(state.month.slice(0,4))+'년 '+Number(state.month.slice(5))+'월</strong>'+
