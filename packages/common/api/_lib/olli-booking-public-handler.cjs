@@ -96,6 +96,17 @@ function previewSlots(dateStr){
 function createHandler({fetchFn=fetch,env=process.env}={}){
  return async function(req,res){
   try{
+   // Narrow QA-only read probe: confirms the preview really received its
+   // sample-calendar environment settings, without exposing private data.
+   if(req.method==='GET' && String(req.url||'').includes('qa_health=1')){
+    const u=new URL(String(req.url||''),'https://local.invalid');
+    const qaSlug=String(u.searchParams.get('academy')||'');
+    if(!qaPreview(env,qaSlug))return out(res,404,{ok:false,code:'NOT_FOUND'});
+    const date=parseDate(u.searchParams.get('date')||'2026-11-03');
+    return out(res,200,{ok:true,demo:true,academy_name:
+      String(env.OLLI_BOOKING_QA_ACADEMY_NAME||'테스트 학원'),
+      sample_slot_count:previewSlots(date).length});
+   }
    if(req.method!=='POST')return out(res,405,{ok:false,code:'METHOD_NOT_ALLOWED'});
    originGuard(req);
    const body=await readBody(req);

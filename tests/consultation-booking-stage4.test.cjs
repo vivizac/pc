@@ -147,3 +147,23 @@ test('QA-only preview supplies visibly marked sample slots, never accepts bookin
  const noPreview=await normal(request);
  assert.notEqual(noPreview.body.code,'DEMO_NOT_BOOKABLE');
 });
+
+test('QA health probe verifies real preview mode, without DB access or production leak',async()=>{
+ const mock=()=>({headers:{},statusCode:null,body:null,setHeader(k,v){this.headers[k]=v;},
+   status(n){this.statusCode=n;return this;},json(b){this.body=b;return this;}});
+ const handler=api.createHandler({
+  fetchFn:async()=>{throw Error('QA health must never read DB');},
+  env:{...env,VERCEL_ENV:'preview',OLLI_BOOKING_QA_DEMO:'1',OLLI_BOOKING_QA_ACADEMY_NAME:'비비작아이성향미술학원'}
+ });
+ const req={method:'GET',headers:{host:'qa.example.org'},
+  url:'/api/olli-booking-public?qa_health=1&academy='+slug+'&date=2026-11-03'};
+ const result=mock();await handler(req,result);
+ assert.equal(result.statusCode,200);assert.equal(result.body.demo,true);
+ assert.equal(result.body.sample_slot_count,12);
+ assert.equal(result.body.academy_name,'비비작아이성향미술학원');
+ assert.ok(!('session_token' in result.body));
+ const prod=api.createHandler({fetchFn:async()=>{throw Error('No DB');},
+  env:{...env,VERCEL_ENV:'production',OLLI_BOOKING_QA_DEMO:'1'}});
+ const r2=mock();await prod(req,r2);
+ assert.equal(r2.statusCode,404);
+});
