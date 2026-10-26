@@ -38,6 +38,13 @@ test('consultation tabs replace the white PC topbar title, not the page body',as
   await page.addStyleTag({content:consultationCSS});
   await page.addScriptTag({content:shell});
   await page.addScriptTag({content:consultation});
+  // The production booking owner UI normally fills this panel. In this isolated
+  // test mock only the card content, so visibility can be checked without API calls.
+  await page.evaluate(()=>{
+    window.OlliBookingDashboard={open:()=>{
+      document.getElementById('olliConsultationBookingPanel').textContent='예약 목록';
+    }};
+  });
   await page.evaluate(()=>window.pcOpenSection('consultation'));
 
   const top='#olliPcTopbarTitle';
