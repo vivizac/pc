@@ -2,6 +2,7 @@
 // Guardian booking boundary: no browser service-role key or staff auth session.
 // Shared unchanged by PC and mobile; both invoke this Vercel API entrypoint.
 const crypto=require('node:crypto');
+const {collectMonthSlots}=require('./olli-booking-month-slots.cjs');
 const SUPABASE_URL=process.env.SUPABASE_URL||'https://fvkxipjwgeyosgnfhdnx.supabase.co';
 const MAX_BYTES=8192;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -108,6 +109,27 @@ function createHandler({fetchFn,env}={}){
      p_expires_at:null,p_link_id:body.link_id
     },fetchFn,env);
     return respond(res,200,result);
+   }
+   if(action==='month-slots'){
+    const digest=tokenHash(body.token);
+    const slug=String(body.academy||'');
+    if(!/^[0-9a-f]{36}$/.test(slug))throw problem('MONTH_INVALID');
+    const args={p_token_hash:digest,p_date:null,p_start_at:null,
+     p_request_key:null,p_reservation_id:null};
+    // Authenticate at the same server boundary before any month response.
+    await rpc('olli_booking_parent_request',{...args,p_action:'snapshot'},fetchFn,env);
+    const cfg=await rpc('olli_booking_public_info',{p_slug:slug},fetchFn,env);
+    if(cfg?.ok!==true)throw problem('ACADEMY_NOT_FOUND',404);
+    let schedule;
+    try{
+     schedule=await collectMonthSlots({month:body.month,weeks:cfg.weeks,
+      weekdays:cfg.weekdays,fetchDay:async date=>{
+       const d=await rpc('olli_booking_parent_request',{
+        ...args,p_action:'slots',p_date:date},fetchFn,env);
+       return d?.slots;
+      }});
+    }catch(e){if(e.message==='MONTH_INVALID')throw problem('MONTH_INVALID');throw e;}
+    return respond(res,200,{ok:true,month:body.month,slots_by_date:schedule});
    }
    if(!['snapshot','slots','reserve','reschedule','cancel'].includes(action))
     throw problem('INVALID_ACTION');
