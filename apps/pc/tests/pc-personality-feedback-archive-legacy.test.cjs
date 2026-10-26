@@ -44,7 +44,7 @@ test('year appears beneath month in the archive buttons, with accessible full da
   assert.match(css, /\.pcAttendanceArchiveMonthBtn\{[^}]*flex-direction:column/);
   assert.match(css, /\.pcAttendanceArchiveYearText\{font:500 10px/);
   assert.match(html, /pc-attendance\.js\?v=20261023-personality-archive-year-1/);
-  assert.match(html, /pc-attendance\.css\?v=20261023-personality-archive-year-1/);
+  assert.match(html, /pc-attendance\.css\?v=20261026-month-unset-guide-1/);
 });
 
 test('a partial protected feedback query fails instead of returning incomplete cached data', async () => {
