@@ -25,7 +25,7 @@ function allowedDate(date,weeks,weekdays){
  const [year,month,day]=date.split('-').map(Number);
  const first=new Date(Date.UTC(year,month-1,1)).getUTCDay();
  const dayOfWeek=new Date(Date.UTC(year,month-1,day)).getUTCDay();
- const week=Math.floor((day-1+(first+6)%7)/7)+1;
+ const week=Math.floor((day-1+first)/7)+1;
  const iso=(dayOfWeek+6)%7+1;
  return weeks.includes(week)&&weekdays.includes(iso);
 }
