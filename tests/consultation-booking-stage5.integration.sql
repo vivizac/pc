@@ -5,7 +5,7 @@ declare
  a uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
  s uuid:='77777777-7777-4777-8777-777777777777';
  slug text;
- goodhash text:=encode(gen_random_bytes(32),'hex');
+ goodhash text:=md5('stage5-booking-lookup')||md5('stage5-lookup-nonce');
  result jsonb;
 begin
  select p.slug into strict slug from public.olli_booking_public_academies p
@@ -13,7 +13,7 @@ begin
  -- Stage4 intentionally inserted an ambiguous duplicate; disable only fixture contact.
  update public.olli_consultation_message_contacts
  set enabled=false where student_id='11111111-1111-4111-8111-111111111120'::uuid;
- result:=public.olli_booking_public_lookup(slug,'김하늘','01000000000',encode(gen_random_bytes(32),'hex'),repeat('c',64));
+ result:=public.olli_booking_public_lookup(slug,'김하늘','01000000000',md5('stage5-unsuccessful')||md5('stage5-unsuccessful-2'),repeat('c',64));
  if result->>'code'<>'MATCH_NOT_FOUND'
  then raise exception 'INVALID_CONTACT_MATCHED %',result;end if;
  result:=public.olli_booking_public_lookup(slug,'김하늘','01022224444',goodhash,repeat('c',64));
@@ -28,7 +28,7 @@ begin
  values('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',a,'새로운아이');
  insert into public.olli_consultation_message_contacts(academy_id,student_id,phone,enabled,confirmed)
  values(a,'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','01022223333',true,true);
- result:=public.olli_booking_public_lookup(slug,'새로운아이','01022223333',encode(gen_random_bytes(32),'hex'),repeat('c',64));
+ result:=public.olli_booking_public_lookup(slug,'새로운아이','01022223333',md5('stage5-unsuccessful')||md5('stage5-unsuccessful-2'),repeat('c',64));
  if result->>'code'<>'BOOKING_NOT_FOUND' then raise exception 'LOOKUP_WITHOUT_BOOKING_ALLOWED %',result;end if;
  if exists(select 1 from public.olli_booking_links l where l.student_id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'::uuid)
  then raise exception 'LOOKUP_WITHOUT_BOOKING_CREATED_TOKEN';end if;
