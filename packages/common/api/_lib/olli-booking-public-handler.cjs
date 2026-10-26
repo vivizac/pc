@@ -1,6 +1,7 @@
 'use strict';
 // One stable public URL per academy. No SMS or OTP; matching only on final reserve.
 const crypto=require('node:crypto');
+const {collectMonthSlots}=require('./olli-booking-month-slots.cjs');
 const SUPABASE_URL=process.env.SUPABASE_URL||'https://fvkxipjwgeyosgnfhdnx.supabase.co';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SLUG=/^[0-9a-f]{36}$/;
@@ -139,6 +140,25 @@ function createHandler({fetchFn=fetch,env=process.env}={}){
     const d=await rpc('olli_booking_public_slots',{p_slug:slug,p_date:date},fetchFn,env);
     return out(res,200,{ok:true,slots:Array.isArray(d?.slots)?d.slots:[]});
    }
+   if(action==='month-slots'){
+    const month=String(body.month||'');
+    // One browser request per calendar month; the server reuses the established
+    // day-slot RPC and never returns reservation names or personal information.
+    let schedule;
+    if(qaPreview(env,slug)){
+     schedule=await collectMonthSlots({month,weeks:[2,3],weekdays:[1,2,3,4,5],
+      fetchDay:async date=>previewSlots(date)});
+    }else{
+     const cfg=await rpc('olli_booking_public_info',{p_slug:slug},fetchFn,env);
+     if(cfg?.ok!==true)throw error('ACADEMY_NOT_FOUND',404);
+     schedule=await collectMonthSlots({month,weeks:cfg.weeks,weekdays:cfg.weekdays,
+      fetchDay:async date=>{
+       const d=await rpc('olli_booking_public_slots',{p_slug:slug,p_date:date},fetchFn,env);
+       return d?.slots;
+      }});
+    }
+    return out(res,200,{ok:true,month,slots_by_date:schedule});
+   }
    if(action==='lookup'){
     // Lookup is allowed only after the parent enters both student name and
     // the confirmed guardian mobile. Never return student PII or booking data
@@ -191,6 +211,7 @@ function createHandler({fetchFn=fetch,env=process.env}={}){
    }
    return out(res,400,{ok:false,code:'INVALID_ACTION'});
   }catch(e){
+   if(e.message==='MONTH_INVALID')return out(res,400,{ok:false,code:'MONTH_INVALID'});
    if(!e.code)console.warn('OLLI_BOOKING_PUBLIC_REQUEST_FAILED',e?.name||'Error');
    return out(res,e.status||500,{ok:false,code:e.code||'INTERNAL_ERROR'});
   }

@@ -10,7 +10,10 @@
  const state={phase:'choice',name:'',phone:'',
    session:'',month:'',day:'',start:'',slots:[],reservation:null,canReschedule:false,
    canCancel:false,loading:false,message:'',error:'',expiresAt:0,
-   academyName:'',weeks:[2,3],weekdays:[1,2,3,4,5],slotStatus:'idle',demo:false};
+   academyName:'',weeks:[2,3],weekdays:[1,2,3,4,5],slotStatus:'idle',monthLoading:false,demo:false};
+ const monthCache=new Map();
+ const monthPending=new Map();
+ const MONTH_TTL_MS=30000;
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  function koreaDate(date=new Date()){
   const p=new Intl.DateTimeFormat('en-US',{timeZone:KST,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date);
@@ -45,8 +48,10 @@
     MATCH_NOT_FOUND:'학생 이름 또는 보호자 휴대전화번호가 올바르지 않습니다. 다시 입력해 주세요.',
     BOOKING_NOT_FOUND:'해당 정보로 예약된 상담이 없습니다. 이름과 전화번호를 다시 확인해 주세요.',
     TOO_MANY_ATTEMPTS:'예약 시도가 많습니다. 잠시 후 다시 시도해 주세요.',
+    MONTH_INVALID:'예약 가능한 달을 선택해 주세요.',
     ACCESS_DENIED:'인증이 만료되었습니다. 학생 확인부터 다시 진행해 주세요.',
-    SLOT_UNAVAILABLE:'해당 시간은 다른 예약으로 마감되었습니다. 다른 시간을 선택해 주세요.',
+    SLOT_UNAVAILABLE:'다른 학부모님이 먼저 예약하셨습니다. 갱신된 시간표에서 다른 시간을 선택해 주세요.',
+    BOOKING_CONFLICT:'예약이 다른 요청과 겹쳤습니다. 갱신된 시간표에서 다시 선택해 주세요.',
     BOOKING_INVALID:'예약 가능 기간이나 시간을 다시 확인해 주세요.',
     SERVER_NOT_CONFIGURED:'예약 서비스 연결 준비 중입니다. 학원에 문의해 주세요.',
     AUTH_NOT_CONFIGURED:'인증 서비스 준비 중입니다. 학원에 문의해 주세요.',
@@ -84,15 +89,16 @@
  function calendarHtml(){
    const [y,m]=state.month.split('-').map(Number);
    const days=new Date(Date.UTC(y,m,0)).getUTCDate();
-   const pad=(new Date(Date.UTC(y,m-1,1)).getUTCDay()+6)%7;
-   const heads=['월','화','수','목','금','토','일'].map(d=>'<span>'+d+'</span>').join('');
+   const pad=new Date(Date.UTC(y,m-1,1)).getUTCDay();
+   const heads=['일','월','화','수','목','금','토'].map(d=>'<span>'+d+'</span>').join('');
    const blanks=Array.from({length:pad},()=>'<i aria-hidden="true"></i>').join('');
    let cells='';
    for(let n=1;n<=days;n++){
      const day=state.month+'-'+String(n).padStart(2,'0');
      const disabled=day<today()||day>maxDate()||!allowedDay(day);
+     const sunday=new Date(Date.UTC(y,m-1,n)).getUTCDay()===0;
      cells+='<button type="button" data-date="'+day+'" '+(disabled?'disabled':'')+
-      ' class="'+(state.day===day?'selected':'')+'" aria-pressed="'+(state.day===day)+'">'+n+'</button>';
+      ' class="'+[state.day===day?'selected':'',sunday?'sunday':''].filter(Boolean).join(' ')+'" aria-pressed="'+(state.day===day)+'">'+n+'</button>';
    }
    return '<div class="ogbMonth"><button type="button" data-action="prev" aria-label="이전 달" '+(state.month<=today().slice(0,7)?'disabled':'')+'>‹</button>'+
      '<strong>'+esc(state.month.slice(0,4))+'년 '+Number(state.month.slice(5))+'월</strong>'+
@@ -101,8 +107,8 @@
  }
  function slotsHtml(){
    if(!state.day)return '<p class="ogbMuted">먼저 상담 날짜를 선택해 주세요.</p>';
-   if(state.loading)return '<p class="ogbMuted">예약 가능한 시간을 확인하는 중입니다.</p>';
-   if(state.slotStatus==='error')return '<p class="ogbMuted">예약 시간 정보를 불러오지 못했습니다. 아래 오류 안내를 확인해 주세요.</p>';
+   if(state.slotStatus==='loading')return '<p class="ogbMuted">선택하신 달의 상담 시간표를 불러오는 중입니다.</p>';
+   if(state.slotStatus==='error')return '<p class="ogbMuted">예약 시간 정보를 불러오지 못했습니다. <button type="button" class="ogbRetry" data-action="refresh-month">다시 불러오기</button></p>';
    if(!state.slots.length)return '<p class="ogbMuted">이 날짜에는 예약 가능한 시간이 없습니다. 다른 예약 가능일을 선택해 주세요.</p>';
    return '<div class="ogbSlots">'+state.slots.map(slot=>{
      const d=koreaDate(new Date(slot.start_at));
@@ -142,6 +148,7 @@
      '<h2 class="ogbSubheading ogbSectionHeading">날짜 선택</h2>'+
      '<p class="ogbCalendarHint">학원에서 정한 상담 요일만 선택할 수 있습니다.</p>'+
      calendarHtml()+
+     (state.monthLoading?'<p class="ogbCalendarHint" role="status">해당 월의 상담 시간표를 갱신하는 중입니다.</p>':'')+
      '<h2 class="ogbSubheading">'+(state.day?esc(label(state.day))+' · 시간 선택':'시간 선택')+'</h2>'+
      slotsHtml()+
      '<div class="ogbActions"><button class="ogbPrimary" type="button" data-action="commit" '+(!state.start||state.loading?'disabled':'')+'>'+
@@ -161,7 +168,7 @@
  function reset(){
    state.session='';state.name='';state.phone='';state.reservation=null;state.slots=[];
    state.start='';state.day='';state.month=firstBookableMonth();state.phase='choice';state.slotStatus='idle';
-   state.error='';state.message='';render();
+   state.error='';state.message='';state.monthLoading=false;monthCache.clear();render();
  }
  async function loadSnapshot(){
    const r=await api('/api/olli-booking',{action:'snapshot',token:state.session});
@@ -170,17 +177,71 @@
    state.phase='booking';state.day='';state.start='';state.slots=[];state.slotStatus='idle';
    state.month=state.reservation?koreaDate(new Date(state.reservation.start_at)).date.slice(0,7):today().slice(0,7);
  }
- async function available(date){
-   state.day=date;state.start='';state.loading=true;state.slotStatus='loading';state.error='';state.message='';
-   render();
-   try{
-     const r=state.session?
-      await api('/api/olli-booking',{action:'slots',token:state.session,date}):
-      await api('/api/olli-booking-public',{action:'slots',academy:slug,date});
-     if(state.day!==date)return;
-     state.slots=Array.isArray(r.slots)?r.slots:[];state.slotStatus='loaded';
-   }catch(err){state.slots=[];state.slotStatus='error';state.error=explain(err.message);}
-   finally{state.loading=false;render();}
+ function monthKey(month=state.month){
+   // Cache remains only in memory, scoped to the current public or guardian session.
+   return (state.session?'session:'+state.session:'public')+':'+month;
+ }
+ function useMonthSlots(){
+   if(!state.day){state.slots=[];state.slotStatus='idle';return;}
+   const cached=monthCache.get(monthKey());
+   if(!cached){
+    state.slots=[];state.slotStatus=state.monthLoading?'loading':'idle';
+    return;
+   }
+   const slots=cached.slotsByDate[state.day];
+   state.slots=Array.isArray(slots)?slots:[];
+   state.slotStatus='loaded';
+   if(state.start&&!state.slots.some(slot=>slot.start_at===state.start))state.start='';
+ }
+ async function loadMonth(month=state.month,force=false){
+   const key=monthKey(month),saved=monthCache.get(key);
+   if(saved&&Date.now()-saved.fetchedAt<MONTH_TTL_MS&&!force)return;
+   if(monthPending.has(key)){
+    // A failed reservation must request a fresh snapshot even if an older
+    // background refresh was in flight before the conflicting booking.
+    if(force){await monthPending.get(key);return loadMonth(month,true);}
+    if(state.month===month&&monthKey()===key){
+     state.monthLoading=true;useMonthSlots();render();
+    }
+    return monthPending.get(key);
+   }
+   if(state.month===month&&monthKey()===key){
+    state.monthLoading=true;useMonthSlots();render();
+   }
+   const endpoint=state.session?'/api/olli-booking':'/api/olli-booking-public';
+   const payload=state.session?
+    {action:'month-slots',academy:slug,token:state.session,month}:
+    {action:'month-slots',academy:slug,month};
+   const request=api(endpoint,payload).then(result=>{
+    if(result.month!==month||!result.slots_by_date||
+       typeof result.slots_by_date!=='object'||Array.isArray(result.slots_by_date))
+      throw new Error('SERVICE_RESPONSE_INVALID');
+    monthCache.set(key,{slotsByDate:result.slots_by_date,fetchedAt:Date.now()});
+    if(state.month===month&&monthKey()===key)useMonthSlots();
+   }).catch(err=>{
+    if(state.month===month&&monthKey()===key){
+     state.error=explain(err.message);
+     if(!monthCache.has(key)){state.slots=[];state.slotStatus='error';}
+    }
+   }).finally(()=>{
+    monthPending.delete(key);
+    if(state.month===month&&monthKey()===key){
+     state.monthLoading=false;render();
+    }
+   });
+   monthPending.set(key,request);
+   return request;
+ }
+ function available(date){
+   state.day=date;state.start='';state.error='';state.message='';
+   useMonthSlots();render();
+   // Revalidate the entire month only when its short cache TTL has expired.
+   void loadMonth();
+ }
+ function openMonth(month){
+   state.month=month;state.day='';state.start='';state.slots=[];
+   state.error='';state.slotStatus='idle';state.monthLoading=false;render();
+   void loadMonth(month);
  }
  async function mutate(){
    const editing=state.phase==='change';
@@ -211,7 +272,14 @@
        await loadSnapshot();
        state.message=editing?'예약 시간을 변경했습니다.':'상담 예약이 완료되었습니다.';
      }
-   }catch(e){state.error=explain(e.message);}
+   }catch(e){
+    const failedCode=e.message;
+    if(failedCode==='SLOT_UNAVAILABLE'||failedCode==='BOOKING_CONFLICT'){
+     state.start='';monthCache.delete(monthKey());
+     await loadMonth(state.month,true);
+    }
+    state.error=explain(failedCode);
+   }
    finally{state.loading=false;render();}
  }
  async function lookupExisting(){
@@ -236,7 +304,9 @@
        if(!state.canReschedule)state.message='이 예약은 학원에서 변경을 허용하지 않았습니다.';
      }
    }catch(e){state.session='';state.error=explain(e.message);state.phase='lookup';}
-   finally{state.loading=false;render();}
+   finally{state.loading=false;render();
+    if(state.phase==='change')void loadMonth(state.month);
+   }
  }
  async function cancel(){
    if(!state.reservation||!state.canCancel||state.loading)return;
@@ -246,6 +316,7 @@
      await api('/api/olli-booking',{action:'cancel',token:state.session,
        reservation_id:state.reservation.id,request_key:global.crypto.randomUUID()});
      await loadSnapshot();
+     monthCache.clear();
      // A fresh booking after cancellation must match name and phone again.
      state.session='';state.name='';state.phone='';state.month=firstBookableMonth();
      state.phase='choice';state.message='예약을 취소했습니다.';
@@ -259,18 +330,19 @@
  root.addEventListener('click',async event=>{
    const node=event.target.closest('[data-action],[data-date],[data-start]');
    if(!node||state.loading)return;
-   if(node.hasAttribute('data-date')){await available(node.dataset.date);return;}
+   if(node.hasAttribute('data-date')){available(node.dataset.date);return;}
    if(node.hasAttribute('data-start')){state.start=node.dataset.start;render();return;}
    switch(node.dataset.action){
-   case 'choose-book':state.phase='booking';state.error='';render();break;
+   case 'choose-book':state.phase='booking';state.error='';render();void loadMonth();break;
    case 'choose-change':state.phase='lookup';state.error='';render();break;
    case 'lookup':await lookupExisting();break;
    case 'choice':reset();break;
    case 'restart':reset();break;
-   case 'prev':state.month=monthShift(state.month,-1);state.day='';state.start='';state.slots=[];render();break;
-   case 'next':state.month=monthShift(state.month,1);state.day='';state.start='';state.slots=[];render();break;
-   case 'change':state.phase='change';state.start='';state.day='';state.slots=[];state.slotStatus='idle';render();break;
+   case 'prev':openMonth(monthShift(state.month,-1));break;
+   case 'next':openMonth(monthShift(state.month,1));break;
+   case 'change':state.phase='change';state.start='';state.day='';state.slots=[];state.slotStatus='idle';render();void loadMonth();break;
    case 'back':state.phase='booking';state.start='';state.day='';state.slots=[];render();break;
+   case 'refresh-month':monthCache.delete(monthKey());await loadMonth(state.month,true);break;
    case 'commit':await mutate();break;
    case 'cancel':await cancel();break;
    }
@@ -284,8 +356,11 @@
     state.weeks=Array.isArray(r.weeks)?r.weeks:[2,3];
     state.weekdays=Array.isArray(r.weekdays)?r.weekdays:[1,2,3,4,5];
     state.demo=r.demo===true;
+    const previousMonth=state.month;
     if(!state.day&&!state.reservation)state.month=firstBookableMonth();
     render();
+    if(previousMonth!==state.month&&(state.phase==='booking'||state.phase==='change'))
+     void loadMonth();
   }).catch(e=>{state.academyName='학원명 확인 불가';state.error=explain(e.message);render();});
  }
 
