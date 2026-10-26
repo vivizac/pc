@@ -1,4 +1,4 @@
-name: Validate consultation booking stages 1 and 2
+name: Validate consultation booking stages 1–3
 on:
   push:
     branches:
@@ -10,6 +10,12 @@ on:
       - 'supabase/migrations/*_olli_booking_parent_stage2.sql'
       - 'tests/consultation-booking-stage1*'
       - 'tests/consultation-booking-stage2*'
+      - 'packages/common/olli-booking-owner-ui.js'
+      - 'packages/common/olli-booking-owner-ui.css'
+      - 'apps/pc/pc-shell.js'
+      - 'apps/{pc,mobile}/index.html'
+      - 'supabase/migrations/*_olli_booking_staff_stage3.sql'
+      - 'tests/consultation-booking-stage3*'
       - '.github/workflows/validate-consultation-booking-stage1.yml'
       - 'packages/common/*-runtime-manifest.json'
       - 'apps/*/api/olli-booking.js'
@@ -76,3 +82,12 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage2.integration.sql
       - name: Test true concurrent booking collision
         run: bash tests/consultation-booking-stage2.concurrent.sh
+      - name: Apply staff management migration in isolated PostgreSQL
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026103000_olli_booking_staff_stage3.sql
+      - name: Staff operations and permission integration
+        run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage3.integration.sql
+      - name: PC and mobile booking UI checks
+        run: |
+          node --check packages/common/olli-booking-owner-ui.js
+          node --check apps/pc/pc-shell.js
+          node --test tests/consultation-booking-stage3-ui.test.cjs

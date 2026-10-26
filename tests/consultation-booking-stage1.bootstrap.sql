@@ -14,6 +14,7 @@ create table public.academies (
 create table public.students (
   id uuid primary key,
   academy_id uuid not null references public.academies(id),
+  name text not null default '테스트 학생',
   status text not null default 'active',
   is_deleted boolean not null default false,
   unique(id,academy_id)
