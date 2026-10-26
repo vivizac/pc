@@ -18,11 +18,12 @@ test('mobile copy icon matches status badge height while keeping the same horizo
 test('PC notice copy height matches status badge and retains horizontal appearance',()=>{
   assert.match(desktop,/\.recordAcademyConsultStatusChip\s*\{[^}]*min-height:\s*24px/s);
   assert.match(messages,/flex-shrink:0;order:-1;height:24px;min-height:24px;box-sizing:border-box/);
-  assert.match(messages,/border-radius:8px;background:#fff;color:#343d4b;padding:0 10px/);
+  assert.match(messages,/border:1px solid #fff;border-radius:999px;background:#fff;color:#343d4b;padding:0 10px/);
 });
-test('both entrypoints refresh the shared script; card placement is unchanged',()=>{
+test('PC copies sit immediately left of status badge; mobile icon appearance is retained',()=>{
   assert.match(mobile,/src="olli-consultation-messages\.js\?v=20261025-copy-height-24-1"/);
-  assert.match(desktop,/src="olli-consultation-messages\.js\?v=20261025-copy-height-24-1"/);
-  assert.match(messages,/if \(statusChip\) mobileActions\.insertBefore\(button, statusChip\)/);
+  assert.match(desktop,/src="olli-consultation-messages\.js\?v=20261026-pc-copy-capsule-1"/);
+  assert.match(messages,/const actions = card\.querySelector\('\.recordAcademyConsultActions'\)/);
+  assert.match(messages,/if \(statusChip\) actions\.insertBefore\(button, statusChip\)/);
   assert.match(messages,/else card\.insertBefore\(button, card\.firstChild\)/);
 });

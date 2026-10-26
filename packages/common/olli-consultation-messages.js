@@ -490,7 +490,7 @@
         // Keep the 28px horizontal icon target, but match the 24px status badge height.
         button.style.cssText = 'flex:0 0 28px;order:-1;width:28px;height:24px;min-height:24px;box-sizing:border-box;border:none;border-radius:50%;background:transparent;color:#7f7f7f;display:inline-flex;align-items:center;justify-content:center;padding:0;cursor:pointer';
       } else {
-        button.style.cssText = 'flex-shrink:0;order:-1;height:24px;min-height:24px;box-sizing:border-box;border:1px solid #d8dce4;border-radius:8px;background:#fff;color:#343d4b;padding:0 10px;font-size:12px;font-weight:600;line-height:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer';
+        button.style.cssText = 'flex-shrink:0;order:-1;height:24px;min-height:24px;box-sizing:border-box;border:1px solid #fff;border-radius:999px;background:#fff;color:#343d4b;padding:0 10px;font-size:12px;font-weight:600;line-height:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer';
       }
       button.addEventListener('click', async event => {
         event.preventDefault(); event.stopPropagation();
@@ -499,12 +499,10 @@
         catch(error) { alert(error.message || '안내문 복사에 실패했습니다.'); }
         finally { button.disabled = false; }
       });
-      // Mobile student-management cards keep their status badge on the right.
-      // Put the same copy button immediately before that badge; PC stays unchanged.
-      const mobileActions = mobile
-        ? card.querySelector('.recordAcademyConsultActions') : null;
-      const statusChip = mobileActions?.querySelector('.recordAcademyConsultStatusChip');
-      if (statusChip) mobileActions.insertBefore(button, statusChip);
+      // Place the copy control immediately left of the consultation status badge on PC and mobile.
+      const actions = card.querySelector('.recordAcademyConsultActions');
+      const statusChip = actions?.querySelector('.recordAcademyConsultStatusChip');
+      if (statusChip) actions.insertBefore(button, statusChip);
       else card.insertBefore(button, card.firstChild);
     });
   }
