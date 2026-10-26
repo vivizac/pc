@@ -38,7 +38,7 @@ test('blue inset visual centers the white existing chevron; mobile navigation st
   assert.match(visual, /display:flex/);
   assert.match(visual, /align-items:center/);
   assert.match(visual, /justify-content:center/);
-  assert.match(visual, /border-radius:16px/);
+  assert.match(visual, /border-radius:0 16px 16px 0/);
   assert.match(visual, /background:#0A84FF/);
   assert.match(visual, /color:#fff/);
   assert.match(shortcut, /entry\.innerHTML=.*상담 예약 현황.*<span aria-hidden="true">›<\/span>/);
@@ -95,5 +95,8 @@ test('consultation card is the fifth item in the two-column stat grid under 올�
   assert.deepEqual(grid.children.slice(0, 4), cards, 'the existing four stat cards keep their places');
   assert.equal(grid.children[4].dataset.olliBookingEntry, 'true');
   assert.equal(grid.children[4].className, 'obmAcademyEntry');
-  assert.match(rule(booking, '.recordAcademyStatGrid > .obmAcademyEntry'), /margin-top:0/);
+  const fullWidthRule = rule(booking, '.recordAcademyStatGrid > .obmAcademyEntry');
+  assert.match(fullWidthRule, /grid-column:1\s*\/\s*-1/);
+  assert.match(fullWidthRule, /margin-top:0/);
+  assert.match(rule(booking, '.obmAcademyEntry'), /width:100%/);
 });
