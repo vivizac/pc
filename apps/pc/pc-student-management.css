@@ -82,7 +82,7 @@ body.olliPcApp #recordAcademyDashboard .recordAcademyConsultSection{
 
 /* 상담예정 학생 */
 .pcAcademyDetailPanel{
-  display:none;position:sticky;top:0;height:calc(100vh - var(--pc-topbar-h) - 52px);min-height:0;max-height:calc(100vh - var(--pc-topbar-h) - 52px);overflow:hidden;
+  display:none;position:sticky;top:0;height:calc(100vh - var(--pc-topbar-h) - 60px);min-height:0;max-height:calc(100vh - var(--pc-topbar-h) - 60px);overflow:hidden;
   background:#fff;border:1px solid #e2e4e8;border-radius:26px;padding:22px;box-sizing:border-box;box-shadow:0 8px 24px rgba(20,24,30,.035);
 }
 .recordBodyNew.pcAcademyLayout .pcAcademyDetailPanel{display:flex;flex-direction:column;}

@@ -66,8 +66,24 @@ test('PC consultation list omits reservation notice card even for academy owners
 
 test('PC consultation panel retains fixed height and scrolls its student list', () => {
   const css = fs.readFileSync(path.join(__dirname, '../apps/pc/pc-student-management.css'), 'utf8');
-  assert.match(css, /\.pcAcademyDetailPanel\{[^}]*height:calc\(100vh - var\(--pc-topbar-h\) - 52px\)/);
+  assert.match(css, /\.pcAcademyDetailPanel\{[^}]*height:calc\(100vh - var\(--pc-topbar-h\) - 60px\)/);
   assert.match(css, /\.recordBodyNew\.pcAcademyLayout \.pcAcademyDetailPanel\{display:flex;flex-direction:column;\}/);
   assert.match(css, /\.pcAcademyConsultationList\{[^}]*flex:1 1 auto;min-height:0;overflow-y:auto/);
   assert.doesNotMatch(css, /\.pcAcademyDetailPanel\{position:static;min-height:auto;max-height:none;\}/);
+});
+
+test('PC student management has no synthetic outer-page overflow', () => {
+  const attendanceCss = fs.readFileSync(path.join(__dirname, '../apps/pc/pc-attendance.css'), 'utf8');
+  const managementCss = fs.readFileSync(path.join(__dirname, '../apps/pc/pc-student-management.css'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '../apps/pc/index.html'), 'utf8');
+  // Outer layout uses 26px top + 34px bottom; fixed right panel must subtract both.
+  assert.match(attendanceCss, /#recordRoomScreen \.recordBodyNew\{[^}]*padding:26px 26px 34px/);
+  assert.match(managementCss, /\.pcAcademyDetailPanel\{[^}]*height:calc\(100vh - var\(--pc-topbar-h\) - 60px\)/);
+  assert.match(managementCss, /\.pcAcademyDetailPanel\{[^}]*max-height:calc\(100vh - var\(--pc-topbar-h\) - 60px\)/);
+  // Remove inherited 120px bottom padding that made the empty dashboard scroll.
+  assert.match(html, /\.recordAcademyDashboard\s*\{\s*display:\s*none;\s*padding:\s*6px 10px 0;/);
+  assert.match(html, /pc-student-management\.css\?v=20261026-scroll-fit-1/);
+  // Do not disable legitimate scrolling for shorter viewports or a longer student list.
+  assert.match(attendanceCss, /#recordRoomScreen \.recordPageInner\{[^}]*overflow:auto/);
+  assert.match(managementCss, /\.pcAcademyConsultationList\{[^}]*overflow-y:auto/);
 });
