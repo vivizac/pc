@@ -9,7 +9,7 @@ const vm = require('node:vm');
 const consultationCore = fs.readFileSync(path.join(__dirname, '../packages/common/olli-consultation-task-core.js'), 'utf8');
 const managementUI = fs.readFileSync(path.join(__dirname, '../apps/pc/pc-student-management.js'), 'utf8');
 
-function renderConsultationCard(enrolledMonthsAgo, ruleLabels) {
+function renderConsultationCard(enrolledMonthsAgo, ruleLabels, isOwner = false) {
   const panel = { innerHTML: '' };
   const now = new Date();
   const enrollmentDate = enrolledMonthsAgo == null
@@ -19,7 +19,7 @@ function renderConsultationCard(enrolledMonthsAgo, ruleLabels) {
   const context = {
     Date,
     console,
-    window: { OlliConsultationMessages: { isOwner: () => false } },
+    window: { OlliConsultationMessages: { isOwner: () => isOwner } },
     document: {
       getElementById: (id) => id === 'pcAcademyDetailPanel' ? panel : null,
       querySelectorAll: () => []
@@ -55,4 +55,19 @@ test('consultation card keeps tenure and summary status without any completion b
 test('unknown enrollment date falls back to existing rule label', () => {
   const html = renderConsultationCard(null, ['6개월마다']);
   assert.match(html, /recordAcademyRuleChip">6개월</);
+});
+
+test('PC consultation list omits reservation notice card even for academy owners', () => {
+  const html = renderConsultationCard(6, ['6개월마다'], true);
+  assert.doesNotMatch(html, /상담 예약 안내|recordAcademyConsultCompleteBtn|OlliConsultationMessages\.open/);
+  assert.match(html, /pcAcademyConsultationList/);
+  assert.match(html, /recordAcademyConsultListItem/);
+});
+
+test('PC consultation panel retains fixed height and scrolls its student list', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../apps/pc/pc-student-management.css'), 'utf8');
+  assert.match(css, /\.pcAcademyDetailPanel\{[^}]*height:calc\(100vh - var\(--pc-topbar-h\) - 52px\)/);
+  assert.match(css, /\.recordBodyNew\.pcAcademyLayout \.pcAcademyDetailPanel\{display:flex;flex-direction:column;\}/);
+  assert.match(css, /\.pcAcademyConsultationList\{[^}]*flex:1 1 auto;min-height:0;overflow-y:auto/);
+  assert.doesNotMatch(css, /\.pcAcademyDetailPanel\{position:static;min-height:auto;max-height:none;\}/);
 });
