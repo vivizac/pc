@@ -93,7 +93,7 @@ test('mobile notice is a PC-style copy icon immediately left of status; PC untou
   assert.match(mobile.button.style.cssText, /background:transparent;color:#7f7f7f/);
   assert.equal(pc.button.textContent,'안내문 복사','desktop creation behavior is unchanged');
   assert.match(pc.button.style.cssText,/height:24px;min-height:24px;box-sizing:border-box/);
-  assert.match(pc.button.style.cssText,/border-radius:8px;background:#fff;color:#343d4b/);
+  assert.match(pc.button.style.cssText,/border-radius:999px;background:#fff;color:#343d4b/);
   assert.match(copy,/button\.innerHTML = manualConsultationCopyIconSvg\(\)/,'icon restored after success');
   assert.equal(blobSha(style), '071040b9ba796a84b4664b9d761d3ea1123d4423');
 });
