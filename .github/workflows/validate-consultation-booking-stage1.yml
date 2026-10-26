@@ -22,6 +22,8 @@ on:
       - 'apps/*/consultation-booking.html'
       - 'apps/*/api/olli-booking-public.js'
       - 'tests/consultation-booking-stage4*'
+      - 'tests/consultation-manual-copy-booking-link.test.cjs'
+      - 'packages/common/olli-consultation-messages.js'
       - '.github/workflows/validate-consultation-booking-stage1.yml'
       - 'packages/common/*-runtime-manifest.json'
       - 'apps/*/api/olli-booking.js'
@@ -113,3 +115,4 @@ jobs:
           node --check packages/common/olli-booking-guardian.js
           node --check packages/common/olli-booking-owner-ui.js
           node --test tests/consultation-booking-stage4.test.cjs
+          node --test tests/consultation-manual-copy-booking-link.test.cjs
