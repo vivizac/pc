@@ -76,7 +76,9 @@ test('server inspect requires linked row, no material heuristic, no old date fal
   assert.match(inspect,/job\.feedback_id/);
   assert.doesNotMatch(inspect,/relevantRows\(|material\.status|candidates\[0\]|created_at\.desc/);
   assert.match(server,/p_action:'claim'/);
-  assert.match(server,/p_action:'finish'/);
+  // Atomic finish now records exact source feedback IDs in the same server RPC.
+  assert.match(server,/olli_consultation_summary_finish_with_sources/);
+  assert.match(server,/p_source_general_feedback_ids:sourceGeneralIds/);
 });
 test('legacy links require explicit owner review, are audited and cannot reuse one summary for two tasks',()=>{
   assert.match(migration,/p_confirm_exact_record boolean default false/);
