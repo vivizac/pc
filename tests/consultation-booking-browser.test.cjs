@@ -21,7 +21,7 @@ function validFutureDates(){
   const date=futureDate(offset);
   const [year,month,day]=date.split('-').map(Number);
   const dt=new Date(Date.UTC(year,month-1,day));
-  const week=Math.floor((day-1+(new Date(Date.UTC(year,month-1,1)).getUTCDay()+6)%7)/7)+1;
+  const week=Math.floor((day-1+new Date(Date.UTC(year,month-1,1)).getUTCDay())/7)+1;
   const weekday=(dt.getUTCDay()+6)%7+1;
   if([2,3].includes(week)&&weekday<=5)found.push(date);
  }
@@ -98,8 +98,12 @@ for(const width of [390,1280]){
        'rgb(7, 158, 179)','exact uploaded color must match on BOTH choice buttons');
    }
    await page.getByRole('button',{name:'상담 예약하기'}).click();
-   const headerGreen=await page.locator('.ogbTitleBand').evaluate(node=>getComputedStyle(node).backgroundColor);
-   const buttonGreen=await page.locator('[data-action="commit"]').evaluate(node=>getComputedStyle(node).backgroundColor);
+   // Read both computed colors in a single browser tick; a concurrent month
+   // schedule refresh can replace the entire DOM between locator evaluations.
+   const [headerGreen,buttonGreen]=await page.evaluate(()=>[
+     getComputedStyle(document.querySelector('.ogbTitleBand')).backgroundColor,
+     getComputedStyle(document.querySelector('[data-action="commit"]')).backgroundColor
+   ]);
    assert.equal(headerGreen,buttonGreen,'booking title and submit button share exact uploaded teal');
    assert.equal(buttonGreen,'rgb(7, 158, 179)');
    assert.ok((await page.locator('.ogbMonth strong').innerText()).includes(Number(date.slice(5,7))+'월'),
