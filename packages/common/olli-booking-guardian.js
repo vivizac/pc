@@ -31,7 +31,9 @@
  async function api(endpoint,body){
   let res;
   try{
-   res=await global.fetch(endpoint,{method:'POST',mode:'same-origin',credentials:'same-origin',
+   // CORS request mode retains the true Origin on POST even with no-referrer policy.
+   // Endpoint stays root-relative, credentials remain same-origin, and CSP connect-src is 'self'.
+   res=await global.fetch(endpoint,{method:'POST',mode:'cors',credentials:'same-origin',
      cache:'no-store',headers:{'Content-Type':'application/json'},
      body:JSON.stringify(body)});
   }catch{
