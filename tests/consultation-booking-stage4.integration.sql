@@ -3,7 +3,7 @@ do $$
 declare
  a uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
  b uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
- s uuid:='11111111-1111-4111-8111-111111111111';
+ s uuid:='77777777-7777-4777-8777-777777777777';
  slug text;
  first_link jsonb; second_link jsonb; result jsonb;
  day date; slot timestamptz; slots jsonb; n integer;
@@ -17,7 +17,7 @@ begin
  second_link:=public.olli_booking_public_link_manage('fixture-owner',a);
  slug:=first_link->>'slug';
  if length(slug)<>36 or first_link<>second_link then raise exception 'ACADEMY_URL_NOT_STABLE';end if;
- update public.students set name='김하늘' where id=s;
+ insert into public.students(id,academy_id,name) values(s,a,'김하늘');
  insert into public.olli_consultation_message_contacts(academy_id,student_id,phone,enabled,confirmed)
  values(a,s,'010-2222-4444',true,true);
  for n in 1..80 loop
