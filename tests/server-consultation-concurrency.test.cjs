@@ -34,6 +34,11 @@ function setup({auth=true,initialGenerating=false,failChat=false,preview=false,l
      if(params.p_action==='fail'){calls.errors++;status='error';return json({ok:true,status:'error'});}
      if(params.p_action==='revise'){calls.revision++;row.content=params.p_content;return json({ok:true,status:'ready',feedback_id:21,content:row.content});}
    }
+   if(address.includes('/rpc/olli_consultation_summary_finish_with_sources')){
+     const params=JSON.parse(options.body||'{}');
+     calls.finishes++;status='ready';feedbackId=21;row.content=params.p_content;
+     return json({ok:true,status:'ready',feedback_id:21});
+   }
    if(address.includes('/rest/v1/students')){calls.studentFetches++;return json([{id:studentId,name:'Example',division:'elementary',enrolled_at:'2025-04-15',status:'active',is_deleted:false}]);}
    if(address.includes('/rest/v1/fail_feedbacks'))return json([]);
    if(address.includes('/rest/v1/feedbacks'))return json([
