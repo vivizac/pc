@@ -6,7 +6,10 @@
  const root=global.document.getElementById('olliGuardianBooking');
  if(!root)return;
  const KST='Asia/Seoul';
- const slug=String(new URLSearchParams(global.location.search).get('academy')||'');
+ const params=new URLSearchParams(global.location.search);
+ const slug=String(params.get('academy')||'');
+ // An explicit opt-in shows safe status codes without exposing personal inputs.
+ const diagnosticMode=params.get('booking_debug')==='1';
  const state={phase:'choice',name:'',phone:'',
    session:'',month:'',day:'',start:'',slots:[],reservation:null,canReschedule:false,
    canCancel:false,loading:false,message:'',error:'',expiresAt:0,
@@ -26,20 +29,37 @@
  function label(date){if(!date)return '';const [y,m,d]=date.split('-').map(Number);return new Intl.DateTimeFormat('ko-KR',{timeZone:KST,month:'long',day:'numeric',weekday:'short'}).format(new Date(Date.UTC(y,m-1,d,3)));}
  function info(text,kind=''){return '<p class="ogbNotice '+(kind==='error'?'isError':'')+'" role="status">'+esc(text)+'</p>';}
  async function api(endpoint,body){
-  const res=await global.fetch(endpoint,{method:'POST',mode:'same-origin',credentials:'same-origin',
-    cache:'no-store',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(body)});
+  let res;
+  try{
+   res=await global.fetch(endpoint,{method:'POST',mode:'same-origin',credentials:'same-origin',
+     cache:'no-store',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify(body)});
+  }catch{
+   // Do not keep browser exception strings: they may contain URLs or sensitive details.
+   throw new Error('NETWORK_REQUEST_FAILED');
+  }
   const result=await res.json().catch(()=>null);
   // A protected Vercel preview can return an HTML login page instead of JSON.
-  if(!result && (res.status===401 || res.status===403))
-    throw new Error('PREVIEW_ACCESS_REQUIRED');
-  if(!result)throw new Error('SERVICE_RESPONSE_INVALID');
-  if(!res.ok||result?.ok!==true)throw new Error(result.code||'REQUEST_FAILED');
+  if(!result && (res.status===401 || res.status===403)){
+   const err=new Error('PREVIEW_ACCESS_REQUIRED');err.httpStatus=res.status;throw err;
+  }
+  if(!result){
+   const err=new Error('SERVICE_RESPONSE_INVALID');err.httpStatus=res.status;throw err;
+  }
+  if(!res.ok||result?.ok!==true){
+   const err=new Error(typeof result.code==='string'?result.code:'REQUEST_FAILED');
+   err.httpStatus=res.status;throw err;
+  }
   return result;
  }
  function explain(code){
   const map={
     FORM_INVALID:'입력한 학생 정보와 연락처를 확인해 주세요.',
+    NETWORK_REQUEST_FAILED:'예약 서버에 연결하지 못했습니다. 다시 시도해 주세요.',
+    ORIGIN_FORBIDDEN:'예약 요청의 출처를 확인할 수 없습니다. 학원에 문의해 주세요.',
+    INVALID_BODY:'예약 요청을 읽지 못했습니다. 다시 시도해 주세요.',
+    INTERNAL_ERROR:'예약 처리 중 서버 오류가 발생했습니다. 학원에 문의해 주세요.',
+    REQUEST_FAILED:'요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.',
     PREVIEW_ACCESS_REQUIRED:'미리보기 페이지 접근 인증이 만료되었습니다. 공유 링크를 다시 열어 주세요.',
     SERVICE_RESPONSE_INVALID:'예약 서버가 올바른 응답을 보내지 않았습니다. 다시 접속해 주세요.',
     DATABASE_NOT_CONFIGURED:'상담 예약 서버가 연결되지 않았습니다. 학원에 문의해 주세요.',
@@ -58,6 +78,16 @@
     BOOKING_NOT_AVAILABLE:'일시적으로 예약 정보를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.',
     BOOKING_CONFLICT:'예약 정보가 변경되었습니다. 새로고침 후 다시 시도해 주세요.'
   };return map[code]||'요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+ }
+ function errorMessage(err){
+  const code=String(err?.message||'CLIENT_ERROR');
+  const description=explain(code);
+  if(!diagnosticMode)return description;
+  // Only fixed-format codes/status are shown; never show URLs, payloads, tokens or exception text.
+  const safeCode=/^[A-Z][A-Z0-9_]{2,48}$/.test(code)?code:'CLIENT_ERROR';
+  const status=Number.isInteger(err?.httpStatus)&&err.httpStatus>=100&&err.httpStatus<=599?
+    ' / HTTP '+err.httpStatus:'';
+  return description+' [진단: '+safeCode+status+']';
  }
  function header(){
   return '<header class="ogbBrand"><strong>'+esc(state.academyName||'학원명 확인 중')+'</strong>'+(state.phase==='choice'?'':'<span>상담 예약</span>')+'</header>';
@@ -220,7 +250,7 @@
     if(state.month===month&&monthKey()===key)useMonthSlots();
    }).catch(err=>{
     if(state.month===month&&monthKey()===key){
-     state.error=explain(err.message);
+     state.error=errorMessage(err);
      if(!monthCache.has(key)){state.slots=[];state.slotStatus='error';}
     }
    }).finally(()=>{
@@ -278,7 +308,7 @@
      state.start='';monthCache.delete(monthKey());
      await loadMonth(state.month,true);
     }
-    state.error=explain(failedCode);
+    state.error=errorMessage(e);
    }
    finally{state.loading=false;render();}
  }
@@ -303,7 +333,7 @@
        state.phase=state.canReschedule?'change':'booking';
        if(!state.canReschedule)state.message='이 예약은 학원에서 변경을 허용하지 않았습니다.';
      }
-   }catch(e){state.session='';state.error=explain(e.message);state.phase='lookup';}
+   }catch(e){state.session='';state.error=errorMessage(e);state.phase='lookup';}
    finally{state.loading=false;render();
     if(state.phase==='change')void loadMonth(state.month);
    }
@@ -320,7 +350,7 @@
      // A fresh booking after cancellation must match name and phone again.
      state.session='';state.name='';state.phone='';state.month=firstBookableMonth();
      state.phase='choice';state.message='예약을 취소했습니다.';
-   }catch(e){state.error=explain(e.message);}
+   }catch(e){state.error=errorMessage(e);}
    finally{state.loading=false;render();}
  }
  root.addEventListener('input',event=>{
@@ -361,7 +391,7 @@
     render();
     if(previousMonth!==state.month&&(state.phase==='booking'||state.phase==='change'))
      void loadMonth();
-  }).catch(e=>{state.academyName='학원명 확인 불가';state.error=explain(e.message);render();});
+  }).catch(e=>{state.academyName='학원명 확인 불가';state.error=errorMessage(e);render();});
  }
 
  global.OlliGuardianBooking=Object.freeze({parseAcademy:()=>slug});
