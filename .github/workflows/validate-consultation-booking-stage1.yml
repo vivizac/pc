@@ -111,6 +111,7 @@ jobs:
           node --check packages/common/olli-booking-owner-ui.js
           node --check apps/pc/pc-shell.js
           node --test tests/consultation-booking-stage3-ui.test.cjs
+          node --test apps/mobile/tests/phone-booking-card-style.test.cjs
       - name: Apply academy-wide booking link and verification migration (isolated DB)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026140000_olli_booking_public_academy_stage4.sql
       - name: Verify name-and-guardian-phone-only matching and OTP safety
@@ -132,6 +133,7 @@ jobs:
           node --check packages/common/olli-booking-guardian.js
           node --check packages/common/olli-booking-owner-ui.js
           node --test tests/consultation-booking-stage4.test.cjs
+          node --test apps/pc/tests/olli-guardian-month-slots.test.cjs
           node --test tests/consultation-manual-copy-booking-link.test.cjs
 
   guardian-browser:
