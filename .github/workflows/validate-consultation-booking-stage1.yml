@@ -121,6 +121,10 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026173000_olli_booking_revisit_stage5.sql
       - name: Verify existing booking identity and security (isolated DB)
         run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage5.integration.sql
+      - name: Apply staged Sunday-first booking week migration (isolated CI database only)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027081500_olli_booking_sunday_first_week_numbering.sql
+      - name: Validate Sunday-first SQL schema in isolated CI database
+        run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-sunday-week.integration.sql
       - name: Verify combined PC consultation panel and copy button behavior
         run: node --test tests/consultation-copy-button-height.test.cjs tests/pc-consultation-tenure-badge.test.cjs
       - name: Validate consultation records tabs
@@ -135,6 +139,7 @@ jobs:
           node --check packages/common/olli-booking-owner-ui.js
           node --test tests/consultation-booking-stage4.test.cjs
           node --test tests/consultation-booking-stage4-info-diagnostics.test.cjs
+          node --test tests/consultation-booking-sunday-week.test.cjs
           node --test apps/pc/tests/olli-guardian-month-slots.test.cjs
           node --test tests/consultation-manual-copy-booking-link.test.cjs
 
