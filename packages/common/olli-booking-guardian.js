@@ -196,7 +196,12 @@
  async function loadMonth(month=state.month,force=false){
    const key=monthKey(month),saved=monthCache.get(key);
    if(saved&&Date.now()-saved.fetchedAt<MONTH_TTL_MS&&!force)return;
-   if(monthPending.has(key))return monthPending.get(key);
+   if(monthPending.has(key)){
+    if(state.month===month&&monthKey()===key){
+     state.monthLoading=true;useMonthSlots();render();
+    }
+    return monthPending.get(key);
+   }
    if(state.month===month&&monthKey()===key){
     state.monthLoading=true;useMonthSlots();render();
    }
@@ -227,7 +232,8 @@
  function available(date){
    state.day=date;state.start='';state.error='';state.message='';
    useMonthSlots();render();
-   if(!monthCache.has(monthKey()))void loadMonth();
+   // Revalidate the entire month only when its short cache TTL has expired.
+   void loadMonth();
  }
  function openMonth(month){
    state.month=month;state.day='';state.start='';state.slots=[];
