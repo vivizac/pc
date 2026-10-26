@@ -23,6 +23,7 @@ on:
       - 'apps/*/api/olli-booking-public.js'
       - 'tests/consultation-booking-stage4*'
       - 'tests/consultation-manual-copy-booking-link.test.cjs'
+      - 'tests/consultation-booking-browser.test.cjs'
       - 'packages/common/olli-consultation-messages.js'
       - '.github/workflows/validate-consultation-booking-stage1.yml'
       - 'packages/common/*-runtime-manifest.json'
@@ -116,3 +117,18 @@ jobs:
           node --check packages/common/olli-booking-owner-ui.js
           node --test tests/consultation-booking-stage4.test.cjs
           node --test tests/consultation-manual-copy-booking-link.test.cjs
+
+  guardian-browser:
+    name: Mock-only guardian browser E2E (no live DB or SMS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install isolated Playwright
+        run: npm install --no-save --no-package-lock --prefix tests/consultation-messages playwright@1.56.1
+      - name: Install headless Chromium
+        run: tests/consultation-messages/node_modules/.bin/playwright install --with-deps chromium
+      - name: Exercise PC and mobile width in headless browser with all API calls mocked
+        run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-booking-browser.test.cjs
