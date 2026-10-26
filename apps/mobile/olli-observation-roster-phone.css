@@ -192,6 +192,8 @@
 }
 
 #observationRosterScreen .memoBodyRosterName {
+  display:inline-flex;
+  align-items:center;
   flex:0 0 auto;
   color:#111;
   font-size:calc(16px * var(--olli-text-scale));
