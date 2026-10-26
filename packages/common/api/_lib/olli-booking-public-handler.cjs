@@ -27,10 +27,24 @@ function readBody(req){
   bytes+=part.length;if(bytes>2048)throw error('INVALID_BODY',413);parts.push(part);
  }try{return JSON.parse(Buffer.concat(parts).toString('utf8'));}catch{throw error('INVALID_BODY');}})();
 }
-function originGuard(req){
+function originGuard(req,env){
  if(!req.headers?.origin)return;
- let u;try{u=new URL(req.headers.origin);}catch{throw error('ORIGIN_FORBIDDEN',403);}
- if(u.protocol!=='https:'||u.host!==req.headers.host)throw error('ORIGIN_FORBIDDEN',403);
+ let origin;
+ try{origin=new URL(req.headers.origin);}catch{throw error('ORIGIN_FORBIDDEN',403);}
+ if(origin.protocol!=='https:'||req.headers.origin!==origin.origin)
+  throw error('ORIGIN_FORBIDDEN',403);
+ if(origin.host===req.headers.host)return;
+ // On Vercel the internal Host can differ from the browser-visible deployment alias.
+ // Trust only the exact HTTPS public origin configured for this production deployment,
+ // never arbitrary X-Forwarded-Host or user-supplied Origin domains.
+ if(env.VERCEL==='1'&&typeof env.OLLI_BOOKING_PUBLIC_ORIGIN==='string'){
+  let configured;
+  try{configured=new URL(env.OLLI_BOOKING_PUBLIC_ORIGIN);}catch{}
+  if(configured?.protocol==='https:'&&configured.pathname==='/'&&
+     !configured.username&&!configured.password&&!configured.search&&!configured.hash&&
+     configured.port!=='443'&&!configured.port&&origin.origin===configured.origin)return;
+ }
+ throw error('ORIGIN_FORBIDDEN',403);
 }
 function authSecret(env){
  const value=env.OLLI_BOOKING_AUTH_SECRET;
@@ -109,7 +123,7 @@ function createHandler({fetchFn=fetch,env=process.env}={}){
       sample_slot_count:previewSlots(date).length});
    }
    if(req.method!=='POST')return out(res,405,{ok:false,code:'METHOD_NOT_ALLOWED'});
-   originGuard(req);
+   originGuard(req,env);
    const body=await readBody(req);
    if(!body||typeof body!=='object'||Array.isArray(body))throw error('INVALID_BODY');
    const action=String(body.action||'');
