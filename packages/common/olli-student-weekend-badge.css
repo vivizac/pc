@@ -20,3 +20,25 @@
   flex-shrink: 0;
   pointer-events: none;
 }
+
+.olliStudentGroupUnset {
+  display: inline-flex;
+  align-items: center;
+  gap: .28em;
+  margin-left: .4em;
+  color: #2464df !important;
+  font-size: .82em;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: middle;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.olliStudentGroupUnsetDot {
+  display: inline-block;
+  width: .35em;
+  height: .35em;
+  flex: 0 0 .35em;
+  border-radius: 50%;
+  background: currentColor;
+}
