@@ -154,11 +154,14 @@ revoke all on function public.olli_booking_public_link_manage(text,uuid)
  from public,anon,authenticated;
 revoke all on function public.olli_booking_public_info(text)
  from public,anon,authenticated;
+revoke all on function public.olli_booking_public_info(text)
+ from public,anon,authenticated;
 revoke all on function public.olli_booking_public_slots(text,date)
  from public,anon,authenticated;
 revoke all on function public.olli_booking_public_reserve(text,text,text,timestamptz,uuid,text,text)
  from public,anon,authenticated;
 grant execute on function public.olli_booking_public_link_manage(text,uuid) to service_role;
+grant execute on function public.olli_booking_public_info(text) to service_role;
 grant execute on function public.olli_booking_public_info(text) to service_role;
 grant execute on function public.olli_booking_public_slots(text,date) to service_role;
 grant execute on function public.olli_booking_public_reserve(text,text,text,timestamptz,uuid,text,text)
