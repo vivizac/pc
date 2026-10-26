@@ -554,10 +554,11 @@ function renderObservationMemoRoster() {
   const rows = students.map(student => {
     const studentId = escapeHtml(String(student?.id || ''));
     const meta = getObservationRosterMeta(student);
-    const metaHtml = renderOlliStudentRosterGuideMeta(student, meta, escapeHtml);
+    const metaHtml = renderOlliStudentRosterGuideMeta(student, meta, escapeHtml)
+      + renderOlliStudentRosterMarkers(student);
     return `<div class="memoBodyRosterRow">
       <button type="button" class="memoBodyRosterStudentBtn" onclick="openObservationMemoStudentFromRoster('${studentId}')">
-        <span class="memoBodyRosterText"><span class="memoBodyRosterName">${escapeHtml(student?.name || '이름 없음')}${renderOlliStudentRosterMarkers(student)}</span>${metaHtml ? `<span class="memoBodyRosterMeta">${metaHtml}</span>` : ''}</span>
+        <span class="memoBodyRosterText"><span class="memoBodyRosterName">${escapeHtml(student?.name || '이름 없음')}</span>${metaHtml ? `<span class="memoBodyRosterMeta">${metaHtml}</span>` : ''}</span>
       </button>
     </div>`;
   }).join('');
