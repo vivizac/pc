@@ -29,6 +29,20 @@
     }).join('');
   }
 
+  function renderOlliStudentGroupUnset(student) {
+    if (!student) return '';
+    const validGroup = [student.group, student.group_no, student.groupNo]
+      .map((value) => String(value == null ? '' : value).trim())
+      .some((value) => value !== '' && value !== '0' && value !== '미지정');
+    if (validGroup) return '';
+    return '<span class="olliStudentGroupUnset"><span class="olliStudentGroupUnsetDot" aria-hidden="true"></span>그룹미정</span>';
+  }
+
+  function renderOlliStudentRosterMarkers(student) {
+    return renderOlliStudentWeekendBadges(student) + renderOlliStudentGroupUnset(student);
+  }
+
+  global.renderOlliStudentRosterMarkers = renderOlliStudentRosterMarkers;
   global.getOlliStudentWeekendDays = getOlliStudentWeekendDays;
   global.renderOlliStudentWeekendBadges = renderOlliStudentWeekendBadges;
 })(window);
