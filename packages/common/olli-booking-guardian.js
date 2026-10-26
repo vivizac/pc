@@ -191,10 +191,8 @@
    '</section>';
  }
  function bootLoadingHtml(){
-   return '<div class="ogbBoot" role="status" aria-live="polite" aria-busy="true">'+
-     '<div class="ogbBootContent"><strong class="ogbBootLogo">OLLI</strong>'+
-     '<span class="ogbBootSpinner" aria-hidden="true"></span>'+
-     '<p>상담 예약 페이지를 준비하고 있습니다.</p></div></div>';
+   return '<div class="ogbBoot" role="status" aria-label="불러오는 중" aria-busy="true">'+
+     '<div class="ogbBootContent"><span class="ogbBootSpinner" aria-hidden="true"></span></div></div>';
  }
  function render(){
    if(state.academyStatus==='loading'){
