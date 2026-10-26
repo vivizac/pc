@@ -20,7 +20,7 @@ test('information failure exposes safe status only on diagnostic URL',async()=>{
  const rejected=()=>Promise.resolve({status:403,ok:false,
   json:async()=>({ok:false,code:'ORIGIN_FORBIDDEN'})});
  const details=await render(rejected,true);
- assert.match(details,/학원명 확인 불가/);
+ assert.match(details,/상담 예약 페이지를 열 수 없습니다/);
  assert.match(details,/진단: ORIGIN_FORBIDDEN \/ HTTP 403/);
  const publicView=await render(rejected,false);
  assert.match(publicView,/요청의 출처를 확인할 수 없습니다/);
@@ -39,10 +39,10 @@ test('successful info response and both page entry points remain unchanged',asyn
   ok:true,academy_name:'비비작아이성향미술학원',weeks:[2,3],weekdays:[1,2,3,4,5]
  })}),true);
  assert.match(ok,/비비작아이성향미술학원/);
- assert.doesNotMatch(ok,/진단:|학원명 확인 불가/);
+ assert.doesNotMatch(ok,/진단:|학원명 확인 중|ogbBoot/);
  for(const page of ['apps/pc/consultation-booking.html','apps/mobile/consultation-booking.html']){
   const html=fs.readFileSync(path.join(base,page),'utf8');
-  assert.match(html,/olli-booking-guardian\.js\?v=20261027-ios-origin-1/);
+  assert.match(html,/olli-booking-guardian\.js\?v=20261027-boot-loading-1/);
  }
  assert.doesNotMatch(source,/localStorage\.|sessionStorage\./);
 });
@@ -150,7 +150,65 @@ test('guardian POST preserves browser Origin under no-referrer policy without re
   const sourceHtml=fs.readFileSync(path.join(base,page),'utf8');
   assert.match(sourceHtml,/meta name="referrer" content="no-referrer"/);
   assert.match(sourceHtml,/connect-src 'self'/);
-  assert.match(sourceHtml,/olli-booking-guardian\.js\?v=20261027-ios-origin-1/);
+  assert.match(sourceHtml,/olli-booking-guardian\.js\?v=20261027-boot-loading-1/);
  }
  assert.doesNotMatch(source,/localStorage\.|sessionStorage\./);
+});
+
+
+test('academy info loading gates the entire page until data arrives',async()=>{
+ let resolveInfo;
+ const pending=new Promise(resolve=>{resolveInfo=resolve});
+ const root={innerHTML:'',addEventListener(){}};
+ vm.runInNewContext(source,{window:{
+  document:{getElementById:()=>root},
+  location:{search:'?academy='+academy},
+  fetch:()=>pending
+ },URLSearchParams,Intl,Date,Map});
+ assert.match(root.innerHTML,/ogbBoot/);
+ assert.match(root.innerHTML,/상담 예약 페이지를 준비하고 있습니다/);
+ assert.doesNotMatch(root.innerHTML,/학원명 확인 중|상담 예약하기|기존 예약 변경하기/);
+ resolveInfo({status:200,ok:true,json:async()=>({
+  ok:true,academy_name:'비비작아이성향미술학원',weeks:[2,3],weekdays:[1,2,3,4,5]
+ })});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.match(root.innerHTML,/비비작아이성향미술학원/);
+ assert.match(root.innerHTML,/상담 예약하기/);
+ assert.doesNotMatch(root.innerHTML,/ogbBoot|학원명 확인 중/);
+});
+test('academy failure hides booking actions and retry returns to normal choice',async()=>{
+ const handlers={};
+ const root={innerHTML:'',addEventListener(type,fn){handlers[type]=fn}};
+ let requests=0;
+ vm.runInNewContext(source,{window:{
+  document:{getElementById:()=>root},
+  location:{search:'?academy='+academy+'&booking_debug=1'},
+  fetch:async()=>++requests===1
+   ?{ok:false,status:503,json:async()=>({ok:false,code:'BOOKING_NOT_AVAILABLE'})}
+   :{ok:true,status:200,json:async()=>({ok:true,academy_name:'비비작아이성향미술학원'})}
+ },URLSearchParams,Intl,Date,Map});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.match(root.innerHTML,/다시 시도하기/);
+ assert.match(root.innerHTML,/BOOKING_NOT_AVAILABLE \/ HTTP 503/);
+ assert.doesNotMatch(root.innerHTML,/ogbChoiceActions|학원명 확인 중|기존 예약 변경하기/);
+ const btn={dataset:{action:'retry-academy'},hasAttribute:()=>false};
+ await handlers.click({target:{closest:()=>btn}});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(requests,2);
+ assert.match(root.innerHTML,/비비작아이성향미술학원/);
+ assert.match(root.innerHTML,/기존 예약 변경하기/);
+ assert.doesNotMatch(root.innerHTML,/다시 시도하기|ogbBoot/);
+});
+test('HTML entrypoints use same initial splash and shared CSS',()=>{
+ for(const pathName of ['apps/pc/consultation-booking.html','apps/mobile/consultation-booking.html']){
+  const h=fs.readFileSync(path.join(base,pathName),'utf8');
+  assert.match(h,/class="ogbBoot"/);
+  assert.match(h,/aria-busy="true"/);
+  assert.doesNotMatch(h,/학원명 확인 중/);
+  assert.match(h,/olli-booking-guardian\.css\?v=20261027-boot-loading-1/);
+  assert.match(h,/olli-booking-guardian\.js\?v=20261027-boot-loading-1/);
+ }
+ const sheet=fs.readFileSync(path.join(base,'packages/common/olli-booking-guardian.css'),'utf8');
+ assert.match(sheet,/\.ogbBootSpinner/);
+ assert.match(sheet,/prefers-reduced-motion:reduce/);
 });
