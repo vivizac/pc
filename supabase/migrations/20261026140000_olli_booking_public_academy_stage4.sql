@@ -47,14 +47,29 @@ end;
 $fn$;
 
 
--- Public information includes the academy display name and booking calendar policy only.
--- Never return guardian/student names or contact information.
+-- Public information includes only academy name and visible schedule; no private student data.
 create function public.olli_booking_public_info(p_slug text)
 returns jsonb language plpgsql security definer set search_path=''
 as $fn$
 declare v_academy uuid;v_name text;v_weeks smallint[];v_days smallint[];
 begin
- if p_slug is null or p_slug !~ '^[0-9a-f]{36}
+ if p_slug is null or p_slug !~ '^[0-9a-f]{36}$' then
+  return jsonb_build_object('ok',false);end if;
+ select a.id,a.academy_name,s.weeks,s.weekdays
+ into v_academy,v_name,v_weeks,v_days
+ from public.olli_booking_public_academies p
+ join public.academies a on a.id=p.academy_id
+ left join public.olli_booking_settings s on s.academy_id=a.id
+ where p.slug=p_slug and a.status='active' and a.access_status='active'
+  and a.deleted_at is null;
+ if v_academy is null then return jsonb_build_object('ok',false);end if;
+ return jsonb_build_object('ok',true,'academy_name',v_name,
+  'weeks',coalesce(v_weeks,array[2,3]::smallint[]),
+  'weekdays',coalesce(v_days,array[1,2,3,4,5]::smallint[]));
+end;
+$fn$;
+
+-- Calendar slots are public but always scoped to this academy slug.
 create function public.olli_booking_public_slots(p_slug text,p_date date)
 returns jsonb language plpgsql security definer set search_path=''
 as $fn$
