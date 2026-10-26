@@ -25,7 +25,7 @@ test('guardian client calendar header, numeric grid and enabled dates use same S
  const finish=client.indexOf(' function slotsHtml(',start);
  assert.ok(start>=0&&finish>start,'inspect the real calendar implementation');
  const state={weeks:[2,3],weekdays:[1,2,3,4,5],month:'2026-11',day:''};
- const ctx={state,Date,Number,Array,String,
+ const ctx={state,Date,Number,Array,String,esc:value=>String(value),
   today:()=> '2026-10-27',maxDate:()=> '2027-02-01',
   monthShift:(month,n)=>{
    const [year,m]=month.split('-').map(Number);
