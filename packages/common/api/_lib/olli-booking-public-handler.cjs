@@ -64,6 +64,35 @@ function parseDate(s){
  if(typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s)||Number.isNaN(Date.parse(s+'T00:00:00Z')))
   throw error('DATE_INVALID');return s;
 }
+const QA_SLUG='0123456789abcdef0123456789abcdef0123';
+function qaPreview(env,slug){
+ // Server-controlled, isolated preview only. Never enable demo responses on production.
+ return env.VERCEL_ENV==='preview'&&env.OLLI_BOOKING_QA_DEMO==='1'&&slug===QA_SLUG;
+}
+function previewSlots(dateStr){
+ const [y,m,d]=dateStr.split('-').map(Number);
+ const dt=new Date(Date.UTC(y,m-1,d));
+ if(dt.toISOString().slice(0,10)!==dateStr)return [];
+ const now=new Date();
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Seoul',
+  year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',
+  hourCycle:'h23'}).formatToParts(now);
+ const v=Object.fromEntries(parts.map(p=>[p.type,p.value]));
+ const localToday=v.year+'-'+v.month+'-'+v.day,localTime=v.hour+':'+v.minute;
+ const inDays=Math.round((dt.getTime()-new Date(localToday+'T00:00:00Z').getTime())/86400000);
+ if(inDays<0||inDays>120)return [];
+ const iso=(dt.getUTCDay()+6)%7+1;
+ const first=new Date(Date.UTC(y,m-1,1));
+ const week=Math.floor((d-1+(first.getUTCDay()+6)%7)/7)+1;
+ if(![2,3].includes(week)||iso>5)return [];
+ const slots=[];
+ for(let mins=660;mins+30<=1020;mins+=30){
+  const t=String(Math.floor(mins/60)).padStart(2,'0')+':'+String(mins%60).padStart(2,'0');
+  if(dateStr===localToday&&t<=localTime)continue;
+  slots.push({start_at:dateStr+'T'+t+':00+09:00'});
+ }
+ return slots;
+}
 function createHandler({fetchFn=fetch,env=process.env}={}){
  return async function(req,res){
   try{
@@ -84,6 +113,9 @@ function createHandler({fetchFn=fetch,env=process.env}={}){
    const slug=String(body.academy||'');
    if(!SLUG.test(slug))throw error('FORM_INVALID');
    if(action==='info'){
+    if(qaPreview(env,slug))return out(res,200,{ok:true,
+     academy_name:String(env.OLLI_BOOKING_QA_ACADEMY_NAME||'테스트 학원'),
+     weeks:[2,3],weekdays:[1,2,3,4,5],demo:true});
     const d=await rpc('olli_booking_public_info',{p_slug:slug},fetchFn,env);
     if(d?.ok!==true)throw error('ACADEMY_NOT_FOUND',404);
     return out(res,200,{ok:true,academy_name:String(d.academy_name||''),
@@ -92,10 +124,12 @@ function createHandler({fetchFn=fetch,env=process.env}={}){
    }
    if(action==='slots'){
     const date=parseDate(body.date);
+    if(qaPreview(env,slug))return out(res,200,{ok:true,slots:previewSlots(date),demo:true});
     const d=await rpc('olli_booking_public_slots',{p_slug:slug,p_date:date},fetchFn,env);
     return out(res,200,{ok:true,slots:Array.isArray(d?.slots)?d.slots:[]});
    }
    if(action==='reserve'){
+    if(qaPreview(env,slug))throw error('DEMO_NOT_BOOKABLE',503);
     const name=String(body.student_name||'').trim();
     const phone=String(body.guardian_phone||'').replace(/[-\s]/g,'');
     const when=body.start_at;
