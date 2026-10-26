@@ -289,8 +289,16 @@ async function main(body, context = {}) {
   if(claim.status!=='claimed')return{ok:true,status:'generating'};
   try {
     const text=await generate(student,months,material.rows,dueMonth);
-    const done=await callRpc('olli_consultation_summary_job_access',{
-      ...params,p_action:'finish',p_claim_token:claim.claim_token,p_content:text
+    // Persist the exact records sent to the AI, without guessing historical sources.
+    // feedbacks.id is bigint; fail_feedbacks.id is UUID (legacy source_feedback_ids).
+    const sourceGeneralIds=material.rows.filter(row=>row.source_table==='feedbacks')
+      .map(row=>Number(row.id));
+    const sourceRetryIds=material.rows.filter(row=>row.source_table==='fail_feedbacks')
+      .map(row=>String(row.id));
+    const done=await callRpc('olli_consultation_summary_finish_with_sources',{
+      ...params,p_claim_token:claim.claim_token,p_content:text,
+      p_source_general_feedback_ids:sourceGeneralIds,
+      p_source_feedback_ids:sourceRetryIds
     },key);
     return{ok:true,status:'ready',content:text,feedbackId:done.feedback_id};
   } catch(error) {
