@@ -418,7 +418,7 @@
         const chips = consultationTenureChips(student, dueLabels);
         const ref = consultationStudentRef(student);
         return '<div class="recordAcademyConsultListItem" data-pc-student-ref="'+escape(ref)+'">'
-          + '<div class="recordAcademyConsultStudentMain"><div class="recordAcademyListName">'+escape(student.name)+global.renderOlliStudentWeekendBadges(student)+'</div><div class="recordAcademyChipRow">'+chips.map((label) => '<span class="recordAcademyInfoChip recordAcademyRuleChip">'+escape(label)+'</span>').join('')+'</div></div>'
+          + '<div class="recordAcademyConsultStudentMain"><div class="recordAcademyListName">'+escape(student.name)+'</div><div class="recordAcademyChipRow">'+chips.map((label) => '<span class="recordAcademyInfoChip recordAcademyRuleChip">'+escape(label)+'</span>').join('')+'</div></div>'
           + '<div class="recordAcademyConsultActions">'
           + consultationStatusChipHtml(student, dueLabels)
           + (['owner','super_admin'].includes(typeof global.getOlliCurrentRole==='function'?global.getOlliCurrentRole():'')
