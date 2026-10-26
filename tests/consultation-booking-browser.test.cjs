@@ -66,6 +66,8 @@ for(const width of [390,1280]){
    await page.goto('https://olli-booking.test/consultation-booking.html?academy='+slug);
    await page.getByRole('heading',{name:'상담 예약',exact:true}).waitFor();
    await page.getByText('비비작아이성향미술학원',{exact:true}).waitFor();
+   assert.ok((await page.locator('.ogbMonth strong').innerText()).includes(Number(date.slice(5,7))+'월'),
+     'initial calendar must show next available booking month');
    assert.equal(await page.locator('input[name=student_name]').count(),1);
    assert.equal(await page.locator('input[name=guardian_phone]').count(),1);
    assert.equal(await page.locator('input[name=otp],input[name=age],input[name=grade]').count(),0);

@@ -65,6 +65,15 @@
   const week=Math.floor((n-1+(first.getUTCDay()+6)%7)/7)+1;
   return state.weeks.includes(week)&&state.weekdays.includes(iso);
  }
+ function firstBookableMonth(){
+  const base=new Date(today()+'T00:00:00Z');
+  for(let i=0;i<=120;i++){
+   const next=new Date(base);next.setUTCDate(base.getUTCDate()+i);
+   const day=next.toISOString().slice(0,10);
+   if(allowedDay(day))return day.slice(0,7);
+  }
+  return today().slice(0,7);
+ }
  function calendarHtml(){
    const [y,m]=state.month.split('-').map(Number);
    const days=new Date(Date.UTC(y,m,0)).getUTCDate();
@@ -129,7 +138,7 @@
  }
  function reset(){
    state.session='';state.name='';state.phone='';state.reservation=null;state.slots=[];
-   state.start='';state.day='';state.month=today().slice(0,7);state.phase='booking';state.slotStatus='idle';
+   state.start='';state.day='';state.month=firstBookableMonth();state.phase='booking';state.slotStatus='idle';
    state.error='';state.message='';render();
  }
  async function loadSnapshot(){
@@ -192,7 +201,7 @@
        reservation_id:state.reservation.id,request_key:global.crypto.randomUUID()});
      await loadSnapshot();
      // A fresh booking after cancellation must match name and phone again.
-     state.session='';state.name='';state.phone='';
+     state.session='';state.name='';state.phone='';state.month=firstBookableMonth();
      state.message='예약을 취소했습니다.';
    }catch(e){state.error=explain(e.message);}
    finally{state.loading=false;render();}
@@ -225,6 +234,7 @@
     state.weeks=Array.isArray(r.weeks)?r.weeks:[2,3];
     state.weekdays=Array.isArray(r.weekdays)?r.weekdays:[1,2,3,4,5];
     state.demo=r.demo===true;
+    if(!state.day&&!state.reservation)state.month=firstBookableMonth();
     render();
   }).catch(e=>{state.academyName='학원명 확인 불가';state.error=explain(e.message);render();});
  }
