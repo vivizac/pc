@@ -7,6 +7,7 @@ create role service_role nologin bypassrls;
 grant usage on schema public to anon,authenticated,service_role;
 create table public.academies (
   id uuid primary key,
+  academy_name text not null default '테스트 학원',
   status text not null default 'active',
   access_status text not null default 'active',
   deleted_at timestamptz
