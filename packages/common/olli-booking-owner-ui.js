@@ -3,7 +3,7 @@
  */
 (function (global) {
  'use strict';
- const state={mode:'pc',root:null,month:'',view:'calendar',selectedDay:'',rows:[],settings:null,error:'',busy:false,loading:false,ready:false,entryObserver:null,slotDate:'',slotChoices:[]};
+ const state={mode:'pc',root:null,month:'',view:'calendar',selectedDay:'',rows:[],settings:null,error:'',busy:false,loading:false,ready:false,entryObserver:null,slotDate:'',slotChoices:[],publicUrl:''};
  const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;};
  const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const currentMonth=()=>{const p=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit'}).formatToParts(new Date());const m=Object.fromEntries(p.map(v=>[v.type,v.value]));return m.year+'-'+m.month;};
@@ -126,7 +126,7 @@
        (state.selectedDay&&state.mode==='pc'?'<button type="button" data-action="clear-day">날짜 선택 해제</button>':'')+'</div>'+
        bookingsHtml();
    root.innerHTML='<div class="obmLayout">'+header+nav+(state.view==='settings'?'':months)+error+content+
-    '<div class="obmFooter"><span>예약 링크 발급과 학부모 예약 화면은 다음 개발 단계에서 연결됩니다.</span></div>'+
+    '<div class="obmFooter"><div class="obmLinkRow"><span>알림톡 승인 템플릿에 등록할 <strong>학원 통합 예약 링크</strong>입니다. 학생별 링크를 발급하지 않습니다.</span><button type="button" data-action="copy-public-link">통합 링크 복사</button></div>'+ (state.publicUrl ? '<p class="obmLinkAddress">'+escapeHtml(state.publicUrl)+'</p>':'')+'</div>'+
     '</div><div class="obmModalHost" data-modal-host></div>';
  }
  async function refresh(){
@@ -211,6 +211,28 @@
    if(node.matches('[data-view]')){state.view=node.dataset.view;state.selectedDay='';render();return;}
    const action=node.dataset.action;
    if(action==='close'){close();return;}
+   if(action==='copy-public-link'){
+     if(state.busy)return;
+     state.busy=true;node.disabled=true;
+     try{
+       const c=auth();
+       const response=await global.fetch('/api/olli-booking-public',{
+         method:'POST',credentials:'omit',cache:'no-store',
+         headers:{'Content-Type':'application/json'},
+         body:JSON.stringify({action:'public-link',academy_id:c.academyId,session_token:c.sessionToken})
+       });
+       const payload=await response.json();
+       if(!response.ok||payload.ok!==true||!/^https:\/\//.test(payload.url||''))throw new Error('학원 통합 예약 링크를 발급하지 못했습니다.');
+       if(ctx().academyId!==c.academyId||ctx().sessionToken!==c.sessionToken)throw new Error('학원 또는 로그인 계정이 변경되었습니다.');
+       state.publicUrl=payload.url;
+       render();
+       if(!global.navigator?.clipboard?.writeText)throw new Error('클립보드 권한이 없습니다. 아래 주소를 직접 복사해 주세요.');
+       await global.navigator.clipboard.writeText(payload.url);
+       global.alert('학원 통합 예약 링크를 복사했습니다.');
+     }catch(err){state.error=err.message||'통합 링크를 복사하지 못했습니다.';render();}
+     finally{state.busy=false;}
+     return;
+   }
    if(action==='dismiss'){
      if(node.dataset.action==='dismiss' && (node.classList.contains('obmModalBackdrop') ||node.tagName==='BUTTON')){
        state.root.querySelector('[data-modal-host]').innerHTML='';

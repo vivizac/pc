@@ -19,6 +19,17 @@ create table public.students (
   is_deleted boolean not null default false,
   unique(id,academy_id)
 );
+-- This confirmation-only table is used by stage 4 tests; no real phone numbers.
+create table public.olli_consultation_message_contacts (
+ academy_id uuid not null references public.academies(id),
+ student_id uuid not null,
+ phone text not null,
+ enabled boolean not null default false,
+ confirmed boolean not null default false,
+ revision bigint not null default 1,
+ primary key(academy_id,student_id),
+ foreign key(student_id,academy_id) references public.students(id,academy_id)
+);
 -- Replaces the real Olli session helper only in an isolated database.
 create function olli_consultation_private.require_owner(
   p_session_token text,p_academy_id uuid

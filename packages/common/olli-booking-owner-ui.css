@@ -82,3 +82,5 @@
  .olliBookingMobileOverlay .obmHeaderButtons button{padding:8px}
  .olliBookingMobileOverlay .obmFooter{margin-bottom:24px}
 }
+
+.obmLinkRow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.obmLinkRow button{border:1px solid #d8e2ed;background:#fff;border-radius:9px;padding:10px 14px;color:#187bdb;font-size:12px;font-weight:750;cursor:pointer}.obmLinkAddress{word-break:break-all;padding:10px 13px;border-radius:9px;background:#fff;color:#546172;border:1px solid #e7eaef;font-size:12px;user-select:all}

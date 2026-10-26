@@ -1,4 +1,4 @@
-name: Validate consultation booking stages 1–3
+name: Validate consultation booking stages 1–4
 on:
   push:
     branches:
@@ -16,11 +16,23 @@ on:
       - 'apps/{pc,mobile}/index.html'
       - 'supabase/migrations/*_olli_booking_staff_stage3.sql'
       - 'tests/consultation-booking-stage3*'
+      - 'supabase/migrations/*_olli_booking_public_academy_stage4.sql'
+      - 'packages/common/api/_lib/olli-booking-public-handler.cjs'
+      - 'packages/common/olli-booking-guardian.*'
+      - 'apps/*/consultation-booking.html'
+      - 'apps/*/api/olli-booking-public.js'
+      - 'tests/consultation-booking-stage4*'
       - '.github/workflows/validate-consultation-booking-stage1.yml'
       - 'packages/common/*-runtime-manifest.json'
       - 'apps/*/api/olli-booking.js'
   pull_request:
     paths:
+      - 'supabase/migrations/*_olli_booking_public_academy_stage4.sql'
+      - 'packages/common/api/_lib/olli-booking-public-handler.cjs'
+      - 'packages/common/olli-booking-guardian.*'
+      - 'apps/*/consultation-booking.html'
+      - 'apps/*/api/olli-booking-public.js'
+      - 'tests/consultation-booking-stage4*'
       - 'packages/common/api/_lib/olli-booking-handler.cjs'
       - 'supabase/migrations/*_olli_booking_parent_stage2.sql'
       - 'tests/consultation-booking-stage2*'
@@ -91,3 +103,13 @@ jobs:
           node --check packages/common/olli-booking-owner-ui.js
           node --check apps/pc/pc-shell.js
           node --test tests/consultation-booking-stage3-ui.test.cjs
+      - name: Apply academy-wide booking link and verification migration (isolated DB)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026140000_olli_booking_public_academy_stage4.sql
+      - name: Verify name-and-guardian-phone-only matching and OTP safety
+        run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage4.integration.sql
+      - name: Check academy-wide public booking API and screens
+        run: |
+          node --check packages/common/api/_lib/olli-booking-public-handler.cjs
+          node --check packages/common/olli-booking-guardian.js
+          node --check packages/common/olli-booking-owner-ui.js
+          node --test tests/consultation-booking-stage4.test.cjs
