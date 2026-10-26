@@ -58,6 +58,18 @@ function getRecordAttendanceGuideHtml(student) {
   }
 }
 
+function renderPcRosterGuide(student, text, attendanceGuideHtml, showRosterMarkers) {
+  if (attendanceGuideHtml !== null) {
+    if (showRosterMarkers !== true) return attendanceGuideHtml;
+    const missingMonth = renderOlliStudentRosterGuideMeta(student, '', escapeHtml);
+    return missingMonth ? attendanceGuideHtml + ' / ' + missingMonth : attendanceGuideHtml;
+  }
+  if (showRosterMarkers === true) {
+    return renderOlliStudentRosterGuideMeta(student, text, escapeHtml);
+  }
+  return text ? escapeHtml(text) : '';
+}
+
 function renderElementaryStudentRows(students, options = {}) {
   const cycleGroups = getElementaryCycleGroups(students);
   let previousSectionKey = '';
@@ -65,9 +77,7 @@ function renderElementaryStudentRows(students, options = {}) {
     const metaBits = getElementaryMetaBits(student);
     const metaText = metaBits.join('\u00A0\u00A0|\u00A0\u00A0');
     const attendanceGuideHtml = getRecordAttendanceGuideHtml(student);
-    const metaHtml = attendanceGuideHtml !== null
-      ? attendanceGuideHtml
-      : (metaText ? escapeHtml(metaText) : '');
+    const metaHtml = renderPcRosterGuide(student, metaText, attendanceGuideHtml, options.showRosterMarkers);
     const sectionKey = (typeof getRecordSortSectionKey === 'function') ? getRecordSortSectionKey(student, 'elementary', cycleGroups) : getElementaryGroupSectionKey(student, cycleGroups);
     const groupBreakClass = index > 0 && sectionKey !== previousSectionKey ? ' groupBreak' : '';
     previousSectionKey = sectionKey;
@@ -93,9 +103,7 @@ function renderKinderStudentRows(students, options = {}) {
     const metaBits = getKinderMetaBits(student);
     const attendanceGuideHtml = getRecordAttendanceGuideHtml(student);
     const normalMetaText = metaBits.join('\u00A0\u00A0|\u00A0\u00A0');
-    const metaHtml = attendanceGuideHtml !== null
-      ? attendanceGuideHtml
-      : (normalMetaText ? escapeHtml(normalMetaText) : '');
+    const metaHtml = renderPcRosterGuide(student, normalMetaText, attendanceGuideHtml, options.showRosterMarkers);
     const sectionKey = (typeof getRecordSortSectionKey === 'function') ? getRecordSortSectionKey(student, 'kinder') : `status:${getStudentStatus(student)}:${student.age || ''}`;
     const groupBreakClass = index > 0 && sectionKey !== previousSectionKey ? ' groupBreak' : '';
     previousSectionKey = sectionKey;
