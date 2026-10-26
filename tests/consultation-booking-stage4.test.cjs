@@ -29,6 +29,11 @@ test('choice screen precedes calendar; booking shows name and phone before calen
  assert.match(guardian,/phase:'choice'/);
  assert.match(guardian,/data-action="choose-book"/);
  assert.match(guardian,/data-action="choose-change"/);
+ assert.match(guardian,/ogbChoicePanel/);
+ assert.doesNotMatch(guardian,/ogbTitleBand"><h1>상담 예약<\/h1><\/div>/);
+ const styles=fs.readFileSync(path.join(base,'packages/common/olli-booking-guardian.css'),'utf8');
+ assert.match(styles,/--ogb-survey-green:#079eb3/);
+ assert.match(styles,/\.ogbChoicePanel \.ogbChoiceActions \.ogbSecondary/);
  assert.match(guardian,/action:'lookup'/);
  assert.match(guardian,/credentials:'same-origin'/);
  assert.doesNotMatch(guardian,/credentials:'omit'/);

@@ -81,13 +81,19 @@ for(const width of [390,1280]){
    assert.equal(await page.locator('input[name=student_name]').count(),0);
    assert.equal(await page.locator('.ogbCalendar').count(),0);
    assert.equal(await page.getByRole('button',{name:'기존 예약 변경하기'}).count(),1);
-   // Both green controls use the same survey green, and the old eyebrow is gone.
+   // Choice screen: only two teal buttons, no third 상담 예약 title tile.
+   assert.equal(await page.locator('.ogbChoicePanel .ogbTitleBand').count(),0);
    assert.equal(await page.locator('.ogbEyebrow').count(),0);
-   assert.equal(await page.locator('.ogbTitleBand').count(),1);
+   assert.equal(await page.locator('.ogbChoiceActions button').count(),2);
+   for(const node of await page.locator('.ogbChoiceActions button').all()){
+     assert.equal(await node.evaluate(el=>getComputedStyle(el).backgroundColor),
+       'rgb(7, 158, 179)','exact uploaded color must match on BOTH choice buttons');
+   }
    await page.getByRole('button',{name:'상담 예약하기'}).click();
    const headerGreen=await page.locator('.ogbTitleBand').evaluate(node=>getComputedStyle(node).backgroundColor);
    const buttonGreen=await page.locator('[data-action="commit"]').evaluate(node=>getComputedStyle(node).backgroundColor);
-   assert.equal(headerGreen,buttonGreen,'booking title and submit button share survey green');
+   assert.equal(headerGreen,buttonGreen,'booking title and submit button share exact uploaded teal');
+   assert.equal(buttonGreen,'rgb(7, 158, 179)');
    assert.ok((await page.locator('.ogbMonth strong').innerText()).includes(Number(date.slice(5,7))+'월'),
      'initial calendar must show next available booking month');
    assert.equal(await page.locator('input[name=student_name]').count(),1);

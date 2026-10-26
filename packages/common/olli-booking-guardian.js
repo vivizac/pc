@@ -55,7 +55,7 @@
   };return map[code]||'요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
  }
  function header(){
-  return '<header class="ogbBrand"><strong>'+esc(state.academyName||'학원명 확인 중')+'</strong><span>상담 예약</span></header>';
+  return '<header class="ogbBrand"><strong>'+esc(state.academyName||'학원명 확인 중')+'</strong>'+(state.phase==='choice'?'':'<span>상담 예약</span>')+'</header>';
  }
  function contactHtml(){
   if(state.session)return '';
@@ -116,8 +116,7 @@
   return '<div class="ogbReserved"><strong>현재 예약</strong><p>'+esc(label(d.date))+' · '+esc(d.hm)+'</p></div>';
  }
  function choiceHtml(){
-  return '<section class="ogbPanel"><div class="ogbTitleBand"><h1>상담 예약</h1></div>'+
-    '<div class="ogbChoiceActions">'+
+  return '<section class="ogbPanel ogbChoicePanel"><div class="ogbChoiceActions">'+
       '<button type="button" class="ogbPrimary" data-action="choose-book">상담 예약하기</button>'+
       '<button type="button" class="ogbSecondary" data-action="choose-change">기존 예약 변경하기</button>'+
     '</div></section>';

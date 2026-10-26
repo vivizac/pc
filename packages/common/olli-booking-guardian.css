@@ -55,9 +55,8 @@ h1{font-size:25px;letter-spacing:-.04em;line-height:1.3;margin:0 0 12px}
 .ogbCalendarHint{font-size:12px;line-height:1.5;color:#7d8995;margin:0 0 12px}
 .ogbPreviewNote{font-size:12px;line-height:1.6;color:#8a5b21;margin:0 0 20px}
 
-/* Match the survey's soft green only on the reservation title and submit
-   actions. The date picker, fields, and other page elements stay unchanged. */
-:root{--ogb-survey-green:#83aa94}
+/* Exact user-provided teal swatch: RGB(7,158,179), #079EB3. */
+:root{--ogb-survey-green:#079eb3}
 .ogbTitleBand{background:var(--ogb-survey-green);color:#fff;margin:-26px -22px 23px;padding:26px 22px 24px;border-radius:21px 21px 0 0}
 .ogbTitleBand h1{color:#fff;margin:0;font-size:25px}
 .ogbPrimary{background:var(--ogb-survey-green);border-color:var(--ogb-survey-green);color:#fff}
@@ -67,3 +66,7 @@ h1{font-size:25px;letter-spacing:-.04em;line-height:1.3;margin:0 0 12px}
  .ogbTitleBand{margin:-23px -16px 23px;padding:24px 16px 22px;border-radius:17px 17px 0 0}
  .ogbTitleBand h1{font-size:22px}
 }
+
+/* Both initial choices use the exact uploaded swatch; no third title tile. */
+.ogbChoicePanel .ogbChoiceActions{margin:0}
+.ogbChoicePanel .ogbChoiceActions .ogbSecondary{background:var(--ogb-survey-green);border-color:var(--ogb-survey-green);color:#fff}
