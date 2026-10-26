@@ -32,6 +32,12 @@ for(const width of [390,1280]){
   const [date,date2]=validFutureDates();
   const first=date+'T11:00:00+09:00',second=date2+'T11:30:00+09:00';
   let current=null,requests=[],reservationSeq=0;
+  function monthSlots(month){
+   const byDate=Object.create(null);
+   if(date.slice(0,7)===month)byDate[date]=[{start_at:first}];
+   if(date2.slice(0,7)===month)byDate[date2]=[{start_at:second}];
+   return {ok:true,month,slots_by_date:byDate};
+  }
   const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
   try{
    const page=await browser.newPage({viewport:{width,height:850}});
@@ -51,6 +57,7 @@ for(const width of [390,1280]){
      const body=req.postDataJSON();requests.push({endpoint:url.pathname,...body});
      if(url.pathname==='/api/olli-booking-public'){
       if(body.action==='info')return route.fulfill({json:{ok:true,academy_name:'비비작아이성향미술학원',weeks:[2,3],weekdays:[1,2,3,4,5]}});
+      if(body.action==='month-slots')return route.fulfill({json:monthSlots(body.month)});
       if(body.action==='slots')return route.fulfill({json:{ok:true,slots:[{start_at:body.date===date?first:second}]}});
       if(body.action==='lookup'){
        if(body.guardian_phone!=='01012345678'||body.student_name!=='김하늘')
@@ -68,6 +75,7 @@ for(const width of [390,1280]){
      }
      if(body.token!=='mock-guardian-session')return route.fulfill({status:403,json:{ok:false,code:'ACCESS_DENIED'}});
      if(body.action==='snapshot')return route.fulfill({json:{ok:true,reservation:current,can_reschedule:true,can_cancel:true}});
+     if(body.action==='month-slots')return route.fulfill({json:monthSlots(body.month)});
      if(body.action==='slots')return route.fulfill({json:{ok:true,slots:[{start_at:body.date===date?first:second}]}});
      if(body.action==='reschedule'){current={...current,start_at:body.start_at};return route.fulfill({json:{ok:true}});}
      if(body.action==='cancel'){current=null;return route.fulfill({json:{ok:true}});}

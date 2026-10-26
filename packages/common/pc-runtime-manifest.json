@@ -96,6 +96,7 @@
     "olli-booking-owner-ui.css",
     "olli-booking-guardian.js",
     "olli-booking-guardian.css",
+    "api/_lib/olli-booking-month-slots.cjs",
     "api/_lib/olli-booking-public-handler.cjs"
   ]
 }
