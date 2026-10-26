@@ -465,7 +465,7 @@
         }).join('');
         return `<td class="dateCol attendanceRegisterEditable attendanceRegisterSessionCell${sessions.length > 1 ? ' isSplit' : ''}"><div class="attendanceRegisterCellInner">${segments}</div></td>`;
       }).join('');
-      return `<tr><td class="nameCol">${esc(student.name)}</td><td class="schoolGradeCol">${esc(attendanceRosterMeta(student))}</td><td class="personalityCol">${esc(student.personality)}</td>${dateCells}</tr>`;
+      return `<tr><td class="nameCol">${esc(student.name)}${global.renderOlliStudentWeekendBadges(student)}</td><td class="schoolGradeCol">${esc(attendanceRosterMeta(student))}</td><td class="personalityCol">${esc(student.personality)}</td>${dateCells}</tr>`;
     }).join('');
     const blankRows = Array.from({ length: Math.max(0, 40 - students.length) }, () => {
       const dateCells = dayMeta.map((meta) => {
