@@ -1,8 +1,6 @@
 'use strict';
-const test=require('node:test');
-const assert=require('node:assert/strict');
-const fs=require('node:fs');
-const path=require('node:path');
+const test=require('node:test'),assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path');
 const api=require('../packages/common/api/_lib/olli-booking-public-handler.cjs');
 const parent=require('../packages/common/api/_lib/olli-booking-handler.cjs');
 const base=path.resolve(__dirname,'..');
@@ -11,112 +9,95 @@ const sql=fs.readFileSync(path.join(base,'supabase/migrations/20261026140000_oll
 const owner=fs.readFileSync(path.join(base,'packages/common/olli-booking-owner-ui.js'),'utf8');
 const slug='0123456789abcdef0123456789abcdef0123';
 const academy='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-function mockResponse(){
-  return {headers:{},statusCode:0,body:null,setHeader(k,v){this.headers[k]=v;},
-   status(n){this.statusCode=n;return this;},
-   json(b){this.body=b;return this;}};
-}
-const env={SUPABASE_SERVICE_ROLE_KEY:'test-service-secret',SUPABASE_URL:'https://fake.supabase.co',
+const requestKey='11111111-1111-4111-8111-111111111117';
+function mockResponse(){return {headers:{},statusCode:0,body:null,setHeader(k,v){this.headers[k]=v;},
+ status(n){this.statusCode=n;return this;},json(b){this.body=b;return this;}};}
+const env={SUPABASE_SECRET_KEY:'test-service-secret',SUPABASE_URL:'https://fake.supabase.co',
  OLLI_BOOKING_AUTH_SECRET:'a-booking-auth-secret-longer-than-32-chars',
  OLLI_BOOKING_PUBLIC_ORIGIN:'https://booking.example.org/'};
 function makeApi(fetchFn,envOverride={}){
  const handler=api.createHandler({fetchFn,env:{...env,...envOverride}});
- return async body=>{
-   const res=mockResponse();await handler({method:'POST',
-    headers:{host:'booking.example.org',origin:'https://booking.example.org'},body,
-    socket:{remoteAddress:'192.0.2.12'}},res);return res;
- };
+ return async body=>{const res=mockResponse();await handler({method:'POST',
+  headers:{host:'booking.example.org',origin:'https://booking.example.org'},body,
+  socket:{remoteAddress:'192.0.2.12'}},res);return res;};
 }
-test('guardian front end has name and phone ONLY and exact Bibi channel guidance',()=>{
+test('calendar is immediate; no OTP, age or grade inputs; name and phone at end',()=>{
  for(const p of ['apps/pc/consultation-booking.html','apps/mobile/consultation-booking.html']){
   const html=fs.readFileSync(path.join(base,p),'utf8');
   assert.match(html,/olli-booking-guardian\.js/);assert.match(html,/noindex,nofollow/);
-  assert.match(html,/default-src 'none'/);
  }
+ assert.match(guardian,/phase:'booking'/);
  assert.match(guardian,/name="student_name"/);
  assert.match(guardian,/name="guardian_phone"/);
  assert.match(guardian,/비비작 채널 알림톡을 받고 계신 휴대전화번호를 입력해 주세요/);
- assert.doesNotMatch(guardian,/name="age"|name="grade"|name="level"|name="division"|학년|나이/);
- assert.doesNotMatch(guardian,/\b(?:global\.)?localStorage\.|\b(?:global\.)?sessionStorage\./);
- assert.match(guardian,/action:'verify'/);
+ assert.doesNotMatch(guardian,/name="otp"|인증번호|action:'begin'|action:'verify'/);
+ assert.doesNotMatch(guardian,/name="age"|name="grade"|name="level"|name="division"/);
+ assert.doesNotMatch(guardian,/localStorage\.|sessionStorage\./);
+ assert.match(guardian,/action:'slots',academy:slug,date/);
+ assert.match(guardian,/student_name:state.name,guardian_phone:state.phone/);
  assert.match(guardian,/action:'snapshot'/);
- assert.match(guardian,/'reschedule':'reserve'/);
- assert.match(guardian,/const action=editing\?'reschedule':'reserve'/);
  assert.match(guardian,/action:'cancel'/);
 });
-test('Postgres matching signature has no age or grade; confirmed contact and ambiguity guards',()=>{
- assert.match(sql,/create function public\.olli_booking_public_begin\(\s*p_slug text,p_student_name text,\s*p_guardian_phone text/);
+test('backend only matches on final reserve; no SMS table or verification RPC',()=>{
+ assert.match(sql,/create function public\.olli_booking_public_reserve\(/);
+ assert.match(sql,/create function public\.olli_booking_public_slots\(/);
+ assert.doesNotMatch(sql,/create table public\.olli_booking_public_challenges|create function public\.olli_booking_public_verify/);
  assert.doesNotMatch(sql,/\bp_level\b|\bp_division\b|\bs\.grade\b|\bs\.age\b/);
  assert.match(sql,/v_matches<>1/);
  assert.match(sql,/c\.enabled=true and c\.confirmed=true/);
  assert.match(sql,/regexp_replace\(c\.phone,'\[\^0-9\]','','g'\)=p_guardian_phone/);
- assert.match(sql,/olli_booking_public_verify/);
 });
-test('public link is one permanent academy URL and not a child-specific token',async()=>{
- let db=[];
- const send=makeApi(async(url,opt)=>{
-  db.push({url,body:JSON.parse(opt.body)});
-  return {ok:true,json:async()=>({ok:true,slug})};
+test('per-academy link unchanged',async()=>{
+ const calls=[];const send=makeApi(async(url,opt)=>{
+  calls.push(JSON.parse(opt.body));return {ok:true,json:async()=>({ok:true,slug})};
  });
  const a=await send({action:'public-link',academy_id:academy,session_token:'owner-session'});
  const b=await send({action:'public-link',academy_id:academy,session_token:'owner-session'});
  assert.equal(a.statusCode,200);assert.deepEqual(a.body,b.body);
  assert.equal(a.body.url,'https://booking.example.org/consultation-booking.html?academy='+slug);
  assert.ok(!a.body.url.includes('#token='));
- assert.equal(db.length,2);
- assert.ok(db.every(x=>x.body.p_academy_id===academy));
+ assert.ok(calls.every(x=>x.p_academy_id===academy));
  assert.match(owner,/통합 링크 복사/);
- assert.match(owner,/학생별 링크를 발급하지 않습니다/);
 });
-test('public begin posts name+phone only, generic HTTP response hides match and phone',async()=>{
- let forwarded=null;
- const apiFn=makeApi(async(url,opt)=>{
-  forwarded=JSON.parse(opt.body);
-  return {ok:true,json:async()=>({ok:true,send_to:null})};
+test('calendar query does not require guardian name/phone',async()=>{
+ let called;const fn=makeApi(async(url,opt)=>{
+  called={url,params:JSON.parse(opt.body)};
+  return {ok:true,json:async()=>({ok:true,slots:[{start_at:'2026-11-10T02:00:00Z'}]})};
  });
- const out=await apiFn({action:'begin',academy:slug,student_name:'김하늘',
-  guardian_phone:'010-2222-4444',grade:'6',age:'7',level:5,division:'kinder'});
- assert.equal(out.statusCode,202);
- assert.equal(out.body.ok,true);
- assert.ok(/^[0-9a-f-]{36}$/.test(out.body.challenge_id));
- assert.ok(!JSON.stringify(out.body).includes('김하늘'));
- assert.ok(!JSON.stringify(out.body).includes('01022224444'));
- assert.ok(!Object.hasOwn(out.body,'send_to'));
- assert.deepEqual(Object.keys(forwarded).sort(),[
-  'p_challenge_id','p_code_hash','p_guardian_phone','p_ip_digest','p_slug','p_student_name'
- ].sort());
- assert.equal(forwarded.p_student_name,'김하늘');
- assert.equal(forwarded.p_guardian_phone,'01022224444');
- assert.equal(forwarded.p_slug,slug);
+ const r=await fn({action:'slots',academy:slug,date:'2026-11-10'});
+ assert.equal(r.statusCode,200);assert.equal(r.body.slots.length,1);
+ assert.match(called.url,/olli_booking_public_slots/);
+ assert.deepEqual(Object.keys(called.params).sort(),['p_date','p_slug']);
 });
-test('different lookup results produce same public response and never disclose phone',async()=>{
- let match=null;
- const fn=makeApi(async()=>({ok:true,json:async()=>match===null?
-  {ok:true,send_to:null}:{ok:true,send_to:'01022224444',academy_id:academy}}));
- const body={action:'begin',academy:slug,student_name:'김하늘',guardian_phone:'01022224444'};
- const one=await fn(body);match=true;const two=await fn(body);
- assert.equal(one.statusCode,202);assert.equal(two.statusCode,202);
- assert.deepEqual(Object.keys(one.body).sort(),Object.keys(two.body).sort());
- assert.equal(one.body.message,two.body.message);
- assert.equal(one.headers['Cache-Control'].includes('no-store'),true);
-});
-test('OTP verification is required and short-lived bearer stays out of public link',async()=>{
- let calls=[];
- const fn=makeApi(async(url,opt)=>{
-  const x=JSON.parse(opt.body);calls.push(x);
-  return {ok:true,json:async()=>({ok:true,expires_in_seconds:2700})};
+test('reserve passes name, phone, start and random token hash only on click',async()=>{
+ let called;const fn=makeApi(async(url,opt)=>{
+  called={url,params:JSON.parse(opt.body)};
+  return {ok:true,json:async()=>({ok:true,existing:false})};
  });
- const ch='22222222-2222-4222-8222-222222222222';
- const r=await fn({action:'verify',challenge_id:ch,code:'123456'});
+ const r=await fn({action:'reserve',academy:slug,student_name:'김하늘',
+  guardian_phone:'010-2222-4444',start_at:'2026-11-10T11:00:00+09:00',
+  request_key:requestKey,grade:4,age:9});
  assert.equal(r.statusCode,200);
- assert.equal(r.body.expires_in_seconds,2700);
  assert.match(r.body.session_token,/^[A-Za-z0-9_-]{43}$/);
- assert.equal(calls[0].p_session_hash.length,64);
- assert.equal(calls[0].p_code_hash.length,64);
- assert.ok(!JSON.stringify(calls[0]).includes('123456'));
- assert.ok(!JSON.stringify(r.body).includes('guardian_phone'));
+ assert.match(called.url,/olli_booking_public_reserve/);
+ assert.deepEqual(Object.keys(called.params).sort(),[
+  'p_slug','p_student_name','p_guardian_phone','p_start_at','p_request_key',
+  'p_session_hash','p_ip_digest'].sort());
+ assert.equal(called.params.p_guardian_phone,'01022224444');
+ assert.match(called.params.p_session_hash,/^[0-9a-f]{64}$/);
+ assert.ok(!JSON.stringify(r.body).includes('01022224444'));
 });
-test('no direct browser service key or student id in guardian URL',()=>{
+test('wrong phone and duplicate lookup produce same name/phone warning with no session',async()=>{
+ const fn=makeApi(async()=>({ok:true,json:async()=>({ok:false,code:'MATCH_NOT_FOUND'})}));
+ const req={action:'reserve',academy:slug,student_name:'김하늘',guardian_phone:'01022224444',
+  start_at:'2026-11-10T11:00:00+09:00',request_key:requestKey};
+ const r=await fn(req);
+ assert.equal(r.statusCode,400);assert.deepEqual(r.body,{ok:false,code:'MATCH_NOT_FOUND'});
+ assert.ok(!('session_token' in r.body));
+ const otp=await fn({action:'verify',challenge_id:requestKey,code:'123456',academy:slug});
+ assert.equal(otp.body.code,'INVALID_ACTION');
+});
+test('guardian and public API never leak service key or use SMS',()=>{
  const v=require('../packages/common/pc-runtime-manifest.json');
  const m=require('../packages/common/mobile-runtime-manifest.json');
  for(const manifest of [v,m]){
