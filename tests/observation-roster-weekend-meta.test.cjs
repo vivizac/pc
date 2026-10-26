@@ -17,7 +17,7 @@ function context(){
 const example={id:'00000000-0000-4000-8000-000000000001',name:'민기',
  school:'한샘',grade:2,group:1,lesson_day:'토'};
 
-test('PC observation guide shows weekend capsule after school, grade and feedback month',()=>{
+test('PC observation roster keeps weekend capsules beside names, not in guide text',()=>{
  const globals=context();
  const from=pc.indexOf('function renderPcRosterGuide(');
  const to=pc.indexOf('function renderElementaryStudentRows(',from);
@@ -28,11 +28,13 @@ test('PC observation guide shows weekend capsule after school, grade and feedbac
   escapeHtml:value=>String(value)
  });
  const output=runner(example,'한샘/2학년/발송월10월',null,true);
- assert.match(output,/한샘\/2학년\/발송월10월<span class="olliStudentWeekendBadge"[^>]*>토<\/span>$/);
+ assert.equal(output,'한샘/2학년/발송월10월');
  assert.equal(runner(example,'한샘/2학년/발송월10월',null,false),'한샘/2학년/발송월10월');
- assert.match(runner(example,'','한샘/2학년/발송월10월',true),/발송월10월<span class="olliStudentWeekendBadge"/);
- assert.equal((pc.match(/\$\{escapeHtml\(student.name\)\}<\/span>/g)||[]).length,2,
-  'both PC elementary and kindergarten name lines are capsule-free');
+ assert.equal(runner(example,'','한샘/2학년/발송월10월',true),'한샘/2학년/발송월10월');
+ const badges=globals.renderOlliStudentRosterMarkers(example);
+ assert.match(badges,/<span class="olliStudentWeekendBadge"[^>]*>토<\/span>/);
+ assert.equal((pc.match(/\$\{escapeHtml\(student.name\)\}\$\{options.showRosterMarkers === true \? renderOlliStudentRosterMarkers\(student\) : ''\}/g)||[]).length,2,
+  'PC elementary and kindergarten both retain their original badge position after student name');
 });
 test('mobile observation name stays clean; weekend capsules follow guide text in the same meta line',()=>{
  const globals=context();
