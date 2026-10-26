@@ -47,7 +47,7 @@
     const parts = text.split(/\s*\/\s*/).map((part) => part.trim())
       .filter((part) => part && !part.startsWith('발송월'));
     const prefix = parts.map((part) => escape(part)).join(' / ');
-    const month = '<span class="olliStudentFeedbackMonthUnset">발송월미정</span>';
+    const month = '<span class="olliStudentFeedbackMonthUnset">발송월 미정</span>';
     return prefix ? prefix + ' / ' + month : month;
   }
 
