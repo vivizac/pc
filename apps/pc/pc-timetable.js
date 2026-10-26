@@ -1199,11 +1199,11 @@
       const attended = isToday(date) && attendanceStatus === 'present';
       const secondSessionMark = isSecondWeeklySession(item, date) ? '<strong class="olliTtSecondSessionMark" aria-label="주 2회차">▲</strong>' : '';
       const pauseBadge = pausedStudent ? '<span class="olliTtPauseBadge">휴원</span>' : '';
-      return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}${mutedAbsence ? ' absenceUpcoming' : ''}${pausedStudent ? ' pausedStudent' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${sessionKey}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(item.student_name)}${renderOlliStudentWeekendBadges(rosterStudent, activeWeeklySessions(item.student_id, date))}${pauseBadge}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
+      return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}${mutedAbsence ? ' absenceUpcoming' : ''}${pausedStudent ? ' pausedStudent' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${sessionKey}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(item.student_name)}${pauseBadge}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
     }).join('');
     const waitHtml = waits.map((item) => {
       const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;
-      return `<div class="olliTtStudent wait"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}" data-session-date="${dateKey(date)}">${esc(displayName)}${renderOlliStudentWeekendBadges(studentByAnyId(item.student_id))}</button><button type="button" class="olliTtStudentTag" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}" data-session-date="${dateKey(date)}">대기</button></div>`;
+      return `<div class="olliTtStudent wait"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}" data-session-date="${dateKey(date)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}" data-session-date="${dateKey(date)}">대기</button></div>`;
     }).join('');
     const makeupHtml = makeups.map((item) => {
       const trial = clean(item.session_type) === 'trial';
@@ -1211,10 +1211,10 @@
       const attendanceTime = Number(item.time_slot);
       const entryClassGroup = classGroup ? classGroupOf({ class_group: classGroup }) : classGroupOf(item);
       if (trial) {
-        return `<div class="olliTtStudent trial"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">${esc(displayName)}${renderOlliStudentWeekendBadges(studentByAnyId(item.student_id))}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">체험</button></div>`;
+        return `<div class="olliTtStudent trial"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">체험</button></div>`;
       }
       const attended = isToday(date) && attendanceMarked(item.student_id, date, attendanceTime, entryClassGroup, 'makeup');
-      return `<div class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(displayName)}${renderOlliStudentWeekendBadges(studentByAnyId(item.student_id))}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">보강</button></div>`;
+      return `<div class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">보강</button></div>`;
     }).join('');
     const memoGroup = classGroup ? classGroupOf({ class_group: classGroup }) : '';
     const memoHtml = cellMemos().filter((item) => clean(item.division) === clean(division)
@@ -1920,7 +1920,7 @@
   }
 
   function sidebarStudentCardHtml(student, inactive = false) {
-    return `<div class="olliTtQuickStudent${inactive ? ' isInactive' : ''}" data-tt-sidebar-student="${esc(student.id)}" data-tt-sidebar-status="${esc(studentStatus(student))}" role="button" tabindex="0"><span class="olliTtQuickStudentMain"><span class="olliTtQuickStudentName">${esc(student.name)}${renderOlliStudentWeekendBadges(student, activeWeeklySessions(student.id, new Date()))}</span><span class="olliTtQuickStudentSchedule">${esc(studentScheduleText(student.id))}</span></span></div>`;
+    return `<div class="olliTtQuickStudent${inactive ? ' isInactive' : ''}" data-tt-sidebar-student="${esc(student.id)}" data-tt-sidebar-status="${esc(studentStatus(student))}" role="button" tabindex="0"><span class="olliTtQuickStudentMain"><span class="olliTtQuickStudentName">${esc(student.name)}</span><span class="olliTtQuickStudentSchedule">${esc(studentScheduleText(student.id))}</span></span></div>`;
   }
 
   function sidebarInactiveSectionHtml(status, label, students) {
@@ -2395,7 +2395,7 @@
 
   function addPickerHtml(dialog) {
     const students = service.activeStudents().filter((student) => divisionOf(student) === dialog.division && (!dialog.query || clean(student.name).includes(dialog.query)));
-    return students.length ? students.map((student) => `<button type="button" class="olliTtPickerStudent ${clean(student.id) === dialog.studentId ? 'active' : ''}" data-tt-add-student="${esc(student.id)}"><strong>${esc(student.name)}${renderOlliStudentWeekendBadges(student, activeWeeklySessions(student.id, new Date()))}</strong><span>${esc(studentScheduleText(student.id)) || '수업 없음'}</span></button>`).join('') : '<div class="olliTtQuickEmpty">학생을 찾지 못했습니다.</div>';
+    return students.length ? students.map((student) => `<button type="button" class="olliTtPickerStudent ${clean(student.id) === dialog.studentId ? 'active' : ''}" data-tt-add-student="${esc(student.id)}"><strong>${esc(student.name)}</strong><span>${esc(studentScheduleText(student.id)) || '수업 없음'}</span></button>`).join('') : '<div class="olliTtQuickEmpty">학생을 찾지 못했습니다.</div>';
   }
 
   function addStudentFieldHtml(dialog) {
@@ -2600,7 +2600,7 @@
       const exactMatches = students.filter((student) => clean(student.name) === query);
       if (exactMatches.length === 1) dialog.studentId = clean(exactMatches[0].id);
     }
-    return students.length ? students.map((student) => `<button type="button" class="olliTtPickerStudent ${clean(student.id) === clean(dialog.studentId) ? 'active' : ''}" data-tt-pickup-student="${esc(student.id)}"><strong>${esc(student.name)}${renderOlliStudentWeekendBadges(student, activeWeeklySessions(student.id, new Date()))}</strong><span>${esc(studentScheduleText(student.id)) || '수업 없음'}</span></button>`).join('') : '<div class="olliTtQuickEmpty">학생을 찾지 못했습니다.</div>';
+    return students.length ? students.map((student) => `<button type="button" class="olliTtPickerStudent ${clean(student.id) === clean(dialog.studentId) ? 'active' : ''}" data-tt-pickup-student="${esc(student.id)}"><strong>${esc(student.name)}</strong><span>${esc(studentScheduleText(student.id)) || '수업 없음'}</span></button>`).join('') : '<div class="olliTtQuickEmpty">학생을 찾지 못했습니다.</div>';
   }
 
   function renderPickupPickerResults(dialogElement) {
