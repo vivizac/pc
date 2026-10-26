@@ -64,3 +64,49 @@ test('server rejects unmatched Origin without altering authorization rules',asyn
  assert.equal(logs[0][1].originMatchesHost,false);
  assert.equal(Object.keys(logs[0][1]).includes('origin'),false);
 });
+
+
+test('Vercel allows exact configured guardian public origin despite internal Host mismatch',async()=>{
+ const server=require('../packages/common/api/_lib/olli-booking-public-handler.cjs');
+ const origin='https://pc-seven-silk.vercel.app';
+ const slug=academy;
+ const makeRes=()=>({statusCode:0,body:null,setHeader(){},status(n){this.statusCode=n;return this;},json(b){this.body=b;return this;}});
+ const env={VERCEL:'1',OLLI_BOOKING_PUBLIC_ORIGIN:origin,SUPABASE_SECRET_KEY:'test-only'};
+ const handler=server.createHandler({env,fetchFn:async(url,options)=>({
+  ok:true,json:async()=>({ok:true,academy_name:'비비작아이성향미술학원',weeks:[2,3],weekdays:[1,2,3,4,5]})
+ })});
+ const resp=makeRes();
+ await handler({method:'POST',headers:{origin,host:'pc-internal-deployment.vercel.app','x-forwarded-host':'pc-seven-silk.vercel.app'},
+  body:{action:'info',academy:slug}},resp);
+ assert.equal(resp.statusCode,200);
+ assert.equal(resp.body.academy_name,'비비작아이성향미술학원');
+ assert.deepEqual(resp.body.weekdays,[1,2,3,4,5]);
+});
+test('Origin security denies unapproved domains, spoofed forwarding and non-Vercel mismatch',async()=>{
+ const server=require('../packages/common/api/_lib/olli-booking-public-handler.cjs');
+ const canonical='https://pc-seven-silk.vercel.app';
+ const makeRes=()=>({statusCode:0,body:null,setHeader(){},status(n){this.statusCode=n;return this;},json(b){this.body=b;return this;}});
+ const configs=[
+  {origin:'https://evil.example',host:'pc-internal.vercel.app','x-forwarded-host':'pc-seven-silk.vercel.app'},
+  {origin:'https://pc-seven-silk.vercel.app.evil.example',host:'pc-internal.vercel.app'},
+  {origin:'http://pc-seven-silk.vercel.app',host:'pc-internal.vercel.app'},
+  {origin:'null',host:'pc-internal.vercel.app'},
+  {origin:'https://pc-seven-silk.vercel.app/',host:'pc-internal.vercel.app'}
+ ];
+ const originalWarn=console.warn;console.warn=()=>{};
+ try{
+  for(const headers of configs){
+   const h=server.createHandler({env:{VERCEL:'1',OLLI_BOOKING_PUBLIC_ORIGIN:canonical},
+    fetchFn:async()=>{throw Error('Must reject before network');}});
+   const res=makeRes();
+   await h({method:'POST',headers,body:{action:'info',academy}},res);
+   assert.equal(res.statusCode,403,'must reject '+headers.origin);
+   assert.deepEqual(res.body,{ok:false,code:'ORIGIN_FORBIDDEN'});
+  }
+  const handler=server.createHandler({env:{VERCEL:'0',OLLI_BOOKING_PUBLIC_ORIGIN:canonical},
+   fetchFn:async()=>{throw Error('Must reject before network');}});
+  const res=makeRes();
+  await handler({method:'POST',headers:{origin:canonical,host:'different.vercel.app'},body:{action:'info',academy}},res);
+  assert.equal(res.statusCode,403);
+ }finally{console.warn=originalWarn;}
+});
