@@ -45,7 +45,7 @@ test('mobile dashboard shortcut is additive and uses dedicated mobile view',()=>
  assert.match(mobile,/id="recordAcademyDashboard"/);
  assert.match(mobile,/olli-booking-owner-ui\.css/);
  assert.match(mobile,/olli-booking-owner-ui\.js/);
- assert.match(source,/data\.olliBookingEntry='true'/);
+ assert.match(source,/dataset\.olliBookingEntry='true'/);
  assert.match(source,/state\.entryObserver\.observe\(root/);
  assert.match(source,/initMobileShortcut/);
  assert.match(source,/overlay\.hidden=false;mount\(overlay,'mobile'\)/);
@@ -82,7 +82,7 @@ test('staff SQL uses tenant authenticated owner and never mutates summary feedba
  assert.match(migration,/enable row level security/);
  assert.match(migration,/pg_advisory_xact_lock/);
  assert.match(migration,/olli_booking_private\.assert_slot/);
- assert.match(migration,/action,'cancelled','staff'/);
+ assert.match(migration,/values\(v_record\.id,p_academy_id,'cancelled','staff'\)/);
  assert.doesNotMatch(migration,/(?:update|delete from|insert into)\s+public\.(?:summary_feedbacks|olli_consultation_summary_jobs)/i);
  assert.match(migration,/revoke all on function public\.olli_booking_staff_manage[\s\S]*from public,anon,authenticated/i);
 });
