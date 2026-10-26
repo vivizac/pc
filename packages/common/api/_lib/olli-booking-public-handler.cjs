@@ -101,7 +101,7 @@ function previewSlots(dateStr){
  if(inDays<0||inDays>120)return [];
  const iso=(dt.getUTCDay()+6)%7+1;
  const first=new Date(Date.UTC(y,m-1,1));
- const week=Math.floor((d-1+(first.getUTCDay()+6)%7)/7)+1;
+ const week=Math.floor((d-1+first.getUTCDay())/7)+1;
  if(![2,3].includes(week)||iso>5)return [];
  const slots=[];
  for(let mins=660;mins+30<=1020;mins+=30){

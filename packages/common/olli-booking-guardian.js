@@ -106,7 +106,7 @@
   const dt=new Date(Date.UTC(y,m-1,n));
   const iso=(dt.getUTCDay()+6)%7+1;
   const first=new Date(Date.UTC(y,m-1,1));
-  const week=Math.floor((n-1+(first.getUTCDay()+6)%7)/7)+1;
+  const week=Math.floor((n-1+first.getUTCDay())/7)+1;
   return state.weeks.includes(week)&&state.weekdays.includes(iso);
  }
  function firstBookableMonth(){

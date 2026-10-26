@@ -167,7 +167,7 @@ test('QA health probe verifies real preview mode, without DB access or productio
   env:{...env,VERCEL_ENV:'preview',OLLI_BOOKING_QA_DEMO:'1',OLLI_BOOKING_QA_ACADEMY_NAME:'비비작아이성향미술학원'}
  });
  const req={method:'GET',headers:{host:'qa.example.org'},
-  url:'/api/olli-booking-public?qa_health=1&academy='+slug+'&date=2026-11-03'};
+  url:'/api/olli-booking-public?qa_health=1&academy='+slug+'&date=2026-11-10'};
  const result=mock();await handler(req,result);
  assert.equal(result.statusCode,200);assert.equal(result.body.demo,true);
  assert.equal(result.body.sample_slot_count,12);
