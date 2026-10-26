@@ -141,7 +141,7 @@ for(const width of [390,1280]){
    await page.getByRole('button',{name:'변경 저장'}).click();
    await page.getByRole('heading',{name:'예약이 완료되었습니다'}).waitFor();
    await page.getByRole('button',{name:'예약 취소'}).click();
-   await page.getByRole('heading',{name:'상담 예약',exact:true}).waitFor();
+   await page.getByRole('button',{name:'기존 예약 변경하기'}).waitFor();
    assert.equal(current,null);
    assert.deepEqual(requests.filter(x=>['reserve','reschedule','cancel'].includes(x.action)).map(x=>x.action),
      ['reserve','reserve','reschedule','cancel']);
