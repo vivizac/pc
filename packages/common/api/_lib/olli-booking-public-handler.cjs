@@ -34,15 +34,18 @@ function originGuard(req,env){
  if(origin.protocol!=='https:'||req.headers.origin!==origin.origin)
   throw error('ORIGIN_FORBIDDEN',403);
  if(origin.host===req.headers.host)return;
- // On Vercel the internal Host can differ from the browser-visible deployment alias.
- // Trust only the exact HTTPS public origin configured for this production deployment,
- // never arbitrary X-Forwarded-Host or user-supplied Origin domains.
- if(env.VERCEL==='1'&&typeof env.OLLI_BOOKING_PUBLIC_ORIGIN==='string'){
+ // Vercel's server-side Host may differ from the public URL seen by Safari.
+ // A configured HTTPS public origin is already an explicit server-side allowlist;
+ // do not also depend on optional Vercel system environment variables.
+ // Never trust X-Forwarded-Host as an authorization source.
+ const configuredOrigin=env.OLLI_BOOKING_PUBLIC_ORIGIN;
+ if(typeof configuredOrigin==='string'){
   let configured;
-  try{configured=new URL(env.OLLI_BOOKING_PUBLIC_ORIGIN);}catch{}
+  try{configured=new URL(configuredOrigin);}catch{}
   if(configured?.protocol==='https:'&&configured.pathname==='/'&&
      !configured.username&&!configured.password&&!configured.search&&!configured.hash&&
-     configured.port!=='443'&&!configured.port&&origin.origin===configured.origin)return;
+     !configured.port&&configured.origin===configuredOrigin&&
+     origin.origin===configured.origin)return;
  }
  throw error('ORIGIN_FORBIDDEN',403);
 }
@@ -229,13 +232,27 @@ function createHandler({fetchFn=fetch,env=process.env}={}){
    // Log only safe classifications. Never log request bodies, student/guardian details,
    // session tokens, full origins, or raw exception strings.
    if(e.code==='ORIGIN_FORBIDDEN'){
-    let originMatchesHost=false;
-    try{originMatchesHost=new URL(String(req.headers?.origin)).host===req.headers?.host;}catch{}
+    let originMatchesHost=false,originMatchesConfigured=false,originStrictHTTPS=false;
+    let forwardedHostMatchesConfigured=false;
+    try{
+     const received=new URL(String(req.headers?.origin));
+     const configured=new URL(String(env.OLLI_BOOKING_PUBLIC_ORIGIN));
+     originMatchesHost=received.host===req.headers?.host;
+     originStrictHTTPS=received.protocol==='https:'&&req.headers?.origin===received.origin;
+     originMatchesConfigured=received.origin===configured.origin;
+     forwardedHostMatchesConfigured=req.headers?.['x-forwarded-host']===configured.host;
+    }catch{}
+    // Boolean-only evidence: never log the actual Origin, Host, student, or token.
     console.warn('OLLI_BOOKING_PUBLIC_ORIGIN_REJECTED',{
      originPresent:Boolean(req.headers?.origin),
      hostPresent:Boolean(req.headers?.host),
      originMatchesHost,
-     forwardedHostPresent:Boolean(req.headers?.['x-forwarded-host'])
+     originStrictHTTPS,
+     originMatchesConfigured,
+     configuredOriginPresent:Boolean(env.OLLI_BOOKING_PUBLIC_ORIGIN),
+     vercelSystemFlagPresent:env.VERCEL==='1',
+     forwardedHostPresent:Boolean(req.headers?.['x-forwarded-host']),
+     forwardedHostMatchesConfigured
     });
    }else if(req.body?.action==='info'){
     console.warn('OLLI_BOOKING_PUBLIC_INFO_FAILED',{
