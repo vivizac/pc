@@ -59,11 +59,51 @@
 .obmFormActions button{min-height:40px;border:1px solid #e1e5ea;background:#fff;border-radius:8px;padding:8px 15px;cursor:pointer}
 .obmFormActions .obmPrimary{background:#1687ff;border-color:#1687ff;color:#fff;font-weight:700}
 .obmFooter{margin:18px 0;color:#9198a2;font-size:11px}
-.obmAcademyEntry{display:flex;width:100%;justify-content:space-between;align-items:center;border:1px solid #e3e8ee;border-radius:13px;background:#fff;margin-top:13px;padding:16px 18px;color:#1d242b;text-align:left;font:inherit;cursor:pointer}
+.obmAcademyEntry{
+  display:flex;
+  width:100%;
+  box-sizing:border-box;
+  min-height:106px;
+  justify-content:space-between;
+  align-items:stretch;
+  gap:12px;
+  border:1px solid rgba(0,0,0,0.06);
+  border-radius:22px;
+  background:#fff;
+  margin-top:13px;
+  padding:9px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.045);
+  color:#111;
+  text-align:left;
+  font:inherit;
+  cursor:pointer;
+}
+.obmAcademyEntry>span:first-child{
+  display:flex;
+  flex:1 1 auto;
+  min-width:0;
+  flex-direction:column;
+  justify-content:center;
+  padding:6px 0 6px 8px;
+}
 .obmAcademyEntry strong,.obmAcademyEntry small{display:block}
 .obmAcademyEntry strong{font-size:15px;font-weight:750}
 .obmAcademyEntry small{font-size:12px;color:#9097a1;margin-top:5px}
-.obmAcademyEntry>span:last-child{font-size:23px;color:#a2a9b2}
+.obmAcademyEntry>span:last-child{
+  display:flex;
+  flex:0 0 34%;
+  align-self:stretch;
+  align-items:center;
+  justify-content:center;
+  border-radius:0 16px 16px 0;
+  background:#0A84FF;
+  color:#fff;
+  font-size:34px;
+  font-weight:400;
+  line-height:1;
+}
+.obmAcademyEntry:focus-visible{outline:2px solid #0A84FF;outline-offset:3px}
+.recordAcademyStatGrid > .obmAcademyEntry{grid-column:1 / -1;margin-top:0}
 .obmModalBackdrop{position:fixed;inset:0;background:#14192570;z-index:170000;display:grid;place-items:center;padding:15px}
 .obmModal{width:100%;max-width:400px;border-radius:15px;background:#fff;padding:22px;display:flex;flex-direction:column;gap:15px}
 .obmModal h3{margin:0;font-size:19px}
