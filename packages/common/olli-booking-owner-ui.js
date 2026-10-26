@@ -284,9 +284,10 @@
    entry.type='button';entry.dataset.olliBookingEntry='true';
    entry.innerHTML='<span><strong>상담 예약 현황</strong><small>오늘·이번 주 일정 및 예약 관리</small></span><span aria-hidden="true">›</span>';
    entry.addEventListener('click',()=>open('mobile'));
-   const header=dashboard.querySelector('.recordAcademyDashboardHeader');
-   if(header)header.insertAdjacentElement('afterend',entry);
-   else dashboard.prepend(entry);
+   // Two-column stats: the fifth cell is directly below the third card ('올해 등록').
+   const grid=dashboard.querySelector('.recordAcademyStatGrid');
+   if(!grid||grid.children.length!==4)return;
+   grid.appendChild(entry);
  }
  function initMobileShortcut(){
    const root=document.getElementById('recordAcademyDashboard');

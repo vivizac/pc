@@ -103,6 +103,7 @@
   line-height:1;
 }
 .obmAcademyEntry:focus-visible{outline:2px solid #0A84FF;outline-offset:3px}
+.recordAcademyStatGrid > .obmAcademyEntry{margin-top:0}
 .obmModalBackdrop{position:fixed;inset:0;background:#14192570;z-index:170000;display:grid;place-items:center;padding:15px}
 .obmModal{width:100%;max-width:400px;border-radius:15px;background:#fff;padding:22px;display:flex;flex-direction:column;gap:15px}
 .obmModal h3{margin:0;font-size:19px}

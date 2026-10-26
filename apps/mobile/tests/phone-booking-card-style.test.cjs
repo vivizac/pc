@@ -49,3 +49,51 @@ test('blue inset visual centers the white existing chevron; mobile navigation st
 test('mobile loads the versioned updated booking stylesheet', () => {
   assert.match(mobileHtml, /olli-booking-owner-ui\.css\?v=20261026-mobile-card-1/);
 });
+
+test('consultation card is the fifth item in the two-column stat grid under 올해 등록', () => {
+  const vm = require('node:vm');
+  const dashboardSource = read('apps/mobile/olli-settings-server-sync.js');
+  const statGrid = rule(academy, '.recordAcademyStatGrid');
+  assert.match(statGrid, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  const renderer = dashboardSource.slice(dashboardSource.indexOf('dashboard.innerHTML'));
+  const cardOrder = ['원생수', 'consultationCardLabel', '올해 등록', '올해 퇴원'];
+  const at = cardOrder.map(label => renderer.indexOf(label));
+  assert.ok(at.every(pos => pos >= 0) && at.every((pos, i) => i === 0 || pos > at[i - 1]));
+
+  const start = shortcut.indexOf('function insertMobileShortcut(){');
+  const end = shortcut.indexOf('function initMobileShortcut(){', start);
+  assert.ok(start >= 0 && end > start, 'mobile shortcut has a single source function');
+  const source = shortcut.slice(start, end);
+  const cards = Array.from({length: 4}, (_, i) => ({label: cardOrder[i]}));
+  const grid = {
+    children: [...cards],
+    appendChild(element){this.children.push(element);}
+  };
+  const dashboard = {
+    classList:{contains: value => value === 'show'},
+    querySelector(selector){
+      if(selector === '.recordAcademyStatGrid') return grid;
+      if(selector === '[data-olli-booking-entry]') return grid.children.find(x => x.dataset?.olliBookingEntry) || null;
+      return null;
+    }
+  };
+  const document = {
+    body:{classList:{contains:() => false}},
+    getElementById:id => id === 'recordAcademyDashboard' ? dashboard : null
+  };
+  const context = {
+    document,
+    isOwner:()=>true,
+    open:()=>true,
+    el:(tag, className) => ({
+      tag, className, dataset:{},
+      addEventListener(event, callback){this.onClick=callback;}
+    })
+  };
+  vm.runInNewContext(source + '\ninsertMobileShortcut();insertMobileShortcut();', context);
+  assert.equal(grid.children.length, 5, 'only one new card is placed');
+  assert.deepEqual(grid.children.slice(0, 4), cards, 'the existing four stat cards keep their places');
+  assert.equal(grid.children[4].dataset.olliBookingEntry, 'true');
+  assert.equal(grid.children[4].className, 'obmAcademyEntry');
+  assert.match(rule(booking, '.recordAcademyStatGrid > .obmAcademyEntry'), /margin-top:0/);
+});
