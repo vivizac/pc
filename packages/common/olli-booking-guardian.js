@@ -197,6 +197,9 @@
    const key=monthKey(month),saved=monthCache.get(key);
    if(saved&&Date.now()-saved.fetchedAt<MONTH_TTL_MS&&!force)return;
    if(monthPending.has(key)){
+    // A failed reservation must request a fresh snapshot even if an older
+    // background refresh was in flight before the conflicting booking.
+    if(force){await monthPending.get(key);return loadMonth(month,true);}
     if(state.month===month&&monthKey()===key){
      state.monthLoading=true;useMonthSlots();render();
     }
@@ -353,8 +356,11 @@
     state.weeks=Array.isArray(r.weeks)?r.weeks:[2,3];
     state.weekdays=Array.isArray(r.weekdays)?r.weekdays:[1,2,3,4,5];
     state.demo=r.demo===true;
+    const previousMonth=state.month;
     if(!state.day&&!state.reservation)state.month=firstBookableMonth();
     render();
+    if(previousMonth!==state.month&&(state.phase==='booking'||state.phase==='change'))
+     void loadMonth();
   }).catch(e=>{state.academyName='학원명 확인 불가';state.error=explain(e.message);render();});
  }
 
