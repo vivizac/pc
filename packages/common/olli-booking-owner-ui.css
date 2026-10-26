@@ -63,7 +63,6 @@
   display:flex;
   width:100%;
   box-sizing:border-box;
-  min-height:106px;
   justify-content:space-between;
   align-items:stretch;
   gap:12px;
@@ -84,17 +83,18 @@
   min-width:0;
   flex-direction:column;
   justify-content:center;
-  padding:6px 0 6px 8px;
+  padding:7px 0 7px 8px;
 }
 .obmAcademyEntry strong,.obmAcademyEntry small{display:block}
 .obmAcademyEntry strong{font-size:15px;font-weight:750}
 .obmAcademyEntry small{font-size:12px;color:#9097a1;margin-top:5px}
 .obmAcademyEntry>span:last-child{
   display:flex;
-  flex:0 0 34%;
+  flex:0 0 30%;
   align-self:stretch;
   align-items:center;
   justify-content:center;
+  text-align:center;
   border-radius:0 16px 16px 0;
   background:#0A84FF;
   color:#fff;
