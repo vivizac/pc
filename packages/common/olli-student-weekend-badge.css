@@ -21,6 +21,15 @@
   white-space: nowrap;
   flex-shrink: 0;
   pointer-events: none;
+  transform: translateY(-1px);
+}
+
+/* Match the existing guide typography in the only two student rosters. */
+body.olliPcApp #recordRoomScreen .studentTextWrap > span:first-child .olliStudentWeekendBadge {
+  font-size: 10.5px;
+}
+#observationRosterScreen .memoBodyRosterName .olliStudentWeekendBadge {
+  font-size: calc(13px * var(--olli-text-scale));
 }
 
 .olliStudentGroupUnset {
