@@ -79,7 +79,7 @@ function renderElementaryStudentRows(students) {
       <div class="elementaryRowInner${leadIcon ? ' hasLeadIcon' : ''}">
         ${leadIcon}
         <span class="studentTextWrap">
-          <span>${escapeHtml(student.name)}</span>
+          <span>${escapeHtml(student.name)}${renderOlliStudentWeekendBadges(student)}</span>
           ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
         </span>
       </div>
@@ -107,7 +107,7 @@ function renderKinderStudentRows(students) {
       <div class="kinderRowInner${leadIcon ? ' hasLeadIcon' : ''}">
         ${leadIcon}
         <span class="studentTextWrap">
-          <span>${escapeHtml(student.name)}</span>
+          <span>${escapeHtml(student.name)}${renderOlliStudentWeekendBadges(student)}</span>
           ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
         </span>
       </div>
