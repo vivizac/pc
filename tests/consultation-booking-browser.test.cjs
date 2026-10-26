@@ -85,6 +85,9 @@ for(const width of [390,1280]){
    assert.equal(await page.locator('.ogbEyebrow').count(),0);
    assert.equal(await page.locator('.ogbTitleBand').count(),1);
    await page.getByRole('button',{name:'상담 예약하기'}).click();
+   const headerGreen=await page.locator('.ogbTitleBand').evaluate(node=>getComputedStyle(node).backgroundColor);
+   const buttonGreen=await page.locator('[data-action="commit"]').evaluate(node=>getComputedStyle(node).backgroundColor);
+   assert.equal(headerGreen,buttonGreen,'booking title and submit button share survey green');
    assert.ok((await page.locator('.ogbMonth strong').innerText()).includes(Number(date.slice(5,7))+'월'),
      'initial calendar must show next available booking month');
    assert.equal(await page.locator('input[name=student_name]').count(),1);
