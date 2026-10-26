@@ -42,7 +42,7 @@ test('successful info response and both page entry points remain unchanged',asyn
  assert.doesNotMatch(ok,/진단:|학원명 확인 중|ogbBoot/);
  for(const page of ['apps/pc/consultation-booking.html','apps/mobile/consultation-booking.html']){
   const html=fs.readFileSync(path.join(base,page),'utf8');
-  assert.match(html,/olli-booking-guardian\.js\?v=20261027-boot-loading-1/);
+  assert.match(html,/olli-booking-guardian\.js\?v=20261027-spinner-only-1/);
  }
  assert.doesNotMatch(source,/localStorage\.|sessionStorage\./);
 });
@@ -150,7 +150,7 @@ test('guardian POST preserves browser Origin under no-referrer policy without re
   const sourceHtml=fs.readFileSync(path.join(base,page),'utf8');
   assert.match(sourceHtml,/meta name="referrer" content="no-referrer"/);
   assert.match(sourceHtml,/connect-src 'self'/);
-  assert.match(sourceHtml,/olli-booking-guardian\.js\?v=20261027-boot-loading-1/);
+  assert.match(sourceHtml,/olli-booking-guardian\.js\?v=20261027-spinner-only-1/);
  }
  assert.doesNotMatch(source,/localStorage\.|sessionStorage\./);
 });
@@ -166,7 +166,9 @@ test('academy info loading gates the entire page until data arrives',async()=>{
   fetch:()=>pending
  },URLSearchParams,Intl,Date,Map});
  assert.match(root.innerHTML,/ogbBoot/);
- assert.match(root.innerHTML,/상담 예약 페이지를 준비하고 있습니다/);
+ assert.match(root.innerHTML,/ogbBootSpinner/);
+ assert.doesNotMatch(root.innerHTML,/<strong|<p>|OLLI|상담 예약 페이지를 준비하고 있습니다/);
+ assert.match(root.innerHTML,/aria-label="불러오는 중"/);
  assert.doesNotMatch(root.innerHTML,/학원명 확인 중|상담 예약하기|기존 예약 변경하기/);
  resolveInfo({status:200,ok:true,json:async()=>({
   ok:true,academy_name:'비비작아이성향미술학원',weeks:[2,3],weekdays:[1,2,3,4,5]
@@ -203,12 +205,16 @@ test('HTML entrypoints use same initial splash and shared CSS',()=>{
  for(const pathName of ['apps/pc/consultation-booking.html','apps/mobile/consultation-booking.html']){
   const h=fs.readFileSync(path.join(base,pathName),'utf8');
   assert.match(h,/class="ogbBoot"/);
+  const initial=h.slice(h.indexOf('<main id="olliGuardianBooking"'),h.indexOf('</main>')+7);
+  assert.match(initial,/ogbBootSpinner/);
+  assert.doesNotMatch(initial,/<strong|<p>|OLLI|상담 예약 페이지를 준비하고 있습니다/);
   assert.match(h,/aria-busy="true"/);
   assert.doesNotMatch(h,/학원명 확인 중/);
-  assert.match(h,/olli-booking-guardian\.css\?v=20261027-boot-loading-1/);
-  assert.match(h,/olli-booking-guardian\.js\?v=20261027-boot-loading-1/);
+  assert.match(h,/olli-booking-guardian\.css\?v=20261027-spinner-only-1/);
+  assert.match(h,/olli-booking-guardian\.js\?v=20261027-spinner-only-1/);
  }
  const sheet=fs.readFileSync(path.join(base,'packages/common/olli-booking-guardian.css'),'utf8');
  assert.match(sheet,/\.ogbBootSpinner/);
+ assert.doesNotMatch(sheet,/\.ogbBootLogo|\.ogbBootContent p/);
  assert.match(sheet,/prefers-reduced-motion:reduce/);
 });
