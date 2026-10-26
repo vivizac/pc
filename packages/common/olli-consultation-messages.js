@@ -1,6 +1,6 @@
 (function(global) {
   'use strict';
-  const DEFAULT_BODY = '#{학원명} 정기 성장상담 안내\n\n#{학생명} 학생의 #{상담구분} 상담 기간입니다.\n수업 중 관찰한 모습과 앞으로의 지도 방향을 함께 나누고자 합니다.\n\n아래 네이버 예약에서 가능한 일정을 선택해 주세요.\n#{예약링크}';
+  const DEFAULT_BODY = '#{학원명} 정기 성장상담 안내\n\n#{학생명} 학생의 #{상담구분} 상담 기간입니다.\n수업 중 관찰한 모습과 앞으로의 지도 방향을 함께 나누고자 합니다.\n\n아래 상담 예약하기 버튼을 눌러 가능한 일정을 선택해 주세요.';
   const STATUS = { reserved:'결과 확인 필요', submitted:'접수 완료', delivered:'발송 성공', failed:'발송 실패', unknown:'결과 확인 필요' };
   let active = null;
   function escape(value) { return String(value ?? '').replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
@@ -297,7 +297,7 @@
   document.addEventListener('visibilitychange',checkContext);
 
   // Manual consultation notices: no Solapi credentials and no message dispatch.
-  const MANUAL_NOTICE_INFO = "〈상담 신청 안내〉\n상담 기간: 매월 둘째 주와 셋째 주\n상담 시간: 월~금 (오전 11시 ~ 오후 6시)\n상담 소요 시간: 약 10~15분\n상담 신청: 아래 예약 링크 → '재원생 정기 상담' 선택 → 예약";
+  const MANUAL_NOTICE_INFO = "〈상담 신청 안내〉\n상담 기간: 매월 둘째 주와 셋째 주\n상담 시간: 월~금 (오전 11시 ~ 오후 6시)\n상담 소요 시간: 약 10~15분\n상담 신청: 아래 예약 링크에서 학생 정보를 확인하고 가능한 시간을 선택해 주세요.";
   const MANUAL_NOTICE_BODIES = {
     "kinder:after_1": "안녕하세요 어머님 😊\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 한 달이 지났습니다.\n\n처음 안내드린 대로 등록 후 1개월 차 정기상담을 진행하려 합니다.",
     "kinder:after_3": "안녕하세요 어머님 😊\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 3개월이 지났습니다.\n\n그동안의 수업 모습과 학원 생활에 대해 함께 이야기 나누고자 정기상담을 진행하려 합니다.",
@@ -425,17 +425,53 @@
     if (result?.ok !== true || !sameContext(ctx)) throw new Error('상담 안내 설정을 조회할 수 없습니다.');
     return result.settings || {};
   }
+  // Academy-wide public URL only. Do not reuse the legacy Naver/Solapi booking_url.
+  // The public-link endpoint enforces current Olli owner session + academy membership.
+  async function manualNoticeAcademyBookingUrl(ctx) {
+    if (!ctx.academyId || !ctx.sessionToken || typeof global.fetch !== 'function')
+      throw new Error('학원 로그인 정보를 확인할 수 없습니다.');
+    const response = await global.fetch('/api/olli-booking-public', {
+      method:'POST', cache:'no-store', credentials:'omit',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        action:'public-link',academy_id:ctx.academyId,session_token:ctx.sessionToken
+      })
+    });
+    const payload = await response.json().catch(()=>null);
+    if (!response.ok || payload?.ok !== true || typeof payload.url !== 'string')
+      throw new Error('학원 통합 예약 링크를 가져오지 못했습니다. 학원 예약 설정을 확인해 주세요.');
+    if (!sameContext(ctx)) throw new Error('로그인 학원이 변경되었습니다. 다시 시도해 주세요.');
+    let url;
+    try { url = new URL(payload.url); } catch (_) { throw new Error('학원 예약 링크 형식이 올바르지 않습니다.'); }
+    if (url.protocol !== 'https:' || url.username || url.password ||
+        url.pathname !== '/consultation-booking.html' ||
+        !/^[0-9a-f]{36}$/.test(url.searchParams.get('academy') || '') ||
+        url.hash || url.searchParams.size !== 1)
+      throw new Error('학원 예약 링크 형식이 올바르지 않습니다.');
+    return url.toString();
+  }
+  function composeManualNoticeWithLink(body, academyUrl, oldBookingUrl) {
+    const previous = String(oldBookingUrl || '').trim();
+    let cleanBody = String(body || '');
+    // Older saved notices may contain the former Naver URL or #{예약링크}.
+    if (previous && previous !== academyUrl) cleanBody = cleanBody.split(previous).join('');
+    cleanBody = cleanBody.replace(/#\{예약링크\}/g, '');
+    cleanBody = cleanBody.split(academyUrl).join('').trimEnd();
+    return cleanBody + '\n\n상담 예약 링크\n' + academyUrl;
+  }
   async function copyManualConsultationNotice(card, button) {
     const student = manualNoticeStudent(card);
     if (!student) throw new Error('학생을 정확하게 찾지 못했습니다. 학생 카드를 다시 열어 주세요.');
     const stage = manualNoticeStage(card, student);
     const division = (student.type || student.division) === 'kinder' ? 'kinder' : 'elementary';
     const key = stage === 'annual:every_12' ? stage : division + ':' + stage;
-    const settings = await manualNoticeConfig();
-    const variant = settings.template_mode === 'by_type' && settings.template_variants?.[key]?.use_common === false
-      ? settings.template_variants[key] : null;
-    // Manual copying follows the approved academy copy wording independently of older Solapi templates.
-    const notices = await loadManualNotices();
+    const copyContext = context();
+    const [settings, notices, academyBookingUrl] = await Promise.all([
+      manualNoticeConfig(), loadManualNotices(), manualNoticeAcademyBookingUrl(copyContext)
+    ]);
+    if (!sameContext(copyContext)) throw new Error('로그인 학원이 변경되었습니다. 다시 시도해 주세요.');
+    // Copy-only content is independent of the approved Solapi template body.
+
     let body = notices[key] ?? manualNoticeDefaults(key);
     // The old template contained '#{학생이름_주격}가'; the token already includes the subject particle.
     body = body.replace(/#\{학생이름_주격\}가/g, '#{학생이름_주격}');
@@ -444,9 +480,9 @@
       .replace(/#\{학생이름_소유격\}/g, manualNameValue(student.name, 'possessive'))
       .replace(/#\{학생명\}/g, manualGivenName(student.name))
       .replace(/#\{학원명\}/g, String(settings.academy_name || '비비작'))
-      .replace(/#\{상담구분\}/g, (stage === 'every_12' || stage === 'annual:every_12') ? '12개월' : stage === 'every_6' ? '6개월' : stage === 'after_3' ? '3개월' : '1개월')
-      .replace(/#\{예약링크\}/g, String(settings.booking_url || '').trim());
-    if (settings.booking_url && !body.includes(settings.booking_url)) body += '\n' + settings.booking_url;
+      .replace(/#\{상담구분\}/g, (stage === 'every_12' || stage === 'annual:every_12') ? '12개월' : stage === 'every_6' ? '6개월' : stage === 'after_3' ? '3개월' : '1개월');
+    body = composeManualNoticeWithLink(body, academyBookingUrl, settings.booking_url);
+    if (!sameContext(copyContext)) throw new Error('로그인 학원이 변경되었습니다. 다시 시도해 주세요.');
     if (/#\{[^}]+\}/.test(body)) throw new Error('안내문에 아직 치환되지 않은 변수가 있습니다.');
     if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(body);
     else {

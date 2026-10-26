@@ -1,0 +1,134 @@
+name: Validate consultation booking stages 1–4
+on:
+  push:
+    branches:
+      - feature/olli-self-consultation-booking-20261025
+    paths:
+      - 'packages/common/olli-booking-policy.cjs'
+      - 'packages/common/api/_lib/olli-booking-handler.cjs'
+      - 'supabase/migrations/*_olli_booking_core_stage1.sql'
+      - 'supabase/migrations/*_olli_booking_parent_stage2.sql'
+      - 'tests/consultation-booking-stage1*'
+      - 'tests/consultation-booking-stage2*'
+      - 'packages/common/olli-booking-owner-ui.js'
+      - 'packages/common/olli-booking-owner-ui.css'
+      - 'apps/pc/pc-shell.js'
+      - 'apps/{pc,mobile}/index.html'
+      - 'supabase/migrations/*_olli_booking_staff_stage3.sql'
+      - 'tests/consultation-booking-stage3*'
+      - 'supabase/migrations/*_olli_booking_public_academy_stage4.sql'
+      - 'packages/common/api/_lib/olli-booking-public-handler.cjs'
+      - 'packages/common/olli-booking-guardian.*'
+      - 'apps/*/consultation-booking.html'
+      - 'apps/*/api/olli-booking-public.js'
+      - 'tests/consultation-booking-stage4*'
+      - 'tests/consultation-manual-copy-booking-link.test.cjs'
+      - 'tests/consultation-booking-browser.test.cjs'
+      - 'packages/common/olli-consultation-messages.js'
+      - '.github/workflows/validate-consultation-booking-stage1.yml'
+      - 'packages/common/*-runtime-manifest.json'
+      - 'apps/*/api/olli-booking.js'
+  pull_request:
+    paths:
+      - 'supabase/migrations/*_olli_booking_public_academy_stage4.sql'
+      - 'packages/common/api/_lib/olli-booking-public-handler.cjs'
+      - 'packages/common/olli-booking-guardian.*'
+      - 'apps/*/consultation-booking.html'
+      - 'apps/*/api/olli-booking-public.js'
+      - 'tests/consultation-booking-stage4*'
+      - 'packages/common/api/_lib/olli-booking-handler.cjs'
+      - 'supabase/migrations/*_olli_booking_parent_stage2.sql'
+      - 'tests/consultation-booking-stage2*'
+      - 'packages/common/*-runtime-manifest.json'
+      - 'apps/*/api/olli-booking.js'
+      - 'packages/common/olli-booking-policy.cjs'
+      - 'supabase/migrations/*_olli_booking_core_stage1.sql'
+      - 'tests/consultation-booking-stage1*'
+      - '.github/workflows/validate-consultation-booking-stage1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: booking-stage1-local-only
+          POSTGRES_DB: booking_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d booking_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: booking-stage1-local-only
+      PGDATABASE: booking_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test slot policy and schema contract
+        run: node --test tests/consultation-booking-stage1.test.cjs
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+      - name: Bootstrap isolated Postgres
+        run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage1.bootstrap.sql
+      - name: Apply migration to isolated Postgres (never production)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261025150000_olli_booking_core_stage1.sql
+      - name: Integration tests — tenant safety, schedules, overlap, retry
+        run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage1.integration.sql
+      - name: Apply stage 2 to isolated Postgres
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261025183000_olli_booking_parent_stage2.sql
+      - name: Test guardian API and schema contract
+        run: node --test tests/consultation-booking-stage2.test.cjs
+      - name: Test guardian scoped mutations and revocation
+        run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage2.integration.sql
+      - name: Test true concurrent booking collision
+        run: bash tests/consultation-booking-stage2.concurrent.sh
+      - name: Apply staff management migration in isolated PostgreSQL
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026103000_olli_booking_staff_stage3.sql
+      - name: Staff operations and permission integration
+        run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage3.integration.sql
+      - name: PC and mobile booking UI checks
+        run: |
+          node --check packages/common/olli-booking-owner-ui.js
+          node --check apps/pc/pc-shell.js
+          node --test tests/consultation-booking-stage3-ui.test.cjs
+      - name: Apply academy-wide booking link and verification migration (isolated DB)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026140000_olli_booking_public_academy_stage4.sql
+      - name: Verify name-and-guardian-phone-only matching and OTP safety
+        run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-stage4.integration.sql
+      - name: Check academy-wide public booking API and screens
+        run: |
+          node --check packages/common/api/_lib/olli-booking-public-handler.cjs
+          node --check packages/common/olli-booking-guardian.js
+          node --check packages/common/olli-booking-owner-ui.js
+          node --test tests/consultation-booking-stage4.test.cjs
+          node --test tests/consultation-manual-copy-booking-link.test.cjs
+
+  guardian-browser:
+    name: Mock-only guardian browser E2E (no live DB or SMS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install isolated Playwright
+        run: npm install --no-save --no-package-lock --prefix tests/consultation-messages playwright@1.56.1
+      - name: Install headless Chromium
+        run: tests/consultation-messages/node_modules/.bin/playwright install --with-deps chromium
+      - name: Exercise PC and mobile width in headless browser with all API calls mocked
+        run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-booking-browser.test.cjs

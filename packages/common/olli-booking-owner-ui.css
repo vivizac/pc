@@ -1,0 +1,86 @@
+/* Shared Olli booking management — isolated selectors; preserves old academy cards. */
+.olliBookingPcScreen{display:none;overflow:auto!important;background:#f5f6f8;padding:18px 24px 45px;z-index:10}
+.olliBookingMobileOverlay{position:fixed;inset:0;z-index:160000;background:#f6f7f9;overflow:auto;overscroll-behavior:contain;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:Pretendard,sans-serif}
+.olliBookingMobileOverlay[hidden]{display:none!important}
+.obmLayout{width:100%;max-width:1280px;margin:0 auto;color:#161920;font-family:Pretendard,sans-serif}
+.obmHeader{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:12px 0 19px}
+.obmHeader h2{font-size:25px;font-weight:800;letter-spacing:-.6px;margin:0}
+.obmHeader p{font-size:13px;color:#7a828d;margin:5px 0 0}
+.obmHeaderButtons{display:flex;gap:6px}
+.obmHeaderButtons button,.obmMonth button,.obmListHeader button{border:1px solid #e0e5eb;border-radius:9px;background:#fff;padding:9px 12px;font-size:12px;color:#4d5969;cursor:pointer}
+.obmTabs{display:flex;gap:4px;align-items:center;background:#e9edf3;padding:4px;border-radius:11px;width:fit-content;margin-bottom:16px}
+.obmTabs button{padding:9px 20px;color:#697582;background:transparent;border:0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.obmTabs button.active{background:#fff;color:#1b7fdf;box-shadow:0 1px 3px #00000010}
+.obmMonth{display:flex;align-items:center;gap:12px;margin:0 0 16px}
+.obmMonth strong{font-size:17px;font-weight:800;letter-spacing:.2px}
+.obmMonth button{font-size:22px;line-height:22px;padding:4px 13px}
+.obmStats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 18px}
+.obmStats>div{background:#fff;border:1px solid #eaedf1;border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;gap:8px}
+.obmStats strong{font-size:30px;font-weight:800;color:#1b7fdf;line-height:1.1}
+.obmStats span{font-size:12px;color:#7f8791}
+.obmCalendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;background:#fff;border:1px solid #ecedf0;border-radius:15px;padding:15px;margin-bottom:20px}
+.obmDayHead{text-align:center;font-size:12px;color:#9299a3;padding:7px}
+.obmCalDay{position:relative;border:1px solid transparent;background:#f9fafc;min-height:67px;border-radius:8px;text-align:left;padding:10px;font-size:13px;cursor:pointer}
+.obmCalDay:hover{border-color:#cfe4fa}
+.obmCalDay.selected,.obmCalDay.isToday{border-color:#1687ff;background:#eef7ff}
+.obmCalDay b{display:block;font-size:10px;color:#1687ff;margin-top:10px}
+.obmListHeader{display:flex;justify-content:space-between;align-items:center;margin:12px 2px}
+.obmListHeader strong{font-size:17px}
+.obmRows{background:#fff;border:1px solid #eaedf1;border-radius:14px;overflow:hidden}
+.obmRow{display:grid;grid-template-columns:128px minmax(0,1fr) auto;align-items:center;padding:16px 18px;gap:18px;border-bottom:1px solid #f0f1f4}
+.obmRow:last-child{border-bottom:0}
+.obmRowTime,.obmRowMain{display:flex;flex-direction:column;gap:5px}
+.obmRowTime strong{font-size:17px;color:#1d7fdf}
+.obmRowTime small,.obmRowMain span{font-size:12px;color:#858c95}
+.obmRowMain strong{font-size:15px}
+.obmRowActions{display:flex;gap:7px}
+.obmRowActions button{border:1px solid #e1e6ec;border-radius:7px;background:#fff;padding:8px 12px;font-size:12px;cursor:pointer}
+.obmRowActions button:hover{border-color:#1687ff;color:#1687ff}
+.obmCancelled{color:#a4a9b0;font-size:12px}
+.obmEmptyMessage{border:1px solid #eaedf1;border-radius:14px;padding:35px 18px;text-align:center;color:#89919c;background:#fff;font-size:13px}
+.obmError{padding:12px 15px;border:1px solid #f3ccd0;background:#fff6f7;color:#a22c3b;border-radius:8px;margin:10px 0;font-size:13px}
+.obmSettings{background:#fff;border:1px solid #eaedf1;border-radius:14px;padding:22px;max-width:800px}
+.obmHint{font-size:13px;color:#8993a0;margin:0 0 15px}
+.obmSettingGroup{border-bottom:1px solid #f2f3f5;padding:18px 0;display:flex;flex-direction:column;gap:12px}
+.obmSettingGroup>strong{font-size:13px}
+.obmOptionRow{display:flex;gap:6px;flex-wrap:wrap}
+.obmOption{display:flex;align-items:center;gap:5px;border:1px solid #e0e5eb;border-radius:8px;padding:7px 9px;font-size:13px}
+.obmOption input,.obmSwitch input{accent-color:#1687ff}
+.obmTimeGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.obmTimeGrid label{display:flex;flex-direction:column;gap:8px;font-size:13px}
+.obmTimeGrid input,.obmTimeGrid select{padding:10px;border-radius:8px;border:1px solid #e0e5eb;font:inherit;max-width:100%;width:100%}
+.obmSwitch{display:flex;align-items:center;gap:10px;font-size:13px}
+.obmFormActions{display:flex;justify-content:flex-end;gap:9px;margin-top:19px}
+.obmFormActions button{min-height:40px;border:1px solid #e1e5ea;background:#fff;border-radius:8px;padding:8px 15px;cursor:pointer}
+.obmFormActions .obmPrimary{background:#1687ff;border-color:#1687ff;color:#fff;font-weight:700}
+.obmFooter{margin:18px 0;color:#9198a2;font-size:11px}
+.obmAcademyEntry{display:flex;width:100%;justify-content:space-between;align-items:center;border:1px solid #e3e8ee;border-radius:13px;background:#fff;margin-top:13px;padding:16px 18px;color:#1d242b;text-align:left;font:inherit;cursor:pointer}
+.obmAcademyEntry strong,.obmAcademyEntry small{display:block}
+.obmAcademyEntry strong{font-size:15px;font-weight:750}
+.obmAcademyEntry small{font-size:12px;color:#9097a1;margin-top:5px}
+.obmAcademyEntry>span:last-child{font-size:23px;color:#a2a9b2}
+.obmModalBackdrop{position:fixed;inset:0;background:#14192570;z-index:170000;display:grid;place-items:center;padding:15px}
+.obmModal{width:100%;max-width:400px;border-radius:15px;background:#fff;padding:22px;display:flex;flex-direction:column;gap:15px}
+.obmModal h3{margin:0;font-size:19px}
+.obmModal p{color:#747d89;margin:0;font-size:13px}
+.obmModal label{display:flex;flex-direction:column;gap:8px;font-size:13px}
+.obmModal input,.obmModal select{width:100%;padding:12px;border-radius:9px;border:1px solid #e1e6eb;background:#fff}
+@media(max-width:740px){
+ .olliBookingMobileOverlay .obmLayout{padding:16px 16px 32px}
+ .olliBookingMobileOverlay .obmHeader h2{font-size:21px}
+ .olliBookingMobileOverlay .obmTabs{width:100%;overflow:auto}
+ .olliBookingMobileOverlay .obmTabs button{flex:1;padding:9px 10px;font-size:12px}
+ .olliBookingMobileOverlay .obmStats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .olliBookingMobileOverlay .obmStats>div{padding:13px}
+ .olliBookingMobileOverlay .obmStats strong{font-size:23px}
+ .olliBookingMobileOverlay .obmRow{grid-template-columns:74px minmax(0,1fr);gap:8px;padding:14px 10px}
+ .olliBookingMobileOverlay .obmRowTime strong{font-size:15px}
+ .olliBookingMobileOverlay .obmRowMain strong{font-size:14px}
+ .olliBookingMobileOverlay .obmRowActions{grid-column:2;justify-content:flex-start}
+ .olliBookingMobileOverlay .obmSettings{padding:14px}
+ .olliBookingMobileOverlay .obmTimeGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .olliBookingMobileOverlay .obmHeaderButtons button{padding:8px}
+ .olliBookingMobileOverlay .obmFooter{margin-bottom:24px}
+}
+
+.obmLinkRow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.obmLinkRow button{border:1px solid #d8e2ed;background:#fff;border-radius:9px;padding:10px 14px;color:#187bdb;font-size:12px;font-weight:750;cursor:pointer}.obmLinkAddress{word-break:break-all;padding:10px 13px;border-radius:9px;background:#fff;color:#546172;border:1px solid #e7eaef;font-size:12px;user-select:all}

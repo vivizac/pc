@@ -89,6 +89,12 @@
     "olli-consultation-manual-summary-ui.js",
     "olli-consultation-manual-summary-ui.css",
     "olli-feedback-target-month.js",
-    "api/_lib/consultation-summary-cron.cjs"
+    "api/_lib/consultation-summary-cron.cjs",
+    "api/_lib/olli-booking-handler.cjs",
+    "olli-booking-owner-ui.js",
+    "olli-booking-owner-ui.css",
+    "olli-booking-guardian.js",
+    "olli-booking-guardian.css",
+    "api/_lib/olli-booking-public-handler.cjs"
   ]
 }
