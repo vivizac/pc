@@ -31,6 +31,9 @@ test('consultation shortcut matches student-count card border, radius and shadow
   }
   assert.match(entry, /background:#fff/);
   assert.match(entry, /align-items:stretch/);
+  assert.doesNotMatch(entry, /min-height:/, 'restores automatic card height before the design changes');
+  assert.match(rule(booking, '.obmAcademyEntry>span:first-child'), /padding:7px 0 7px 8px/, 'original 16px vertical padding is split between the outer 9px and inner 7px');
+  assert.match(entry, /padding:9px/);
 });
 
 test('blue inset visual centers the white existing chevron; mobile navigation stays intact', () => {
@@ -38,6 +41,8 @@ test('blue inset visual centers the white existing chevron; mobile navigation st
   assert.match(visual, /display:flex/);
   assert.match(visual, /align-items:center/);
   assert.match(visual, /justify-content:center/);
+  assert.match(visual, /flex:0 0 30%/, 'blue inset has a horizontal rectangular proportion');
+  assert.match(visual, /text-align:center/, 'arrow text centered in its box');
   assert.match(visual, /border-radius:0 16px 16px 0/);
   assert.match(visual, /background:#0A84FF/);
   assert.match(visual, /color:#fff/);
@@ -47,7 +52,7 @@ test('blue inset visual centers the white existing chevron; mobile navigation st
 });
 
 test('mobile loads the versioned updated booking stylesheet', () => {
-  assert.match(mobileHtml, /olli-booking-owner-ui\.css\?v=20261026-mobile-card-1/);
+  assert.match(mobileHtml, /olli-booking-owner-ui\.css\?v=20261026-mobile-card-height-2/);
 });
 
 test('consultation card is the fifth item in the two-column stat grid under 올해 등록', () => {
