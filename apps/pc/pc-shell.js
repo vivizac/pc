@@ -6,6 +6,7 @@
     ACADEMY: 'academy',
     PERSONALITY_RECORDS: 'attendance',
     CONSULTATION: 'consultation',
+    BOOKING: 'booking',
     SCHEDULE: 'schedule',
     TEAM_TALK: 'talk'
   });
@@ -13,6 +14,7 @@
     academy: '학생관리',
     attendance: '성향기록부',
     consultation: '상담기록',
+    booking: '상담 현황',
     schedule: '시간표 • 출석부',
     talk: '업무'
   };
@@ -144,6 +146,12 @@
     if (section === 'feedback' || section === 'observation') section = SECTION.PERSONALITY_RECORDS;
     if (section !== SECTION.PERSONALITY_RECORDS) personalityRecordsFeature()?.unmountEditor?.();
     setChrome(section);
+    if (section === SECTION.BOOKING) {
+      hideMainScreensExcept('olliBookingPcScreen');
+      return feature('OlliBookingDashboard')?.open('pc');
+    }
+    const bookingPage = document.getElementById('olliBookingPcScreen');
+    if (bookingPage) bookingPage.style.display = 'none';
 
     if (section === SECTION.ACADEMY) return feature('OlliPcStudentManagement')?.open();
     if (section === SECTION.PERSONALITY_RECORDS) return personalityRecordsFeature()?.open();
@@ -207,7 +215,7 @@
   setTimeout(bindPcTopSearchStability, 0);
 
   function visibleMainPage() {
-    const ids = ['recordRoomScreen', 'studentMemoScreen', 'kinderChatFeedbackScreen'];
+    const ids = ['recordRoomScreen', 'studentMemoScreen', 'kinderChatFeedbackScreen', 'olliBookingPcScreen'];
     return ids.find((id) => {
       const element = document.getElementById(id);
       return element && getComputedStyle(element).display !== 'none';
@@ -230,7 +238,9 @@
     const page = visibleMainPage();
     if (!page) return;
     let nextSection = state.section;
-    if (page === 'recordRoomScreen' && !['academy', 'attendance', 'schedule'].includes(nextSection)) {
+    if (page === 'olliBookingPcScreen') {
+      nextSection = SECTION.BOOKING;
+    } else if (page === 'recordRoomScreen' && !['academy', 'attendance', 'schedule'].includes(nextSection)) {
       nextSection = typeof currentRecordView !== 'undefined' && currentRecordView === 'academy' ? 'academy' : 'attendance';
     } else if (page === 'studentMemoScreen' || page === 'kinderChatFeedbackScreen') {
       // PC에서 과거 관찰노트 단독 화면이 열리면 성향기록부로 되돌립니다.
