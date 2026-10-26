@@ -69,10 +69,10 @@ for(const width of [390,1280]){
    await page.getByRole('button',{name:'인증번호 받기'}).click();
    await page.locator('[name=otp]').fill('111111');
    await page.getByRole('button',{name:'본인 확인'}).click();
-   assert.ok(await page.getByText('인증번호가 올바르지 않거나 만료되었습니다.',{exact:false}).isVisible());
+   await page.getByText('인증번호가 올바르지 않거나 만료되었습니다.',{exact:false}).waitFor();
    await page.locator('[name=otp]').fill('123456');
    await page.getByRole('button',{name:'본인 확인'}).click();
-   assert.ok(await page.getByRole('heading',{name:'상담 날짜를 골라 주세요'}).isVisible());
+   await page.getByRole('heading',{name:'상담 날짜를 골라 주세요'}).waitFor();
    async function selectDate(d){
     const visibleMonth=await page.locator('.ogbMonth strong').innerText();
     if(!visibleMonth.includes(Number(d.slice(5,7))+'월')) await page.getByRole('button',{name:'다음 달'}).click();
@@ -81,15 +81,15 @@ for(const width of [390,1280]){
    await selectDate(date);
    await page.locator('[data-start="'+first+'"]').click();
    await page.getByRole('button',{name:'상담 예약하기'}).click();
-   assert.ok(await page.getByRole('heading',{name:'예약이 완료되었습니다'}).isVisible());
+   await page.getByRole('heading',{name:'예약이 완료되었습니다'}).waitFor();
    assert.ok(await page.getByText('현재 예약').isVisible());
    await page.getByRole('button',{name:'예약 변경'}).click();
    await selectDate(date2);
    await page.locator('[data-start="'+second+'"]').click();
    await page.getByRole('button',{name:'변경 저장'}).click();
-   assert.ok(await page.getByRole('heading',{name:'예약이 완료되었습니다'}).isVisible());
+   await page.getByRole('heading',{name:'예약이 완료되었습니다'}).waitFor();
    await page.getByRole('button',{name:'예약 취소'}).click();
-   assert.ok(await page.getByRole('heading',{name:'상담 날짜를 골라 주세요'}).isVisible());
+   await page.getByRole('heading',{name:'상담 날짜를 골라 주세요'}).waitFor();
    assert.equal(current,null);
    assert.deepEqual(requests.filter(x=>['reserve','reschedule','cancel'].includes(x.action)).map(x=>x.action),
      ['reserve','reschedule','cancel']);
