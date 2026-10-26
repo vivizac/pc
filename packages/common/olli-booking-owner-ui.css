@@ -30,7 +30,9 @@
 .obmRow{display:grid;grid-template-columns:195px minmax(0,1fr) auto;align-items:center;padding:16px 18px;gap:18px;border-bottom:1px solid #f0f1f4}
 .obmRow:last-child{border-bottom:0}
 .obmRowTime{display:flex;align-items:center;min-width:0}
-.obmRowMain{display:flex;flex-direction:row;align-items:center;gap:12px;min-width:0;flex-wrap:wrap}
+.obmRowMain{display:flex;flex-direction:row;align-items:center;gap:12px;min-width:0;flex-wrap:nowrap}
+.obmRowMain strong,.obmRowMain span{white-space:nowrap}
+.obmRowMain strong{overflow:hidden;text-overflow:ellipsis}
 .obmRowTime strong{display:block;font-size:15px;color:#1d7fdf;white-space:nowrap;font-weight:750}
 .obmRowDate{color:#202b3b}
 .obmRowClock{color:#1687ff;margin-left:3px}
