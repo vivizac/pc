@@ -1,0 +1,33 @@
+/* Weekend-class marker is display-only; student row/button remains the click target. */
+.olliStudentWeekendBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  box-sizing: border-box;
+  min-width: 1.4em;
+  height: 1.16em;
+  padding: 0 .22em;
+  margin-left: .3em;
+  border: 0;
+  border-radius: 999px;
+  background: #111;
+  color: #fff !important;
+  font-size: .86em;
+  font-weight: 700;
+  font-family: inherit;
+  line-height: 1;
+  vertical-align: middle;
+  white-space: nowrap;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.olliStudentFeedbackMonthUnset {
+  display: inline;
+  color: #0A84FF !important;
+  font-size: inherit;
+  font-weight: 600;
+  line-height: inherit;
+  white-space: nowrap;
+}

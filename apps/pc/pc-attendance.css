@@ -180,3 +180,17 @@ body.olliPcApp #recordRoomScreen #pcAttendanceCombinedBody > .attendanceFeedback
   body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout #recordList{max-height:360px;}
   .pcAttendanceDetailPanel{min-height:540px;}
 }
+
+/* 성향기록부 한정: 이름과 토/일 배지를 같은 수직 중심선으로 정렬. */
+body.olliPcApp #recordRoomScreen .studentTextWrap > span:first-child {
+  display: inline-flex;
+  align-items: center;
+}
+body.olliPcApp #recordRoomScreen .studentTextWrap > span:first-child .olliStudentWeekendBadge {
+  font-size: 10.5px;
+  align-self: center;
+  transform: none;
+  /* 상자 위치는 그대로, 내부 글자만 시각적으로 약 1px 아래쪽. */
+  padding-top: 2px;
+  padding-bottom: 0;
+}
