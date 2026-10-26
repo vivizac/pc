@@ -175,7 +175,10 @@
    try{
      await api('/api/olli-booking',{action:'cancel',token:state.session,
        reservation_id:state.reservation.id,request_key:global.crypto.randomUUID()});
-     await loadSnapshot();state.message='예약을 취소했습니다.';
+     await loadSnapshot();
+     // A fresh booking after cancellation must match name and phone again.
+     state.session='';state.name='';state.phone='';
+     state.message='예약을 취소했습니다.';
    }catch(e){state.error=explain(e.message);}
    finally{state.loading=false;render();}
  }
