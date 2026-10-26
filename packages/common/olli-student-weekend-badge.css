@@ -23,25 +23,11 @@
   pointer-events: none;
 }
 
-.olliStudentGroupUnset {
-  display: inline-flex;
-  align-items: center;
-  gap: .28em;
-  margin-left: .4em;
-  align-self: center;
+.olliStudentFeedbackMonthUnset {
+  display: inline;
   color: #0A84FF !important;
-  font-size: .82em;
+  font-size: inherit;
   font-weight: 600;
-  line-height: 1;
-  vertical-align: middle;
+  line-height: inherit;
   white-space: nowrap;
-  pointer-events: none;
-}
-.olliStudentGroupUnsetDot {
-  display: inline-block;
-  width: .35em;
-  height: .35em;
-  flex: 0 0 .35em;
-  border-radius: 50%;
-  background: currentColor;
 }
