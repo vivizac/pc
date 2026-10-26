@@ -266,7 +266,7 @@ function renderMemoStudentSelectPopup() {
       rows.push(renderMemoStudentMonthDivider(monthInfo.label));
       lastDividerKey = monthInfo.key;
     }
-    const textBlock = `<span class="memoStudentSelectName">${escapeHtml(student.name || '이름 없음')}</span>${meta ? `<span class="memoStudentSelectMeta">${escapeHtml(meta)}</span>` : ''}`;
+    const textBlock = `<span class="memoStudentSelectName">${escapeHtml(student.name || '이름 없음')}${renderOlliStudentWeekendBadges(student)}</span>${meta ? `<span class="memoStudentSelectMeta">${escapeHtml(meta)}</span>` : ''}`;
     if (manageMode) {
       rows.push(`<div class="memoStudentSelectOption manageMode">
         <span class="memoStudentSelectTextBlock">${textBlock}</span>
