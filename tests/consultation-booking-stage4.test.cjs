@@ -37,7 +37,7 @@ test('calendar is immediate; name and phone precede calendar; no OTP, age or gra
  assert.match(guardian,/state.academyName/);
  assert.doesNotMatch(guardian,/학생 정보 확인|상담 예약하기를 누르면 올리에 등록된 학생 정보와 대조합니다/);
  assert.match(guardian,/slotStatus==='error'/);
- assert.match(guardian,/allowedDay(day)/);
+ assert.match(guardian,/allowedDay\(day\)/);
  assert.match(guardian,/student_name:state.name,guardian_phone:state.phone/);
  assert.match(guardian,/action:'snapshot'/);
  assert.match(guardian,/action:'cancel'/);
@@ -137,7 +137,7 @@ test('QA-only preview supplies visibly marked sample slots, never accepts bookin
  const slots=await fake({action:'slots',academy:slug,date});
  assert.equal(slots.statusCode,200);assert.equal(slots.body.demo,true);
  assert.equal(slots.body.slots.length,12);
- const request={action:'reserve',academy:slug,student_name:'김하늘',guardian_phone:'01022224444',start_at:'2026-11-10T11:00:00+09:00',request_key};
+ const request={action:'reserve',academy:slug,student_name:'김하늘',guardian_phone:'01022224444',start_at:'2026-11-10T11:00:00+09:00',request_key:requestKey};
  const reserve=await fake(request);
  assert.equal(reserve.statusCode,503);assert.equal(reserve.body.code,'DEMO_NOT_BOOKABLE');
  const normal=makeApi(async()=>{throw Error('No DB');},{VERCEL_ENV:'production',OLLI_BOOKING_QA_DEMO:'1'});
