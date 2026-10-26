@@ -88,7 +88,7 @@
    const safe=rows.slice().sort((a,b)=>String(a.start_at).localeCompare(String(b.start_at)));
    return '<div class="obmRows">'+safe.map(r=>{
      const date=kstParts(r.start_at);
-     return '<article class="obmRow"><div class="obmRowTime"><strong>'+escapeHtml(date.hm)+'</strong><small>'+escapeHtml(dateLabel(date.ymd))+'</small></div>'+
+     return '<article class="obmRow"><div class="obmRowTime"><strong><span class="obmRowDate">'+escapeHtml(dateLabel(date.ymd).replace(/\s+\(/g,'('))+'</span> <span class="obmRowClock">'+escapeHtml(date.hm)+'</span></strong></div>'+
        '<div class="obmRowMain"><strong>'+escapeHtml(r.name)+'</strong><span>'+ (r.kind==='intake'?'신규 상담':'재원생 정기 상담')+
        (r.status==='cancelled'?' · 취소됨':'')+'</span></div><div class="obmRowActions">'+
        (r.status==='confirmed'?'<button type="button" data-action="edit" data-id="'+escapeHtml(r.id)+'">변경</button><button type="button" data-action="cancel" data-id="'+escapeHtml(r.id)+'">취소</button>':'<span class="obmCancelled">취소 기록</span>')+
@@ -160,8 +160,9 @@
      if(!overlay){overlay=el('section','olliBookingMobileOverlay');overlay.id='olliBookingMobileOverlay';overlay.setAttribute('aria-label','상담 현황');document.body.appendChild(overlay);}
      overlay.hidden=false;mount(overlay,'mobile');return true;
    }
-   const page=document.getElementById('olliBookingPcScreen');if(!page)return false;
-   page.style.display='block';mount(page,'pc');return true;
+   // 상담기록 내부 상담예약현황 탭에서만 열립니다.
+   const panel=document.getElementById('olliConsultationBookingPanel');if(!panel)return false;
+   panel.hidden=false;mount(panel,'pc');return true;
  }
  function close(){const overlay=document.getElementById('olliBookingMobileOverlay');if(overlay)overlay.hidden=true;}
  function alertError(message){state.error=message;render();}
@@ -276,6 +277,8 @@
  function insertMobileShortcut(){
    if(!isOwner())return;
    const dashboard=document.getElementById('recordAcademyDashboard');
+   // PC 학생관리의 상담예약현황 바로가기는 제거하고 상담기록 탭으로 이동.
+   if(document.body.classList.contains('olliPcApp'))return;
    if(!dashboard||!dashboard.classList.contains('show')||dashboard.querySelector('[data-olli-booking-entry]'))return;
    const entry=el('button','obmAcademyEntry');
    entry.type='button';entry.dataset.olliBookingEntry='true';
