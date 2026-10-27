@@ -83,10 +83,6 @@ function ensureScreen(){
   screen.dataset.pageKey='consultation-survey';
   screen.dataset.pageName='상담기록';
   screen.innerHTML=`<div class="consultationManagerPage">
-    <div class="consultationPageTabs" role="tablist" aria-label="상담기록 화면 선택">
-      <button type="button" class="consultationPageTab" role="tab" id="consultationPageTabBooking" aria-controls="olliConsultationBookingPanel" aria-selected="true" data-consultation-page-tab="booking" onclick="setConsultationPageTab('booking')">상담예약현황</button>
-      <button type="button" class="consultationPageTab" role="tab" id="consultationPageTabSurvey" aria-controls="olliConsultationSurveyPanel" aria-selected="false" data-consultation-page-tab="survey" onclick="setConsultationPageTab('survey')">설문기록</button>
-    </div>
     <section id="olliConsultationBookingPanel" class="olliConsultationBookingPanel" role="tabpanel" aria-labelledby="consultationPageTabBooking" hidden></section>
     <section id="olliConsultationSurveyPanel" class="olliConsultationSurveyPanel" role="tabpanel" aria-labelledby="consultationPageTabSurvey" hidden>
     <div class="consultationManagerHead">
@@ -191,7 +187,7 @@ function setPageTab(tab){
   const survey=document.getElementById('olliConsultationSurveyPanel');
   if(booking)booking.hidden=activePageTab!=='booking';
   if(survey)survey.hidden=activePageTab!=='survey';
-  document.querySelectorAll('#consultationSurveyScreen [data-consultation-page-tab]').forEach(button=>{
+  document.querySelectorAll('#olliPcTopbarTitle [data-consultation-page-tab]').forEach(button=>{
     const active=button.dataset.consultationPageTab===activePageTab;
     button.classList.toggle('active',active);
     button.setAttribute('aria-selected',String(active));
@@ -202,6 +198,19 @@ function setPageTab(tab){
   renderContext();
 }
 window.setConsultationPageTab=setPageTab;
+window.getConsultationPageTab=()=>activePageTab;
+window.handleConsultationTopbarKeydown=function(event){
+  const direction=event.key==='ArrowRight'?1:event.key==='ArrowLeft'?-1:0;
+  if(!direction && !['Home','End'].includes(event.key))return;
+  event.preventDefault();
+  const tabs=Array.from(document.querySelectorAll('#olliPcTopbarTitle [data-consultation-page-tab]'));
+  const index=tabs.indexOf(event.currentTarget);
+  if(index<0||tabs.length!==2)return;
+  const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+direction+tabs.length)%tabs.length;
+  const button=tabs[next];
+  setPageTab(button.dataset.consultationPageTab);
+  button.focus();
+};
 function showConsultationScreen(tab){
   ensureScreen();document.querySelectorAll('.pageScreen').forEach(s=>s.style.display=s.id==='consultationSurveyScreen'?'flex':'none');
   const activeAcademyId=academyId();
