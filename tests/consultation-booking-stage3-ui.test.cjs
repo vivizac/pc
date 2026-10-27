@@ -47,7 +47,7 @@ test('PC consultation booking is a tab inside 상담기록, not standalone sideb
  assert.match(shell,/상담예약현황/);
  assert.match(shell,/설문기록/);
  assert.doesNotMatch(survey,/<div class="consultationPageTabs"/);
- assert.match(survey,/#olliPcTopbarTitle \\[data-consultation-page-tab\\]/);
+ assert.match(survey,/#olliPcTopbarTitle \[data-consultation-page-tab\]/);
  assert.match(survey,/handleConsultationTopbarKeydown/);
  assert.match(survey,/role="tabpanel"/);
 });
