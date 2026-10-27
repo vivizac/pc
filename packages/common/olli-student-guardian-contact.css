@@ -1,7 +1,7 @@
-.olliStudentGuardianContact{margin:14px 0;padding:12px 0;border-top:1px solid #edf0ef;text-align:left}
-.olliStudentGuardianContact label{font-size:13px;color:#53655f}
-.olliStudentGuardianContact input[type=tel]{display:block;width:100%;box-sizing:border-box;margin:7px 0 10px;padding:12px;border:1px solid #dce4e1;border-radius:10px;background:#fff;color:#263f36;font:inherit;font-size:16px;min-height:47px}
+.olliStudentGuardianContact{margin:14px 0;padding:12px 0;border-top:1px solid #E8ECF1;text-align:left}
+.olliStudentGuardianContact label{font-size:13px;color:#526477}
+.olliStudentGuardianContact input[type=tel]{display:block;width:100%;box-sizing:border-box;margin:7px 0 10px;padding:12px;border:1px solid #DCE5EF;border-radius:10px;background:#fff;color:#263749;font:inherit;font-size:16px;min-height:47px}
 .olliStudentGuardianContact .osgc-options{display:flex;gap:16px;flex-wrap:wrap}
 .olliStudentGuardianContact .osgc-options label{display:flex;align-items:center;gap:6px}
-.olliStudentGuardianContact input[type=checkbox]{width:17px;height:17px;accent-color:#4f8877}
-.olliStudentGuardianContact small{display:block;margin-top:8px;color:#7b8882;font-size:12px;line-height:1.5}
+.olliStudentGuardianContact input[type=checkbox]{width:17px;height:17px;accent-color:#0A84FF}
+.olliStudentGuardianContact small{display:block;margin-top:8px;color:#7B8796;font-size:12px;line-height:1.5}
