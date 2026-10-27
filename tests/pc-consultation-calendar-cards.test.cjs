@@ -77,8 +77,8 @@ test('remove only PC subheading while keeping mobile heading and refresh action'
  assert.match(css,/#olliConsultationBookingPanel \.obmHeaderPc\{justify-content:flex-end/);
  assert.match(pc,/olli-booking-owner-ui\.css\?v=20261027-pc-single-toolbar-1/);
  assert.match(pc,/olli-booking-owner-ui\.js\?v=20261027-pc-single-toolbar-1/);
- assert.match(mobile,/olli-booking-owner-ui\.css\?v=20261027-mobile-count-circle-1/);
- assert.match(mobile,/olli-booking-owner-ui\.js\?v=20261027-mobile-count-circle-1/);
+ assert.match(mobile,/olli-booking-owner-ui\.css\?v=20261027-mobile-local-first-count-1/);
+ assert.match(mobile,/olli-booking-owner-ui\.js\?v=20261027-mobile-local-first-count-1/);
 });
 
 test('PC toolbar order and calendar-only content preserve the mobile version',()=>{
