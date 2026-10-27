@@ -44,6 +44,7 @@ test('blue circle contains the live count and opens the mobile booking screen', 
   assert.doesNotMatch(shortcut, /<span aria-hidden="true">›<\/span>/);
   assert.match(shortcut, /entry\.addEventListener\('click',\(\)=>open\('mobile'\)\)/);
   assert.match(shortcut, /document\.body\.classList\.contains\('olliPcApp'\)/);
+  assert.match(shortcut, /function syncMobileShortcut\(\)\{\s*if\(document\.body\.classList\.contains\('olliPcApp'\)\)return;/);
 });
 
 test('card counts only confirmed bookings on the KST today date', () => {

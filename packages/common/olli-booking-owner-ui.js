@@ -306,6 +306,7 @@
    }
  }
  function syncMobileShortcut(){
+   if(document.body.classList.contains('olliPcApp'))return;
    const dashboard=document.getElementById('recordAcademyDashboard');
    if(!dashboard?.classList.contains('show')){
      mobileShortcutVisible=false;
