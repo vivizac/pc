@@ -90,16 +90,19 @@
 .obmAcademyEntry small{font-size:12px;color:#9097a1;margin-top:5px}
 .obmAcademyEntry>span:last-child{
   display:flex;
-  flex:0 0 30%;
-  align-self:stretch;
+  flex:0 0 54px;
+  width:54px;
+  height:54px;
+  align-self:center;
   align-items:center;
   justify-content:center;
   text-align:center;
-  border-radius:0 16px 16px 0;
+  border-radius:50%;
   background:#0A84FF;
   color:#fff;
-  font-size:34px;
-  font-weight:400;
+  font-size:24px;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
   line-height:1;
 }
 .obmAcademyEntry:focus-visible{outline:2px solid #0A84FF;outline-offset:3px}

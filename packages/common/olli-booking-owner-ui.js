@@ -26,7 +26,7 @@
    const c=auth();
    return rpc('olli_booking_staff_manage',{
      p_session_token:c.sessionToken,p_academy_id:c.academyId,p_action:action,
-     p_month:action==='list'?state.month:null,p_reservation_id:options.reservationId||null,
+     p_month:action==='list'?(options.month||state.month):null,p_reservation_id:options.reservationId||null,
      p_start_at:options.startAt||null,p_request_key:options.requestKey||null
    });
  }
@@ -139,6 +139,7 @@
      if(result?.ok!==true)throw Error('예약 데이터를 읽지 못했습니다.');
      state.rows=Array.isArray(result.appointments)?result.appointments:[];
      state.settings=result.settings||null;state.ready=true;
+     if(state.mode==='mobile'&&state.month===currentMonth())updateMobileShortcutBadge(confirmedTodayCount(state.rows));
    }catch(e){state.ready=false;state.rows=[];state.settings=null;state.error=e.message||'예약 서버 오류';}
    finally{state.loading=false;render();}
  }
@@ -274,6 +275,49 @@
    const dateInput=e.target.closest('[data-slot-date]');
    if(dateInput)void loadSlotChoices(dateInput.value);
  }
+
+ let mobileShortcutVisible=false;
+ let mobileShortcutRequestId=0;
+ function confirmedTodayCount(rows){
+   const day=today();
+   return rows.filter(row=>row?.status==='confirmed'&&row.start_at&&kstParts(row.start_at).ymd===day).length;
+ }
+ function updateMobileShortcutBadge(count){
+   const entry=document.querySelector('[data-olli-booking-entry]');
+   const badge=entry?.querySelector('[data-olli-booking-count]');
+   if(!badge)return;
+   badge.textContent=String(count);
+   entry.setAttribute('aria-label','오늘의 상담 예약 현황, 오늘 예약 '+count+'건. 예약 현황 열기');
+ }
+ async function refreshMobileShortcutCount(){
+   const dashboard=document.getElementById('recordAcademyDashboard');
+   if(!dashboard?.classList.contains('show')||!isOwner())return;
+   const requestId=++mobileShortcutRequestId;
+   const scope=ctx();
+   try{
+     const result=await manage('list',{month:currentMonth()});
+     if(requestId!==mobileShortcutRequestId||ctx().academyId!==scope.academyId||ctx().sessionToken!==scope.sessionToken)return;
+     if(result?.ok!==true||!Array.isArray(result.appointments))throw new Error('예약 건수 조회 실패');
+     updateMobileShortcutBadge(confirmedTodayCount(result.appointments));
+   }catch(_error){
+     if(requestId!==mobileShortcutRequestId)return;
+     const badge=dashboard.querySelector('[data-olli-booking-count]');
+     if(badge)badge.textContent='–';
+   }
+ }
+ function syncMobileShortcut(){
+   const dashboard=document.getElementById('recordAcademyDashboard');
+   if(!dashboard?.classList.contains('show')){
+     mobileShortcutVisible=false;
+     mobileShortcutRequestId++;
+     return;
+   }
+   insertMobileShortcut();
+   if(!mobileShortcutVisible){
+     mobileShortcutVisible=true;
+     void refreshMobileShortcutCount();
+   }
+ }
  function insertMobileShortcut(){
    if(!isOwner())return;
    const dashboard=document.getElementById('recordAcademyDashboard');
@@ -282,7 +326,7 @@
    if(!dashboard||!dashboard.classList.contains('show')||dashboard.querySelector('[data-olli-booking-entry]'))return;
    const entry=el('button','obmAcademyEntry');
    entry.type='button';entry.dataset.olliBookingEntry='true';
-   entry.innerHTML='<span><strong>상담 예약 현황</strong><small>오늘·이번 주 일정 및 예약 관리</small></span><span aria-hidden="true">›</span>';
+   entry.innerHTML='<span><strong>오늘의 상담 예약 현황</strong><small>오늘·이번 주 일정 및 예약 관리</small></span><span class="obmAcademyEntryCount" data-olli-booking-count aria-label="오늘 상담 예약 건수">–</span>';
    entry.addEventListener('click',()=>open('mobile'));
    // Two-column stats: the fifth cell is directly below the third card ('올해 등록').
    const grid=dashboard.querySelector('.recordAcademyStatGrid');
@@ -292,9 +336,9 @@
  function initMobileShortcut(){
    const root=document.getElementById('recordAcademyDashboard');
    if(!root||state.entryObserver)return;
-   state.entryObserver=new MutationObserver(()=>insertMobileShortcut());
+   state.entryObserver=new MutationObserver(()=>syncMobileShortcut());
    state.entryObserver.observe(root,{attributes:true,attributeFilter:['class'],childList:true});
-   insertMobileShortcut();
+   syncMobileShortcut();
  }
  global.OlliBookingDashboard=Object.freeze({open,close,refresh,initMobileShortcut});
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initMobileShortcut,{once:true});

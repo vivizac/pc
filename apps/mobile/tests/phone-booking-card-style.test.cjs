@@ -36,23 +36,31 @@ test('consultation shortcut matches student-count card border, radius and shadow
   assert.match(entry, /padding:9px/);
 });
 
-test('blue inset visual centers the white existing chevron; mobile navigation stays intact', () => {
+test('blue circle contains the live count and opens the mobile booking screen', () => {
   const visual = rule(booking, '.obmAcademyEntry>span:last-child');
-  assert.match(visual, /display:flex/);
-  assert.match(visual, /align-items:center/);
-  assert.match(visual, /justify-content:center/);
-  assert.match(visual, /flex:0 0 30%/, 'blue inset has a horizontal rectangular proportion');
-  assert.match(visual, /text-align:center/, 'arrow text centered in its box');
-  assert.match(visual, /border-radius:0 16px 16px 0/);
-  assert.match(visual, /background:#0A84FF/);
-  assert.match(visual, /color:#fff/);
-  assert.match(shortcut, /entry\.innerHTML=.*상담 예약 현황.*<span aria-hidden="true">›<\/span>/);
-  assert.match(shortcut, /entry\.addEventListener\('click',\(\)=>open\('mobile'\)\)/);
-  assert.match(shortcut, /document\.body\.classList\.contains\('olliPcApp'\)/);
+  for (const expected of ['display:flex','align-items:center','justify-content:center','width:54px','height:54px','border-radius:50%','background:#0A84FF','color:#fff']) assert.ok(visual.replace(/\\s+/g,'').includes(expected));
+  assert.match(shortcut, /오늘의 상담 예약 현황/);
+  assert.match(shortcut, /data-olli-booking-count/);
+  assert.doesNotMatch(shortcut, /<span aria-hidden="true">›<\\/span>/);
+  assert.match(shortcut, /entry\\.addEventListener\\('click',\\(\\)=>open\\('mobile'\\)\\)/);
+  assert.match(shortcut, /document\\.body\\.classList\\.contains\\('olliPcApp'\\)/);
 });
 
+test('card counts only confirmed bookings on the KST today date', () => {
+  const vm = require('node:vm');
+  const begin=shortcut.indexOf('function confirmedTodayCount(rows){');
+  const finish=shortcut.indexOf('function updateMobileShortcutBadge(',begin);
+  assert.ok(begin>=0 && finish>begin);
+  const sandbox={today:()=> '2026-10-27',kstParts: d=>({ymd:String(d).slice(0,10)})};
+  vm.runInNewContext(shortcut.slice(begin,finish),sandbox);
+  const got=vm.runInNewContext("confirmedTodayCount([{status:'confirmed',start_at:'2026-10-27T10:00'},{status:'cancelled',start_at:'2026-10-27T11:00'},{status:'confirmed',start_at:'2026-10-28T10:00'},{status:'confirmed',start_at:'2026-10-27T12:00'}])",sandbox);
+  assert.equal(got,2);
+  assert.match(shortcut,/manage\\('list',\\{month:currentMonth\\(\\)\\}\\)/);
+  assert.match(shortcut,/ctx\\(\\)\\.academyId!==scope.academyId/);
+  assert.match(shortcut,/ctx\\(\\)\\.sessionToken!==scope.sessionToken/);
+});
 test('mobile loads the versioned updated booking stylesheet', () => {
-  assert.match(mobileHtml, /olli-booking-owner-ui\.css\?v=20261026-mobile-card-height-2/);
+  assert.match(mobileHtml, /olli-booking-owner-ui\.css\?v=20261027-mobile-count-circle-1/);
 });
 
 test('consultation card is the fifth item in the two-column stat grid under 올해 등록', () => {
