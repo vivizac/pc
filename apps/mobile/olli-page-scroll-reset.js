@@ -28,6 +28,16 @@
     } catch (e) {}
   }
 
+  // Academy management and attendance share the same real scrolling element.
+  // Clear only that element on a genuine route/view transition; never change
+  // the front page or clear a prewarmed rear during local preparation.
+  function resetRecordRoomInnerScroll(screen) {
+    if (screen?.id !== 'recordRoomScreen') return;
+    const inner = screen.querySelector?.('#recordPageInner')
+      || document.getElementById?.('recordPageInner');
+    resetScrollElement(inner);
+  }
+
   function resetScrollElementForPage(root, el) {
     if (!el) return;
     const isFeedbackChat = root?.id === 'kinderChatFeedbackScreen' && el.classList?.contains('kcfChatArea');
@@ -83,6 +93,7 @@
 
   function bindPageObservers() {
     const visibilityState = new WeakMap();
+    const academyViewState = new WeakMap();
     const observer = new MutationObserver(function(mutations){
       mutations.forEach(function(mutation){
         const el = mutation.target;
@@ -90,11 +101,32 @@
         const wasVisible = visibilityState.get(el) === true;
         const nowVisible = isVisibleElement(el);
         visibilityState.set(el, nowVisible);
+
+        if (el.id === 'recordRoomScreen') {
+          const wasAcademy = academyViewState.get(el) === true;
+          const nowAcademy = el.classList.contains('record-academy-view');
+          academyViewState.set(el, nowAcademy);
+          // Leaving either Students or Attendance discards the old position.
+          // The two tabs stay inside recordRoomScreen, so detect their class
+          // switch as well as a real page hide.
+          if ((wasVisible && !nowVisible) ||
+              (wasVisible && nowVisible && wasAcademy !== nowAcademy)) {
+            resetRecordRoomInnerScroll(el);
+          } else if (!wasVisible && nowVisible &&
+              !window.isOlliMainSubpageDrawerOpen?.() &&
+              !window.isOlliPhoneNavigationInFlight?.()) {
+            // Direct entry (not an inert/prepared or sliding drawer rear).
+            resetRecordRoomInnerScroll(el);
+          }
+        }
         if (!wasVisible && nowVisible) scheduleReset(el);
       });
     });
     document.querySelectorAll('.pageScreen').forEach(function(screen){
       visibilityState.set(screen, isVisibleElement(screen));
+      if (screen.id === 'recordRoomScreen') {
+        academyViewState.set(screen, screen.classList.contains('record-academy-view'));
+      }
       observer.observe(screen, { attributes: true, attributeFilter: ['style', 'class'] });
     });
     resetVisiblePageScroll();
