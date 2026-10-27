@@ -85,7 +85,7 @@ for(const width of [390,1280]){
    });
    await page.goto('https://olli-booking.test/consultation-booking.html?academy='+slug);
    await page.getByRole('button',{name:'상담 예약하기',exact:true}).waitFor();
-   await page.getByText('비비작아이성향미술학원',{exact:true}).waitFor();
+   assert.equal(await page.locator('.ogbBrand').count(),0,'no academy-name header above the booking panel');
    assert.equal(await page.locator('input[name=student_name]').count(),0);
    assert.equal(await page.locator('.ogbCalendar').count(),0);
    assert.equal(await page.getByRole('button',{name:'기존 예약 변경하기'}).count(),1);
@@ -117,7 +117,8 @@ for(const width of [390,1280]){
    const namePosition=await page.locator('[name=student_name]').boundingBox();
    const calendarPosition=await page.locator('.ogbCalendar').boundingBox();
    assert.ok(namePosition.y<calendarPosition.y,'student name and phone must appear before calendar');
-   assert.ok((await page.locator('.ogbBrand strong').innerText()).includes('비비작'));
+   assert.equal(await page.locator('.ogbBrand').count(),0);
+   assert.equal(await page.getByRole('heading',{name:'상담 예약',exact:true}).count(),1,'teal booking title remains');
    const bounds=await page.locator('.ogbPanel').boundingBox();
    assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width+1);
    await page.locator('[name=student_name]').fill('김하늘');

@@ -91,9 +91,6 @@
     ' / HTTP '+err.httpStatus:'';
   return description+' [진단: '+safeCode+status+']';
  }
- function header(){
-  return '<header class="ogbBrand"><strong>'+esc(state.academyName||'학원명 확인 중')+'</strong>'+(state.phase==='choice'?'':'<span>상담 예약</span>')+'</header>';
- }
  function contactHtml(){
   if(state.session)return '';
   return '<div class="ogbContact">'+
@@ -208,7 +205,7 @@
       '<footer class="ogbFooter">예약이 어려우시다면 학원으로 문의해 주세요.</footer></div>';
     return;
    }
-   root.innerHTML=header()+(state.phase==='invalid'?
+   root.innerHTML=(state.phase==='invalid'?
     '<section class="ogbPanel"><h1>상담 예약 주소를 확인해 주세요</h1></section>':
     state.phase==='choice'?choiceHtml():state.phase==='lookup'?lookupHtml():bookingHtml())+
     (state.error?info(state.error,'error'):'')+(state.message?info(state.message):'')+

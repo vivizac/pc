@@ -38,11 +38,12 @@ test('successful info response and both page entry points remain unchanged',asyn
  const ok=await render(()=>Promise.resolve({status:200,ok:true,json:async()=>({
   ok:true,academy_name:'비비작아이성향미술학원',weeks:[2,3],weekdays:[1,2,3,4,5]
  })}),true);
- assert.match(ok,/비비작아이성향미술학원/);
+ assert.match(ok,/상담 예약하기/);
+ assert.doesNotMatch(ok,/비비작아이성향미술학원|ogbBrand/);
  assert.doesNotMatch(ok,/진단:|학원명 확인 중|ogbBoot/);
  for(const page of ['apps/pc/consultation-booking.html','apps/mobile/consultation-booking.html']){
   const html=fs.readFileSync(path.join(base,page),'utf8');
-  assert.match(html,/olli-booking-guardian\.js\?v=20261027-spinner-only-1/);
+  assert.match(html,/olli-booking-guardian\.js\?v=20261027-headerless-1/);
  }
  assert.doesNotMatch(source,/localStorage\.|sessionStorage\./);
 });
@@ -137,7 +138,8 @@ test('guardian POST preserves browser Origin under no-referrer policy without re
    weeks:[2,3],weekdays:[1,2,3,4,5]
   })});
  },false);
- assert.match(html,/비비작아이성향미술학원/);
+ assert.match(html,/상담 예약하기/);
+ assert.doesNotMatch(html,/비비작아이성향미술학원|ogbBrand/);
  assert.equal(captured.url,'/api/olli-booking-public');
  assert.equal(captured.options.method,'POST');
  assert.equal(captured.options.mode,'cors');
@@ -150,7 +152,7 @@ test('guardian POST preserves browser Origin under no-referrer policy without re
   const sourceHtml=fs.readFileSync(path.join(base,page),'utf8');
   assert.match(sourceHtml,/meta name="referrer" content="no-referrer"/);
   assert.match(sourceHtml,/connect-src 'self'/);
-  assert.match(sourceHtml,/olli-booking-guardian\.js\?v=20261027-spinner-only-1/);
+  assert.match(sourceHtml,/olli-booking-guardian\.js\?v=20261027-headerless-1/);
  }
  assert.doesNotMatch(source,/localStorage\.|sessionStorage\./);
 });
@@ -174,7 +176,7 @@ test('academy info loading gates the entire page until data arrives',async()=>{
   ok:true,academy_name:'비비작아이성향미술학원',weeks:[2,3],weekdays:[1,2,3,4,5]
  })});
  await new Promise(resolve=>setImmediate(resolve));
- assert.match(root.innerHTML,/비비작아이성향미술학원/);
+ assert.doesNotMatch(root.innerHTML,/비비작아이성향미술학원|ogbBrand/);
  assert.match(root.innerHTML,/상담 예약하기/);
  assert.doesNotMatch(root.innerHTML,/ogbBoot|학원명 확인 중/);
 });
@@ -197,7 +199,7 @@ test('academy failure hides booking actions and retry returns to normal choice',
  await handlers.click({target:{closest:()=>btn}});
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(requests,2);
- assert.match(root.innerHTML,/비비작아이성향미술학원/);
+ assert.doesNotMatch(root.innerHTML,/비비작아이성향미술학원|ogbBrand/);
  assert.match(root.innerHTML,/기존 예약 변경하기/);
  assert.doesNotMatch(root.innerHTML,/다시 시도하기|ogbBoot/);
 });
@@ -211,10 +213,20 @@ test('HTML entrypoints use same initial splash and shared CSS',()=>{
   assert.match(h,/aria-busy="true"/);
   assert.doesNotMatch(h,/학원명 확인 중/);
   assert.match(h,/olli-booking-guardian\.css\?v=20261027-spinner-only-1/);
-  assert.match(h,/olli-booking-guardian\.js\?v=20261027-spinner-only-1/);
+  assert.match(h,/olli-booking-guardian\.js\?v=20261027-headerless-1/);
  }
  const sheet=fs.readFileSync(path.join(base,'packages/common/olli-booking-guardian.css'),'utf8');
  assert.match(sheet,/\.ogbBootSpinner/);
  assert.doesNotMatch(sheet,/\.ogbBootLogo|\.ogbBootContent p/);
  assert.match(sheet,/prefers-reduced-motion:reduce/);
+});
+
+test('guardian ready-phase UI never includes the removed brand header',()=>{
+ assert.doesNotMatch(source,/function header\(\)|<header class="ogbBrand"/);
+ assert.match(source,/ogbTitleBand/,'booking title band still exists');
+ for(const page of ['apps/pc/consultation-booking.html','apps/mobile/consultation-booking.html']){
+  const entry=fs.readFileSync(path.join(base,page),'utf8');
+  assert.match(entry,/olli-booking-guardian\.js\?v=20261027-headerless-1/);
+  assert.doesNotMatch(entry,/class="ogbBrand"/);
+ }
 });
