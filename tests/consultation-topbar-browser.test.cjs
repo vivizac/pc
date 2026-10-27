@@ -32,7 +32,13 @@ test('consultation tabs replace the white PC topbar title, not the page body',as
   const page=await browser.newPage({viewport:{width:1280,height:900}});
   const errors=[];
   page.on('pageerror',error=>errors.push(String(error)));
-  await page.route('https://olli-ui.test/**',route=>route.fulfill({status:200,contentType:'text/html',body:html}));
+  await page.route('https://olli-ui.test/**',route=>{
+   if(new URL(route.request().url()).pathname==='/')return route.fulfill({status:200,contentType:'text/html',body:html});
+   // The production consultation analysis module is intentionally absent in this
+   // no-network fixture. Never feed HTML to a dynamically loaded JS request.
+   return route.fulfill({status:200,contentType:'application/javascript',
+     body:'window.OlliConsultationAnalysis={analyze:()=>({primary:[],confirm:[],axes:[],questions:[],observations:[],directions:[]})};'});
+  });
   await page.goto('https://olli-ui.test/');
   await page.addStyleTag({content:shellCSS});
   await page.addStyleTag({content:consultationCSS});
