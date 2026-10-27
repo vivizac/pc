@@ -38,12 +38,12 @@ test('consultation shortcut matches student-count card border, radius and shadow
 
 test('blue circle contains the live count and opens the mobile booking screen', () => {
   const visual = rule(booking, '.obmAcademyEntry>span:last-child');
-  for (const expected of ['display:flex','align-items:center','justify-content:center','width:54px','height:54px','border-radius:50%','background:#0A84FF','color:#fff']) assert.ok(visual.replace(/\\s+/g,'').includes(expected));
+  for (const expected of ['display:flex','align-items:center','justify-content:center','width:54px','height:54px','border-radius:50%','background:#0A84FF','color:#fff']) assert.ok(visual.replace(/\s+/g,'').includes(expected));
   assert.match(shortcut, /오늘의 상담 예약 현황/);
   assert.match(shortcut, /data-olli-booking-count/);
-  assert.doesNotMatch(shortcut, /<span aria-hidden="true">›<\\/span>/);
-  assert.match(shortcut, /entry\\.addEventListener\\('click',\\(\\)=>open\\('mobile'\\)\\)/);
-  assert.match(shortcut, /document\\.body\\.classList\\.contains\\('olliPcApp'\\)/);
+  assert.doesNotMatch(shortcut, /<span aria-hidden="true">›<\/span>/);
+  assert.match(shortcut, /entry\.addEventListener\('click',\(\)=>open\('mobile'\)\)/);
+  assert.match(shortcut, /document\.body\.classList\.contains\('olliPcApp'\)/);
 });
 
 test('card counts only confirmed bookings on the KST today date', () => {
@@ -55,9 +55,9 @@ test('card counts only confirmed bookings on the KST today date', () => {
   vm.runInNewContext(shortcut.slice(begin,finish),sandbox);
   const got=vm.runInNewContext("confirmedTodayCount([{status:'confirmed',start_at:'2026-10-27T10:00'},{status:'cancelled',start_at:'2026-10-27T11:00'},{status:'confirmed',start_at:'2026-10-28T10:00'},{status:'confirmed',start_at:'2026-10-27T12:00'}])",sandbox);
   assert.equal(got,2);
-  assert.match(shortcut,/manage\\('list',\\{month:currentMonth\\(\\)\\}\\)/);
-  assert.match(shortcut,/ctx\\(\\)\\.academyId!==scope.academyId/);
-  assert.match(shortcut,/ctx\\(\\)\\.sessionToken!==scope.sessionToken/);
+  assert.match(shortcut,/manage\('list',\{month:currentMonth\(\)\}\)/);
+  assert.match(shortcut,/ctx\(\)\.academyId!==scope.academyId/);
+  assert.match(shortcut,/ctx\(\)\.sessionToken!==scope.sessionToken/);
 });
 test('mobile loads the versioned updated booking stylesheet', () => {
   assert.match(mobileHtml, /olli-booking-owner-ui\.css\?v=20261027-mobile-count-circle-1/);

@@ -312,8 +312,8 @@
      mobileShortcutRequestId++;
      return;
    }
-   insertMobileShortcut();
-   if(!mobileShortcutVisible){
+   const inserted=insertMobileShortcut();
+   if(!mobileShortcutVisible||inserted){
      mobileShortcutVisible=true;
      void refreshMobileShortcutCount();
    }
@@ -332,6 +332,7 @@
    const grid=dashboard.querySelector('.recordAcademyStatGrid');
    if(!grid||grid.children.length!==4)return;
    grid.appendChild(entry);
+   return true;
  }
  function initMobileShortcut(){
    const root=document.getElementById('recordAcademyDashboard');
