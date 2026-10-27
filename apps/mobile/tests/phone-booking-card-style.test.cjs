@@ -61,7 +61,7 @@ test('card counts only confirmed bookings on the KST today date', () => {
   assert.match(shortcut,/ctx\(\)\.sessionToken!==scope.sessionToken/);
 });
 test('mobile loads the versioned updated booking stylesheet', () => {
-  assert.match(mobileHtml, /olli-booking-owner-ui\.css\?v=20261027-mobile-count-circle-1/);
+  assert.match(mobileHtml, /olli-booking-owner-ui\.css\?v=20261027-mobile-local-first-count-1/);
 });
 
 test('consultation card is the fifth item in the two-column stat grid under 올해 등록', () => {
