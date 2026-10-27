@@ -110,7 +110,7 @@ test('restored scripts and stylesheet are explicitly cache-busted for installed 
   assert.match(html,/olli-academy-dashboard\.css\?v=20261024-original-ui-restore-1/);
   assert.match(html,/olli-consultation-mobile-runtime\.js\?v=20261024-month-only-1/);
   assert.match(html,/olli-settings-server-sync\.js\?v=20261024-remove-consultation-entry-1/);
-  assert.match(html,/olli-consultation-messages\.js\?v=20261025-copy-height-24-1/);
+  assert.match(html,/olli-consultation-messages\.js\?v=20261027-mobile-instant-copy-icon-1/);
 });
 
 test('mobile manual notice icon acknowledges tap immediately and restores on clipboard settlement, without affecting PC', async () => {
