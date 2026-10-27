@@ -56,12 +56,12 @@ test('card counts only confirmed bookings on the KST today date', () => {
   vm.runInNewContext(shortcut.slice(begin,finish),sandbox);
   const got=vm.runInNewContext("confirmedTodayCount([{status:'confirmed',start_at:'2026-10-27T10:00'},{status:'cancelled',start_at:'2026-10-27T11:00'},{status:'confirmed',start_at:'2026-10-28T10:00'},{status:'confirmed',start_at:'2026-10-27T12:00'}])",sandbox);
   assert.equal(got,2);
-  assert.match(shortcut,/manage\('list',\{month:currentMonth\(\)\}\)/);
+  assert.match(shortcut,/manage\('list',\{month:day\.slice\(0,7\)\}\)/);
   assert.match(shortcut,/ctx\(\)\.academyId!==scope.academyId/);
   assert.match(shortcut,/ctx\(\)\.sessionToken!==scope.sessionToken/);
 });
 test('mobile loads the versioned updated booking stylesheet', () => {
-  assert.match(mobileHtml, /olli-booking-owner-ui\.css\?v=20261027-mobile-count-circle-1/);
+  assert.match(mobileHtml, /olli-booking-owner-ui\.css\?v=20261027-mobile-local-first-count-1/);
 });
 
 test('consultation card is the fifth item in the two-column stat grid under 올해 등록', () => {
@@ -99,6 +99,9 @@ test('consultation card is the fifth item in the two-column stat grid under 올�
     document,
     isOwner:()=>true,
     open:()=>true,
+    ctx:()=>({academyId:'test-academy',sessionToken:'test-session'}),
+    today:()=> '2026-10-27',
+    readMobileShortcutCount:()=>null,
     el:(tag, className) => ({
       tag, className, dataset:{},
       addEventListener(event, callback){this.onClick=callback;}
