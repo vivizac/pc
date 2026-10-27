@@ -221,15 +221,21 @@
     // PC도 로컬 캐시를 먼저 그리고, 서버 응답이 오면 조용히 갱신합니다.
     const status = cached?.status === 'ready' ? 'ready' : (cached?.status === 'error' ? 'error' : 'insufficient');
     const label = status === 'ready' ? '준비완료' : (status === 'error' ? '확인오류' : '자료부족');
-    return '<span class="recordAcademyConsultStatusChip '+status+'" data-pc-consult-material-status="'+status+'">'+label+'</span>';
+    const reviewNeeded=cached?.status==='insufficient'&&cached?.hasLegacyCandidate===true;
+    return '<span class="recordAcademyConsultStatusChip '+status+'" data-pc-consult-material-status="'+status+'"'
+      +(reviewNeeded?' hidden':'')+'>'+label+'</span>';
   }
 
-  function updateConsultationStatusChip(student, labels, status, reason = '') {
+  function updateConsultationStatusChip(student, labels, status, reason = '', hasLegacyCandidate = false) {
     const ref = consultationStudentRef(student);
     const normalizedStatus = status === 'ready' ? 'ready' : (status === 'insufficient' ? 'insufficient' : 'error');
     const label = normalizedStatus === 'ready' ? '준비완료' : (normalizedStatus === 'insufficient' ? '자료부족' : '확인오류');
     const key=consultationStatusKey(student,labels);
-    consultationStatusCache.set(key,{status:normalizedStatus,reason:String(reason||''),checkedAt:Date.now()});
+    const reviewNeeded=normalizedStatus==='insufficient'&&hasLegacyCandidate===true;
+    // Candidate information is kept only in memory; never treat a previous
+    // candidate match as proof that the summary itself is ready.
+    consultationStatusCache.set(key,{status:normalizedStatus,reason:String(reason||''),
+      hasLegacyCandidate:reviewNeeded,checkedAt:Date.now()});
     if(normalizedStatus!=='error')
       global.OlliConsultationServer?.writeCachedStatus?.(key,{status:normalizedStatus});
     document.querySelectorAll('#pcAcademyDetailPanel .recordAcademyConsultListItem').forEach((row) => {
@@ -240,10 +246,11 @@
       chip.classList.add(normalizedStatus);
       chip.dataset.pcConsultMaterialStatus = normalizedStatus;
       chip.textContent = label;
+      chip.hidden = reviewNeeded;
       if (reason) chip.title = String(reason);
       else chip.removeAttribute('title');
       const legacyButton = row.querySelector('.recordAcademyConsultLegacyReviewBtn');
-      if(legacyButton) legacyButton.hidden = normalizedStatus === 'ready';
+      if(legacyButton) legacyButton.hidden = !reviewNeeded;
     });
   }
 
@@ -260,7 +267,23 @@
           throw new Error('상담 공통 서버 조회를 준비하지 못했습니다.');
         const material=await core.checkSummaryStatus(student,task);
         const status=material.status;
-        updateConsultationStatusChip(student,labels,status,material?.reason||'');
+        let hasLegacyCandidate=false;
+        // Inspecting a consultation only verifies whether its summary was linked.
+        // The status "insufficient" does NOT imply a linkable historical record.
+        // Only the owner-authorized, read-only exact-candidate RPC can show
+        // "기존 기록 연결 필요" in place of the ordinary status chip.
+        const canReview=['owner','super_admin'].includes(
+          typeof global.getOlliCurrentRole==='function'?global.getOlliCurrentRole():'');
+        if(status==='insufficient'&&canReview&&core?.listLegacyCandidates){
+          try {
+            const review=await core.listLegacyCandidates(student.id,task.key);
+            hasLegacyCandidate=review?.status!=='ready'
+              &&Array.isArray(review?.candidates)&&review.candidates.length>0;
+          }catch(error){
+            console.warn('기존 종합피드백 연결 후보 확인 실패:',error?.message||error);
+          }
+        }
+        updateConsultationStatusChip(student,labels,status,material?.reason||'',hasLegacyCandidate);
       } catch (error) {
         console.warn('PC 상담 자료 상태 확인 실패:', student?.name || '', error?.message || error);
         const key=consultationStatusKey(student,labels);
@@ -424,8 +447,8 @@
           + (['owner','super_admin'].includes(typeof global.getOlliCurrentRole==='function'?global.getOlliCurrentRole():'')
             ? '<button type="button" class="recordAcademyConsultLegacyReviewBtn"'
               +' onclick="OlliPcStudentManagement.openLegacyReview(\''+jsSingleQuote(student.id)+'\')"'
-              +(consultationStatusCache.get(consultationStatusKey(student,dueLabels))?.status==='ready'?' hidden':'')
-              +'>기존 기록 연결</button>' : '')
+              +(consultationStatusCache.get(consultationStatusKey(student,dueLabels))?.hasLegacyCandidate===true?'':' hidden')
+              +'>기존 기록 연결 필요</button>' : '')
           + '</div></div>';
       }).join('') : '<div class="recordAcademyConsultGroupEmpty">예정 학생 없음</div>';
       return '<div class="recordAcademyConsultGroup" data-pc-division="'+group.type+'"><div class="recordAcademyConsultGroupTitle"><span>'+group.label+'</span><span>'+group.students.length+'명</span></div><div class="recordAcademyList">'+rows+'</div></div>';

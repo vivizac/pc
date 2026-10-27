@@ -21,7 +21,7 @@ test('PC notice copy height matches status badge and retains horizontal appearan
   assert.match(messages,/border:1px solid #fff;border-radius:999px;background:#fff;color:#343d4b;padding:0 10px/);
 });
 test('PC copies sit immediately left of status badge; mobile icon appearance is retained',()=>{
-  assert.match(mobile,/src="olli-consultation-messages\.js\?v=20261025-copy-height-24-1"/);
+  assert.match(mobile,/src="olli-consultation-messages\.js\?v=20261027-mobile-instant-copy-icon-1"/);
   assert.match(desktop,/src="olli-consultation-messages\.js\?v=20261026-pc-copy-capsule-1"/);
   assert.match(messages,/const actions = card\.querySelector\('\.recordAcademyConsultActions'\)/);
   assert.match(messages,/if \(statusChip\) actions\.insertBefore\(button, statusChip\)/);

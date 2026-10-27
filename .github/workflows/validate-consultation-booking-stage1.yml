@@ -46,6 +46,9 @@ on:
       - 'apps/pc/pc-shell.js'
       - 'apps/pc/consultation-survey-core.js'
       - 'apps/pc/consultation-survey.js'
+      - 'apps/pc/pc-student-management.js'
+      - 'apps/pc/pc-student-management.css'
+      - 'tests/pc-consultation-existing-record-needed.test.cjs'
       - 'apps/pc/consultation-survey.css'
       - 'apps/pc/index.html'
       - 'tests/consultation-topbar-browser.test.cjs'
@@ -135,7 +138,7 @@ jobs:
       - name: Validate Sunday-first SQL schema in isolated CI database
         run: psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-sunday-week.integration.sql
       - name: Verify combined PC consultation panel and copy button behavior
-        run: node --test tests/consultation-copy-button-height.test.cjs tests/pc-consultation-tenure-badge.test.cjs
+        run: node --test tests/consultation-copy-button-height.test.cjs tests/pc-consultation-tenure-badge.test.cjs tests/pc-consultation-existing-record-needed.test.cjs
       - name: Validate consultation records tabs
         run: |
           node --check apps/pc/consultation-survey-core.js
