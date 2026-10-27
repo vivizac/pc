@@ -51,6 +51,9 @@ on:
       - 'tests/pc-consultation-existing-record-needed.test.cjs'
       - 'apps/pc/consultation-survey.css'
       - 'apps/pc/index.html'
+      - 'packages/common/olli-booking-owner-ui.js'
+      - 'packages/common/olli-booking-owner-ui.css'
+      - 'tests/pc-consultation-calendar-cards.test.cjs'
       - 'tests/consultation-topbar-browser.test.cjs'
       - 'apps/mobile/olli-observation-roster-phone.js'
       - 'packages/common/api/_lib/olli-booking-handler.cjs'
@@ -123,6 +126,7 @@ jobs:
           node --check packages/common/olli-booking-owner-ui.js
           node --check apps/pc/pc-shell.js
           node --test tests/consultation-booking-stage3-ui.test.cjs
+          node --test tests/pc-consultation-calendar-cards.test.cjs
           node --test apps/mobile/tests/phone-booking-card-style.test.cjs
           node --test tests/observation-roster-weekend-meta.test.cjs
       - name: Apply academy-wide booking link and verification migration (isolated DB)
