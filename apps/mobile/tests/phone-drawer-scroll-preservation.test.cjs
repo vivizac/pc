@@ -139,5 +139,5 @@ test('prewarmed and drawer-controlled attendance remain scroll-stable', () => {
 
 test('installed mobile HTML refreshes the record scroll reset script only', () => {
   const html=require('node:fs').readFileSync(require('node:path').join(__dirname,'..','index.html'),'utf8');
-  assert.match(html,/olli-page-scroll-reset\\.js\\?v=20261027-record-room-scroll-reset-1/);
+  assert.match(html,/olli-page-scroll-reset\.js\?v=20261027-record-room-scroll-reset-1/);
 });
