@@ -77,6 +77,7 @@
     "olli-consultation-task-core.js",
     "olli-consultation-messages.js",
     "olli-consultation-messages.css",
+    "olli-booking-url-policy.cjs",
     "api/_lib/consultation-messages.cjs",
     "api/_lib/consultation-messages-handler.cjs",
     "olli-student-guardian-contact.js",
