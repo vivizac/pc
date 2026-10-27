@@ -69,11 +69,11 @@
         <button type="button" data-tab="history" aria-pressed="false">발송 내역</button>
       </nav>
       <section data-panel="settings">
-        <p class="ocm-muted">상담 대상 학부모에게 네이버 예약 링크가 담긴 알림톡을 자동 발송합니다. 예약 여부는 네이버에서 확인해 주세요.</p>
+        <p class="ocm-muted">상담 대상 학부모에게 설정된 상담예약 링크가 담긴 알림톡을 발송합니다. 올리 자체 상담예약 링크를 사용하면 예약 현황을 올리에서 확인할 수 있습니다.</p>
         <form data-settings>
           <label class="ocm-use-switch"><span>상담 안내 문자 사용<small data-usage-status>${settings.enabled ? '켜짐' : '꺼짐'}</small></span><span class="ocm-switch-control"><input type="checkbox" role="switch" aria-label="상담 안내 문자 사용" name="enabled" ${settings.enabled ? 'checked' : ''}><span class="ocm-switch-track" aria-hidden="true"></span></span></label>
           <p class="ocm-muted">학원별 선택 기능입니다. 끄면 자동 발송과 직접 보내기가 모두 중단됩니다. 스위치 변경은 바로 저장되며, 문구와 보호자 연락처는 보존됩니다.</p>
-          <label>네이버 플레이스·예약 링크<input name="booking_url" type="url" inputmode="url" placeholder="https://booking.naver.com/…" value="${escape(settings.booking_url)}" maxlength="2000"></label>
+          <label>상담예약 링크 (올리 또는 기존 네이버 예약)<input name="booking_url" type="url" inputmode="url" placeholder="https://booking.naver.com/…" value="${escape(settings.booking_url)}" maxlength="2000"></label>
           <label>알림톡 발송 채널
             <select name="selected_channel_id" aria-label="알림톡 발송 채널">
               <option value="">본사 관리자센터에서 승인된 채널을 선택해 주세요</option>
