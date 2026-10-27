@@ -62,12 +62,10 @@ function renderPcRosterGuide(student, text, attendanceGuideHtml, showRosterMarke
   if (attendanceGuideHtml !== null) {
     if (showRosterMarkers !== true) return attendanceGuideHtml;
     const missingMonth = renderOlliStudentRosterGuideMeta(student, '', escapeHtml);
-    const guide = missingMonth ? attendanceGuideHtml + ' / ' + missingMonth : attendanceGuideHtml;
-    return guide + renderOlliStudentRosterMarkers(student);
+    return missingMonth ? attendanceGuideHtml + ' / ' + missingMonth : attendanceGuideHtml;
   }
   if (showRosterMarkers === true) {
-    return renderOlliStudentRosterGuideMeta(student, text, escapeHtml)
-      + renderOlliStudentRosterMarkers(student);
+    return renderOlliStudentRosterGuideMeta(student, text, escapeHtml);
   }
   return text ? escapeHtml(text) : '';
 }
@@ -91,7 +89,7 @@ function renderElementaryStudentRows(students, options = {}) {
       <div class="elementaryRowInner${leadIcon ? ' hasLeadIcon' : ''}">
         ${leadIcon}
         <span class="studentTextWrap">
-          <span>${escapeHtml(student.name)}</span>
+          <span>${escapeHtml(student.name)}${options.showRosterMarkers === true ? renderOlliStudentRosterMarkers(student) : ''}</span>
           ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
         </span>
       </div>
@@ -117,7 +115,7 @@ function renderKinderStudentRows(students, options = {}) {
       <div class="kinderRowInner${leadIcon ? ' hasLeadIcon' : ''}">
         ${leadIcon}
         <span class="studentTextWrap">
-          <span>${escapeHtml(student.name)}</span>
+          <span>${escapeHtml(student.name)}${options.showRosterMarkers === true ? renderOlliStudentRosterMarkers(student) : ''}</span>
           ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
         </span>
       </div>
