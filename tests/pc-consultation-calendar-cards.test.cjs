@@ -66,7 +66,9 @@ test('PC date and appointment cards are top-left aligned, with no nested buttons
  assert.match(css,/#olliConsultationBookingPanel \.obmCalBookingTime/);
  assert.match(css,/#olliConsultationBookingPanel \.obmCalBookingName/);
  const day=calendar([row('x','2026-11-03T11:30:00+09:00','김하늘')]);
- assert.doesNotMatch(day,/class="obmCalBooking"[\s\S]*?<button/);
+ const day3=day.match(/<button class="obmCalDay[^"]*" type="button" data-day="2026-11-03"[\s\S]*?<\/button>/)?.[0];
+ assert.ok(day3,'Nov 3 button must exist');
+ assert.equal((day3.match(/<button\b/g)||[]).length,1,'each calendar day is one button with noninteractive span cards');
 });
 test('remove only PC subheading while keeping mobile heading and refresh action',()=>{
  assert.match(js,/const mobileTitle=state\.mode==='mobile'\?/);
