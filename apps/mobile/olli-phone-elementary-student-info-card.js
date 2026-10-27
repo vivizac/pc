@@ -39,10 +39,10 @@
       #elementaryInfoModal .pcStudentInfoForm{display:grid;gap:8px;}
       #elementaryInfoModal .pcStudentInfoGrid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
       #elementaryInfoModal .pcStudentInfoField{min-width:0;}
-      #elementaryInfoModal .pcStudentInfoDateControl{display:flex;align-items:center;gap:4px;width:100%;height:42px;min-width:0;padding:0 7px;border:1px solid #e4e6e9;border-radius:12px;box-sizing:border-box;background:#fff;}
+      #elementaryInfoModal .pcStudentInfoDateControl{position:relative;display:flex;align-items:center;gap:4px;width:100%;height:42px;min-width:0;padding:0 7px;border:1px solid #e4e6e9;border-radius:12px;box-sizing:border-box;background:#fff;}
       #elementaryInfoModal .pcStudentInfoDateControl:focus-within{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
-      #elementaryInfoModal .pcStudentInfoDateControl span{font-size:9px;flex:none;color:#777f88;white-space:nowrap;}
-      #elementaryInfoModal .pcStudentInfoField .pcStudentInfoDateControl .modalInput{flex:1;width:100%;min-width:0;padding:0;border:0;box-shadow:none;font-size:11px;color:#263749;}
+      #elementaryInfoModal .pcStudentInfoDateControl span{position:absolute;top:3px;left:9px;font-size:9px;line-height:1;color:#777f88;white-space:nowrap;pointer-events:none;}
+      #elementaryInfoModal .pcStudentInfoField .pcStudentInfoDateControl .modalInput{flex:1;width:100%;min-width:0;height:40px;padding:10px 0 0;border:0;box-shadow:none;font-size:11px;color:#263749;box-sizing:border-box;}
       #elementaryInfoModal .pcStudentInfoField .modalInput{width:100%;height:42px;min-width:0;border:1px solid #e4e6e9;border-radius:12px;background:#fff;padding:0 10px;font:inherit;font-size:13px;box-sizing:border-box;outline:none;color:#222;}
       #elementaryInfoModal .pcStudentInfoField .modalInput:focus{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
       #elementaryInfoModal .pcStudentInfoField .modalInput[readonly]{background:#fafbfc;color:#666;}
