@@ -79,10 +79,10 @@ test('PC starts owner-scoped data load, month is YYYY-MM, no fake reservations',
  assert.equal(calls[0].body.p_academy_id,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
  assert.match(calls[0].body.p_month,/^\d{4}-(0[1-9]|1[0-2])$/);
  assert.doesNotMatch(root.innerHTML,/<h2>상담 현황<\/h2>|학원 상담 예약과 일정/,'PC booking tab must not repeat the body heading');
- assert.match(root.innerHTML,/예약 아이/);
- assert.doesNotMatch(root.innerHTML,/class="obmListHeader"/,'calendar no longer duplicates the appointment list beneath the date grid');
- assert.match(root.innerHTML,/11:00/);
- assert.doesNotMatch(root.innerHTML,/<small>11월 9일/);
+ assert.match(root.innerHTML,/class="obmPcToolbar"/,'PC month, tabs, and refresh share one row');
+ assert.match(root.innerHTML,/class="obmCalendar"/,'PC starts with the calendar');
+ assert.doesNotMatch(root.innerHTML,/class="obmListHeader"|class="obmRows"/,
+  'calendar omits the separate booking list; the sample November booking is outside the current month');
  assert.match(root.innerHTML,/캘린더/);
  assert.match(root.innerHTML,/예약 설정/);
  assert.doesNotMatch(root.innerHTML,/데모 데이터|가상 예약/);
