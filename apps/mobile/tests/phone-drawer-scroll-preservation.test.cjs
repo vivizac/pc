@@ -10,9 +10,12 @@ function setup() {
   const frames = [], timers = [], resets = [];
   let drawerOpen = false, navigating = false, observer;
   function page(id) {
-    const attrs = new Set(), inner = { scrollTop:0, scrollLeft:0 };
+    const attrs = new Set(), classes = new Set(['pageScreen']);
+    const inner = { scrollTop:0, scrollLeft:0 };
     return { id, style:{display:'flex'}, scrollTop:0, scrollLeft:0, inner,
-      classList:{contains:name => name === 'pageScreen'},
+      classList:{contains:name => classes.has(name),
+        add:name => classes.add(name), remove:name => classes.delete(name)},
+      querySelector:selector => id === 'recordRoomScreen' && selector === '#recordPageInner' ? inner : null,
       contains:() => false, querySelectorAll:() => [inner],
       hasAttribute:name => attrs.has(name),
       setAttribute:name => attrs.add(name), removeAttribute:name => attrs.delete(name) };
@@ -78,3 +81,63 @@ test('ordinary attendance navigation still resets its scroll when the rear role 
   assert.equal(s.rear.inner.scrollTop,0);
 });
 
+
+test('scrolling Students then switching to Attendance resets only the shared record scroller', () => {
+  const s=setup();
+  s.rear.classList.add('record-academy-view');
+  s.notify(s.rear); // Enter Students.
+  s.positions();
+  s.rear.classList.remove('record-academy-view');
+  s.notify(s.rear);
+  assert.equal(s.rear.inner.scrollTop,0);
+  assert.equal(s.front.inner.scrollTop,24);
+  assert.equal(s.resets.length,0, 'view switch does not move the viewport');
+});
+
+test('switching Attendance to Students starts the student management page at top', () => {
+  const s=setup();
+  s.positions();
+  s.rear.classList.add('record-academy-view');
+  s.notify(s.rear);
+  assert.equal(s.rear.inner.scrollTop,0);
+  assert.equal(s.front.inner.scrollTop,24);
+});
+
+test('leaving a scrolled student or attendance page discards its old scroll', () => {
+  for (const view of ['academy','attendance']) {
+    const s=setup();
+    if (view === 'academy') {
+      s.rear.classList.add('record-academy-view');
+      s.notify(s.rear);
+    }
+    s.positions();
+    s.rear.style.display='none';
+    s.notify(s.rear);
+    assert.equal(s.rear.inner.scrollTop,0, view+' should reset on hide');
+    assert.equal(s.front.inner.scrollTop,24, 'other page scroll should remain');
+    s.rear.style.display='flex';
+    s.notify(s.rear);
+    assert.equal(s.rear.inner.scrollTop,0, 'reopening at the top');
+  }
+});
+
+test('prewarmed and drawer-controlled attendance remain scroll-stable', () => {
+  const s=setup();
+  s.rear.style.display='none';
+  s.notify(s.rear);
+  s.positions();
+  s.rear.classList.add('olliAttendanceRearPrepared');
+  s.rear.style.display='flex';
+  s.notify(s.rear);
+  assert.equal(s.rear.inner.scrollTop,64, 'prewarming cannot reset the background list');
+  s.setOpen(true);
+  s.rear.classList.remove('olliAttendanceRearPrepared');
+  s.notify(s.rear);
+  assert.equal(s.rear.inner.scrollTop,64, 'drawer open does not jump a visible rear');
+  s.setOpen(false);
+});
+
+test('installed mobile HTML refreshes the record scroll reset script only', () => {
+  const html=require('node:fs').readFileSync(require('node:path').join(__dirname,'..','index.html'),'utf8');
+  assert.match(html,/olli-page-scroll-reset\.js\?v=20261027-record-room-scroll-reset-1/);
+});
