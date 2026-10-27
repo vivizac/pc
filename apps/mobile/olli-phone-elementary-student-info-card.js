@@ -39,6 +39,10 @@
       #elementaryInfoModal .pcStudentInfoForm{display:grid;gap:8px;}
       #elementaryInfoModal .pcStudentInfoGrid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
       #elementaryInfoModal .pcStudentInfoField{min-width:0;}
+      #elementaryInfoModal .pcStudentInfoDateControl{display:flex;align-items:center;gap:4px;width:100%;height:42px;min-width:0;padding:0 7px;border:1px solid #e4e6e9;border-radius:12px;box-sizing:border-box;background:#fff;}
+      #elementaryInfoModal .pcStudentInfoDateControl:focus-within{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
+      #elementaryInfoModal .pcStudentInfoDateControl span{font-size:9px;flex:none;color:#777f88;white-space:nowrap;}
+      #elementaryInfoModal .pcStudentInfoDateControl .modalInput{flex:1;width:100%;min-width:0;padding:0;border:0;box-shadow:none;font-size:11px;color:#263749;}
       #elementaryInfoModal .pcStudentInfoField .modalInput{width:100%;height:42px;min-width:0;border:1px solid #e4e6e9;border-radius:12px;background:#fff;padding:0 10px;font:inherit;font-size:13px;box-sizing:border-box;outline:none;color:#222;}
       #elementaryInfoModal .pcStudentInfoField .modalInput:focus{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
       #elementaryInfoModal .pcStudentInfoField .modalInput[readonly]{background:#fafbfc;color:#666;}
@@ -91,19 +95,15 @@
       <div class="pcStudentInfoForm">
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoNameInput" placeholder="학생이름"></div>
-          <div class="pcStudentInfoField"><div id="elementaryPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="elementaryInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정"></label></div>
-        </div>
-        <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><input class="modalInput" id="elementarySchoolInput" placeholder="학교"></div>
           <div class="pcStudentInfoField"><input class="modalInput" id="elementaryGradeInput" inputmode="numeric" placeholder="학년" onfocus="if(window.focusElementaryGradeInput) focusElementaryGradeInput(this)" oninput="if(window.syncElementaryInfoAgeFromGrade) syncElementaryInfoAgeFromGrade()" onblur="if(window.blurElementaryInfoGradeInput) blurElementaryInfoGradeInput()"></div>
-          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryAgeInput" placeholder="나이" readonly></div>
         </div>
         <div class="pcStudentInfoGrid3">
-          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoYearInput" type="number" min="1900" max="2100" placeholder="등록년"></div>
-          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoMonthInput" type="number" min="1" max="12" placeholder="월"></div>
-          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoDayInput" type="number" min="1" max="31" placeholder="일"></div>
+          <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="elementaryInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정"></label></div>
+          <div class="pcStudentInfoField"><div id="elementaryPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
+          <div class="pcStudentInfoField"><label class="pcStudentInfoDateControl"><span>등록일</span><input class="modalInput" id="elementaryInfoEnrolledAtInput" type="date" aria-label="등록일" min="1900-01-01" max="2100-12-31"></label></div>
         </div>
+        <input id="elementaryAgeInput" type="hidden" aria-hidden="true">
         <div class="pcStudentInfoSchedule"><div class="olliPhoneScheduleEmpty">시간표에서 불러오는 중...</div></div>
         <div class="pcStudentInfoField"><div class="modalLabel">그룹</div><div id="elementaryGroupToggleRow" class="infoToggleRow">${renderGroupButtons()}</div></div>
         ${global.renderPhoneStudentInfoManagementControls ? global.renderPhoneStudentInfoManagementControls(student, 'elementary') : ''}
@@ -134,25 +134,21 @@
   }
 
   function setDate(student) {
-    const raw = clean(student && student.enrolled_at);
-    const match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-    const values = match
-      ? [match[1], String(Number(match[2])), String(Number(match[3]))]
-      : [student && student.year || '', student && student.month || '', student && student.day || ''];
-    ['elementaryInfoYearInput','elementaryInfoMonthInput','elementaryInfoDayInput'].forEach((id, i) => {
-      const el = document.getElementById(id);
-      if (el) el.value = values[i] || '';
-    });
+    const match=clean(student && student.enrolled_at).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    const year=match?Number(match[1]):Number(student && student.year);
+    const month=match?Number(match[2]):Number(student && student.month);
+    const day=match?Number(match[3]):Number(student && student.day);
+    const input=document.getElementById('elementaryInfoEnrolledAtInput');
+    if(input)input.value=year&&month&&day?year+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0'):'';
   }
-
   function readDate() {
-    const year = Number(document.getElementById('elementaryInfoYearInput')?.value || 0);
-    const month = Number(document.getElementById('elementaryInfoMonthInput')?.value || 0);
-    const day = Number(document.getElementById('elementaryInfoDayInput')?.value || 0);
-    if (!year || !month || !day) throw new Error('등록 날짜를 확인해 주세요.');
-    const test = new Date(year, month - 1, day);
-    if (test.getFullYear() !== year || test.getMonth() !== month - 1 || test.getDate() !== day) throw new Error('등록 날짜를 확인해 주세요.');
-    return { year, month: String(month), day: String(day), enrolled_at: `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}` };
+    const raw=clean(document.getElementById('elementaryInfoEnrolledAtInput')?.value);
+    const parts=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!parts)throw new Error('등록 날짜를 확인해 주세요.');
+    const year=Number(parts[1]),month=Number(parts[2]),day=Number(parts[3]);
+    const test=new Date(year,month-1,day);
+    if(year<1900||year>2100||test.getFullYear()!==year||test.getMonth()!==month-1||test.getDate()!==day)throw new Error('등록 날짜를 확인해 주세요.');
+    return {year,month:String(month),day:String(day),enrolled_at:raw};
   }
 
   function renderPersonality(student) {

@@ -40,6 +40,10 @@
       #kinderInfoModal .pcStudentInfoGrid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
       #kinderInfoModal .pcStudentInfoGrid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
       #kinderInfoModal .pcStudentInfoField{min-width:0;}
+      #kinderInfoModal .pcStudentInfoDateControl{display:flex;align-items:center;gap:4px;width:100%;height:42px;min-width:0;padding:0 7px;border:1px solid #e4e6e9;border-radius:12px;box-sizing:border-box;background:#fff;}
+      #kinderInfoModal .pcStudentInfoDateControl:focus-within{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
+      #kinderInfoModal .pcStudentInfoDateControl span{font-size:9px;flex:none;color:#777f88;white-space:nowrap;}
+      #kinderInfoModal .pcStudentInfoDateControl .modalInput{flex:1;width:100%;min-width:0;padding:0;border:0;box-shadow:none;font-size:11px;color:#263749;}
       #kinderInfoModal .pcStudentInfoField .modalInput{width:100%;height:42px;min-width:0;border:1px solid #e4e6e9;border-radius:12px;background:#fff;padding:0 10px;font:inherit;font-size:13px;box-sizing:border-box;outline:none;color:#222;}
       #kinderInfoModal .pcStudentInfoField .modalInput:focus{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
       #kinderInfoModal .pcStudentInfoTeacherReadonly{width:100%;height:42px;min-height:42px;border:1px solid #e4e6e9;border-radius:12px;background:#fff;padding:0 10px;box-sizing:border-box;display:flex;align-items:center;justify-content:flex-start;color:#222;font-size:13px;font-weight:400;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
@@ -81,17 +85,13 @@
       <div class="pcStudentInfoForm">
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoNameInput" placeholder="학생이름"></div>
-          <div class="pcStudentInfoField"><div id="kinderPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="kinderInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정"></label></div>
-        </div>
-        <div class="pcStudentInfoGrid2">
           <div class="pcStudentInfoField"><input class="modalInput" id="kinderKindergartenInput" placeholder="유치원"></div>
           <div class="pcStudentInfoField"><input class="modalInput" id="kinderAgeInput" type="number" min="1" max="8" placeholder="나이"></div>
         </div>
         <div class="pcStudentInfoGrid3">
-          <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoYearInput" type="number" min="1900" max="2100" placeholder="등록년"></div>
-          <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoMonthInput" type="number" min="1" max="12" placeholder="월"></div>
-          <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoDayInput" type="number" min="1" max="31" placeholder="일"></div>
+          <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="kinderInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정"></label></div>
+          <div class="pcStudentInfoField"><div id="kinderPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
+          <div class="pcStudentInfoField"><label class="pcStudentInfoDateControl"><span>등록일</span><input class="modalInput" id="kinderInfoEnrolledAtInput" type="date" aria-label="등록일" min="1900-01-01" max="2100-12-31"></label></div>
         </div>
         <div class="pcStudentInfoSchedule"><div class="olliPhoneScheduleEmpty">시간표에서 불러오는 중...</div></div>
         <div class="pcStudentInfoField"><div class="modalLabel">픽업</div><div id="kinderInfoPickupReadonly" class="pcStudentInfoTeacherReadonly isEmpty">등록된 픽업 없음</div></div>
@@ -123,33 +123,21 @@
   }
 
   function setDate(student) {
-    try {
-      if (typeof setStudentInfoDateInput === 'function') {
-        setStudentInfoDateInput('kinderInfoEnrolledAtInput', student || {});
-        return;
-      }
-    } catch (_) {}
-    const raw = clean(student && student.enrolled_at);
-    const match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-    const values = match ? [match[1], String(Number(match[2])), String(Number(match[3]))] : [student && student.year || '', student && student.month || '', student && student.day || ''];
-    const ids = ['kinderInfoYearInput','kinderInfoMonthInput','kinderInfoDayInput'];
-    ids.forEach((id, i) => { const el = document.getElementById(id); if (el) el.value = values[i] || ''; });
+    const match=clean(student && student.enrolled_at).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    const year=match?Number(match[1]):Number(student && student.year);
+    const month=match?Number(match[2]):Number(student && student.month);
+    const day=match?Number(match[3]):Number(student && student.day);
+    const input=document.getElementById('kinderInfoEnrolledAtInput');
+    if(input)input.value=year&&month&&day?year+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0'):'';
   }
-
-  function readDate(student) {
-    try {
-      if (typeof readStudentInfoDateInput === 'function') {
-        const value = readStudentInfoDateInput('kinderInfoEnrolledAtInput', student || {});
-        if (value) return value;
-      }
-    } catch (_) {}
-    const year = Number(document.getElementById('kinderInfoYearInput')?.value || 0);
-    const month = Number(document.getElementById('kinderInfoMonthInput')?.value || 0);
-    const day = Number(document.getElementById('kinderInfoDayInput')?.value || 0);
-    if (!year || !month || !day) throw new Error('등록 날짜를 확인해 주세요.');
-    const test = new Date(year, month - 1, day);
-    if (test.getFullYear() !== year || test.getMonth() !== month - 1 || test.getDate() !== day) throw new Error('등록 날짜를 확인해 주세요.');
-    return { year, month: String(month), day: String(day), enrolled_at: `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}` };
+  function readDate() {
+    const raw=clean(document.getElementById('kinderInfoEnrolledAtInput')?.value);
+    const parts=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!parts)throw new Error('등록 날짜를 확인해 주세요.');
+    const year=Number(parts[1]),month=Number(parts[2]),day=Number(parts[3]);
+    const test=new Date(year,month-1,day);
+    if(year<1900||year>2100||test.getFullYear()!==year||test.getMonth()!==month-1||test.getDate()!==day)throw new Error('등록 날짜를 확인해 주세요.');
+    return {year,month:String(month),day:String(day),enrolled_at:raw};
   }
 
   function renderPersonalityFallback(student) {
