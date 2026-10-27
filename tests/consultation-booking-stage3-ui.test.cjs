@@ -78,7 +78,7 @@ test('PC starts owner-scoped data load, month is YYYY-MM, no fake reservations',
  assert.equal(calls[0].body.p_session_token,'owner-session');
  assert.equal(calls[0].body.p_academy_id,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
  assert.match(calls[0].body.p_month,/^\d{4}-(0[1-9]|1[0-2])$/);
- assert.match(root.innerHTML,/상담 현황/);
+ assert.doesNotMatch(root.innerHTML,/<h2>상담 현황<\/h2>|학원 상담 예약과 일정/,'PC booking tab must not repeat the body heading');
  assert.match(root.innerHTML,/예약 아이/);
  assert.match(root.innerHTML,/11월 9일\(월\)/);
  assert.match(root.innerHTML,/11:00/);
