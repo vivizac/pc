@@ -75,8 +75,47 @@ test('remove only PC subheading while keeping mobile heading and refresh action'
  assert.match(js,/obmHeaderPc/);
  assert.match(js,/data-action="refresh"/);
  assert.match(css,/#olliConsultationBookingPanel \.obmHeaderPc\{justify-content:flex-end/);
- assert.match(pc,/olli-booking-owner-ui\.css\?v=20261027-pc-calendar-cards-1/);
- assert.match(pc,/olli-booking-owner-ui\.js\?v=20261027-pc-calendar-cards-1/);
+ assert.match(pc,/olli-booking-owner-ui\.css\?v=20261027-pc-single-toolbar-1/);
+ assert.match(pc,/olli-booking-owner-ui\.js\?v=20261027-pc-single-toolbar-1/);
  assert.match(mobile,/olli-booking-owner-ui\.css\?v=20261027-mobile-count-circle-1/);
  assert.match(mobile,/olli-booking-owner-ui\.js\?v=20261027-mobile-count-circle-1/);
+});
+
+test('PC toolbar order and calendar-only content preserve the mobile version',()=>{
+ const start=js.indexOf(' function render(){'),end=js.indexOf(' async function refresh(){',start);
+ assert.ok(start>=0&&end>start,'use the real shared booking render function');
+ function page(mode,view,selectedDay=''){
+  const root={innerHTML:''};
+  const state={mode,view,root,selectedDay,month:'2026-11',rows:[],error:'',loading:false,ready:true,publicUrl:''};
+  const sandbox={state,escapeHtml,renderStats:()=>'<section data-stats></section>',
+   calendarHtml:()=>'<div data-calendar></div>',bookingsHtml:()=>'<div data-bookings></div>',
+   settingsHtml:()=>'<form data-settings></form>',dateLabel:()=> '11월 3일(화)'};
+  vm.runInNewContext(js.slice(start,end)+'\nrender();',sandbox);
+  return root.innerHTML;
+ }
+ const calendar=page('pc','calendar');
+ const monthIndex=calendar.indexOf('class="obmMonth"');
+ const tabIndex=calendar.indexOf('class="obmTabs"');
+ const refreshIndex=calendar.indexOf('data-action="refresh"');
+ assert.ok(calendar.includes('class="obmPcToolbar"'));
+ assert.ok(monthIndex>0&&monthIndex<tabIndex&&tabIndex<refreshIndex,'month, tabs, refresh in this order');
+ assert.ok(calendar.includes('data-calendar'));
+ assert.doesNotMatch(calendar,/data-bookings|class="obmListHeader"/);
+ const list=page('pc','list','2026-11-03');
+ assert.ok(list.includes('data-bookings')&&list.includes('날짜 선택 해제'));
+ assert.doesNotMatch(list,/data-calendar/);
+ const settings=page('pc','settings');
+ assert.ok(settings.includes('data-settings')&&settings.includes('class="obmMonth"'));
+ const mobileToday=page('mobile','today');
+ assert.doesNotMatch(mobileToday,/obmPcToolbar/);
+ assert.ok(mobileToday.includes('data-bookings')&&mobileToday.includes('전체 예약'));
+ const mobileSettings=page('mobile','settings');
+ assert.doesNotMatch(mobileSettings,/class="obmMonth"/);
+ assert.match(css,/#olliConsultationBookingPanel \.obmPcToolbar\{[^}]*display:flex;align-items:center;gap:16px;flex-wrap:nowrap/s);
+ assert.match(css,/#olliConsultationBookingPanel \.obmPcToolbar \.obmHeaderPc\{[^}]*margin:0 0 0 auto/s);
+});
+test('PC date selection switches to the preserved booking-list tab',()=>{
+ const handler=js.slice(js.indexOf(' async function click(e){'),js.indexOf("   const action=node.dataset.action;",js.indexOf(' async function click(e){')));
+ assert.ok(handler.includes("if(state.mode==='pc')state.view='list'"));
+ assert.ok(handler.includes("state.view=node.dataset.view;state.selectedDay=''"));
 });

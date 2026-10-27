@@ -130,14 +130,17 @@
       '<button type="button" role="tab" aria-selected="'+(state.view===v)+'" class="'+(state.view===v?'active':'')+'" data-view="'+v+'">'+txt+'</button>').join('')+'</div>';
    const months='<div class="obmMonth"><button type="button" data-action="month-prev" aria-label="이전 달">‹</button><strong>'+escapeHtml(state.month)+'</strong><button type="button" data-action="month-next" aria-label="다음 달">›</button></div>';
    const error=state.error?'<div class="obmError" role="alert">'+escapeHtml(state.error)+'</div>':'';
+   const pcCalendar=state.mode==='pc'&&state.view==='calendar';
+   const bookingList='<div class="obmListHeader"><strong>'+(state.selectedDay&&state.mode==='pc'?escapeHtml(dateLabel(state.selectedDay)):'예약 목록')+'</strong>'+
+     (state.selectedDay&&state.mode==='pc'?'<button type="button" data-action="clear-day">날짜 선택 해제</button>':'')+'</div>'+bookingsHtml();
    const content=state.loading?'<div class="obmEmptyMessage">예약 정보를 불러오는 중입니다.</div>'
     : !state.ready?'<div class="obmEmptyMessage">상담 예약 정보를 연결하지 못했습니다. 서버 설정과 로그인 상태를 확인해 주세요.</div>'
     : state.view==='settings'?settingsHtml()
-    :renderStats()+(state.mode==='pc'&&state.view==='calendar'?calendarHtml():'')+
-     '<div class="obmListHeader"><strong>'+(state.selectedDay&&state.mode==='pc'?escapeHtml(dateLabel(state.selectedDay)):'예약 목록')+'</strong>'+
-       (state.selectedDay&&state.mode==='pc'?'<button type="button" data-action="clear-day">날짜 선택 해제</button>':'')+'</div>'+
-       bookingsHtml();
-   root.innerHTML='<div class="obmLayout">'+header+nav+(state.view==='settings'?'':months)+error+content+
+    :renderStats()+(pcCalendar?calendarHtml():'')+(pcCalendar?'':bookingList);
+   // PC only: month, view tabs, and refresh share a single toolbar.
+   const toolbar=state.mode==='pc'?'<div class="obmPcToolbar">'+months+nav+header+'</div>'
+     :header+nav+(state.view==='settings'?'':months);
+   root.innerHTML='<div class="obmLayout">'+toolbar+error+content+
     '<div class="obmFooter"><div class="obmLinkRow"><span>알림톡 승인 템플릿에 등록할 <strong>학원 통합 예약 링크</strong>입니다. 학생별 링크를 발급하지 않습니다.</span><button type="button" data-action="copy-public-link">통합 링크 복사</button></div>'+ (state.publicUrl ? '<p class="obmLinkAddress">'+escapeHtml(state.publicUrl)+'</p>':'')+'</div>'+
     '</div><div class="obmModalHost" data-modal-host></div>';
  }
@@ -221,7 +224,7 @@
    if(!(e.target instanceof Element))return;
    const node=e.target.closest('[data-action],[data-view],[data-day]');
    if(!node||!state.root.contains(node))return;
-   if(node.matches('[data-day]')){state.selectedDay=node.dataset.day;render();return;}
+   if(node.matches('[data-day]')){state.selectedDay=node.dataset.day;if(state.mode==='pc')state.view='list';render();return;}
    if(node.matches('[data-view]')){state.view=node.dataset.view;state.selectedDay='';render();return;}
    const action=node.dataset.action;
    if(action==='close'){close();return;}

@@ -80,7 +80,7 @@ test('PC starts owner-scoped data load, month is YYYY-MM, no fake reservations',
  assert.match(calls[0].body.p_month,/^\d{4}-(0[1-9]|1[0-2])$/);
  assert.doesNotMatch(root.innerHTML,/<h2>상담 현황<\/h2>|학원 상담 예약과 일정/,'PC booking tab must not repeat the body heading');
  assert.match(root.innerHTML,/예약 아이/);
- assert.match(root.innerHTML,/11월 9일\(월\)/);
+ assert.doesNotMatch(root.innerHTML,/class="obmListHeader"/,'calendar no longer duplicates the appointment list beneath the date grid');
  assert.match(root.innerHTML,/11:00/);
  assert.doesNotMatch(root.innerHTML,/<small>11월 9일/);
  assert.match(root.innerHTML,/캘린더/);
