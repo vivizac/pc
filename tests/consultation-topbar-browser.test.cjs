@@ -50,7 +50,14 @@ test('consultation tabs replace the white PC topbar title, not the page body',as
   const top='#olliPcTopbarTitle';
   const booking=page.locator(top+' [data-consultation-page-tab="booking"]');
   const survey=page.locator(top+' [data-consultation-page-tab="survey"]');
-  assert.equal(await page.locator(top+' [role=tablist]').count(),1);
+  const debug=await page.evaluate(()=>({
+   title:document.getElementById('olliPcTopbarTitle')?.innerHTML,
+   section:window.OlliPcCore?.state?.section,
+   shell:document.getElementById('olliPcShell')?.dataset?.pcSection,
+   survey:document.getElementById('consultationSurveyScreen')?.style.display,
+   errors:window.__consultationDebugError||null
+  }));
+  assert.equal(await page.locator(top+' [role=tablist]').count(),1,'missing topbar tabs: '+JSON.stringify(debug)+' JS='+errors.join(';'));
   assert.equal(await page.locator(top+' [role=tab]').count(),2);
   assert.equal(await page.locator('#consultationSurveyScreen .consultationPageTabs').count(),0,
     'there must be no duplicate tab bar below the white title');
