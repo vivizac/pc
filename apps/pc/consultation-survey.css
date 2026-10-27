@@ -97,10 +97,13 @@ body.olliPcApp #consultationSurveyScreen{background:var(--pc-bg);overflow:auto;a
 @media(max-width:900px){.consultationManagerGrid{grid-template-columns:1fr}.consultationDetailCard{position:static}.consultationManagerHead{flex-direction:column}.consultationManagerActions{width:100%}.consultationListHeader{display:none}.consultationListRow{grid-template-columns:1fr auto;grid-template-areas:'name status' 'meta date'}.consultationStudentName{grid-area:name}.consultationListRow>.consultationCellSub:nth-child(2){grid-area:meta}.consultationListRow>.consultationCellSub:nth-child(3){grid-area:date}.consultationStatus{grid-area:status}}
 
 /* Consultation records: one page, two first-level tabs for booking and survey. */
-.consultationPageTabs{display:flex;gap:6px;align-items:center;margin:0 0 22px;border-bottom:1px solid #e2e6ec;padding:0 0 12px}
+.consultationPageTabs{display:flex;gap:6px;align-items:center}
+/* Put these two tabs in the PC shell's white topbar, at the old title location. */
+#olliPcTopbarTitle .consultationTopbarTabs{margin:0;border:0;padding:0;min-width:0}
 .consultationPageTab{border:1px solid transparent;background:#eef1f5;color:#737b87;padding:11px 20px;border-radius:11px;font:inherit;font-size:14px;font-weight:800;letter-spacing:-.035em;cursor:pointer;white-space:nowrap}
 .consultationPageTab:hover{color:#267ad1;background:#e8f2ff}
 .consultationPageTab.active,.consultationPageTab[aria-selected="true"]{border-color:#cfe3ff;background:#eaf4ff;color:#177de2}
+#olliPcTopbarTitle .consultationPageTab:focus-visible{outline:2px solid #177de2;outline-offset:2px}
 #olliConsultationBookingPanel[hidden],#olliConsultationSurveyPanel[hidden]{display:none!important}
 #olliConsultationBookingPanel,#olliConsultationSurveyPanel{width:100%;min-width:0}
 @media(max-width:640px){.consultationPageTabs{gap:4px}.consultationPageTab{padding:10px 13px;font-size:12.5px}}
