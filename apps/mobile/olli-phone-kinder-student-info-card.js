@@ -43,7 +43,7 @@
       #kinderInfoModal .pcStudentInfoDateControl{display:flex;align-items:center;gap:4px;width:100%;height:42px;min-width:0;padding:0 7px;border:1px solid #e4e6e9;border-radius:12px;box-sizing:border-box;background:#fff;}
       #kinderInfoModal .pcStudentInfoDateControl:focus-within{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
       #kinderInfoModal .pcStudentInfoDateControl span{font-size:9px;flex:none;color:#777f88;white-space:nowrap;}
-      #kinderInfoModal .pcStudentInfoDateControl .modalInput{flex:1;width:100%;min-width:0;padding:0;border:0;box-shadow:none;font-size:11px;color:#263749;}
+      #kinderInfoModal .pcStudentInfoField .pcStudentInfoDateControl .modalInput{flex:1;width:100%;min-width:0;padding:0;border:0;box-shadow:none;font-size:11px;color:#263749;}
       #kinderInfoModal .pcStudentInfoField .modalInput{width:100%;height:42px;min-width:0;border:1px solid #e4e6e9;border-radius:12px;background:#fff;padding:0 10px;font:inherit;font-size:13px;box-sizing:border-box;outline:none;color:#222;}
       #kinderInfoModal .pcStudentInfoField .modalInput:focus{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
       #kinderInfoModal .pcStudentInfoTeacherReadonly{width:100%;height:42px;min-height:42px;border:1px solid #e4e6e9;border-radius:12px;background:#fff;padding:0 10px;box-sizing:border-box;display:flex;align-items:center;justify-content:flex-start;color:#222;font-size:13px;font-weight:400;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}

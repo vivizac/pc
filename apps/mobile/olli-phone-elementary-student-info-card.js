@@ -42,7 +42,7 @@
       #elementaryInfoModal .pcStudentInfoDateControl{display:flex;align-items:center;gap:4px;width:100%;height:42px;min-width:0;padding:0 7px;border:1px solid #e4e6e9;border-radius:12px;box-sizing:border-box;background:#fff;}
       #elementaryInfoModal .pcStudentInfoDateControl:focus-within{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
       #elementaryInfoModal .pcStudentInfoDateControl span{font-size:9px;flex:none;color:#777f88;white-space:nowrap;}
-      #elementaryInfoModal .pcStudentInfoDateControl .modalInput{flex:1;width:100%;min-width:0;padding:0;border:0;box-shadow:none;font-size:11px;color:#263749;}
+      #elementaryInfoModal .pcStudentInfoField .pcStudentInfoDateControl .modalInput{flex:1;width:100%;min-width:0;padding:0;border:0;box-shadow:none;font-size:11px;color:#263749;}
       #elementaryInfoModal .pcStudentInfoField .modalInput{width:100%;height:42px;min-width:0;border:1px solid #e4e6e9;border-radius:12px;background:#fff;padding:0 10px;font:inherit;font-size:13px;box-sizing:border-box;outline:none;color:#222;}
       #elementaryInfoModal .pcStudentInfoField .modalInput:focus{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
       #elementaryInfoModal .pcStudentInfoField .modalInput[readonly]{background:#fafbfc;color:#666;}

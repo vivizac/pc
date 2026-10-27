@@ -79,8 +79,8 @@ test('changed student-info sources are cache-busted together', () => {
   for (const token of [
     'olli-student-schedule-runtime.js?v=20261013-feedback-teacher-1',
     'olli-phone-student-schedule-editor.js?v=20261013-feedback-teacher-1',
-    'olli-phone-kinder-student-info-card.js?v=20261019-tuition-1',
-    'olli-phone-elementary-student-info-card.js?v=20261019-tuition-1',
+    'olli-phone-kinder-student-info-card.js?v=20261027-student-info-bluegray-1',
+    'olli-phone-elementary-student-info-card.js?v=20261027-student-info-bluegray-1',
     'olli-data-student-operations.js?v=20261013-feedback-teacher-1'
   ]) assert.ok(html.includes(token), `missing cache token: ${token}`);
 });
