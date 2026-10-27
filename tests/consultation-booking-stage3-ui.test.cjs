@@ -39,8 +39,16 @@ test('PC consultation booking is a tab inside 상담기록, not standalone sideb
  assert.doesNotMatch(shell,/hideMainScreensExcept\('olliBookingPcScreen'\)/);
  assert.match(pc,/olli-booking-owner-ui\.js/);
  const survey=require('node:fs').readFileSync(require('node:path').join(__dirname,'../apps/pc/consultation-survey-core.js'),'utf8');
- assert.match(survey,/상담예약현황/);
- assert.match(survey,/설문기록/);
+ assert.match(shell,/consultationTopbarTabs/);
+ assert.match(shell,/consultationPageTabBooking/);
+ assert.match(shell,/consultationPageTabSurvey/);
+ assert.match(shell,/aria-controls="olliConsultationBookingPanel"/);
+ assert.match(shell,/aria-controls="olliConsultationSurveyPanel"/);
+ assert.match(shell,/상담예약현황/);
+ assert.match(shell,/설문기록/);
+ assert.doesNotMatch(survey,/<div class="consultationPageTabs"/);
+ assert.match(survey,/#olliPcTopbarTitle \\[data-consultation-page-tab\\]/);
+ assert.match(survey,/handleConsultationTopbarKeydown/);
  assert.match(survey,/role="tabpanel"/);
 });
 test('mobile dashboard shortcut is additive and uses dedicated mobile view',()=>{
