@@ -126,6 +126,17 @@
       if (state.section === 'schedule') {
         title.textContent = '';
         if (typeof global.olliTtRenderScheduleHeader === 'function') global.olliTtRenderScheduleHeader();
+      } else if (state.section === SECTION.CONSULTATION) {
+        // Replace the white topbar's 상담기록 title, NOT a heading inside the page.
+        const activeTab = typeof global.getConsultationPageTab === 'function'
+          ? global.getConsultationPageTab() : 'booking';
+        title.innerHTML = '<div class="consultationPageTabs consultationTopbarTabs" role="tablist" aria-label="상담기록 화면 선택">'
+          + '<button type="button" class="consultationPageTab' + (activeTab === 'booking' ? ' active' : '') + '" role="tab" id="consultationPageTabBooking" aria-controls="olliConsultationBookingPanel" aria-selected="' + (activeTab === 'booking') + '" data-consultation-page-tab="booking" onclick="setConsultationPageTab(\'booking\')" onkeydown="handleConsultationTopbarKeydown(event)">상담예약현황</button>'
+          + '<button type="button" class="consultationPageTab' + (activeTab === 'survey' ? ' active' : '') + '" role="tab" id="consultationPageTabSurvey" aria-controls="olliConsultationSurveyPanel" aria-selected="' + (activeTab === 'survey') + '" data-consultation-page-tab="survey" onclick="setConsultationPageTab(\'survey\')" onkeydown="handleConsultationTopbarKeydown(event)">설문기록</button>'
+          + '</div>';
+        title.querySelectorAll('[data-consultation-page-tab]').forEach((button) => {
+          button.tabIndex = button.dataset.consultationPageTab === activeTab ? 0 : -1;
+        });
       } else title.textContent = sectionTitles[state.section] || 'OLLI';
     }
 
