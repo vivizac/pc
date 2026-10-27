@@ -73,12 +73,24 @@
    const days=new Date(Date.UTC(y,m,0)).getUTCDate();
    const padding=(new Date(Date.UTC(y,m-1,1)).getUTCDay()+6)%7;
    const byDay=new Map();
-   state.rows.filter(r=>r.status==='confirmed').forEach(r=>{const d=kstParts(r.start_at).ymd;byDay.set(d,(byDay.get(d)||0)+1);});
+   // This view already receives the owner's authenticated month-scoped booking
+   // rows. Cancellations are not appointments, and no extra RPC is necessary.
+   state.rows.filter(r=>r.status==='confirmed'&&r.start_at).forEach(r=>{
+     const parts=kstParts(r.start_at);
+     if(!byDay.has(parts.ymd))byDay.set(parts.ymd,[]);
+     byDay.get(parts.ymd).push({name:String(r.name||'학생'),time:parts.hm});
+   });
    const heads=['월','화','수','목','금','토','일'].map(s=>'<span class="obmDayHead">'+s+'</span>').join('');
    let cells=Array.from({length:padding},()=>'<span class="obmEmpty" aria-hidden="true"></span>').join('');
    for(let day=1;day<=days;day++){
-     const d=state.month+'-'+String(day).padStart(2,'0'),cnt=byDay.get(d)||0;
-     cells+='<button class="obmCalDay'+(d===today()?' isToday':'')+(d===state.selectedDay?' selected':'')+'" type="button" data-day="'+d+'" aria-pressed="'+(d===state.selectedDay)+'"><span>'+day+'</span>'+(cnt?'<b>'+cnt+'</b>':'')+'</button>';
+     const d=state.month+'-'+String(day).padStart(2,'0');
+     const appointments=(byDay.get(d)||[]).sort((a,b)=>a.time.localeCompare(b.time)||a.name.localeCompare(b.name));
+     const cards=appointments.map(a=>'<span class="obmCalBooking" title="'+escapeHtml(a.time+' '+a.name)+'">'
+       +'<span class="obmCalBookingTime">'+escapeHtml(a.time)+'</span>'
+       +'<strong class="obmCalBookingName">'+escapeHtml(a.name)+'</strong></span>').join('');
+     cells+='<button class="obmCalDay'+(d===today()?' isToday':'')+(d===state.selectedDay?' selected':'')
+       +'" type="button" data-day="'+d+'" aria-pressed="'+(d===state.selectedDay)+'">'
+       +'<span class="obmCalDate">'+day+'</span>'+cards+'</button>';
    }
    return '<div class="obmCalendar" aria-label="월간 상담 예약 달력">'+heads+cells+'</div>';
  }
@@ -107,8 +119,8 @@
  }
  function render(){
    const root=state.root;if(!root)return;
-   const title=state.mode==='pc'?'상담 현황':'상담 현황';
-   let header='<div class="obmHeader"><div><h2>'+title+'</h2><p>학원 상담 예약과 일정</p></div><div class="obmHeaderButtons">'+
+   const mobileTitle=state.mode==='mobile'?'<div><h2>상담 현황</h2><p>학원 상담 예약과 일정</p></div>':'';
+   let header='<div class="obmHeader'+(state.mode==='pc'?' obmHeaderPc':'')+'">'+mobileTitle+'<div class="obmHeaderButtons">'+
     (state.mode==='mobile'?'<button type="button" data-action="close" aria-label="상담 현황 닫기">닫기</button>':'')+
     '<button type="button" data-action="refresh" aria-label="예약 내역 새로고침">새로고침</button></div></div>';
    let tabs=state.mode==='pc'
