@@ -1,4 +1,5 @@
 'use strict';
+const { isAllowedConsultationBookingUrl } = require('../../olli-booking-url-policy.cjs');
 const { createHmac, randomBytes, timingSafeEqual } = require('node:crypto');
 const { calculateOlliConsultationTasks, normalizeOlliConsultationRulesByType } = require('../../olli-consultation-task-core.js');
 
@@ -87,9 +88,7 @@ function consultationGivenName(fullName) {
 function messageFor(snapshot, student, tasks) {
   const config = snapshot.settings;
   const template = selectTemplate(config, student, tasks);
-  let url;
-  try { url = new URL(config.booking_url); } catch { throw problem('BOOKING_URL_INVALID', 400); }
-  if (url.protocol !== 'https:' || !(url.hostname === 'naver.com' || url.hostname.endsWith('.naver.com') || url.hostname === 'naver.me') || url.username || url.password || (url.port && url.port !== '443')) throw problem('BOOKING_URL_INVALID', 400);
+  if (!isAllowedConsultationBookingUrl(config.booking_url)) throw problem('BOOKING_URL_INVALID', 400);
   if (!/^01[016789]\d{7,8}$/.test(student.phone || '')) throw problem('CONTACT_INVALID', 400);
   if (!template.template_confirmed || !config.channel_id || !template.template_id) throw problem('TEMPLATE_NOT_READY', 400);
   const variables = {
