@@ -43,6 +43,12 @@ on:
       - 'tests/consultation-booking-stage4*'
       - 'tests/observation-roster-weekend-meta.test.cjs'
       - 'apps/pc/olli-record-list-view.js'
+      - 'apps/pc/pc-shell.js'
+      - 'apps/pc/consultation-survey-core.js'
+      - 'apps/pc/consultation-survey.js'
+      - 'apps/pc/consultation-survey.css'
+      - 'apps/pc/index.html'
+      - 'tests/consultation-topbar-browser.test.cjs'
       - 'apps/mobile/olli-observation-roster-phone.js'
       - 'packages/common/api/_lib/olli-booking-handler.cjs'
       - 'supabase/migrations/*_olli_booking_parent_stage2.sql'
@@ -160,3 +166,5 @@ jobs:
         run: tests/consultation-messages/node_modules/.bin/playwright install --with-deps chromium
       - name: Exercise PC and mobile width in headless browser with all API calls mocked
         run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-booking-browser.test.cjs
+      - name: Verify PC consultation tabs physically occupy the top white bar
+        run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-topbar-browser.test.cjs
