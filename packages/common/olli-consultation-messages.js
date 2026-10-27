@@ -492,18 +492,17 @@
       const success = document.execCommand('copy'); field.remove();
       if (!success) throw new Error('복사 권한을 확인해 주세요.');
     }
-    const isIconButton = button.dataset.consultationCopyIcon === 'true';
-    if (isIconButton) {
-      button.innerHTML = '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>';
-      button.setAttribute('aria-label', '복사 완료');
-    } else button.textContent = '복사 완료';
+    // Mobile controls the icon directly from its click handler. PC keeps its
+    // existing copy-success label and 1.8-second reset unchanged.
+    if (button.dataset.consultationCopyIcon === 'true') return;
+    button.textContent = '복사 완료';
     setTimeout(() => {
       if (!button.isConnected) return;
-      if (isIconButton) {
-        button.innerHTML = manualConsultationCopyIconSvg();
-        button.setAttribute('aria-label', '학생 상담 안내문 복사');
-      } else button.textContent = '안내문 복사';
+      button.textContent = '안내문 복사';
     }, 1800);
+  }
+  function manualConsultationCheckIconSvg() {
+    return '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>';
   }
   function manualConsultationCopyIconSvg() {
     // Match the PC feedback copy control's monochrome, 20px outline icon.
@@ -531,6 +530,23 @@
       button.addEventListener('click', async event => {
         event.preventDefault(); event.stopPropagation();
         button.disabled = true;
+        if (mobile) {
+          // Show check immediately, before any network request. This is a
+          // tap acknowledgement, not a claim that clipboard write succeeded.
+          button.innerHTML = manualConsultationCheckIconSvg();
+          let copyError = null;
+          try { await copyManualConsultationNotice(card, button); }
+          catch (error) { copyError = error; }
+          finally {
+            // Restore as soon as the clipboard promise settles (also on error).
+            button.innerHTML = manualConsultationCopyIconSvg();
+            button.setAttribute('aria-label', '학생 상담 안내문 복사');
+            button.disabled = false;
+          }
+          if (copyError) alert(copyError.message || '안내문 복사에 실패했습니다.');
+          return;
+        }
+        // PC behavior must remain unchanged.
         try { await copyManualConsultationNotice(card, button); }
         catch(error) { alert(error.message || '안내문 복사에 실패했습니다.'); }
         finally { button.disabled = false; }

@@ -112,3 +112,65 @@ test('restored scripts and stylesheet are explicitly cache-busted for installed 
   assert.match(html,/olli-settings-server-sync\.js\?v=20261024-remove-consultation-entry-1/);
   assert.match(html,/olli-consultation-messages\.js\?v=20261025-copy-height-24-1/);
 });
+
+test('mobile manual notice icon acknowledges tap immediately and restores on clipboard settlement, without affecting PC', async () => {
+  const vm = require('node:vm');
+  const start = copy.indexOf("      button.addEventListener('click', async event => {");
+  const end = copy.indexOf('      // Place the copy control immediately', start);
+  assert.ok(start > 0 && end > start, 'use the original card click handler');
+
+  function scenario(mobile) {
+    let callback, resolveCopy, rejectCopy;
+    const errors = [];
+    const attrs = {};
+    const copyPromise = new Promise((resolve, reject) => { resolveCopy = resolve; rejectCopy = reject; });
+    const button = {
+      dataset:{ consultationCopyIcon:mobile ? 'true' : undefined },
+      textContent:'안내문 복사',
+      innerHTML:mobile ? 'COPY' : '',
+      disabled:false,
+      setAttribute(name, value){ attrs[name] = value; },
+      addEventListener(type, fn){ assert.equal(type, 'click'); callback=fn; }
+    };
+    vm.runInNewContext(copy.slice(start,end), {
+      button, mobile, card:{}, alert:message=>errors.push(message),
+      manualConsultationCheckIconSvg:()=> 'CHECK',
+      manualConsultationCopyIconSvg:()=> 'COPY',
+      copyManualConsultationNotice:()=>copyPromise
+    });
+    const finished = callback({ preventDefault(){}, stopPropagation(){} });
+    return { button, attrs, errors, resolveCopy, rejectCopy, finished };
+  }
+
+  const mobileSuccess = scenario(true);
+  assert.equal(mobileSuccess.button.innerHTML, 'CHECK', 'check displays synchronously before server/clipboard finishes');
+  assert.equal(mobileSuccess.button.disabled,true);
+  mobileSuccess.resolveCopy();
+  await mobileSuccess.finished;
+  assert.equal(mobileSuccess.button.innerHTML, 'COPY', 'copy icon returns immediately when clipboard resolves');
+  assert.equal(mobileSuccess.button.disabled,false);
+  assert.equal(mobileSuccess.attrs['aria-label'],'학생 상담 안내문 복사');
+
+  const mobileFailure = scenario(true);
+  assert.equal(mobileFailure.button.innerHTML, 'CHECK');
+  mobileFailure.rejectCopy(new Error('복사 권한이 없습니다.'));
+  await mobileFailure.finished;
+  assert.equal(mobileFailure.button.innerHTML,'COPY', 'failed copy does not leave misleading check');
+  assert.equal(mobileFailure.button.disabled,false);
+  assert.deepEqual(mobileFailure.errors,['복사 권한이 없습니다.']);
+
+  const pc = scenario(false);
+  assert.equal(pc.button.innerHTML,'', 'PC has no early check icon');
+  assert.equal(pc.button.textContent,'안내문 복사');
+  pc.resolveCopy();
+  await pc.finished;
+  assert.equal(pc.button.innerHTML,'');
+  assert.equal(pc.button.disabled,false);
+
+  const copyStart=copy.indexOf('  async function copyManualConsultationNotice(');
+  const copyEnd=copy.indexOf('  function manualConsultationCheckIconSvg()',copyStart);
+  const originalCopyFlow=copy.slice(copyStart,copyEnd);
+  assert.match(originalCopyFlow,/if \(button\.dataset\.consultationCopyIcon === 'true'\) return/);
+  assert.match(originalCopyFlow,/button\.textContent = '복사 완료'/);
+  assert.match(originalCopyFlow,/\}, 1800\)/, 'PC confirmation display timing is preserved');
+});
