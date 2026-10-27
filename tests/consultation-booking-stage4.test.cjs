@@ -208,3 +208,25 @@ test('a nonexistent booking or wrong number cannot receive a scoped token',async
  assert.match(schema,/TOO_MANY_ATTEMPTS/);
  assert.match(schema,/from public,anon,authenticated/);
 });
+
+// Stage 5: retain legacy Naver URLs and restrict the new Oli reservation URL
+// to the configured first-party HTTPS host, exact page, and one academy slug.
+test('consultation Solapi booking URL policy accepts only approved destinations', () => {
+ const {isAllowedConsultationBookingUrl:allow}=require('../packages/common/olli-booking-url-policy.cjs');
+ const env={OLLI_BOOKING_PUBLIC_ORIGIN:'https://booking.olli.example/'};
+ const slug='0123456789abcdef0123456789abcdef0123';
+ assert.equal(allow('https://booking.naver.com/booking/5',env),true);
+ assert.equal(allow('https://naver.me/example',env),true);
+ assert.equal(allow('https://booking.olli.example/consultation-booking.html?academy='+slug,env),true);
+ for (const bad of [
+   'http://booking.olli.example/consultation-booking.html?academy='+slug,
+   'https://booking.olli.example.evil.com/consultation-booking.html?academy='+slug,
+   'https://booking.olli.example/consultation-booking.html?academy='+slug+'&redirect=1',
+   'https://booking.olli.example/consultation-booking.html?academy='+slug+'#frag',
+   'https://booking.olli.example/other?academy='+slug,
+   'https://booking.olli.example/consultation-booking.html?academy=abc',
+   'https://naver.com.evil.example/booking/5',
+   'javascript:alert(1)'
+ ]) assert.equal(allow(bad,env),false,bad);
+ assert.equal(allow('https://booking.olli.example/consultation-booking.html?academy='+slug,{}),false);
+});
