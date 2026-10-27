@@ -300,20 +300,26 @@
  const MOBILE_SHORTCUT_CACHE_PREFIX='olli_booking_today_count_v1:';
  const MOBILE_SHORTCUT_RESUME_THROTTLE_MS=20000;
  const MOBILE_SHORTCUT_REVALIDATE_MS=300000;
+ const mobileShortcutMemoryCache=new Map();
  function shortcutScope(academyId,day){return String(academyId||'')+'|'+String(day||'');}
  function readMobileShortcutCount(academyId,day){
    if(!academyId||!day)return null;
+   const memory=mobileShortcutMemoryCache.get(shortcutScope(academyId,day));
+   if(memory)return memory;
    try{
      const saved=JSON.parse(localStorage.getItem(MOBILE_SHORTCUT_CACHE_PREFIX+academyId)||'null');
-     return saved?.day===day && Number.isSafeInteger(saved.count) && saved.count>=0 ? saved : null;
+     if(saved?.day!==day||!Number.isSafeInteger(saved.count)||saved.count<0)return null;
+     mobileShortcutMemoryCache.set(shortcutScope(academyId,day),saved);
+     return saved;
    }catch{return null;}
  }
  function rememberMobileShortcutCount(academyId,day,count){
    if(!academyId||!day||!Number.isSafeInteger(count)||count<0)return;
+   const saved={day,count,checkedAt:Date.now()};
+   mobileShortcutMemoryCache.set(shortcutScope(academyId,day),saved);
    try{
-     localStorage.setItem(MOBILE_SHORTCUT_CACHE_PREFIX+academyId,
-       JSON.stringify({day,count,checkedAt:Date.now()}));
-   }catch{/* Browsers with restricted storage still display the fresh server value. */}
+     localStorage.setItem(MOBILE_SHORTCUT_CACHE_PREFIX+academyId,JSON.stringify(saved));
+   }catch{/* Session-local memory remains available when device storage is blocked. */}
  }
  function confirmedTodayCount(rows){
    const day=today();
