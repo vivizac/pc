@@ -44,9 +44,9 @@
 }
 .olliTuitionDialog button.primary,
 .olliTuitionStudent button.primary {
-  background: #172c29;
+  background: #0A84FF;
   color: #fff;
-  border-color: #172c29;
+  border-color: #0A84FF;
 }
 .olliTuitionDialog button:disabled,
 .olliTuitionStudent button:disabled {
@@ -97,7 +97,7 @@
 }
 .olliTuitionRate {
   padding: 12px;
-  background: #f6f8f8;
+  background: #F5F7FA;
   border-radius: 14px;
 }
 .olliTuitionRate strong {
@@ -116,11 +116,11 @@
 .olliTuitionNotice {
   padding: 12px;
   margin: 12px 0;
-  background: #fff8e9;
+  background: #F1F6FF;
   border-radius: 12px;
   font-size: 13px;
   line-height: 1.5;
-  color: #7b5d20;
+  color: #48627F;
 }
 .olliTuitionError {
   color: #b54436;
@@ -148,7 +148,7 @@
 .olliTuitionStudent {
   margin: 14px 0;
   padding: 15px;
-  border: 1px solid #e3e8e8;
+  border: 1px solid #E3E8EF;
   border-radius: 15px;
   background: #fff;
 }
@@ -175,7 +175,7 @@
 .olliTuitionPriceList span {
   padding: 5px 8px;
   border-radius: 8px;
-  background: #f1f5f4;
+  background: #EEF6FF;
   font-size: 11px;
 }
 .olliTuitionStudentForm {
@@ -197,10 +197,10 @@
 .olliTuitionFinanceTools button {
   min-height: 36px;
   padding: 0 12px;
-  border: 1px solid #e3e7e7;
+  border: 1px solid #E3E8EF;
   border-radius: 10px;
   background: #fff;
-  color: #52655d;
+  color: #526477;
   cursor: pointer;
   font: inherit;
   font-size: 12px;

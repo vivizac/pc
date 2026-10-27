@@ -1,4 +1,4 @@
-.olliPayrollPage{max-width:760px;margin:0 auto;padding:0 2px 34px;color:#151515}
+.olliPayrollPage{max-width:760px;margin:0 auto;padding:0 2px 34px;color:#202733;background:#F7F9FC}
 .olliPayrollIntro{margin:0 0 14px;padding:18px;border:1px solid #e9e9e9;border-radius:22px;background:#fff}
 .olliPayrollIntroTitle{font-size:22px;font-weight:760;letter-spacing:-.05em;line-height:1.35}
 .olliPayrollIntroText{margin-top:8px;color:#7b7b7b;font-size:13px;line-height:1.55;letter-spacing:-.03em}
@@ -114,8 +114,8 @@
 .olliExpenseSectionHead{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin:0 0 14px;padding:18px;border:1px solid #e9e9e9;border-radius:22px;background:#fff}
 .olliExpenseSectionTitle{font-size:19px;font-weight:780;letter-spacing:-.045em;color:#151515}
 .olliExpenseSectionText{max-width:470px;margin-top:6px;color:#858585;font-size:12.5px;line-height:1.55;letter-spacing:-.025em}
-.olliExpenseTotal{flex:0 0 auto;min-width:145px;padding:11px 13px;border-radius:15px;background:#f3f8f6;text-align:right}
-.olliExpenseTotal span{display:block;color:#71837c;font-size:11px;font-weight:700}
+.olliExpenseTotal{flex:0 0 auto;min-width:145px;padding:11px 13px;border-radius:15px;background:#F1F6FF;text-align:right}
+.olliExpenseTotal span{display:block;color:#697E98;font-size:11px;font-weight:700}
 .olliExpenseTotal strong{display:block;margin-top:4px;color:#111;font-size:17px;letter-spacing:-.025em}
 .olliPayrollExpenseTotal{margin-top:12px;text-align:left}
 .olliExpenseMissingNotice{margin:-4px 0 14px;padding:11px 13px;border-radius:14px;background:#fff8eb;color:#8b6c2d;font-size:12px;line-height:1.45}
@@ -173,7 +173,7 @@
 .olliFinanceSummaryHero{display:flex;flex-direction:column;justify-content:center;min-height:94px;padding:17px 18px}
 .olliFinanceSummaryHero span{color:#7d7d7d;font-size:11.5px;font-weight:700}
 .olliFinanceSummaryHero strong{display:block;margin-top:7px;color:#111;font-size:26px;line-height:1.15;letter-spacing:-.04em}
-.olliFinanceSummaryStatus{display:inline-flex;align-items:center;align-self:flex-start;min-height:24px;margin-top:10px;padding:0 9px;border-radius:999px;background:#f0f5f3;color:#647b72;font-size:10.5px;font-weight:740}
+.olliFinanceSummaryStatus{display:inline-flex;align-items:center;align-self:flex-start;min-height:24px;margin-top:10px;padding:0 9px;border-radius:999px;background:#EEF6FF;color:#426A97;font-size:10.5px;font-weight:740}
 .olliFinanceSummary.is-incomplete .olliFinanceSummaryStatus{background:#fff5e5;color:#8a6422}
 .olliFinanceSummaryBreakdown{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .olliFinanceSummaryBreakdown>div{display:flex;flex-direction:column;justify-content:center;min-width:0;padding:15px}
@@ -212,15 +212,15 @@ body.olliPcApp .olliFinancePayrollColumn{display:block}
 .olliPayrollWarnings{display:grid;gap:7px;margin:0 0 12px}
 .olliPayrollWarning{padding:11px 12px;border-radius:14px;background:#fff6e8;color:#8a641f;font-size:11.5px;line-height:1.5;font-weight:650}
 
-.olliPayrollFinalizedBadge{display:inline-flex;align-items:center;height:20px;margin-left:7px;padding:0 7px;border-radius:999px;background:#eef4f1;color:#526b62;font-size:9.5px;font-weight:760;vertical-align:1px}
+.olliPayrollFinalizedBadge{display:inline-flex;align-items:center;height:20px;margin-left:7px;padding:0 7px;border-radius:999px;background:#EEF6FF;color:#426A97;font-size:9.5px;font-weight:760;vertical-align:1px}
 .olliPayrollTeacherCard.is-finalized{background:#fcfcfc}
 .olliPayrollTeacherCard.is-finalized input:disabled,
 .olliPayrollTeacherCard.is-finalized select:disabled{opacity:.72;cursor:default;-webkit-text-fill-color:#555;color:#555}
-.olliPayrollTeacherCard.is-finalized .olliPayrollSaveButton:disabled{opacity:1;background:#eef1f0;color:#718078;cursor:default}
+.olliPayrollTeacherCard.is-finalized .olliPayrollSaveButton:disabled{opacity:1;background:#E9EEF5;color:#697E98;cursor:default}
 
 .olliExpenseHeadSide{display:flex;flex-direction:column;align-items:stretch;gap:8px;flex:0 0 auto}
 .olliExpenseHistoryToggle{height:34px;border:1px solid #e5e5e5;border-radius:11px;background:#fff;color:#777;font-family:inherit;font-size:11px;font-weight:730;cursor:pointer}
-.olliExpenseHistoryToggle.is-active{background:#f3f6f5;color:#4f655d;border-color:#dfe7e3}
+.olliExpenseHistoryToggle.is-active{background:#F1F5FA;color:#426A97;border-color:#DCE5EF}
 .olliExpenseHistoryPanel{display:none;margin-top:14px;padding:14px;border:1px solid #e8e8e8;border-radius:18px;background:#fafafa}
 .olliExpenseHistoryPanel.is-open{display:block}
 .olliExpenseHistoryHead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:10px}
@@ -231,7 +231,7 @@ body.olliPcApp .olliFinancePayrollColumn{display:block}
 .olliExpenseHistoryRowMain{min-width:0}
 .olliExpenseHistorySummary{color:#2a2a2a;font-size:12px;font-weight:700;line-height:1.45;letter-spacing:-.02em}
 .olliExpenseHistoryMeta{margin-top:4px;color:#999;font-size:10.5px}
-.olliExpenseRestoreButton{flex:0 0 auto;min-height:34px;padding:0 10px;border:1px solid #dfe5e2;border-radius:11px;background:#fff;color:#526a61;font-family:inherit;font-size:10.5px;font-weight:750;cursor:pointer}
+.olliExpenseRestoreButton{flex:0 0 auto;min-height:34px;padding:0 10px;border:1px solid #DCE5EF;border-radius:11px;background:#fff;color:#426A97;font-family:inherit;font-size:10.5px;font-weight:750;cursor:pointer}
 .olliExpenseRestoreButton:disabled{opacity:.5;cursor:default}
 .olliExpenseHistoryLoading,.olliExpenseHistoryEmpty{padding:15px 8px;text-align:center;color:#999;font-size:11.5px;line-height:1.5}
 .olliExpenseHistoryEmpty small{color:#aaa}

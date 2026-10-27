@@ -6,7 +6,7 @@
   function installPcStudentInfoCardRuntime(){
     if (document.querySelector('script[data-olli-pc-student-info-card="1"]')) return;
     const script = document.createElement('script');
-    script.src = 'pc-student-info-card-runtime.js?v=20261021-guardian-contact-1';
+    script.src = 'pc-student-info-card-runtime.js?v=20261027-student-info-bluegray-1';
     script.dataset.olliPcStudentInfoCard = '1';
     document.head.appendChild(script);
   }

@@ -55,11 +55,11 @@ test('PC student info suffixes are visual only and raw saved fields remain uncha
   for (const id of ['elementarySchoolInput', 'kinderKindergartenInput']) {
     assert.ok(source.includes(id));
   }
-  for (const suffix of ['초등학교', '유치원', '등록일 :', '>년</span>', '>월</span>', '>일</span>', '>살</span>']) {
+  for (const suffix of ['초등학교', '유치원', 'pcStudentInfoDateControl', 'elementaryInfoEnrolledAtInput', 'kinderInfoEnrolledAtInput', '>살</span>']) {
     assert.ok(source.includes(suffix), suffix);
   }
   assert.match(source, /school: clean\(document\.getElementById\('elementarySchoolInput'\)\?\.value\)/);
   assert.match(source, /kindergarten: clean\(document\.getElementById\('kinderKindergartenInput'\)\?\.value\)/);
   assert.match(source, /const age = clean\(document\.getElementById\('kinderAgeInput'\)\?\.value\)/);
-  assert.match(source, /const y = Number\(document\.getElementById\(\x60\$\{prefix\}YearInput\x60\)\?\.value/);
+  assert.match(source, /const raw=clean\(document\.getElementById\(prefix\+'EnrolledAtInput'\)\?\.value\)/);
 });

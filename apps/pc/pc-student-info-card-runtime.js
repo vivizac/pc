@@ -475,7 +475,10 @@
       #recordRoomScreen .pcStudentInfoPickupPlace{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#606771;font-size:12px;}
       #recordRoomScreen .pcStudentInfoPickupMain{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;white-space:normal;}
       #recordRoomScreen .pcStudentInfoPickupDetail{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#606771;font-size:12px;}
-      #recordRoomScreen .pcStudentInfoDateRow{display:grid;grid-template-columns:auto repeat(3,minmax(0,1fr));gap:9px;align-items:center;}
+      #recordRoomScreen .pcStudentInfoDateControl{display:flex;align-items:center;gap:5px;height:40px;width:100%;min-width:0;padding:0 8px;border:1px solid #e4e6e9;border-radius:12px;box-sizing:border-box;background:#fff;}
+      #recordRoomScreen .pcStudentInfoDateControl:focus-within{border-color:#b8d6f7;box-shadow:0 0 0 3px rgba(22,135,255,.06);}
+      #recordRoomScreen .pcStudentInfoDateControl span{flex:0 0 auto;color:#777f88;font-size:10px;font-weight:650;white-space:nowrap;}
+      #recordRoomScreen .pcStudentInfoDateControl input[type=date]{flex:1;min-width:0;width:100%;height:38px;padding:0;border:0;box-shadow:none;outline:0;color:#263749;font:inherit;font-size:12px;text-align:right;color-scheme:light;}
       #recordRoomScreen .pcStudentInfoDateLabel{padding:0 2px;color:#626972;font-size:12px;font-weight:720;white-space:nowrap;}
       #recordRoomScreen .pcStudentInfoUnitField{position:relative;display:block;height:40px;min-width:0;}
       #recordRoomScreen .pcStudentInfoUnitField .modalInput{padding-right:32px;}
@@ -584,20 +587,15 @@
       <div class="pcStudentInfoForm">
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><input class="modalInput" id="elementaryInfoNameInput" aria-label="이름" placeholder="이름"></div>
-          <div class="pcStudentInfoField"><div id="elementaryPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="pcStudentInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정" value="${esc(student.feedback_teacher || '')}"></label></div>
-        </div>
-        <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField pcStudentInfoUnitField isSchool"><input class="modalInput" id="elementarySchoolInput" aria-label="학교" placeholder="학교"><span class="pcStudentInfoUnitSuffix" data-school-suffix>초등학교</span></div>
           <div class="pcStudentInfoField"><input class="modalInput" id="elementaryGradeInput" aria-label="학년" placeholder="학년" inputmode="numeric" onfocus="focusElementaryGradeInput(this)" oninput="syncElementaryInfoAgeFromGrade()" onblur="blurElementaryInfoGradeInput()"></div>
-          <div class="pcStudentInfoField"><input class="modalInput" id="elementaryAgeInput" aria-label="나이" placeholder="나이" readonly></div>
         </div>
-        <div class="pcStudentInfoDateRow">
-          <span class="pcStudentInfoDateLabel">등록일 :</span>
-          <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="elementaryInfoYearInput" aria-label="등록 연도" placeholder="연도" type="number" min="1900" max="2100"><span class="pcStudentInfoUnitSuffix">년</span></div>
-          <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="elementaryInfoMonthInput" aria-label="등록 월" placeholder="월" type="number" min="1" max="12"><span class="pcStudentInfoUnitSuffix">월</span></div>
-          <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="elementaryInfoDayInput" aria-label="등록 일" placeholder="일" type="number" min="1" max="31"><span class="pcStudentInfoUnitSuffix">일</span></div>
+        <div class="pcStudentInfoGrid3">
+          <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="pcStudentInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정" value="${esc(student.feedback_teacher || '')}"></label></div>
+          <div class="pcStudentInfoField"><div id="elementaryPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
+          <div class="pcStudentInfoField"><label class="pcStudentInfoDateControl"><span>등록일</span><input class="modalInput" id="elementaryInfoEnrolledAtInput" type="date" aria-label="등록일" min="1900-01-01" max="2100-12-31"></label></div>
         </div>
+        <input type="hidden" id="elementaryAgeInput" aria-hidden="true">
         <div class="pcStudentInfoSchedule" aria-label="수업시간 조회">${studentInfoScheduleHtml(student, student.__olli_authoritative_enrollments)}</div>
         <div class="pcStudentInfoSchedule" aria-label="픽업정보">${studentInfoPickupHtml(student.__olli_authoritative_pickups)}</div>
         <div class="pcStudentInfoField"><div class="pcStudentInfoFeedbackGroupTitle">피드백 그룹</div><div id="elementaryGroupToggleRow" class="infoToggleRow">${renderGroupButtons()}</div></div>
@@ -680,17 +678,15 @@
     return `<div class="pcStudentInfoCardViewport"><div class="pcStudentInfoCard" data-division="kinder">
       <div class="pcStudentInfoCardIntro"><strong>${esc(student.name || '학생')} 학생정보</strong></div>
       <div class="pcStudentInfoForm">
-        <div class="pcStudentInfoGrid4">
+        <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><input class="modalInput" id="kinderInfoNameInput" aria-label="이름" placeholder="이름"></div>
           <div class="pcStudentInfoField pcStudentInfoUnitField isSchool"><input class="modalInput" id="kinderKindergartenInput" aria-label="유치원" placeholder="유치원"><span class="pcStudentInfoUnitSuffix" data-school-suffix>유치원</span></div>
           <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="kinderAgeInput" aria-label="나이" placeholder="나이" type="number" min="1" max="8"><span class="pcStudentInfoUnitSuffix">살</span></div>
-          <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="pcStudentInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정" value="${esc(student.feedback_teacher || '')}"></label></div>
         </div>
-        <div class="pcStudentInfoGrid4">
-          <div class="pcStudentInfoField pcStudentInfoUnitField pcStudentInfoDateYearField"><span class="pcStudentInfoInlineDateLabel" aria-hidden="true">등록일</span><input class="modalInput" id="kinderInfoYearInput" aria-label="등록 연도" placeholder="연도" type="number" min="1900" max="2100"><span class="pcStudentInfoUnitSuffix">년</span></div>
-          <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="kinderInfoMonthInput" aria-label="등록 월" placeholder="월" type="number" min="1" max="12"><span class="pcStudentInfoUnitSuffix">월</span></div>
-          <div class="pcStudentInfoField pcStudentInfoUnitField"><input class="modalInput" id="kinderInfoDayInput" aria-label="등록 일" placeholder="일" type="number" min="1" max="31"><span class="pcStudentInfoUnitSuffix">일</span></div>
+        <div class="pcStudentInfoGrid3">
+          <div class="pcStudentInfoField"><label class="pcStudentInfoFeedbackTeacher"><span>피드백 담임</span><input id="pcStudentInfoFeedbackTeacher" type="text" maxlength="60" aria-label="피드백 담임" placeholder="미지정" value="${esc(student.feedback_teacher || '')}"></label></div>
           <div class="pcStudentInfoField"><div id="kinderPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
+          <div class="pcStudentInfoField"><label class="pcStudentInfoDateControl"><span>등록일</span><input class="modalInput" id="kinderInfoEnrolledAtInput" type="date" aria-label="등록일" min="1900-01-01" max="2100-12-31"></label></div>
         </div>
         <input id="kinderLessonDayInput" type="hidden">
         <div class="pcStudentInfoSchedule" aria-label="수업시간 조회">${studentInfoScheduleHtml(student, student.__olli_authoritative_enrollments)}</div>
@@ -700,27 +696,28 @@
     </div></div>`;
   }
 
-  function setDateInputs(prefix, student) {
-    const enrolled = clean(student && student.enrolled_at).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-    const year = enrolled ? enrolled[1] : clean(student && student.year);
-    const month = enrolled ? String(Number(enrolled[2])) : clean(student && student.month);
-    const day = enrolled ? String(Number(enrolled[3])) : clean(student && student.day);
-    const y = document.getElementById(`${prefix}YearInput`);
-    const m = document.getElementById(`${prefix}MonthInput`);
-    const d = document.getElementById(`${prefix}DayInput`);
-    if (y) y.value = year || '';
-    if (m) m.value = month || '';
-    if (d) d.value = day || '';
+  function studentInfoEnrolledDate(student) {
+    const match=clean(student && student.enrolled_at).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    const y=match ? Number(match[1]) : Number(student && student.year);
+    const m=match ? Number(match[2]) : Number(student && student.month);
+    const d=match ? Number(match[3]) : Number(student && student.day);
+    if(!y||!m||!d)return '';
+    const value=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const check=new Date(y,m-1,d);
+    return check.getFullYear()===y&&check.getMonth()===m-1&&check.getDate()===d?value:'';
   }
-
+  function setDateInputs(prefix, student) {
+    const input=document.getElementById(prefix+'EnrolledAtInput');
+    if(input)input.value=studentInfoEnrolledDate(student);
+  }
   function readDateInputs(prefix) {
-    const y = Number(document.getElementById(`${prefix}YearInput`)?.value || 0);
-    const m = Number(document.getElementById(`${prefix}MonthInput`)?.value || 0);
-    const d = Number(document.getElementById(`${prefix}DayInput`)?.value || 0);
-    if (!y || y < 1900 || y > 2100 || !m || m < 1 || m > 12 || !d || d < 1 || d > 31) return null;
-    const test = new Date(y, m - 1, d);
-    if (test.getFullYear() !== y || test.getMonth() !== m - 1 || test.getDate() !== d) return null;
-    return { year: y, month: String(m), day: String(d), enrolled_at: `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` };
+    const raw=clean(document.getElementById(prefix+'EnrolledAtInput')?.value);
+    const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!m)return null;
+    const y=Number(m[1]),month=Number(m[2]),day=Number(m[3]);
+    const check=new Date(y,month-1,day);
+    if(y<1900||y>2100||check.getFullYear()!==y||check.getMonth()!==month-1||check.getDate()!==day)return null;
+    return {year:y,month:String(month),day:String(day),enrolled_at:raw};
   }
 
   async function renderStudentInfoCard(student, enrollments, teacherAssignments, pickups = []) {
@@ -787,10 +784,7 @@
   }
 
   function syncStudentInfoDateValues(prefix, student) {
-    const enrolled = clean(student && student.enrolled_at).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-    syncStudentInfoInputValue(prefix + 'YearInput', enrolled ? enrolled[1] : clean(student && student.year));
-    syncStudentInfoInputValue(prefix + 'MonthInput', enrolled ? String(Number(enrolled[2])) : clean(student && student.month));
-    syncStudentInfoInputValue(prefix + 'DayInput', enrolled ? String(Number(enrolled[3])) : clean(student && student.day));
+    syncStudentInfoInputValue(prefix+'EnrolledAtInput', studentInfoEnrolledDate(student));
   }
 
   function refreshStudentInfoCardInPlace(student, enrollments, teacherAssignments, pickups = []) {
