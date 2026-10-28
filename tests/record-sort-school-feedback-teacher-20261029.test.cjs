@@ -71,5 +71,5 @@ test('PC 담임 정렬 표시에는 피드백담임만 사용하고 수업 담�
   vm.runInContext(pcRoster, ctx);
   assert.deepEqual(Array.from(ctx.getPcRosterMetaBits({feedback_teacher:'홍선생'}, 'elementary')), ['학교 / 피드백담임 홍선생 / 월·수']);
   assert.deepEqual(Array.from(ctx.getPcRosterMetaBits({feedback_teacher:''}, 'kinder')), ['유치원 / 피드백담임 미정 / 화']);
-  assert.match(pcHtml, /olli-record-list-view\\.js\\?v=20261029-feedback-roster-teacher-1/);
+  assert.match(pcHtml, /olli-record-list-view\.js\?v=20261029-feedback-roster-teacher-1/);
 });
