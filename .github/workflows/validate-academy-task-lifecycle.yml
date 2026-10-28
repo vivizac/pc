@@ -1,0 +1,30 @@
+name: Validate PC academy task lifecycle
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261028053000_academy_task_lifecycle_and_recurring.sql'
+      - 'tests/academy-task-lifecycle-contract.test.cjs'
+      - '.github/workflows/validate-academy-task-lifecycle.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20261028053000_academy_task_lifecycle_and_recurring.sql'
+      - 'tests/academy-task-lifecycle-contract.test.cjs'
+      - '.github/workflows/validate-academy-task-lifecycle.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify recurring tasks and data retention contract
+        run: |
+          node --test tests/academy-task-lifecycle-contract.test.cjs
+          node --test apps/pc/tests/pc-shared-todo.test.cjs
