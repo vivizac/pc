@@ -209,7 +209,7 @@ function getTodayObservationMemoStudents() {
     });
 }
 
-/* 관찰노트 명단 가이드는 학교 / 학년 / 피드백 발송월만 표시한다. */
+/* 학교/학년(유치부는 유치원/나이)은 이름 옆에 유지하고, 정렬 안내는 오른쪽에 따로 표시한다. */
 function getObservationRosterMeta(student) {
   if (getObservationRosterStudentDivision(student) === 'kinder') {
     const kindergarten = String(student?.kindergarten || student?.school || '').trim();
@@ -223,14 +223,9 @@ function getObservationRosterMeta(student) {
   const gradeClass = typeof formatElementaryGradeClassDisplay === 'function'
     ? String(formatElementaryGradeClassDisplay(student) || '').trim()
     : String(student?.grade || '').trim();
-  const feedbackMonth = typeof getElementaryGroupFeedbackMonthDisplay === 'function'
-    ? String(getElementaryGroupFeedbackMonthDisplay(student?.group, student) || '').trim()
-    : '';
-
   return [
     school,
-    gradeClass ? `${gradeClass}학년` : '',
-    feedbackMonth
+    gradeClass ? `${gradeClass}학년` : ''
   ].filter(Boolean).join(' / ');
 }
 
@@ -301,10 +296,52 @@ function getObservationRosterNumber(value) {
   return Number.isFinite(number) ? number : 999;
 }
 
+/* Use the same day ordering as the list: today's class first, then the next scheduled weekday. */
+function getObservationRosterDisplayDay(student) {
+  const todayDay = getObservationRosterTodayDay();
+  if (isObservationRosterTodayStudent(student)) return todayDay;
+  const orderedDays = getObservationRosterWeekdayOrder();
+  const lessonDays = getObservationRosterLessonDays(student);
+  return orderedDays.find(day => lessonDays.includes(day)) || '';
+}
+
+function getObservationRosterRightGuide(student, criterion) {
+  if (criterion === 'group') {
+    const month = typeof getElementaryGroupFeedbackMonthDisplay === 'function'
+      ? String(getElementaryGroupFeedbackMonthDisplay(student?.group, student) || '').trim()
+      : '';
+    return month || '발송월미정';
+  }
+  if (criterion === 'teacher') return getObservationRosterTeacherValue(student) || '담임미정';
+  if (criterion === 'tendency') {
+    const value = getObservationRosterTendencyValue(student);
+    return value ? (value.startsWith('성향') ? value : `성향${value}`) : '성향미정';
+  }
+  if (criterion === 'lessonDay') {
+    const day = getObservationRosterDisplayDay(student);
+    return day ? `${day}요일` : '요일미정';
+  }
+  // School and grade are already in the left-hand guide; do not duplicate them.
+  return '';
+}
+
+function getObservationRosterSectionKey(student, criterion) {
+  if (criterion === 'group') return String(student?.group || '').trim() || '그룹미정';
+  if (criterion === 'teacher') return getObservationRosterTeacherValue(student) || '담임미정';
+  if (criterion === 'tendency') return getObservationRosterTendencyValue(student) || '성향미정';
+  if (criterion === 'school') return getObservationRosterSchoolValue(student) || '학교미정';
+  if (criterion === 'grade') return String(getObservationRosterNumber(getObservationRosterGradeValue(student)));
+  if (criterion === 'lessonDay') return getObservationRosterDisplayDay(student) || '요일미정';
+  return '';
+}
+
 function sortObservationRosterStudents(students, criterion) {
   const list = [...(students || [])];
   if (criterion === 'lessonDay') {
     return list.sort((a, b) => {
+      // A confirmed class today takes priority, even if the student's saved weekday differs.
+      const todayResult = Number(isObservationRosterTodayStudent(b)) - Number(isObservationRosterTodayStudent(a));
+      if (todayResult !== 0) return todayResult;
       const dayResult = getObservationRosterLessonDayRank(a) - getObservationRosterLessonDayRank(b);
       if (dayResult !== 0) return dayResult;
       const timeResult = getObservationRosterTimeRank(a) - getObservationRosterTimeRank(b);
@@ -551,14 +588,20 @@ function renderObservationMemoRoster() {
   const sortLabel = getObservationRosterSortLabel(criterion);
   const title = '학생 목록';
 
+  let previousSectionKey = null;
   const rows = students.map(student => {
     const studentId = escapeHtml(String(student?.id || ''));
     const meta = getObservationRosterMeta(student);
     const metaHtml = renderOlliStudentRosterGuideMeta(student, meta, escapeHtml)
       + renderOlliStudentRosterMarkers(student);
-    return `<div class="memoBodyRosterRow">
+    const rightGuide = getObservationRosterRightGuide(student, criterion);
+    const sectionKey = getObservationRosterSectionKey(student, criterion);
+    const newSection = previousSectionKey !== null && previousSectionKey !== sectionKey;
+    previousSectionKey = sectionKey;
+    return `<div class="memoBodyRosterRow${newSection ? ' memoBodyRosterSectionStart' : ''}">
       <button type="button" class="memoBodyRosterStudentBtn" onclick="openObservationMemoStudentFromRoster('${studentId}')">
         <span class="memoBodyRosterText"><span class="memoBodyRosterName">${escapeHtml(student?.name || '이름 없음')}</span>${metaHtml ? `<span class="memoBodyRosterMeta">${metaHtml}</span>` : ''}</span>
+        ${rightGuide ? `<span class="memoBodyRosterSideMeta">${escapeHtml(rightGuide)}</span>` : ''}
       </button>
     </div>`;
   }).join('');
