@@ -3,13 +3,13 @@ name: Validate PC academy task lifecycle
 on:
   pull_request:
     paths:
-      - 'supabase/migrations/20261028053000_academy_task_lifecycle_and_recurring.sql'
+      - 'supabase/migrations/20261028055746_academy_task_lifecycle_and_recurring.sql'
       - 'tests/academy-task-lifecycle-contract.test.cjs'
       - '.github/workflows/validate-academy-task-lifecycle.yml'
   push:
     branches: [main]
     paths:
-      - 'supabase/migrations/20261028053000_academy_task_lifecycle_and_recurring.sql'
+      - 'supabase/migrations/20261028055746_academy_task_lifecycle_and_recurring.sql'
       - 'tests/academy-task-lifecycle-contract.test.cjs'
       - '.github/workflows/validate-academy-task-lifecycle.yml'
 
