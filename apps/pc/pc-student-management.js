@@ -390,10 +390,43 @@
     }
   }
 
+  // Completed items remain reversible for 24 hours; historical records stay on the server.
+  const TODO_COMPLETED_VISIBILITY_MS = 24 * 60 * 60 * 1000;
+  let todoExpiryTimer = null;
+
+  function todoCompletedAtMs(item) {
+    const timestamp = String(item?.completed_at || item?.created_at || '');
+    const parsed = Date.parse(timestamp);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function isVisibleTodo(item, nowMs) {
+    if (!item.completed) return true;
+    const completedAt = todoCompletedAtMs(item);
+    return completedAt > 0 && completedAt + TODO_COMPLETED_VISIBILITY_MS > nowMs;
+  }
+
+  function scheduleTodoExpiry(items, nowMs) {
+    if (todoExpiryTimer !== null) clearTimeout(todoExpiryTimer);
+    todoExpiryTimer = null;
+    const nextExpiry = items.reduce((earliest, item) => {
+      if (!item.completed) return earliest;
+      const expiresAt = todoCompletedAtMs(item) + TODO_COMPLETED_VISIBILITY_MS;
+      return expiresAt > nowMs ? Math.min(earliest, expiresAt) : earliest;
+    }, Infinity);
+    if (!Number.isFinite(nextExpiry)) return;
+    todoExpiryTimer = setTimeout(() => {
+      todoExpiryTimer = null;
+      if (core()?.state?.section === 'academy') renderTodoCard();
+    }, Math.max(1, Math.min(nextExpiry - nowMs + 1, 2147483647)));
+  }
+
   function renderTodoCard() {
     const host = document.getElementById('pcAcademyTodoSection');
     if (!host) return;
-    const items = todos().slice().sort((a, b) => Number(a.completed) - Number(b.completed) || String(b.created_at || '').localeCompare(String(a.created_at || '')));
+    const nowMs = Date.now();
+    const items = todos().filter((item) => isVisibleTodo(item, nowMs)).sort((a, b) => Number(a.completed) - Number(b.completed) || String(b.created_at || '').localeCompare(String(a.created_at || '')));
+    scheduleTodoExpiry(items, nowMs);
     const remaining = items.filter((item) => !item.completed).length;
     const rows = items.length ? items.map((item) => {
       const id = escape(item.id);
