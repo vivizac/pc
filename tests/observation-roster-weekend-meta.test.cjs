@@ -36,7 +36,7 @@ test('PC observation roster keeps weekend capsules beside names, not in guide te
  assert.equal((pc.match(/\$\{escapeHtml\(student.name\)\}\$\{options.showRosterMarkers === true \? renderOlliStudentRosterMarkers\(student\) : ''\}/g)||[]).length,2,
   'PC elementary and kindergarten both retain their original badge position after student name');
 });
-test('mobile observation name stays clean; weekend capsules follow guide text in the same meta line',()=>{
+test('mobile observation puts the month on the right and keeps weekend badges in school/grade',()=>{
  const globals=context();
  const from=mobile.indexOf('function renderObservationMemoRoster()');
  const to=mobile.indexOf('function applyObservationMemoNavigationIcons()',from);
@@ -47,7 +47,9 @@ test('mobile observation name stays clean; weekend capsules follow guide text in
   getObservationRosterSortCriterion:()=> 'name',
   getObservationRosterStudentsForCurrentSort:()=>[example],
   getObservationRosterSortLabel:()=> '이름',
-  getObservationRosterMeta:()=> '한샘/2학년/발송월10월',
+  getObservationRosterMeta:()=> '한샘/2학년',
+  getObservationRosterRightGuide:()=> '발송월10월',
+  getObservationRosterSectionKey:()=> '1',
   renderOlliStudentRosterGuideMeta:globals.renderOlliStudentRosterGuideMeta,
   renderOlliStudentRosterMarkers:globals.renderOlliStudentRosterMarkers,
   escapeHtml:value=>String(value),
@@ -57,7 +59,9 @@ test('mobile observation name stays clean; weekend capsules follow guide text in
   bindObservationRosterFooterEvents:()=>{}
  });
  assert.match(root.innerHTML,/<span class="memoBodyRosterName">민기<\/span>/);
- assert.match(root.innerHTML,/<span class="memoBodyRosterMeta">한샘\/2학년\/발송월10월<span class="olliStudentWeekendBadge"[^>]*>토<\/span><\/span>/);
+ assert.match(root.innerHTML,/<span class="memoBodyRosterMeta">한샘\/2학년<span class="olliStudentWeekendBadge"[^>]*>토<\/span><\/span>/);
+ assert.match(root.innerHTML,/<span class="memoBodyRosterSideMeta">발송월10월<\/span>/);
+ assert.equal((root.innerHTML.match(/발송월10월/g)||[]).length,1,'month must only appear on right');
  assert.equal((root.innerHTML.match(/olliStudentWeekendBadge/g)||[]).length,1);
 });
 test('Saturday and Sunday markers stay in order; missing month remains before the badges',()=>{

@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const migrationPath = path.join(__dirname, '..', 'supabase', 'migrations',
-  '20261028053000_academy_task_lifecycle_and_recurring.sql');
+  '20261028055746_academy_task_lifecycle_and_recurring.sql');
 const sql = fs.readFileSync(migrationPath, 'utf8');
 
 test('only the intended primary academy receives 12 fixed rules', () => {

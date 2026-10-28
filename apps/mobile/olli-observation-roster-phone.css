@@ -130,6 +130,11 @@
   border-top:1px solid #eeeeee;
 }
 
+/* A change of sort section uses the existing row divider, only thicker. */
+#observationRosterScreen .memoBodyRosterRow + .memoBodyRosterRow.memoBodyRosterSectionStart {
+  border-top:3px solid #cbd2da;
+}
+
 #observationRosterScreen .memoBodyRosterStudentBtn {
   min-width:0;
   flex:1;
@@ -137,6 +142,7 @@
   min-height:0;
   display:flex;
   align-items:center;
+  gap:12px;
   padding:0;
   border:0;
   background:transparent;
@@ -184,7 +190,7 @@
 
 #observationRosterScreen .memoBodyRosterText {
   min-width:0;
-  width:100%;
+  flex:1 1 auto;
   display:flex;
   align-items:center;
   gap:8px;
@@ -210,6 +216,23 @@
   font-weight:500;
   line-height:1.25;
   letter-spacing:-0.04em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* Right column ends at the same vertical guide as the sort value in the header. */
+#observationRosterScreen .memoBodyRosterSideMeta {
+  display:block;
+  flex:0 0 auto;
+  max-width:44%;
+  min-width:0;
+  color:#8f8f8f;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:500;
+  line-height:1.25;
+  letter-spacing:-0.04em;
+  text-align:right;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
