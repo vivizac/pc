@@ -40,3 +40,22 @@
 .pcRoutineLoading{padding:34px 14px;color:#8895a3;text-align:center;font-size:12.5px;line-height:1.7}
 .pcRoutineError{margin-bottom:16px;padding:12px;border-radius:13px;background:#fff2f2;color:#a92b37;font-size:13px}
 @media(max-width:1050px){.pcRoutineColumns{grid-template-columns:1fr}.pcRoutineIntro{align-items:flex-start;flex-direction:column}.pcRoutineRule{flex-wrap:wrap}.pcRoutineRuleActions{margin-left:20px}}
+
+/* Modal for managing recurring todo rules directly from the PC academy todo card. */
+.pcRoutineModal[hidden]{display:none!important}
+.pcRoutineModal{position:fixed;inset:0;z-index:210000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(25,33,48,.46);box-sizing:border-box}
+.pcRoutineDialog{display:flex;flex-direction:column;overflow:hidden;outline:none;width:min(1100px,100%);max-height:min(860px,calc(100vh - 48px));border:1px solid #e2e8f0;border-radius:24px;background:#f8fafc;box-shadow:0 26px 72px rgba(20,35,57,.22)}
+.pcRoutineModalHeader{display:flex;align-items:center;justify-content:space-between;gap:20px;flex:0 0 auto;padding:22px 28px 18px;border-bottom:1px solid #e9edf2;background:#fff}
+.pcRoutineModalHeader h2{margin:0;color:#15171a;font-size:20px;font-weight:850;letter-spacing:-.04em}
+.pcRoutineModalHeader p{margin:7px 0 0;color:#7c8794;font-size:12px}
+.pcRoutineClose{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border:0;border-radius:11px;background:#f3f5f7;color:#697480;cursor:pointer}
+.pcRoutineClose:hover{background:#e9eef5}
+.pcRoutineClose svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.pcRoutineModalContent{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:20px 26px 24px}
+.pcRoutineSettings{max-width:none;padding:0}
+.pcRoutineModalGuide{margin:0 0 17px;font-size:12px;color:#69798a;line-height:1.6}
+.pcRoutinePanelActions{display:flex;align-items:center;gap:10px}
+.pcRoutinePanelActions button{min-height:31px;padding:0 11px;border:1px solid #cce2fc;border-radius:10px;background:#eff6ff;color:#1377c7;font:inherit;font-size:11.5px;font-weight:750;cursor:pointer}
+.pcRoutineColumns>.pcRoutinePanel:first-child{max-height:600px;overflow:auto;overscroll-behavior:contain}
+.pcRoutineModal button:focus-visible,.pcRoutineModal input:focus-visible,.pcRoutineModal select:focus-visible{outline:2px solid #0a84ff;outline-offset:2px}
+@media(max-width:1050px){.pcRoutineModal{padding:12px}.pcRoutineDialog{max-height:calc(100vh - 24px)}.pcRoutineModalHeader{padding:17px 20px}.pcRoutineModalContent{padding:16px}.pcRoutineColumns>.pcRoutinePanel:first-child{max-height:none}}

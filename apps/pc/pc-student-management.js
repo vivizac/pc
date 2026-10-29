@@ -439,7 +439,11 @@
         + '<button type="button" class="pcAcademyTodoDelete" aria-label="할 일 삭제" title="삭제" onclick="pcDeleteAcademyTodo(\''+id+'\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>'
         + '</div>';
     }).join('') : '<div class="pcAcademyTodoEmpty"><span>오늘 처리할 일을 적어보세요.</span><small>추가한 할 일은 학원 구성원에게 함께 표시됩니다.</small></div>';
-    host.innerHTML = '<div class="pcAcademySectionHeader"><div><div class="pcAcademySectionTitle">학원 업무</div><div class="pcAcademySectionSub">업무와 메모를 한곳에서 관리해요.</div></div><span class="pcAcademySectionCount">'+remaining+'개 남음</span></div>'
+    const canManageRecurringTasks = (typeof global.getOlliCurrentRole === 'function'
+      ? global.getOlliCurrentRole() : String(localStorage.getItem('olli_current_member_role') || '')) === 'owner';
+    const recurringButton = canManageRecurringTasks
+      ? '<button type="button" class="pcAcademyRecurringManageBtn" onclick="pcOpenAcademyRecurringTasks()" aria-haspopup="dialog" aria-controls="pcRoutineModal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7a8 8 0 0 0-14-2L4 7m0-4v4h4M4 17a8 8 0 0 0 14 2l2-2m0 4v-4h-4"></path></svg>반복 업무 관리</button>' : '';
+    host.innerHTML = '<div class="pcAcademySectionHeader pcAcademyTodoHeader"><div><div class="pcAcademySectionTitle">학원 업무</div><div class="pcAcademySectionSub">업무와 메모를 한곳에서 관리해요.</div></div><div class="pcAcademyTodoHeaderActions">'+recurringButton+'<span class="pcAcademySectionCount">'+remaining+'개 남음</span></div></div>'
       + '<form class="pcAcademyTodoForm" onsubmit="pcAddAcademyTodo(event)"><input id="pcAcademyTodoInput" type="text" maxlength="80" autocomplete="off" placeholder="할 일을 입력해 주세요"><button type="submit">추가</button></form>'
       + '<div class="pcAcademyTodoList">'+rows+'</div>';
   }

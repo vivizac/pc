@@ -153,3 +153,12 @@ body.olliPcApp #recordAcademyDashboard .recordAcademyConsultSection{
 .pcAcademyDetailPanel .recordAcademyConsultLegacyReviewBtn{border:1px solid #d7e4f4;border-radius:999px;padding:6px 8px;font:inherit;font-size:10px;color:#3475bf;background:#fff;cursor:pointer}
 .pcAcademyDetailPanel .recordAcademyConsultLegacyReviewBtn[hidden]{display:none}
 .pcAcademyDetailPanel .recordAcademyConsultStatusChip[hidden]{display:none}
+
+/* Optional owner-only recurring rule action in the existing todo header. */
+#recordAcademyDashboard .pcAcademyTodoHeader{align-items:center}
+#recordAcademyDashboard .pcAcademyTodoHeaderActions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap;min-width:0}
+#recordAcademyDashboard .pcAcademyRecurringManageBtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:30px;padding:0 11px;border:1px solid #d9e6f5;border-radius:10px;background:#f1f7ff;color:#2378c6;font:inherit;font-size:11px;font-weight:780;white-space:nowrap;cursor:pointer}
+#recordAcademyDashboard .pcAcademyRecurringManageBtn:hover{background:#e4f0ff;border-color:#b5d5f7}
+#recordAcademyDashboard .pcAcademyRecurringManageBtn:focus-visible{outline:2px solid #0a84ff;outline-offset:2px}
+#recordAcademyDashboard .pcAcademyRecurringManageBtn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:840px){#recordAcademyDashboard .pcAcademyTodoHeader{flex-wrap:wrap}}
