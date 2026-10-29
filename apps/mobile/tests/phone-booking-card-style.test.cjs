@@ -33,7 +33,7 @@ test('consultation shortcut matches student-count card border, radius and shadow
   assert.match(entry, /align-items:stretch/);
   assert.doesNotMatch(entry, /min-height:/, 'restores automatic card height before the design changes');
   assert.match(rule(booking, '.obmAcademyEntry>span:first-child'), /padding:7px 0 7px 8px/, 'original 16px vertical padding is split between the outer 9px and inner 7px');
-  assert.match(entry, /padding:9px 15px 9px 9px/);
+  assert.ok(entry.includes('padding:9px15px9px9px'), 'right inset matches the updated 15px padding');
 });
 
 test('blue 40px rounded rectangle contains the live count and opens the mobile booking screen', () => {
