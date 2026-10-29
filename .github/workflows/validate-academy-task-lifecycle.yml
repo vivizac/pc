@@ -5,12 +5,22 @@ on:
     paths:
       - 'supabase/migrations/20261028055746_academy_task_lifecycle_and_recurring.sql'
       - 'tests/academy-task-lifecycle-contract.test.cjs'
+      - 'supabase/migrations/20261029215300_academy_recurring_task_settings.sql'
+      - 'apps/pc/pc-recurring-task-settings.js'
+      - 'apps/pc/pc-recurring-task-settings.css'
+      - 'apps/pc/index.html'
+      - 'tests/pc-recurring-task-settings.test.cjs'
       - '.github/workflows/validate-academy-task-lifecycle.yml'
   push:
     branches: [main]
     paths:
       - 'supabase/migrations/20261028055746_academy_task_lifecycle_and_recurring.sql'
       - 'tests/academy-task-lifecycle-contract.test.cjs'
+      - 'supabase/migrations/20261029215300_academy_recurring_task_settings.sql'
+      - 'apps/pc/pc-recurring-task-settings.js'
+      - 'apps/pc/pc-recurring-task-settings.css'
+      - 'apps/pc/index.html'
+      - 'tests/pc-recurring-task-settings.test.cjs'
       - '.github/workflows/validate-academy-task-lifecycle.yml'
 
 permissions:
@@ -28,3 +38,4 @@ jobs:
         run: |
           node --test tests/academy-task-lifecycle-contract.test.cjs
           node --test apps/pc/tests/pc-shared-todo.test.cjs
+          node --test tests/pc-recurring-task-settings.test.cjs

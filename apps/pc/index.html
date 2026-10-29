@@ -1642,7 +1642,7 @@
 <link rel="stylesheet" href="olli-booking-owner-ui.css?v=20261029-pc-compact-toolbar-1">
 <link rel="stylesheet" href="pc-attendance.css?v=20261026-month-unset-guide-1">
 <link rel="stylesheet" href="pc-record-editor.css?v=20260930-record-colors-3">
-<link rel="stylesheet" href="pc-student-management.css?v=20261027-legacy-needed-1">
+<link rel="stylesheet" href="pc-student-management.css?v=20261029-todo-popup-1">
 <link rel="stylesheet" href="pc-trash.css">
 <link rel="stylesheet" href="consultation-survey.css?v=20261029-pc-booking-link-1">
 <link rel="stylesheet" href="pc-team-talk.css?v=20261008-avatar-picker-1">
@@ -2803,6 +2803,18 @@
 </div>
 </div>
 </div>
+
+<div id="pcRoutineModal" class="pcRoutineModal" hidden onclick="pcRoutineTaskBackdrop(event)">
+  <section class="pcRoutineDialog" role="dialog" aria-modal="true" aria-labelledby="pcRoutineModalTitle" aria-describedby="pcRoutineModalDesc" tabindex="-1" onclick="event.stopPropagation()">
+    <div class="pcRoutineModalHeader">
+      <div><h2 id="pcRoutineModalTitle">반복 업무 관리</h2><p id="pcRoutineModalDesc">우리 학원의 반복 일정을 설정합니다.</p></div>
+      <button type="button" class="pcRoutineClose" aria-label="반복 업무 관리 닫기" onclick="pcRoutineTaskClose()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <div class="pcRoutineModalContent" id="pcRoutineModalContent"></div>
+  </section>
+</div>
 <script src="olli-settings-common-core.js?v=20261012-storage-page-clean-1"></script>
 <script src="olli-settings-pc-ui.js?v=20260929-half-hour-full-1"></script>
 <script src="olli-settings-members.js"></script>
@@ -2815,6 +2827,8 @@
 <script src="olli-settings-access.js"></script>
 <script src="olli-settings-attendance-export.js?v=20261012-storage-page-clean-1"></script>
 <script src="olli-settings-detail.js"></script>
+<script src="pc-recurring-task-settings.js?v=20261029-todo-popup-2"></script>
+<link rel="stylesheet" href="pc-recurring-task-settings.css?v=20261029-todo-popup-2">
 <script src="olli-team-talk-avatar-catalog.js?v=20261011-avatars-06-09-1"></script>
 <script src="olli-settings-team-talk-common.js?v=20261008-avatar-picker-1"></script>
 <link rel="stylesheet" href="olli-teacher-payroll-common.css?v=20261027-student-info-bluegray-1">
@@ -4676,7 +4690,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <script src="pc-team-talk.js?v=20261008-avatar-picker-1"></script>
 <script src="pc-team-talk-material-orders.js?v=20261012-needed-date-archive-1"></script>
 <script src="pc-shell.js?v=20261029-pc-booking-link-1"></script>
-<script src="pc-student-management.js?v=20261028-completed-todo-24h-1"></script>
+<script src="pc-student-management.js?v=20261029-todo-popup-1"></script>
 <script src="olli-feedback-photo-storage-common.js"></script>\n<script src="pc-kinder-feedback.js"></script>
 <script src="pc-note-voice.js?v=20260929-pc-notes-1"></script>
 <script src="pc-kcf-class-mode.js?v=20260929-pc-notes-1"></script>

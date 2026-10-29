@@ -1,0 +1,61 @@
+/* PC-only academy recurring task settings. Mirrors the existing PC blue/grey system. */
+.pcRoutineSettings{max-width:1100px;margin:0 auto;padding:4px 0 28px;color:#22272e}
+.pcRoutineIntro{display:flex;align-items:center;justify-content:space-between;gap:22px;margin:0 0 20px;padding:22px 24px;border:1px solid #e2e4e8;border-radius:22px;background:#fff}
+.pcRoutineIntro h2{margin:0;font-size:20px;font-weight:800;letter-spacing:-.04em}
+.pcRoutineIntro p{margin:9px 0 0;font-size:13px;color:#737e8c;line-height:1.6}
+.pcRoutinePill{border-radius:999px;padding:8px 12px;background:#edf5ff;color:#1877d9;font-size:11.5px;font-weight:750;white-space:nowrap}
+.pcRoutineColumns{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:18px;align-items:start}
+.pcRoutinePanel{min-width:0;padding:22px;border:1px solid #e2e4e8;border-radius:22px;background:#fff;box-shadow:0 8px 24px rgba(20,24,30,.03)}
+.pcRoutinePanelTitle{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.pcRoutinePanelTitle h3{margin:0;font-size:15px;font-weight:800}
+.pcRoutinePanelTitle span{font-size:12px;color:#7d8b99}
+.pcRoutineRule{display:flex;align-items:center;gap:12px;padding:13px 2px;border-bottom:1px solid #edf0f4}
+.pcRoutineRule:last-child{border-bottom:0}
+.pcRoutineRuleBullet{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#1686ff}
+.pcRoutineRuleBullet.is-off{background:#bec6cf}
+.pcRoutineRuleInfo{flex:1;min-width:0}
+.pcRoutineRuleInfo strong{display:block;font-size:13.3px;font-weight:730;line-height:1.4;overflow-wrap:anywhere}
+.pcRoutineRuleInfo small{display:block;margin-top:5px;font-size:11.5px;color:#778393}
+.pcRoutineRuleActions{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.pcRoutineRuleActions button{padding:7px 9px;border:0;border-radius:9px;background:#f2f5f9;color:#4d6175;font:inherit;font-size:11.5px;cursor:pointer}
+.pcRoutineRuleActions button:hover{background:#e4efff;color:#0879ed}
+.pcRoutineRuleActions button.danger{color:#ab5d69}
+.pcRoutinePanel form{display:grid;gap:10px}
+.pcRoutineLabel{display:block;margin-top:7px;font-size:12px;font-weight:750;color:#3f4956}
+.pcRoutinePanel input[type=text],.pcRoutinePanel input:not([type]),.pcRoutinePanel select{width:100%;height:42px;min-width:0;box-sizing:border-box;padding:0 11px;border:1px solid #dfe3e8;border-radius:12px;background:#f8f9fb;color:#25313e;font:inherit;font-size:12.5px}
+.pcRoutinePanel input:focus,.pcRoutinePanel select:focus{outline:2px solid #b9dcff}
+.pcRoutineScheduleRow{display:flex;align-items:center;gap:8px;margin-top:2px}
+.pcRoutineScheduleRow[hidden]{display:none!important}
+.pcRoutineScheduleRow label{flex:0 0 auto;font-size:12.5px;color:#555e68}
+.pcRoutineScheduleRow select{flex:1}
+.pcRoutineEnabled{display:flex;align-items:center;gap:8px;font-size:12.5px;margin:8px 0 4px}
+.pcRoutineEnabled input{accent-color:#0a84ff}
+.pcRoutineFormActions{display:flex;gap:9px}
+.pcRoutineFormActions button{height:42px;padding:0 16px;border:1px solid #dfe5ec;border-radius:12px;background:#f5f7fa;color:#435268;font:inherit;font-size:12.5px;font-weight:720;cursor:pointer}
+.pcRoutineFormActions button.primary{border-color:#0a84ff;background:#0a84ff;color:#fff}
+.pcRoutineFormActions button:disabled{opacity:.5;cursor:default}
+.pcRoutineHelp,.pcRoutineFootnote{font-size:11.8px;line-height:1.65;color:#7c8794}
+.pcRoutineHelp{margin:16px 0 0}
+.pcRoutineFootnote{padding:16px 5px}
+.pcRoutineLoading{padding:34px 14px;color:#8895a3;text-align:center;font-size:12.5px;line-height:1.7}
+.pcRoutineError{margin-bottom:16px;padding:12px;border-radius:13px;background:#fff2f2;color:#a92b37;font-size:13px}
+@media(max-width:1050px){.pcRoutineColumns{grid-template-columns:1fr}.pcRoutineIntro{align-items:flex-start;flex-direction:column}.pcRoutineRule{flex-wrap:wrap}.pcRoutineRuleActions{margin-left:20px}}
+
+/* Modal for managing recurring todo rules directly from the PC academy todo card. */
+.pcRoutineModal[hidden]{display:none!important}
+.pcRoutineModal{position:fixed;inset:0;z-index:210000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(25,33,48,.46);box-sizing:border-box}
+.pcRoutineDialog{display:flex;flex-direction:column;overflow:hidden;outline:none;width:min(1100px,100%);max-height:min(860px,calc(100vh - 48px));border:1px solid #e2e8f0;border-radius:24px;background:#f8fafc;box-shadow:0 26px 72px rgba(20,35,57,.22)}
+.pcRoutineModalHeader{display:flex;align-items:center;justify-content:space-between;gap:20px;flex:0 0 auto;padding:22px 28px 18px;border-bottom:1px solid #e9edf2;background:#fff}
+.pcRoutineModalHeader h2{margin:0;color:#15171a;font-size:20px;font-weight:850;letter-spacing:-.04em}
+.pcRoutineModalHeader p{margin:7px 0 0;color:#7c8794;font-size:12px}
+.pcRoutineClose{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border:0;border-radius:11px;background:#f3f5f7;color:#697480;cursor:pointer}
+.pcRoutineClose:hover{background:#e9eef5}
+.pcRoutineClose svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.pcRoutineModalContent{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:20px 26px 24px}
+.pcRoutineSettings{max-width:none;padding:0}
+.pcRoutineModalGuide{margin:0 0 17px;font-size:12px;color:#69798a;line-height:1.6}
+.pcRoutinePanelActions{display:flex;align-items:center;gap:10px}
+.pcRoutinePanelActions button{min-height:31px;padding:0 11px;border:1px solid #cce2fc;border-radius:10px;background:#eff6ff;color:#1377c7;font:inherit;font-size:11.5px;font-weight:750;cursor:pointer}
+.pcRoutineColumns>.pcRoutinePanel:first-child{max-height:600px;overflow:auto;overscroll-behavior:contain}
+.pcRoutineModal button:focus-visible,.pcRoutineModal input:focus-visible,.pcRoutineModal select:focus-visible{outline:2px solid #0a84ff;outline-offset:2px}
+@media(max-width:1050px){.pcRoutineModal{padding:12px}.pcRoutineDialog{max-height:calc(100vh - 24px)}.pcRoutineModalHeader{padding:17px 20px}.pcRoutineModalContent{padding:16px}.pcRoutineColumns>.pcRoutinePanel:first-child{max-height:none}}
