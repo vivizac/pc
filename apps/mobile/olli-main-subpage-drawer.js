@@ -1172,7 +1172,12 @@
     }
 
     const wasActive = document.body.classList.contains('olli-main-subpage-drawer-search-active');
-    const enabled = !!active && !!drawerState;
+    // Academy management owns the full record-room viewport even when the
+    // search/keyboard resume handler requests that the retained strip reopen.
+    // Keep the drawer state for the existing Note-button return navigation.
+    const academyManagementVisible = !!drawerState
+      && document.getElementById('recordRoomScreen')?.classList.contains('record-academy-view') === true;
+    const enabled = !!drawerState && (!!active || academyManagementVisible);
     const hit = document.getElementById('olliMainDrawerReturnHit');
 
     if (enabled) {
