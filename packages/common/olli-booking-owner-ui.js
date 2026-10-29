@@ -65,7 +65,8 @@
    const todayN=confirmed.filter(r=>kstParts(r.start_at).ymd===today()).length;
    const newN=confirmed.filter(r=>r.kind==='intake').length;
    const unbooked=dueUnbooked();
-   return '<div class="obmStats"><div><strong>'+confirmed.length+'</strong><span>이번 달 예약</span></div><div><strong>'+todayN+'</strong><span>오늘 상담</span></div><div><strong>'+newN+'</strong><span>신규생 상담</span></div>'+
+   const monthLabel=state.mode==='pc'?'이달의 예약':'이번 달 예약';
+   return '<div class="obmStats"><div><strong>'+confirmed.length+'</strong><span>'+monthLabel+'</span></div><div><strong>'+todayN+'</strong><span>오늘 상담</span></div><div><strong>'+newN+'</strong><span>신규생 상담</span></div>'+
     (unbooked===null?'':'<div><strong>'+unbooked.length+'</strong><span>이번 달 미예약 대상</span></div>')+'</div>';
  }
  function calendarHtml(){

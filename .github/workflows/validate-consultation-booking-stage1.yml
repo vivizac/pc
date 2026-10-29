@@ -58,6 +58,7 @@ on:
       - 'apps/mobile/tests/phone-booking-card-style.test.cjs'
       - 'tests/mobile-booking-shortcut-local-first.test.cjs'
       - 'tests/consultation-topbar-browser.test.cjs'
+      - 'tests/pc-consultation-compact-toolbar-browser.test.cjs'
       - 'apps/mobile/olli-observation-roster-phone.js'
       - 'packages/common/api/_lib/olli-booking-handler.cjs'
       - 'supabase/migrations/*_olli_booking_parent_stage2.sql'
@@ -179,3 +180,5 @@ jobs:
         run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-booking-browser.test.cjs
       - name: Verify PC consultation tabs physically occupy the top white bar
         run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-topbar-browser.test.cjs
+      - name: Verify PC booking stats, toolbar and calendar at desktop viewports
+        run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/pc-consultation-compact-toolbar-browser.test.cjs
