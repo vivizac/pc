@@ -132,7 +132,7 @@
 
 /* A change of sort section uses the existing row divider, only thicker. */
 #observationRosterScreen .memoBodyRosterRow + .memoBodyRosterRow.memoBodyRosterSectionStart {
-  border-top:3px solid #cbd2da;
+  border-top:2px solid #000000;
 }
 
 #observationRosterScreen .memoBodyRosterStudentBtn {
