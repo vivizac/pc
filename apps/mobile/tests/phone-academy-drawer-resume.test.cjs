@@ -20,6 +20,7 @@ function createDrawerFixture({ academy = false, open = true } = {}) {
   const context = {
     drawerState: open ? { mainPage: {} } : null,
     drawerSearchReturnTimer: 0,
+    isReducedMotion: () => false,
     clearTimeout() {},
     document: {
       body: {
