@@ -28,7 +28,7 @@ test('server preserves 12 original primary-academy seeds; no default task rules 
  assert.match(migration,/where r\.enabled and r\.archived_at is null/);
  assert.match(migration,/last_generated_on=v_due/);
  assert.match(migration,/date_trunc\('week',v_rule\.last_generated_on\)=date_trunc\('week',v_due\)/);
- assert.match(migration,/not completed or coalesce\(completed_at,created_at\)>now\(\)-interval '24 hours'/);
+ assert.match(original,/not completed or coalesce\(completed_at,created_at\)>now\(\)-interval '24 hours'/);
 });
 
 test('rule RPCs enforce active academy owner membership; archive never deletes task instances',()=>{
