@@ -440,7 +440,7 @@
         + '</div>';
     }).join('') : '<div class="pcAcademyTodoEmpty"><span>오늘 처리할 일을 적어보세요.</span><small>추가한 할 일은 학원 구성원에게 함께 표시됩니다.</small></div>';
     const canManageRecurringTasks = (typeof global.getOlliCurrentRole === 'function'
-      ? global.getOlliCurrentRole() : String(localStorage.getItem('olli_current_member_role') || '')) === 'owner';
+      ? global.getOlliCurrentRole() : String(global.localStorage?.getItem?.('olli_current_member_role') || '')) === 'owner';
     const recurringButton = canManageRecurringTasks
       ? '<button type="button" class="pcAcademyRecurringManageBtn" onclick="pcOpenAcademyRecurringTasks()" aria-haspopup="dialog" aria-controls="pcRoutineModal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7a8 8 0 0 0-14-2L4 7m0-4v4h4M4 17a8 8 0 0 0 14 2l2-2m0 4v-4h-4"></path></svg>반복 업무 관리</button>' : '';
     host.innerHTML = '<div class="pcAcademySectionHeader pcAcademyTodoHeader"><div><div class="pcAcademySectionTitle">학원 업무</div><div class="pcAcademySectionSub">업무와 메모를 한곳에서 관리해요.</div></div><div class="pcAcademyTodoHeaderActions">'+recurringButton+'<span class="pcAcademySectionCount">'+remaining+'개 남음</span></div></div>'

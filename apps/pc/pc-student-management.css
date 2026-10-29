@@ -155,7 +155,7 @@ body.olliPcApp #recordAcademyDashboard .recordAcademyConsultSection{
 .pcAcademyDetailPanel .recordAcademyConsultStatusChip[hidden]{display:none}
 
 /* Optional owner-only recurring rule action in the existing todo header. */
-#recordAcademyDashboard .pcAcademyTodoHeader{align-items:center}
+#recordAcademyDashboard .pcAcademyTodoHeader{align-items:center;flex-wrap:wrap}
 #recordAcademyDashboard .pcAcademyTodoHeaderActions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap;min-width:0}
 #recordAcademyDashboard .pcAcademyRecurringManageBtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:30px;padding:0 11px;border:1px solid #d9e6f5;border-radius:10px;background:#f1f7ff;color:#2378c6;font:inherit;font-size:11px;font-weight:780;white-space:nowrap;cursor:pointer}
 #recordAcademyDashboard .pcAcademyRecurringManageBtn:hover{background:#e4f0ff;border-color:#b5d5f7}
