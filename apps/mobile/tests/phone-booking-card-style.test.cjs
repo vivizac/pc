@@ -33,12 +33,12 @@ test('consultation shortcut matches student-count card border, radius and shadow
   assert.match(entry, /align-items:stretch/);
   assert.doesNotMatch(entry, /min-height:/, 'restores automatic card height before the design changes');
   assert.match(rule(booking, '.obmAcademyEntry>span:first-child'), /padding:7px 0 7px 8px/, 'original 16px vertical padding is split between the outer 9px and inner 7px');
-  assert.match(entry, /padding:9px/);
+  assert.ok(entry.includes('padding:9px15px9px9px'), 'right inset matches the updated 15px padding');
 });
 
-test('blue circle contains the live count and opens the mobile booking screen', () => {
+test('blue 40px rounded rectangle contains the live count and opens the mobile booking screen', () => {
   const visual = rule(booking, '.obmAcademyEntry>span:last-child');
-  for (const expected of ['display:flex','flex:0040px','align-items:center','justify-content:center','width:40px','height:40px','border-radius:50%','background:#0A84FF','color:#fff']) assert.ok(visual.replace(/\s+/g,'').includes(expected));
+  for (const expected of ['display:flex','flex:0040px','align-items:center','justify-content:center','width:40px','height:40px','border-radius:10px','background:#0A84FF','color:#fff']) assert.ok(visual.replace(/\s+/g,'').includes(expected));
   assert.match(shortcut, /오늘의 상담 예약 현황/);
   assert.match(shortcut, /data-olli-booking-count/);
   assert.doesNotMatch(shortcut, /<span aria-hidden="true">›<\/span>/);

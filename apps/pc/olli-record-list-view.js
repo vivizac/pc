@@ -70,11 +70,31 @@ function renderPcRosterGuide(student, text, attendanceGuideHtml, showRosterMarke
   return text ? escapeHtml(text) : '';
 }
 
+function getPcRosterMetaBits(student, view) {
+  const metaBits = view === 'kinder' ? getKinderMetaBits(student) : getElementaryMetaBits(student);
+  if (typeof getRecordSortCriteria !== 'function' || getRecordSortCriteria(view) !== 'teacher') return metaBits;
+
+  // The sort label '담임' means the feedback teacher, not the timetable/class teacher.
+  const feedbackTeacher = typeof getRecordSortTeacherValue === 'function'
+    ? String(getRecordSortTeacherValue(student) || '').trim()
+    : '';
+  const timetableTeacher = typeof getStudentTeacherDisplay === 'function'
+    ? String(getStudentTeacherDisplay(student) || '').trim()
+    : '';
+  const previousLabel = timetableTeacher || (view === 'kinder' ? '담임' : '');
+  const parts = metaBits.join(' / ').split(' / ').filter(Boolean);
+  const teacherIndex = previousLabel ? parts.indexOf(previousLabel) : -1;
+  const label = '피드백담임 ' + (feedbackTeacher || '미정');
+  if (teacherIndex >= 0) parts.splice(teacherIndex, 1, label);
+  else parts.push(label);
+  return [parts.join(' / ')];
+}
+
 function renderElementaryStudentRows(students, options = {}) {
   const cycleGroups = getElementaryCycleGroups(students);
   let previousSectionKey = '';
   return students.map((student, index) => {
-    const metaBits = getElementaryMetaBits(student);
+    const metaBits = getPcRosterMetaBits(student, 'elementary');
     const metaText = metaBits.join('\u00A0\u00A0|\u00A0\u00A0');
     const attendanceGuideHtml = getRecordAttendanceGuideHtml(student);
     const metaHtml = renderPcRosterGuide(student, metaText, attendanceGuideHtml, options.showRosterMarkers);
@@ -100,7 +120,7 @@ function renderElementaryStudentRows(students, options = {}) {
 function renderKinderStudentRows(students, options = {}) {
   let previousSectionKey = '';
   return students.map((student, index) => {
-    const metaBits = getKinderMetaBits(student);
+    const metaBits = getPcRosterMetaBits(student, 'kinder');
     const attendanceGuideHtml = getRecordAttendanceGuideHtml(student);
     const normalMetaText = metaBits.join('\u00A0\u00A0|\u00A0\u00A0');
     const metaHtml = renderPcRosterGuide(student, normalMetaText, attendanceGuideHtml, options.showRosterMarkers);

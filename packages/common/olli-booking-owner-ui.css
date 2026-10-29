@@ -70,7 +70,7 @@
   border-radius:22px;
   background:#fff;
   margin-top:13px;
-  padding:9px;
+  padding:9px 15px 9px 9px;
   box-shadow:0 8px 24px rgba(0,0,0,0.045);
   color:#111;
   text-align:left;
@@ -97,7 +97,7 @@
   align-items:center;
   justify-content:center;
   text-align:center;
-  border-radius:50%;
+  border-radius:10px;
   background:#0A84FF;
   color:#fff;
   font-size:24px;

@@ -32,7 +32,7 @@ function normalizeRecordSortTeacher(value) {
   return cleanRecordSortText(value).replace(/T$/i, '').trim();
 }
 function getRecordSortTeacherValue(student) {
-  return normalizeRecordSortTeacher(student?.homeroom_teacher || student?.teacher || student?.teacher_name || student?.teacherName || '');
+  return normalizeRecordSortTeacher(student?.feedback_teacher || student?.feedbackTeacher || '');
 }
 function getRecordSortTendencyValue(student) {
   return cleanRecordSortText(student?.tendency || student?.personality || student?.personalityType || student?.personality_type || student?.tendencyType || student?.tendency_type || student?.group_tendency || student?.type_label || student?.character || '');
@@ -95,7 +95,15 @@ function compareRecordSortString(a,b) {
   if (av && !bv) return -1;
   return av.localeCompare(bv, 'ko');
 }
-function compareElementaryByRecordSort(a,b) {
+function countRecordSortSchools(students) {
+  const counts = new Map();
+  for (const student of students || []) {
+    const school = getRecordSortSchoolValue(student);
+    if (school) counts.set(school, (counts.get(school) || 0) + 1);
+  }
+  return counts;
+}
+function compareElementaryByRecordSort(a,b,schoolCounts = null) {
   const criterion = getRecordSortCriteria('elementary');
   if (criterion === 'initial') return compareRecordSortName(a,b);
   let result = 0;
@@ -105,7 +113,12 @@ function compareElementaryByRecordSort(a,b) {
     result = compareRecordSortString(getRecordSortTendencyValue(a), getRecordSortTendencyValue(b));
   } else if (criterion === 'group') result = compareElementaryGroupFeedbackOrder(a,b);
   else if (criterion === 'grade') result = safeRecordSortNumber(getRecordSortGradeValue(a)) - safeRecordSortNumber(getRecordSortGradeValue(b));
-  else if (criterion === 'school') result = compareRecordSortString(getRecordSortSchoolValue(a), getRecordSortSchoolValue(b));
+  else if (criterion === 'school') {
+    const schoolA = getRecordSortSchoolValue(a);
+    const schoolB = getRecordSortSchoolValue(b);
+    result = (schoolCounts?.get(schoolB) || 0) - (schoolCounts?.get(schoolA) || 0);
+    if (result === 0) result = compareRecordSortString(schoolA, schoolB);
+  }
   else if (criterion === 'lessonDay') result = getRecordSortDayRank(a) - getRecordSortDayRank(b);
   else if (criterion === 'teacher') result = compareRecordSortString(getRecordSortTeacherValue(a), getRecordSortTeacherValue(b));
   else result = getRecordSortInitial(a?.name).localeCompare(getRecordSortInitial(b?.name), 'ko');
@@ -169,10 +182,12 @@ function getRecordSortSectionKey(student, view) {
   return 'initial:' + getRecordSortInitial(student?.name);
 }
 function sortElementaryStudents(students) {
-  return [...(students || [])].sort((a,b) => {
+  const list = [...(students || [])];
+  const schoolCounts = getRecordSortCriteria('elementary') === 'school' ? countRecordSortSchools(list) : null;
+  return list.sort((a,b) => {
     const statusRank = getStudentStatusRank(a) - getStudentStatusRank(b);
     if (statusRank !== 0) return statusRank;
-    return compareElementaryByRecordSort(a,b);
+    return compareElementaryByRecordSort(a,b,schoolCounts);
   });
 }
 
