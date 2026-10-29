@@ -1,10 +1,10 @@
-/* PC settings: academy-scoped recurring task rules, independent of task instances.
+/* PC todo modal: academy-scoped recurring task rules, independent of task instances.
  * Server maintains due tasks; this screen never schedules cron jobs in a browser.
  */
 (function(global) {
  'use strict';
  const days=['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
- let rules=[],scopeKey='',loading=false,error='',editingId='',busy=false;
+ let rules=[],scopeKey='',loading=false,error='',editingId='',busy=false,isOpen=false,returnFocus=null;
  function escape(value) {
   return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
  }
@@ -56,10 +56,9 @@
    +'<button type="button" onclick="pcRoutineTaskToggle(\''+escape(r.id)+'\')">'+(r.enabled?'중지':'사용')+'</button>'
    +'<button class="danger" type="button" onclick="pcRoutineTaskArchive(\''+escape(r.id)+'\')">삭제</button></div></div>').join('');
   return '<div class="pcRoutineSettings">'
-   +'<div class="pcRoutineIntro"><div><h2>반복 업무 설정</h2><p>할 일 목록에 자동으로 추가할 업무를 학원별로 설정합니다. 변경한 주기는 다음 발생 일정부터 반영됩니다.</p></div>'
-   +'<span class="pcRoutinePill">현재 학원 전용</span></div>'
+   +'<p class="pcRoutineModalGuide">설정한 날짜에 할 일 목록으로 자동 추가됩니다. 변경한 주기는 다음 발생 일정부터 적용되며 현재 학원에만 저장됩니다.</p>'
    +(error?'<div class="pcRoutineError" role="alert">'+escape(error)+'</div>':'')
-   +'<div class="pcRoutineColumns"><section class="pcRoutinePanel"><div class="pcRoutinePanelTitle"><h3>등록된 반복 업무</h3><span>'+rules.length+'개</span></div>'
+   +'<div class="pcRoutineColumns"><section class="pcRoutinePanel"><div class="pcRoutinePanelTitle"><h3>등록된 반복 업무</h3><div class="pcRoutinePanelActions"><span>'+rules.length+'개</span><button type="button" onclick="pcRoutineTaskNew()">+ 새 업무</button></div></div>'
    +(loading?'<div class="pcRoutineLoading">반복 업무를 불러오는 중입니다…</div>':
      titles||'<div class="pcRoutineLoading">등록된 반복 업무가 없습니다. 오른쪽에서 새 업무를 추가해 주세요.</div>')
    +'</section><section class="pcRoutinePanel"><div class="pcRoutinePanelTitle"><h3>'+(target?'반복 업무 수정':'새 반복 업무')+'</h3></div>'
@@ -78,16 +77,16 @@
    +'<div class="pcRoutineFootnote">선생님 급여 지급 업무는 이 목록과 별개로 <b>학원 수입·지출 관리의 급여일 설정</b>을 따릅니다. 실제 푸시 알림 발송 기능은 아닙니다.</div></div>';
  }
  function refresh(){
-  if(typeof settingsCurrentDetailType==='undefined'||settingsCurrentDetailType!=='recurringTasks')return;
-  const root=document.getElementById('settingsDetailBody');
+  if(!isOpen)return;
+  const root=document.getElementById('pcRoutineModalContent');
   if(root){root.innerHTML=render();kindChanged();}
  }
  function kindChanged(){
   const kind=document.getElementById('pcRoutineKind')?.value;
   document.querySelectorAll('#pcRoutineSchedule [data-routine-kind]').forEach(el=>{el.hidden=el.dataset.routineKind!==kind;});
  }
- function edit(id){if(busy)return;editingId=String(id);refresh();}
- function cancel(){editingId='';refresh();}
+ function edit(id){if(busy)return;editingId=String(id);refresh();document.getElementById('pcRoutineText')?.focus?.();}
+ function cancel(){if(busy)return;editingId='';refresh();document.getElementById('pcRoutineText')?.focus?.();}
  function readForm(){
   const text=String(document.getElementById('pcRoutineText')?.value||'').trim();
   if(!text||text.length>80)throw Error('업무 제목을 1~80자로 입력해 주세요.');
@@ -129,19 +128,61 @@
   if(!confirm('“'+r.text+'” 반복 업무를 삭제하시겠습니까?\n이미 생성된 할 일은 삭제되지 않습니다.'))return;
   await runMutation('olli_academy_task_rule_archive',{p_rule_id:id});
  }
- if(typeof settingsDetailData!=='undefined'){
-  settingsDetailData.recurringTasks={
-   title:'반복 업무 설정',
-   instantRender:true,
-   html:render,
-   beforeOpen:async function(){await load();}
-  };
+ function canManage(){
+  const role=typeof global.getOlliCurrentRole==='function'
+    ? global.getOlliCurrentRole() : String(localStorage.getItem('olli_current_member_role')||'');
+  return role==='owner';
  }
+ async function open(){
+  if(!canManage())return false;
+  const modal=document.getElementById('pcRoutineModal');
+  if(!modal)return false;
+  if(isOpen)return true;
+  returnFocus=document.activeElement;
+  editingId='';error='';
+  isOpen=true;
+  modal.hidden=false;
+  refresh();
+  modal.querySelector('.pcRoutineClose')?.focus?.();
+  try{await load();}catch(_){/* The dialog displays the server error. */}
+  return true;
+ }
+ function close(){
+  if(!isOpen)return;
+  isOpen=false;
+  const modal=document.getElementById('pcRoutineModal');
+  if(modal)modal.hidden=true;
+  editingId='';
+  if(returnFocus?.isConnected!==false)returnFocus?.focus?.();
+  returnFocus=null;
+ }
+ function backdrop(event){
+  if(event?.target?.id==='pcRoutineModal')close();
+ }
+ function startNew(){cancel();}
+ function handleKeyDown(event){
+  if(!isOpen)return;
+  if(event.key==='Escape'){event.preventDefault();close();return;}
+  if(event.key!=='Tab')return;
+  const modal=document.getElementById('pcRoutineModal');
+  if(!modal)return;
+  const focusable=Array.from(modal.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex="0"]'))
+   .filter(el=>!el.closest('[hidden]'));
+  if(!focusable.length){event.preventDefault();modal.querySelector('.pcRoutineDialog')?.focus?.();return;}
+  const first=focusable[0],last=focusable[focusable.length-1];
+  if(event.shiftKey && document.activeElement===first){event.preventDefault();last.focus();}
+  else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first.focus();}
+ }
+ document.addEventListener('keydown',handleKeyDown);
+ global.pcOpenAcademyRecurringTasks=open;
+ global.pcRoutineTaskClose=close;
+ global.pcRoutineTaskBackdrop=backdrop;
+ global.pcRoutineTaskNew=startNew;
  global.pcRoutineTaskEdit=edit;
  global.pcRoutineTaskCancel=cancel;
  global.pcRoutineTaskKindChanged=kindChanged;
  global.pcRoutineTaskSave=save;
  global.pcRoutineTaskToggle=toggle;
  global.pcRoutineTaskArchive=archive;
- global.OlliPcRecurringTaskSettings={load,render};
+ global.OlliPcRecurringTaskSettings={open,close,load,render};
 })(window);
