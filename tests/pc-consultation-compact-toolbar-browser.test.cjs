@@ -8,11 +8,11 @@ const {chromium}=require('playwright');
 const base=path.resolve(__dirname,'..');
 const source=fs.readFileSync(path.join(base,'packages/common/olli-booking-owner-ui.js'),'utf8');
 const style=fs.readFileSync(path.join(base,'packages/common/olli-booking-owner-ui.css'),'utf8');
-function renderMock(view='calendar'){
+function renderMock(view='calendar',mode='pc'){
   const start=source.indexOf(' function render(){'),end=source.indexOf(' async function refresh(){',start);
   assert.ok(start>=0&&end>start);
   const root={innerHTML:''};
-  const state={mode:'pc',view,root,month:'2026-10',selectedDay:'',rows:[],error:'',ready:true,loading:false,publicUrl:''};
+  const state={mode,view,root,month:'2026-10',selectedDay:'',rows:[],error:'',ready:true,loading:false,publicUrl:''};
   const labels=['이달 예약','오늘 상담','신규생 상담','이번 달 미예약 대상'];
   const stats='<div class="obmStats">'+labels.map((name,i)=>'<div><strong>'+(i+1)+'</strong><span>'+name+'</span></div>').join('')+'</div>';
   const days=Array.from({length:35},(_,i)=>'<button class="obmCalDay" type="button"><span class="obmCalDate">'+(i+1)+'</span></button>').join('');
@@ -58,8 +58,8 @@ test('PC consultation status cards stay ahead of the right controls in one row',
   }finally{await browser.close();}
 });
 test('mobile footer still owns its own copy button and booking settings remain untouched',()=>{
-  const mobile=renderMock('calendar').replace('notused','');
-  assert.ok(!mobile.includes('data-action="copy-public-link"'));
+  const mobile=renderMock('today','mobile');
+  assert.match(mobile,/data-action="copy-public-link"/,'mobile copy button must remain in the footer');
   assert.match(source,/state\.mode==='pc'\s*\? \(state\.publicUrl/);
   assert.match(source,/global\.OlliBookingDashboard=Object\.freeze\(\{open,close,refresh,copyPublicLink,initMobileShortcut\}\)/);
 });
