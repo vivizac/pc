@@ -66,12 +66,19 @@ jobs:
             tests/pc-startup-boot-contract.test.cjs \
             tests/monorepo-structure-contract.test.cjs \
             tests/vercel-monorepo-separation-contract.test.cjs
+      - name: Validate Oct 29 roster sorting and booking badge
+        run: |
+          node --check packages/common/olli-data-record-list.js
+          node --check apps/pc/olli-record-list-view.js
+          node --test tests/record-sort-school-feedback-teacher-20261029.test.cjs
+          node --test apps/mobile/tests/phone-booking-card-style.test.cjs
       - name: Validate PC schedule Realtime
         run: node --test tests/schedule-realtime.test.cjs
       - name: Validate Mobile schedule and security contracts
         working-directory: apps/mobile
         run: |
           node --check olli-talk-beta.js
+          node --check olli-main-subpage-drawer.js
           node --check olli-talk-attachment-cache-phone.js
           node --check api/_lib/olli-agent/supabase-rpc.cjs
           node --check api/_lib/olli-agent/request-context.cjs
@@ -92,6 +99,7 @@ jobs:
           node --check api/_lib/olli-agent/tools/waitlist-cancel-prepare-tools.cjs
           node --check api/_lib/olli-agent/tools/profile-tools.cjs
           node --check api/_lib/olli-agent/tools/timetable-memo-tools.cjs
+          node --test tests/phone-academy-drawer-resume.test.cjs
           node --test tests/olli-agent-makeup-cancel-prepare-tool.test.cjs
           node --test tests/olli-agent-waitlist-cancel-prepare-tool.test.cjs
           node --test tests/olli-agent-makeup-update-prepare-tool.test.cjs
