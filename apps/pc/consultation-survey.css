@@ -104,6 +104,10 @@ body.olliPcApp #consultationSurveyScreen{background:var(--pc-bg);overflow:auto;a
 .consultationPageTab:hover{color:#267ad1;background:#e8f2ff}
 .consultationPageTab.active,.consultationPageTab[aria-selected="true"]{border-color:#cfe3ff;background:#eaf4ff;color:#177de2}
 #olliPcTopbarTitle .consultationPageTab:focus-visible{outline:2px solid #177de2;outline-offset:2px}
+#olliPcTopbarTitle.olliPcConsultationTitle{display:flex;flex:1 1 auto;align-items:center;min-width:0;gap:14px}
+#olliPcTopbarTitle .olliPcBookingLinkCopy{display:inline-flex;align-items:center;justify-content:center;margin-left:auto;flex:0 0 auto;height:38px;padding:0 15px;border:1px solid #d8e2ed;border-radius:9px;background:#fff;color:#187bdb;font-family:inherit;font-size:12px;font-weight:750;letter-spacing:0;cursor:pointer;white-space:nowrap}
+#olliPcTopbarTitle .olliPcBookingLinkCopy:disabled{opacity:.6;cursor:wait}
+#olliPcTopbarTitle .olliPcBookingLinkCopy:focus-visible{outline:2px solid #177de2;outline-offset:2px}
 #olliConsultationBookingPanel[hidden],#olliConsultationSurveyPanel[hidden]{display:none!important}
 #olliConsultationBookingPanel,#olliConsultationSurveyPanel{width:100%;min-width:0}
 @media(max-width:640px){.consultationPageTabs{gap:4px}.consultationPageTab{padding:10px 13px;font-size:12.5px}}

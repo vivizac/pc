@@ -131,18 +131,24 @@
    const months='<div class="obmMonth"><button type="button" data-action="month-prev" aria-label="이전 달">‹</button><strong>'+escapeHtml(state.month)+'</strong><button type="button" data-action="month-next" aria-label="다음 달">›</button></div>';
    const error=state.error?'<div class="obmError" role="alert">'+escapeHtml(state.error)+'</div>':'';
    const pcCalendar=state.mode==='pc'&&state.view==='calendar';
+   const stats=state.ready&&!state.loading&&state.view!=='settings'?renderStats():'';
    const bookingList='<div class="obmListHeader"><strong>'+(state.selectedDay&&state.mode==='pc'?escapeHtml(dateLabel(state.selectedDay)):'예약 목록')+'</strong>'+
      (state.selectedDay&&state.mode==='pc'?'<button type="button" data-action="clear-day">날짜 선택 해제</button>':'')+'</div>'+bookingsHtml();
    const content=state.loading?'<div class="obmEmptyMessage">예약 정보를 불러오는 중입니다.</div>'
     : !state.ready?'<div class="obmEmptyMessage">상담 예약 정보를 연결하지 못했습니다. 서버 설정과 로그인 상태를 확인해 주세요.</div>'
     : state.view==='settings'?settingsHtml()
-    :renderStats()+(pcCalendar?calendarHtml():'')+(pcCalendar?'':bookingList);
-   // PC only: month, view tabs, and refresh share a single toolbar.
-   const toolbar=state.mode==='pc'?'<div class="obmPcToolbar">'+months+nav+header+'</div>'
-     :header+nav+(state.view==='settings'?'':months);
-   root.innerHTML='<div class="obmLayout">'+toolbar+error+content+
-    '<div class="obmFooter"><div class="obmLinkRow"><span>알림톡 승인 템플릿에 등록할 <strong>학원 통합 예약 링크</strong>입니다. 학생별 링크를 발급하지 않습니다.</span><button type="button" data-action="copy-public-link">통합 링크 복사</button></div>'+ (state.publicUrl ? '<p class="obmLinkAddress">'+escapeHtml(state.publicUrl)+'</p>':'')+'</div>'+
-    '</div><div class="obmModalHost" data-modal-host></div>';
+    :(state.mode==='pc'?'':stats)+(pcCalendar?calendarHtml():'')+(pcCalendar?'':bookingList);
+   // PC-only status cards and month/views/refresh share one compact horizontal toolbar.
+   const toolbar=state.mode==='pc'
+     ? '<div class="obmPcToolbar">'+stats+'<div class="obmPcTools">'+months+nav+header+'</div></div>'
+     : header+nav+(state.view==='settings'?'':months);
+   // The PC copy button is in the fixed title bar. Show the URL below only when issued,
+   // so clipboard-denied users can still select/copy it manually.
+   const footer=state.mode==='pc'
+     ? (state.publicUrl?'<div class="obmFooter"><p class="obmLinkAddress">'+escapeHtml(state.publicUrl)+'</p></div>':'')
+     : '<div class="obmFooter"><div class="obmLinkRow"><span>알림톡 승인 템플릿에 등록할 <strong>학원 통합 예약 링크</strong>입니다. 학생별 링크를 발급하지 않습니다.</span><button type="button" data-action="copy-public-link">통합 링크 복사</button></div>'+(state.publicUrl?'<p class="obmLinkAddress">'+escapeHtml(state.publicUrl)+'</p>':'')+'</div>';
+   root.innerHTML='<div class="obmLayout">'+toolbar+error+content+footer+
+     '</div><div class="obmModalHost" data-modal-host></div>';
  }
  async function refresh(){
    if(state.loading)return;
@@ -224,6 +230,29 @@
      if(select.options.length===1)select.options[0].textContent='예약 가능한 시간이 없습니다';
    }catch(e){select.innerHTML='<option value="">시간 조회 실패</option>';alertError(e.message);}
  }
+ async function copyPublicLink(node){
+   if(state.busy)return;
+   state.busy=true;
+   const originalLabel=node?.textContent;
+   if(node){node.disabled=true;node.textContent='복사 중...';}
+   try{
+     const c=auth();
+     const response=await global.fetch('/api/olli-booking-public',{
+       method:'POST',credentials:'omit',cache:'no-store',
+       headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({action:'public-link',academy_id:c.academyId,session_token:c.sessionToken})
+     });
+     const payload=await response.json();
+     if(!response.ok||payload.ok!==true||!/^https:\/\//.test(payload.url||''))throw new Error('학원 통합 예약 링크를 발급하지 못했습니다.');
+     if(ctx().academyId!==c.academyId||ctx().sessionToken!==c.sessionToken)throw new Error('학원 또는 로그인 계정이 변경되었습니다.');
+     state.publicUrl=payload.url;
+     render();
+     if(!global.navigator?.clipboard?.writeText)throw new Error('클립보드 권한이 없습니다. 아래 주소를 직접 복사해 주세요.');
+     await global.navigator.clipboard.writeText(payload.url);
+     global.alert('학원 통합 예약 링크를 복사했습니다.');
+   }catch(err){state.error=err.message||'통합 링크를 복사하지 못했습니다.';render();}
+   finally{state.busy=false;if(node?.isConnected){node.disabled=false;node.textContent=originalLabel;}}
+ }
  async function click(e){
    if(!(e.target instanceof Element))return;
    const node=e.target.closest('[data-action],[data-view],[data-day]');
@@ -232,28 +261,7 @@
    if(node.matches('[data-view]')){state.view=node.dataset.view;state.selectedDay='';render();return;}
    const action=node.dataset.action;
    if(action==='close'){close();return;}
-   if(action==='copy-public-link'){
-     if(state.busy)return;
-     state.busy=true;node.disabled=true;
-     try{
-       const c=auth();
-       const response=await global.fetch('/api/olli-booking-public',{
-         method:'POST',credentials:'omit',cache:'no-store',
-         headers:{'Content-Type':'application/json'},
-         body:JSON.stringify({action:'public-link',academy_id:c.academyId,session_token:c.sessionToken})
-       });
-       const payload=await response.json();
-       if(!response.ok||payload.ok!==true||!/^https:\/\//.test(payload.url||''))throw new Error('학원 통합 예약 링크를 발급하지 못했습니다.');
-       if(ctx().academyId!==c.academyId||ctx().sessionToken!==c.sessionToken)throw new Error('학원 또는 로그인 계정이 변경되었습니다.');
-       state.publicUrl=payload.url;
-       render();
-       if(!global.navigator?.clipboard?.writeText)throw new Error('클립보드 권한이 없습니다. 아래 주소를 직접 복사해 주세요.');
-       await global.navigator.clipboard.writeText(payload.url);
-       global.alert('학원 통합 예약 링크를 복사했습니다.');
-     }catch(err){state.error=err.message||'통합 링크를 복사하지 못했습니다.';render();}
-     finally{state.busy=false;}
-     return;
-   }
+   if(action==='copy-public-link'){await copyPublicLink(node);return;}
    if(action==='dismiss'){
      if(node.dataset.action==='dismiss' && (node.classList.contains('obmModalBackdrop') ||node.tagName==='BUTTON')){
        state.root.querySelector('[data-modal-host]').innerHTML='';
@@ -428,7 +436,7 @@
    global.addEventListener?.('olli:booking-changed',()=>{void refreshMobileShortcutCount();});
    syncMobileShortcut();
  }
- global.OlliBookingDashboard=Object.freeze({open,close,refresh,initMobileShortcut});
+ global.OlliBookingDashboard=Object.freeze({open,close,refresh,copyPublicLink,initMobileShortcut});
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initMobileShortcut,{once:true});
  else initMobileShortcut();
 })(window);
