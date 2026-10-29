@@ -79,14 +79,14 @@ test('Saturday and Sunday markers stay in order; missing month remains before th
 test('mobile observation roster uses a 2px black divider only when sorting changes section',()=>{
  const css=fs.readFileSync(path.join(base,'apps/mobile/olli-observation-roster-phone.css'),'utf8');
  const html=fs.readFileSync(path.join(base,'apps/mobile/index.html'),'utf8');
- const normal=css.match(/#observationRosterScreen \\.memoBodyRosterRow \\+ \\.memoBodyRosterRow \\{([^}]*)\\}/)?.[1];
- const section=css.match(/#observationRosterScreen \\.memoBodyRosterRow \\+ \\.memoBodyRosterRow\\.memoBodyRosterSectionStart \\{([^}]*)\\}/)?.[1];
+ const normal=css.match(/#observationRosterScreen \.memoBodyRosterRow \+ \.memoBodyRosterRow \{([^}]*)\}/)?.[1];
+ const section=css.match(/#observationRosterScreen \.memoBodyRosterRow \+ \.memoBodyRosterRow\.memoBodyRosterSectionStart \{([^}]*)\}/)?.[1];
  assert.ok(normal,'ordinary adjacent student rows must retain their divider');
  assert.ok(section,'section-start override must remain defined');
- assert.match(normal,/border-top:\\s*1px solid #eeeeee\\s*;/,'ordinary rows keep original faint line');
- assert.match(section,/border-top:\\s*2px solid #000000\\s*;/,'group boundary must be 2px black');
- assert.match(mobile,/memoBodyRosterRow\\$\\{newSection \\? ' memoBodyRosterSectionStart' : ''\\}/,
+ assert.match(normal,/border-top:\s*1px solid #eeeeee\s*;/,'ordinary rows keep original faint line');
+ assert.match(section,/border-top:\s*2px solid #000000\s*;/,'group boundary must be 2px black');
+ assert.match(mobile,/memoBodyRosterRow\$\{newSection \? ' memoBodyRosterSectionStart' : ''\}/,
    'section-start modifier must still be applied only when sort key changes');
- assert.match(html,/olli-observation-roster-phone\\.css\\?v=20261029-black-sort-divider-1/,
+ assert.match(html,/olli-observation-roster-phone\.css\?v=20261029-black-sort-divider-1/,
    'bust old stylesheet cache on mobile');
 });
