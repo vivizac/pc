@@ -75,8 +75,8 @@ test('remove only PC subheading while keeping mobile heading and refresh action'
  assert.match(js,/obmHeaderPc/);
  assert.match(js,/data-action="refresh"/);
  assert.match(css,/#olliConsultationBookingPanel \.obmHeaderPc\{justify-content:flex-end/);
- assert.match(pc,/olli-booking-owner-ui\.css\?v=20261027-pc-single-toolbar-1/);
- assert.match(pc,/olli-booking-owner-ui\.js\?v=20261027-pc-single-toolbar-1/);
+ assert.match(pc,/olli-booking-owner-ui\.css\?v=20261029-pc-compact-toolbar-1/);
+ assert.match(pc,/olli-booking-owner-ui\.js\?v=20261029-pc-compact-toolbar-1/);
   assert.match(mobile,/olli-booking-owner-ui\.css\?v=\d{8}-[\w-]+/);
  assert.match(mobile,/olli-booking-owner-ui\.js\?v=20261027-mobile-local-first-count-1/);
 });
@@ -98,7 +98,8 @@ test('PC toolbar order and calendar-only content preserve the mobile version',()
  const tabIndex=calendar.indexOf('class="obmTabs"');
  const refreshIndex=calendar.indexOf('data-action="refresh"');
  assert.ok(calendar.includes('class="obmPcToolbar"'));
- assert.ok(monthIndex>0&&monthIndex<tabIndex&&tabIndex<refreshIndex,'month, tabs, refresh in this order');
+ const statsIndex=calendar.indexOf('data-stats');
+ assert.ok(statsIndex>0&&statsIndex<monthIndex&&monthIndex<tabIndex&&tabIndex<refreshIndex,'stats, month, tabs, refresh in this order');
  assert.ok(calendar.includes('data-calendar'));
  assert.doesNotMatch(calendar,/data-bookings|class="obmListHeader"/);
  const list=page('pc','list','2026-11-03');
@@ -111,8 +112,12 @@ test('PC toolbar order and calendar-only content preserve the mobile version',()
  assert.ok(mobileToday.includes('data-bookings')&&mobileToday.includes('전체 예약'));
  const mobileSettings=page('mobile','settings');
  assert.doesNotMatch(mobileSettings,/class="obmMonth"/);
- assert.match(css,/#olliConsultationBookingPanel \.obmPcToolbar\{[^}]*display:flex;align-items:center;gap:16px;flex-wrap:nowrap/s);
- assert.match(css,/#olliConsultationBookingPanel \.obmPcToolbar \.obmHeaderPc\{[^}]*margin:0 0 0 auto/s);
+ assert.match(css,/#olliConsultationBookingPanel \.obmPcToolbar\{[^}]*display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:nowrap/s);
+ assert.match(css,/#olliConsultationBookingPanel \.obmPcToolbar>\.obmStats>div\{[^}]*aspect-ratio:5\/2/s);
+ assert.match(css,/#olliConsultationBookingPanel \.obmPcTools \.obmHeaderPc\{[^}]*margin:0/s);
+ assert.match(css,/#olliConsultationBookingPanel \.obmCalendar\{[^}]*100dvh/s);
+ assert.doesNotMatch(calendar,/data-action="copy-public-link"/,'PC no longer has a footer copy button');
+ assert.match(mobileToday,/data-action="copy-public-link"/,'mobile footer remains unchanged');
 });
 test('PC date selection switches to the preserved booking-list tab',()=>{
  const handler=js.slice(js.indexOf(' async function click(e){'),js.indexOf("   const action=node.dataset.action;",js.indexOf(' async function click(e){')));
