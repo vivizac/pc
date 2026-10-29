@@ -235,7 +235,8 @@
    if(state.busy)return;
    state.busy=true;
    const originalLabel=node?.textContent;
-   if(node){node.disabled=true;node.textContent='복사 중...';}
+   const showProgress=state.mode==='pc';
+   if(node){node.disabled=true;if(showProgress)node.textContent='복사 중...';}
    try{
      const c=auth();
      const response=await global.fetch('/api/olli-booking-public',{
@@ -252,7 +253,7 @@
      await global.navigator.clipboard.writeText(payload.url);
      global.alert('학원 통합 예약 링크를 복사했습니다.');
    }catch(err){state.error=err.message||'통합 링크를 복사하지 못했습니다.';render();}
-   finally{state.busy=false;if(node?.isConnected){node.disabled=false;node.textContent=originalLabel;}}
+   finally{state.busy=false;if(node?.isConnected){node.disabled=false;if(showProgress)node.textContent=originalLabel;}}
  }
  async function click(e){
    if(!(e.target instanceof Element))return;
