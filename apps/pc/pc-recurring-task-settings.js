@@ -78,7 +78,7 @@
    +'<div class="pcRoutineFootnote">선생님 급여 지급 업무는 이 목록과 별개로 <b>학원 수입·지출 관리의 급여일 설정</b>을 따릅니다. 실제 푸시 알림 발송 기능은 아닙니다.</div></div>';
  }
  function refresh(){
-  if(global.settingsCurrentDetailType!=='recurringTasks')return;
+  if(typeof settingsCurrentDetailType==='undefined'||settingsCurrentDetailType!=='recurringTasks')return;
   const root=document.getElementById('settingsDetailBody');
   if(root){root.innerHTML=render();kindChanged();}
  }
