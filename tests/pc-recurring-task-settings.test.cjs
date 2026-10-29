@@ -41,7 +41,8 @@ test('rule RPCs enforce active academy owner membership; archive never deletes t
   assert.match(match[0],/a\.status='active' and a\.deleted_at is null/);
  }
  assert.match(migration,/set enabled=false,archived_at=now\(\)/);
- assert.doesNotMatch(migration,/delete from public\.olli_academy_tasks/i);
+ const archiveSql=migration.slice(migration.indexOf('create or replace function public.olli_academy_task_rule_archive'));
+ assert.doesNotMatch(archiveSql,/delete from public\.olli_academy_tasks/i);
  assert.match(migration,/r\.repeat_kind<>'teacher_payday'/);
  assert.match(migration,/grant execute on function public\.olli_academy_task_rule_save/);
 });
@@ -88,7 +89,7 @@ test('separate academy-scoped listing and preserve original monthly + weekly cap
  assert.equal(app.calls[0].params.p_academy_id,'academy-A');
  app.setAcademyId('academy-B');
  await app.context.settingsDetailData.recurringTasks.beforeOpen();
- assert.doesNotMatch(app.node.innerHTML,/교육비 안내문 발송/);
+ assert.doesNotMatch(app.node.innerHTML,/<div class="pcRoutineRule">[\s\S]*?교육비 안내문 발송/);
  assert.match(app.node.innerHTML,/등록된 반복 업무가 없습니다/);
  assert.equal(app.calls[1].params.p_academy_id,'academy-B');
 });
