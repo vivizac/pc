@@ -123,6 +123,7 @@
     const title = document.getElementById('olliPcTopbarTitle');
     if (title) {
       title.classList.remove('olliTtTopbarSchedule');
+      title.classList.toggle('olliPcConsultationTitle',state.section===SECTION.CONSULTATION);
       if (state.section === 'schedule') {
         title.textContent = '';
         if (typeof global.olliTtRenderScheduleHeader === 'function') global.olliTtRenderScheduleHeader();
@@ -133,7 +134,8 @@
         title.innerHTML = '<div class="consultationPageTabs consultationTopbarTabs" role="tablist" aria-label="상담기록 화면 선택">'
           + '<button type="button" class="consultationPageTab' + (activeTab === 'booking' ? ' active' : '') + '" role="tab" id="consultationPageTabBooking" aria-controls="olliConsultationBookingPanel" aria-selected="' + (activeTab === 'booking') + '" data-consultation-page-tab="booking" onclick="setConsultationPageTab(\'booking\')" onkeydown="handleConsultationTopbarKeydown(event)">상담예약현황</button>'
           + '<button type="button" class="consultationPageTab' + (activeTab === 'survey' ? ' active' : '') + '" role="tab" id="consultationPageTabSurvey" aria-controls="olliConsultationSurveyPanel" aria-selected="' + (activeTab === 'survey') + '" data-consultation-page-tab="survey" onclick="setConsultationPageTab(\'survey\')" onkeydown="handleConsultationTopbarKeydown(event)">설문기록</button>'
-          + '</div>';
+          + '</div>'
+          + '<button type="button" class="olliPcBookingLinkCopy" aria-label="학원 통합 예약 링크 복사" onclick="window.OlliBookingDashboard?.copyPublicLink?.(this)">통합 링크 복사</button>';
         title.querySelectorAll('[data-consultation-page-tab]').forEach((button) => {
           button.tabIndex = button.dataset.consultationPageTab === activeTab ? 0 : -1;
         });

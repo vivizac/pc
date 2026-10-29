@@ -67,7 +67,8 @@ test('consultation tabs replace the white PC topbar title, not the page body',as
   assert.equal(await page.locator(top+' [role=tab]').count(),2);
   assert.equal(await page.locator('#consultationSurveyScreen .consultationPageTabs').count(),0,
     'there must be no duplicate tab bar below the white title');
-  assert.equal((await page.locator(top).innerText()).replace(/\s+/g,' ').trim(),'상담예약현황 설문기록');
+  assert.equal((await page.locator(top+' [role=tablist]').innerText()).replace(/\s+/g,' ').trim(),'상담예약현황 설문기록');
+  assert.equal(await page.locator(top+' .olliPcBookingLinkCopy').count(),1,'copy link action belongs to PC consultation topbar');
   assert.equal(await booking.getAttribute('aria-selected'),'true');
   assert.equal(await survey.getAttribute('aria-selected'),'false');
   const bounds=await Promise.all([page.locator('#olliPcTopbar').boundingBox(),booking.boundingBox()]);
@@ -90,6 +91,7 @@ test('consultation tabs replace the white PC topbar title, not the page body',as
   assert.equal(await page.locator('#olliPcTopbarTitle').innerText(),'학생관리');
   assert.equal(await page.locator(top+' [role=tab]').count(),0,
     'other PC sections must retain their ordinary white-bar heading');
+  assert.equal(await page.locator(top+' .olliPcBookingLinkCopy').count(),0);
   await page.evaluate(()=>window.pcOpenSection('consultation'));
   assert.equal(await page.locator(top+' [role=tab]').count(),2);
   assert.equal(await booking.getAttribute('aria-selected'),'true');
