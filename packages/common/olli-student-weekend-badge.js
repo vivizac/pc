@@ -51,11 +51,18 @@
     return prefix ? prefix + ' / ' + month : month;
   }
 
+  function renderOlliStudentGroupUnsetGuideMarker(student) {
+    return isOlliStudentGroupUnset(student)
+      ? '<span class="olliStudentGroupUnsetGuideMarker" aria-label="그룹 미지정" title="그룹 미지정">*</span>'
+      : '';
+  }
+
   function renderOlliStudentRosterMarkers(student) {
     return renderOlliStudentWeekendBadges(student);
   }
 
   global.renderOlliStudentRosterMarkers = renderOlliStudentRosterMarkers;
+  global.renderOlliStudentGroupUnsetGuideMarker = renderOlliStudentGroupUnsetGuideMarker;
   global.isOlliStudentGroupUnset = isOlliStudentGroupUnset;
   global.renderOlliStudentRosterGuideMeta = renderOlliStudentRosterGuideMeta;
   global.getOlliStudentWeekendDays = getOlliStudentWeekendDays;

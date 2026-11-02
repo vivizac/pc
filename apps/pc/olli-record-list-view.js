@@ -110,7 +110,7 @@ function renderElementaryStudentRows(students, options = {}) {
         ${leadIcon}
         <span class="studentTextWrap">
           <span>${escapeHtml(student.name)}${options.showRosterMarkers === true ? renderOlliStudentRosterMarkers(student) : ''}</span>
-          ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
+          ${metaHtml ? `<span class="studentMetaText">${metaHtml}${renderOlliStudentGroupUnsetGuideMarker(student)}</span>` : ''}
         </span>
       </div>
     </button>`;
@@ -136,7 +136,7 @@ function renderKinderStudentRows(students, options = {}) {
         ${leadIcon}
         <span class="studentTextWrap">
           <span>${escapeHtml(student.name)}${options.showRosterMarkers === true ? renderOlliStudentRosterMarkers(student) : ''}</span>
-          ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
+          ${metaHtml ? `<span class="studentMetaText">${metaHtml}${renderOlliStudentGroupUnsetGuideMarker(student)}</span>` : ''}
         </span>
       </div>
     </button>`;

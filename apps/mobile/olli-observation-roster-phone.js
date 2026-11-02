@@ -593,7 +593,7 @@ function renderObservationMemoRoster() {
     const studentId = escapeHtml(String(student?.id || ''));
     const meta = getObservationRosterMeta(student);
     // The month belongs exclusively to the right-side sort guide, including unset groups.
-    const metaHtml = (meta ? escapeHtml(meta) : '')
+    const metaHtml = (meta ? escapeHtml(meta) + renderOlliStudentGroupUnsetGuideMarker(student) : '')
       + renderOlliStudentRosterMarkers(student);
     const rightGuide = getObservationRosterRightGuide(student, criterion);
     const sectionKey = getObservationRosterSectionKey(student, criterion);

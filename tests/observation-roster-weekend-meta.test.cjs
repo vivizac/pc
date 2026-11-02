@@ -76,6 +76,20 @@ test('Saturday and Sunday markers stay in order; missing month remains before th
  assert.equal(api.renderOlliStudentRosterMarkers({...example,lesson_day:'월'}),'');
 });
 
+test('students without an assigned group show a blue star at the end of the name-side guide',()=>{
+ const api=context();
+ const unset={...example,group:'',group_no:0,groupNo:''};
+ const marker=api.renderOlliStudentGroupUnsetGuideMarker(unset);
+ assert.ok(marker.includes('class="olliStudentGroupUnsetGuideMarker"'));
+ assert.ok(marker.endsWith('>*</span>'));
+ assert.equal(api.renderOlliStudentGroupUnsetGuideMarker(example),'');
+ assert.equal(api.renderOlliStudentGroupUnsetGuideMarker({...unset,group_no:2}),'');
+ assert.equal(pc.split('renderOlliStudentGroupUnsetGuideMarker(student)').length-1,2);
+ assert.ok(mobile.includes('escapeHtml(meta) + renderOlliStudentGroupUnsetGuideMarker(student)'));
+ const css=fs.readFileSync(path.join(base,'packages/common/olli-student-weekend-badge.css'),'utf8');
+ assert.ok(css.includes('color:#0A84FF !important;'));
+});
+
 test('mobile observation roster uses a 2px black divider only when sorting changes section',()=>{
  const css=fs.readFileSync(path.join(base,'apps/mobile/olli-observation-roster-phone.css'),'utf8');
  const html=fs.readFileSync(path.join(base,'apps/mobile/index.html'),'utf8');

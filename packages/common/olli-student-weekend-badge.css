@@ -31,3 +31,14 @@
   line-height: inherit;
   white-space: nowrap;
 }
+
+/* Blue asterisk after the name-side guide for students without an assigned group. */
+.olliStudentGroupUnsetGuideMarker {
+  display:inline;
+  margin-left:2px;
+  color:#0A84FF !important;
+  font-size:inherit;
+  font-weight:700;
+  line-height:inherit;
+  white-space:nowrap;
+}
