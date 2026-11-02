@@ -52,6 +52,7 @@ test('mobile observation puts the month on the right and keeps weekend badges in
   getObservationRosterSectionKey:()=> '1',
   renderOlliStudentRosterGuideMeta:globals.renderOlliStudentRosterGuideMeta,
   renderOlliStudentRosterMarkers:globals.renderOlliStudentRosterMarkers,
+  renderOlliStudentGroupUnsetGuideMarker:globals.renderOlliStudentGroupUnsetGuideMarker,
   escapeHtml:value=>String(value),
   observationRosterSearchQuery:'',
   observationRosterSearchFocused:false,
