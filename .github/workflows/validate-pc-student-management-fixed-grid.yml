@@ -8,6 +8,7 @@ on:
       - 'apps/pc/pc-student-management.js'
       - 'apps/pc/index.html'
       - 'tests/pc-student-management-fixed-dashboard.test.cjs'
+      - 'tests/pc-consultation-tenure-badge.test.cjs'
       - 'tests/pc-student-management-fixed-dashboard-browser.test.cjs'
       - '.github/workflows/validate-pc-student-management-fixed-grid.yml'
   workflow_dispatch:
