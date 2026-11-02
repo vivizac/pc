@@ -48,11 +48,11 @@ test('all four statistics restore the exact original title-above-value layout an
  assert.equal((card.match(/<br>/g)||[]).length,1);
  assert.ok(card.indexOf('초등부 53명')<card.indexOf('유치부 36명'));
  assert.doesNotMatch(card,/recordAcademyStatGuide/);
- assert.match(block(html,'.recordAcademyStatValue'),/font-size: calc\\(42px/);
- assert.match(block(html,'body[data-olli-text-size="large"] .recordAcademyStatValue'),/font-size: calc\\(42px/);
- assert.match(block(html,'.recordAcademyStatLabel'),/transform: translateX\\(4px\\)/);
+ assert.ok(block(html,'.recordAcademyStatValue').includes('font-size: calc(42px'));
+ assert.ok(block(html,'body[data-olli-text-size="large"] .recordAcademyStatValue').includes('font-size: calc(42px'));
+ assert.ok(block(html,'.recordAcademyStatLabel').includes('transform: translateX(4px)'));
  assert.match(block(html,'.recordAcademyStatSub'),/width: 72px/);
- assert.match(html,/pc-student-management\\.css\\?v=20261102-stat-card-original-3/);
+ assert.ok(html.includes('pc-student-management.css?v=20261102-stat-card-original-3'));
 });
 test('no student save, synchronization, attendance, or mobile code is changed by this PC-only contract',()=>{
  assert.match(js,/function renderDashboard\(/);
