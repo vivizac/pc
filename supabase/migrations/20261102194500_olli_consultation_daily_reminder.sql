@@ -76,6 +76,14 @@ begin
        where r.academy_id=s.academy_id and r.status='confirmed'
          and (r.start_at at time zone 'Asia/Seoul')::date=v_day
      )
+     -- Do not let the first 100 already-sent devices starve other academies.
+     and not exists (
+       select 1 from public.olli_consultation_reminder_deliveries d
+       where d.academy_id=s.academy_id and d.subscription_id=s.id
+         and d.reminder_date=v_day and (
+           d.status='sent' or d.attempts>=5 or d.leased_until>now()
+         )
+     )
    order by s.id
    limit greatest(1,least(coalesce(p_limit,100),100))
  ), claimed as (
