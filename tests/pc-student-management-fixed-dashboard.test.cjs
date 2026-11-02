@@ -69,7 +69,8 @@ test('materials opener equals todo submit height; recurring manager shares exist
  const shared=block(css,'.pcAcademySectionCount,#recordAcademyDashboard .pcAcademyRecurringManageBtn');
  for(const snippet of ['height:30px','border-radius:999px','background:#f2f4f7','color:#747b85','font-size:11px','font-weight:820'])
   assert.ok(shared.includes(snippet),snippet);
- const repeat=block(css,'#recordAcademyDashboard .pcAcademyRecurringManageBtn');
+ const repeat=css.split('\n#recordAcademyDashboard .pcAcademyRecurringManageBtn{')[1]?.split('}')[0];
+ assert.ok(repeat,'button-only base rule exists');
  assert.doesNotMatch(repeat,/background:|border-radius:|color:|font-size:/);assert.match(repeat,/border:0/);
  assert.match(css,/#recordAcademyDashboard \.pcAcademyRecurringManageBtn svg\{[^}]*stroke:currentColor/);
 });
