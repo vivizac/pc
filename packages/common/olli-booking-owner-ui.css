@@ -7,8 +7,10 @@
 .obmHeader h2{font-size:25px;font-weight:800;letter-spacing:-.6px;margin:0}
 .obmHeader p{font-size:13px;color:#7a828d;margin:5px 0 0}
 .obmHeaderButtons{display:flex;gap:6px}
-.obmHeaderButtons [data-action="add-manual"]{background:#1687ff;color:#fff;border-color:#1687ff;font-weight:750;white-space:nowrap}
-.obmHeaderButtons [data-action="add-manual"]:disabled,.obmFormActions button:disabled{opacity:.5;cursor:not-allowed}
+.obmManualActions{display:flex;justify-content:flex-end;margin:0 0 12px}
+.obmManualActions [data-action="add-manual"]{min-height:40px;padding:9px 15px;border:1px solid #1687ff;border-radius:9px;font:750 13px Pretendard,sans-serif;cursor:pointer}
+.obmHeaderButtons [data-action="add-manual"],.obmManualActions [data-action="add-manual"]{background:#1687ff;color:#fff;border-color:#1687ff;font-weight:750;white-space:nowrap}
+.obmHeaderButtons [data-action="add-manual"]:disabled,.obmManualActions [data-action="add-manual"]:disabled,.obmFormActions button:disabled{opacity:.5;cursor:not-allowed}
 .obmHeaderButtons button,.obmMonth button,.obmListHeader button{border:1px solid #e0e5eb;border-radius:9px;background:#fff;padding:9px 12px;font-size:12px;color:#4d5969;cursor:pointer}
 .obmTabs{display:flex;gap:4px;align-items:center;background:#e9edf3;padding:4px;border-radius:11px;width:fit-content;margin-bottom:16px}
 .obmTabs button{padding:9px 20px;color:#697582;background:transparent;border:0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}

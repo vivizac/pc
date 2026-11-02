@@ -131,7 +131,7 @@
    const mobileTitle=state.mode==='mobile'?'<div><h2>상담 현황</h2><p>학원 상담 예약과 일정</p></div>':'';
    let header='<div class="obmHeader'+(state.mode==='pc'?' obmHeaderPc':'')+'">'+mobileTitle+'<div class="obmHeaderButtons">'+
     (state.mode==='mobile'?'<button type="button" data-action="close" aria-label="상담 현황 닫기">닫기</button>':'')+
-    '<button type="button" data-action="add-manual" '+(state.ready&&!state.loading?'':'disabled')+'>+ 상담일정 추가</button>'+
+    (state.mode==='mobile'?'<button type="button" data-action="add-manual" '+(state.ready&&!state.loading?'':'disabled')+'>+ 상담일정 추가</button>':'')+
     '<button type="button" data-action="refresh" aria-label="예약 내역 새로고침">새로고침</button></div></div>';
    let tabs=state.mode==='pc'
      ?[['calendar','캘린더'],['list','예약 목록'],['settings','예약 설정']]
@@ -157,7 +157,8 @@
    const footer=state.mode==='pc'
      ? (state.publicUrl?'<div class="obmFooter"><p class="obmLinkAddress">'+escapeHtml(state.publicUrl)+'</p></div>':'')
      : '<div class="obmFooter"><div class="obmLinkRow"><span>알림톡 승인 템플릿에 등록할 <strong>학원 통합 예약 링크</strong>입니다. 학생별 링크를 발급하지 않습니다.</span><button type="button" data-action="copy-public-link">통합 링크 복사</button></div>'+(state.publicUrl?'<p class="obmLinkAddress">'+escapeHtml(state.publicUrl)+'</p>':'')+'</div>';
-   root.innerHTML='<div class="obmLayout">'+toolbar+error+content+footer+
+   const pcManual=state.mode==='pc'?'<div class="obmManualActions"><button type="button" data-action="add-manual" '+(state.ready&&!state.loading?'':'disabled')+'>+ 상담일정 추가</button></div>':'';
+   root.innerHTML='<div class="obmLayout">'+toolbar+error+pcManual+content+footer+
      '</div><div class="obmModalHost" data-modal-host></div>';
  }
  async function refresh(){
