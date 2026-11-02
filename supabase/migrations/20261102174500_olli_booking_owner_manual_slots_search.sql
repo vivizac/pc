@@ -77,8 +77,8 @@ begin
       raise exception 'INVALID_STUDENT_LIST_REQUEST' using errcode='22023';
     end if;
     select coalesce(jsonb_agg(jsonb_build_object(
-      'id',st.id,'name',st.name,'school',coalesce(st.school,''),
-      'grade',coalesce(st.grade,'')) order by st.name,st.id),'[]'::jsonb)
+      'id',st.id,'name',st.name,'school',coalesce(to_jsonb(st)->>'school',''),
+      'grade',coalesce(to_jsonb(st)->>'grade','')) order by st.name,st.id),'[]'::jsonb)
       into v_students from public.students st
     where st.academy_id=p_academy_id and st.status='active' and st.is_deleted=false;
     return jsonb_build_object('ok',true,'students',v_students);
