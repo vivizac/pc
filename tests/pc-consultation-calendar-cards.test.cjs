@@ -70,15 +70,15 @@ test('PC date and appointment cards are top-left aligned, with no nested buttons
  assert.ok(day3,'Nov 3 button must exist');
  assert.equal((day3.match(/<button\b/g)||[]).length,1,'each calendar day is one button with noninteractive span cards');
 });
-test('remove only PC subheading while keeping mobile heading and refresh action',()=>{
- assert.match(js,/const mobileTitle=state\.mode==='mobile'\?/);
+test('PC keeps original refresh while mobile uses back and plus, without close or refresh',()=>{
+ assert.match(js,/const mobileTitle=state\.mode==='mobile'/);
  assert.match(js,/obmHeaderPc/);
  assert.match(js,/data-action="refresh"/);
  assert.match(css,/#olliConsultationBookingPanel \.obmHeaderPc\{justify-content:flex-end/);
  assert.match(pc,/olli-booking-owner-ui\.css\?v=20261102-manual-slots-search-4/);
  assert.match(pc,/olli-booking-owner-ui\.js\?v=20261102-manual-slots-search-4/);
   assert.match(mobile,/olli-booking-owner-ui\.css\?v=\d{8}-[\w-]+/);
- assert.match(mobile,/olli-booking-owner-ui\.js\?v=20261102-consultation-reminder-1/);
+ assert.match(mobile,/olli-booking-owner-ui\.js\?v=20261102-mobile-consultation-layout-1/);
 });
 
 test('PC toolbar order and calendar-only content preserve the mobile version',()=>{
@@ -113,6 +113,11 @@ test('PC toolbar order and calendar-only content preserve the mobile version',()
  assert.ok(settings.includes('data-settings')&&settings.includes('class="obmMonth"'));
  const mobileToday=page('mobile','today');
  assert.doesNotMatch(mobileToday,/obmPcToolbar/);
+ assert.match(mobileToday,/data-action="back"/);
+ assert.match(mobileToday,/class="obmMobileHeading"/);
+ assert.match(mobileToday,/class="obmMobileAdd"/);
+ assert.equal((mobileToday.match(/data-action="add-manual"/g)||[]).length,1);
+ assert.doesNotMatch(mobileToday,/data-action="close"|data-action="refresh"|학원 상담 예약과 일정/);
  assert.ok(mobileToday.includes('data-bookings')&&mobileToday.includes('전체 예약'));
  const mobileSettings=page('mobile','settings');
  assert.doesNotMatch(mobileSettings,/class="obmMonth"/);

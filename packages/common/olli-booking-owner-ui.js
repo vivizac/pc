@@ -76,6 +76,17 @@
    const newN=confirmed.filter(r=>r.kind==='intake').length;
    const unbooked=dueUnbooked();
    const monthLabel=state.mode==='pc'?'이달의 예약':'이번 달 예약';
+   if(state.mode==='mobile'){
+     // Reuse Academy Management stat card markup exactly; omit side guides.
+     const items=[
+       ['이번 달 예약',confirmed.length],['오늘 상담',todayN],
+       ['신규생 상담',newN],['이번 달 미예약 대상',unbooked===null?'—':unbooked.length]
+     ];
+     return '<div class="recordAcademyStatGrid obmMobileStatGrid">'+items.map(([label,value])=>
+       '<div class="recordAcademyStatCard"><div class="recordAcademyStatLabel">'+escapeHtml(label)+'</div>'+
+       '<div class="recordAcademyStatBody"><div class="recordAcademyStatValue">'+escapeHtml(value)+'</div></div></div>'
+     ).join('')+'</div>';
+   }
    return '<div class="obmStats"><div><strong>'+confirmed.length+'</strong><span>'+monthLabel+'</span></div><div><strong>'+todayN+'</strong><span>오늘 상담</span></div><div><strong>'+newN+'</strong><span>신규생 상담</span></div>'+
     (unbooked===null?'':'<div><strong>'+unbooked.length+'</strong><span>이번 달 미예약 대상</span></div>')+'</div>';
  }
@@ -133,11 +144,14 @@
  }
  function render(){
    const root=state.root;if(!root)return;
-   const mobileTitle=state.mode==='mobile'?'<div><h2>상담 현황</h2><p>학원 상담 예약과 일정</p></div>':'';
-   let header='<div class="obmHeader'+(state.mode==='pc'?' obmHeaderPc':'')+'">'+mobileTitle+'<div class="obmHeaderButtons">'+
-    (state.mode==='mobile'?'<button type="button" data-action="close" aria-label="상담 현황 닫기">닫기</button>':'')+
-    (state.mode==='mobile'?'<button type="button" data-action="add-manual" '+(state.ready&&!state.loading?'':'disabled')+'>+ 상담일정 추가</button>':'')+
-    '<button type="button" data-action="refresh" aria-label="예약 내역 새로고침">새로고침</button></div></div>';
+   const mobileTitle=state.mode==='mobile'
+     ?'<button type="button" class="obmMobileBack" data-action="back" aria-label="뒤로가기" title="뒤로가기"><span class="obmMobileBackIcon" aria-hidden="true"></span></button>'+
+       '<h2 class="obmMobileHeading">상담 현황</h2>'+
+       '<button type="button" class="obmMobileAdd" data-action="add-manual" aria-label="상담일정 추가" title="상담일정 추가" '+(state.ready&&!state.loading?'':'disabled')+'><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>'
+     :'';
+   let header=state.mode==='mobile'
+     ?'<div class="obmHeader obmMobileHeader">'+mobileTitle+'</div>'
+     :'<div class="obmHeader obmHeaderPc"><div class="obmHeaderButtons"><button type="button" data-action="refresh" aria-label="예약 내역 새로고침">새로고침</button></div></div>';
    let tabs=state.mode==='pc'
      ?[['calendar','캘린더'],['list','예약 목록'],['settings','예약 설정']]
      :[['today','오늘'],['week','이번 주'],['list','전체 예약'],['settings','설정']];
@@ -337,7 +351,7 @@
    if(node.matches('[data-day]')){state.selectedDay=node.dataset.day;if(state.mode==='pc')state.view='list';render();return;}
    if(node.matches('[data-view]')){state.view=node.dataset.view;state.selectedDay='';render();return;}
    const action=node.dataset.action;
-   if(action==='close'){close();return;}
+   if(action==='back'){close();return;}
    if(action==='copy-public-link'){await copyPublicLink(node);return;}
    if(action==='dismiss'){
      // Delegated clicks from inputs/labels bubble through the backdrop.

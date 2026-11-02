@@ -1,6 +1,6 @@
 /* Shared Olli booking management — isolated selectors; preserves old academy cards. */
 .olliBookingPcScreen{display:none;overflow:auto!important;background:#f5f6f8;padding:18px 24px 45px;z-index:10}
-.olliBookingMobileOverlay{position:fixed;inset:0;z-index:160000;background:#f6f7f9;overflow:auto;overscroll-behavior:contain;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:Pretendard,sans-serif}
+.olliBookingMobileOverlay{position:fixed;inset:0;z-index:160000;background:#fff;overflow:auto;overscroll-behavior:contain;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);font-family:Pretendard,sans-serif}
 .olliBookingMobileOverlay[hidden]{display:none!important}
 .obmLayout{width:100%;max-width:1280px;margin:0 auto;color:#161920;font-family:Pretendard,sans-serif}
 .obmHeader{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:12px 0 19px}
@@ -127,24 +127,139 @@
 .obmSlotError{color:#c13535!important;font-size:12px!important}
 @media(max-width:740px){
  .olliBookingMobileOverlay .obmLayout{padding:16px 16px 32px}
- .olliBookingMobileOverlay .obmHeader h2{font-size:21px}
- .olliBookingMobileOverlay .obmTabs{width:100%;overflow:auto}
- .olliBookingMobileOverlay .obmTabs button{flex:1;padding:9px 10px;font-size:12px}
- .olliBookingMobileOverlay .obmStats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
- .olliBookingMobileOverlay .obmStats>div{padding:13px}
- .olliBookingMobileOverlay .obmStats strong{font-size:23px}
+ .olliBookingMobileOverlay .obmMobileHeader{font-size:21px}
+ .olliBookingMobileOverlay .obmTabs{width:100%;overflow:visible}
+ .olliBookingMobileOverlay .obmTabs button{flex:1;min-width:0;padding:0 5px;font-size:12px}
  .olliBookingMobileOverlay .obmRow{grid-template-columns:74px minmax(0,1fr);gap:8px;padding:14px 10px}
  .olliBookingMobileOverlay .obmRowTime strong{font-size:15px}
  .olliBookingMobileOverlay .obmRowMain strong{font-size:14px}
  .olliBookingMobileOverlay .obmRowActions{grid-column:2;justify-content:flex-start}
  .olliBookingMobileOverlay .obmSettings{padding:14px}
  .olliBookingMobileOverlay .obmTimeGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
- .olliBookingMobileOverlay .obmHeaderButtons button{padding:8px}
  .olliBookingMobileOverlay .obmFooter{margin-bottom:24px}
 }
 
 .obmLinkRow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.obmLinkRow button{border:1px solid #d8e2ed;background:#fff;border-radius:9px;padding:10px 14px;color:#187bdb;font-size:12px;font-weight:750;cursor:pointer}.obmLinkAddress{word-break:break-all;padding:10px 13px;border-radius:9px;background:#fff;color:#546172;border:1px solid #e7eaef;font-size:12px;user-select:all}
 
+
+/* Mobile consultation: share the Work/Team Chat header's 16px guide inset,
+   44px control size and centered title. PC booking styles stay unchanged. */
+.olliBookingMobileOverlay .obmLayout{
+  box-sizing:border-box;
+  padding-left:var(--olli-phone-guide-x,16px);
+  padding-right:var(--olli-phone-guide-x,16px);
+}
+.olliBookingMobileOverlay .obmMobileHeader{
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr) 44px;
+  align-items:center;
+  gap:0;
+  height:44px;
+  min-height:44px;
+  margin:var(--olli-phone-guide-top,12px) 0 19px;
+}
+.olliBookingMobileOverlay .obmMobileHeader h2{
+  min-width:0;
+  margin:0;
+  text-align:center;
+  font-size:21px;
+  line-height:1.2;
+  font-weight:800;
+  letter-spacing:-.04em;
+  white-space:nowrap;
+}
+.olliBookingMobileOverlay .obmMobileHeader button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:44px;
+  height:44px;
+  min-width:44px;
+  min-height:44px;
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+  border-radius:999px;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.olliBookingMobileOverlay .obmMobileBack{
+  border:0;
+  background:transparent;
+  color:#1b2632;
+}
+.olliBookingMobileOverlay .obmMobileBackIcon{
+  width:21px;
+  height:21px;
+  display:block;
+  position:relative;
+}
+.olliBookingMobileOverlay .obmMobileBackIcon::before,
+.olliBookingMobileOverlay .obmMobileBackIcon::after{
+  content:'';
+  position:absolute;
+  left:4px;
+  top:10px;
+  width:13px;
+  height:2px;
+  background:currentColor;
+  border-radius:1px;
+  transform-origin:1px 1px;
+}
+.olliBookingMobileOverlay .obmMobileBackIcon::before{transform:rotate(-45deg)}
+.olliBookingMobileOverlay .obmMobileBackIcon::after{transform:rotate(45deg)}
+.olliBookingMobileOverlay .obmMobileAdd{
+  border:0;
+  background:#1687ff;
+  color:#fff;
+}
+.olliBookingMobileOverlay .obmMobileAdd:disabled{opacity:.5;cursor:not-allowed}
+.olliBookingMobileOverlay .obmMobileAdd svg{
+  width:23px;
+  height:23px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2.2;
+  stroke-linecap:round;
+}
+/* Work composer capsule: same rounded 24px outline, neutral surface and
+   control height. Only the selected segment is white. */
+.olliBookingMobileOverlay .obmTabs{
+  display:flex;
+  align-items:center;
+  width:100%;
+  height:44px;
+  box-sizing:border-box;
+  margin-bottom:16px;
+  padding:5px;
+  gap:3px;
+  border:1px solid #e3e6eb;
+  border-radius:24px;
+  background:#f6f7f9;
+  box-shadow:0 1px 5px rgba(20,24,30,.04);
+}
+.olliBookingMobileOverlay .obmTabs button{
+  flex:1 1 0;
+  min-width:0;
+  height:32px;
+  box-sizing:border-box;
+  padding:0 4px;
+  border:0;
+  border-radius:19px;
+  background:transparent;
+  color:#697582;
+  font-size:12px;
+  font-weight:700;
+  white-space:nowrap;
+}
+.olliBookingMobileOverlay .obmTabs button.active{
+  background:#fff;
+  color:#1687ff;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+}
+/* Stat cards' position, font sizing, border and padding are intentionally
+   inherited from the Academy Management .recordAcademyStat* source classes. */
+.olliBookingMobileOverlay .recordAcademyStatValue{color:#1687ff}
 #olliConsultationBookingPanel[hidden]{display:none!important}
 #olliConsultationBookingPanel{width:100%;min-width:0}
 #olliConsultationBookingPanel .obmLayout{max-width:none}
