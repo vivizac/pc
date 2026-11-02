@@ -21,6 +21,7 @@ for(const mode of ['pc','mobile']){
   const browser=await chromium.launch({headless:true});
   try{
    const page=await browser.newPage({viewport:{width:mode==='pc'?1280:390,height:900}});
+   page.setDefaultTimeout(7000);
    const date=futureKstDate(2);
    const slot=date+'T16:00:00+09:00';
    const calls=[],notices=[];
@@ -56,7 +57,7 @@ for(const mode of ['pc','mobile']){
    await dialog.waitFor({state:'visible'});
    await page.locator('[data-slot-time] option[value*="T"]').first().waitFor({state:'attached'});
    // Regression: clicking inside the modal MUST NOT be interpreted as a backdrop click.
-   await dialog.getByText('학생 선택').first().click();
+   await dialog.locator('label').first().click();
    assert.equal(await dialog.count(),1,'the student label must not close the dialog');
    await page.locator('[data-manual-student]').click();
    assert.equal(await dialog.count(),1,'opening the student selector must not close it');
