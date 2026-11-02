@@ -130,9 +130,9 @@
   border-top:1px solid #eeeeee;
 }
 
-/* A change of sort section uses the existing row divider, only thicker. */
+/* Sort boundaries keep the same 1px divider thickness, using black instead of gray. */
 #observationRosterScreen .memoBodyRosterRow + .memoBodyRosterRow.memoBodyRosterSectionStart {
-  border-top:2px solid #000000;
+  border-top:1px solid #000000;
 }
 
 #observationRosterScreen .memoBodyRosterStudentBtn {
