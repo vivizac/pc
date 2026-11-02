@@ -54,7 +54,7 @@ for(const mode of ['pc','mobile']){
    await page.locator('[data-action="add-manual"]').click();
    const dialog=page.getByRole('dialog',{name:'상담일정 추가'});
    await dialog.waitFor({state:'visible'});
-   await page.locator('[data-slot-time] option[value*="T"]').first().waitFor();
+   await page.locator('[data-slot-time] option[value*="T"]').first().waitFor({state:'attached'});
    // Regression: clicking inside the modal MUST NOT be interpreted as a backdrop click.
    await dialog.getByText('학생 선택').first().click();
    assert.equal(await dialog.count(),1,'the student label must not close the dialog');
