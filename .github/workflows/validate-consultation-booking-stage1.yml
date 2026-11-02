@@ -31,6 +31,7 @@ on:
       - 'apps/pc/consultation-survey.css'
       - 'tests/consultation-manual-copy-booking-link.test.cjs'
       - 'tests/consultation-booking-browser.test.cjs'
+      - 'tests/consultation-booking-modal-dismiss-browser.test.cjs'
       - 'packages/common/olli-consultation-messages.js'
       - '.github/workflows/validate-consultation-booking-stage1.yml'
       - 'packages/common/*-runtime-manifest.json'
@@ -191,3 +192,5 @@ jobs:
         run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-topbar-browser.test.cjs
       - name: Verify PC booking stats, toolbar and calendar at desktop viewports
         run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/pc-consultation-compact-toolbar-browser.test.cjs
+      - name: Verify owner manual booking modal controls on PC and mobile
+        run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-booking-modal-dismiss-browser.test.cjs
