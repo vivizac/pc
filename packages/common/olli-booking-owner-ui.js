@@ -121,7 +121,10 @@
  function settingsHtml(){
    const s=state.settings;if(!s)return '<div class="obmEmptyMessage">학원별 예약 설정을 불러오지 못했습니다.</div>';
    const list=(arr,key,names)=>names.map(([n,name])=>'<label class="obmOption"><input type="checkbox" data-settings-array="'+key+'" value="'+n+'" '+(arr.includes(n)?'checked':'')+'><span>'+name+'</span></label>').join('');
-   return '<form class="obmSettings" data-settings-form><p class="obmHint">이 학원에서만 적용되는 예약 운영 기준입니다. PC·모바일에서 동일하게 반영됩니다.</p>'+
+   const mobileReminder=state.mode==='mobile'
+     ?'<div class="obmSettingGroup"><strong>당일 상담 알림</strong><p>상담이 있는 날 오전 10시에 푸시 알림을 받습니다. 알림 권한을 허용하면 설치한 올리 앱 아이콘에도 오늘 상담 건수가 표시됩니다.</p><button type="button" data-action="enable-consultation-reminder">상담 알림 켜기</button></div>'
+     :'';
+   return '<form class="obmSettings" data-settings-form><p class="obmHint">이 학원에서만 적용되는 예약 운영 기준입니다. PC·모바일에서 동일하게 반영됩니다.</p>'+mobileReminder+
    '<div class="obmSettingGroup"><strong>예약 기간</strong><div class="obmOptionRow">'+list(s.weeks,'weeks',[[1,'첫째 주'],[2,'둘째 주'],[3,'셋째 주'],[4,'넷째 주'],[5,'다섯째 주'],[6,'여섯째 주']])+'</div></div>'+
    '<div class="obmSettingGroup"><strong>운영 요일</strong><div class="obmOptionRow">'+list(s.weekdays,'weekdays',[[1,'월'],[2,'화'],[3,'수'],[4,'목'],[5,'금'],[6,'토'],[7,'일']])+'</div></div>'+
    '<div class="obmSettingGroup obmTimeGrid"><label>시작 시각<input name="start_time" type="time" value="'+escapeHtml(s.start_time.slice(0,5))+'" required></label><label>종료 시각<input name="end_time" type="time" value="'+escapeHtml(s.end_time.slice(0,5))+'" required></label><label>예약 간격<select name="slot_minutes"><option value="15" '+(s.slot_minutes===15?'selected':'')+'>15분</option><option value="30" '+(s.slot_minutes===30?'selected':'')+'>30분</option><option value="60" '+(s.slot_minutes===60?'selected':'')+'>60분</option></select></label></div>'+
@@ -352,6 +355,20 @@
    if(action==='refresh'){void refresh();return;}
    if(action==='clear-day'){state.selectedDay='';render();return;}
    if(action==='add-manual'){await openManualBooking();return;}
+   if(action==='enable-consultation-reminder'){
+     if(state.mode!=='mobile')return;
+     const enable=global.OlliTalkPush?.ensureSubscription;
+     if(typeof enable!=='function'){
+       global.alert('이 기기에서는 올리 모바일 푸시 알림을 켤 수 없습니다.');
+       return;
+     }
+     const enabled=await enable({interactive:true});
+     if(enabled){
+       void global.OlliConsultationReminders?.refresh?.({force:true});
+       global.alert('상담 알림이 켜졌습니다. 예약된 상담이 있는 날 오전 10시에 알림을 받습니다.');
+     }
+     return;
+   }
    if(action==='pick-manual-student'){
      const selected=state.manualStudents.find(s=>String(s.id)===node.dataset.studentId);
      const search=state.root?.querySelector('[data-manual-search]');

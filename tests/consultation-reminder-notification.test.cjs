@@ -1,0 +1,58 @@
+'use strict';
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const read=file=>fs.readFileSync(path.join(root,file),'utf8');
+const sql=read('supabase/migrations/20261102194500_olli_consultation_daily_reminder.sql');
+const cron=read('supabase/migrations/20261102200000_olli_consultation_daily_reminder_cron.sql');
+const edge=read('apps/mobile/supabase/functions/olli-consultation-reminder/index.ts');
+const sw=read('apps/mobile/olli-push-sw.js');
+const client=read('apps/mobile/olli-consultation-reminders.js');
+const work=read('apps/mobile/olli-talk-push.js');
+const html=read('apps/mobile/index.html');
+const ui=read('packages/common/olli-booking-owner-ui.js');
+test('10am KST server cron uses protected vault token and safe retry window',()=>{
+ assert.match(cron,/0,5,10,15,20 1 \* \* \*/);
+ assert.match(cron,/Asia\/Seoul/);
+ assert.match(cron,/vault\.decrypted_secrets/);
+ assert.match(cron,/net\.http_post/);
+ assert.match(cron,/olli-consultation-reminder/);
+ assert.doesNotMatch(cron,/['"](?:Bearer\s+[A-Za-z]|eyJ[A-Za-z0-9_.-]{20})/);
+});
+test('reminder selection isolates owner and manager appointments and restricts API',()=>{
+ assert.match(sql,/m\.role in \('owner','super_admin','manager'\)/);
+ assert.match(sql,/r\.status='confirmed'/);
+ assert.match(sql,/current_setting\('request\.jwt\.claim\.role',true\)/);
+ assert.match(sql,/on conflict\(academy_id,subscription_id,reminder_date\)/);
+ assert.match(sql,/leased_until<=now\(\)/);
+ assert.match(sql,/d\.claim_token=p_claim_token/);
+ assert.match(sql,/oll(i)?_consultation_today_count/);
+ assert.doesNotMatch(sql,/alter\s+table\s+public\.olli_booking_reservations|truncate|drop table/i);
+});
+test('dedicated edge function reuses existing VAPID, requires internal token, and sends private count only',()=>{
+ assert.match(edge,/olli_team_chat_system_push_secret/);
+ assert.match(edge,/olli_push_server_vapid/);
+ assert.match(edge,/olli_consultation_reminder_claim_targets/);
+ assert.match(edge,/olli_consultation_reminder_finish/);
+ assert.match(edge,/webpush\.sendNotification/);
+ assert.match(edge,/consultationCount:count/);
+ assert.match(edge,/date:list\.data\?\.date/);
+ assert.doesNotMatch(edge,/target\.name|target\.student_name/);
+});
+test('mobile service worker, app badge and visible consultation shortcut share existing Work notifications',()=>{
+ new Function(sw);new Function(client);new Function(work);new Function(ui);
+ assert.match(sw,/OLLI_CONSULTATION_BADGE_PUSH/);
+ assert.match(sw,/OLLI_CONSULTATION_OPEN_FROM_NOTIFICATION/);
+ assert.match(sw,/workCount:sameAcademy/);
+ assert.match(sw,/consultationCount:sameAcademy/);
+ assert.match(client,/olli_consultation_today_count/);
+ assert.match(client,/consultationCount:state\.consultationCount/);
+ assert.match(work,/OlliConsultationReminders\?\.combineWorkCount/);
+ assert.match(work,/olli-push-sw\.js\?v=20261102-consultation-10am-1/);
+ assert.match(ui,/enable-consultation-reminder/);
+ assert.match(html,/olli-consultation-reminders\.js\?v=20261102-10am-badge-1/);
+ assert.match(html,/olli-talk-push\.js\?v=20261102-10am-badge-1/);
+ assert.match(html,/olli-booking-owner-ui\.js\?v=20261102-consultation-reminder-1/);
+});

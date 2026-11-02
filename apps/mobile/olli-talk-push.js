@@ -196,7 +196,7 @@
     if (!supportsPush()) throw new Error('이 기기에서는 푸시 알림을 사용할 수 없습니다.');
     if (!registrationPromise) {
       registrationPromise = navigator.serviceWorker
-        .register('./olli-push-sw.js?v=20261006-live-badge-refresh-1', { scope: './' })
+        .register('./olli-push-sw.js?v=20261102-consultation-10am-1', { scope: './' })
         .then(() => navigator.serviceWorker.ready)
         .catch((error) => {
           registrationPromise = null;
@@ -416,7 +416,8 @@
   }
 
   function setAppBadge(count){
-    const value = Math.max(0, Number(count || 0));
+    const workUnread=Math.max(0,Number(count||0));
+    const value=window.OlliConsultationReminders?.combineWorkCount?.(workUnread)??workUnread;
     if (isIos() && 'Notification' in window && Notification.permission !== 'granted') {
       if (value > 0) console.info('올리 앱 아이콘 뱃지 대기: iOS 알림 권한이 필요합니다.');
       return false;
