@@ -123,8 +123,11 @@
    return '<div class="obmRows">'+safe.map(r=>{
      const date=kstParts(r.start_at);
      return '<article class="obmRow"><div class="obmRowTime"><strong><span class="obmRowDate">'+escapeHtml(dateLabel(date.ymd).replace(/\s+\(/g,'('))+'</span> <span class="obmRowClock">'+escapeHtml(date.hm)+'</span></strong></div>'+
-       '<div class="obmRowMain"><strong>'+escapeHtml(r.name)+'</strong><span>'+ (r.kind==='intake'?'신규 상담':'재원생 정기 상담')+
-       (r.status==='cancelled'?' · 취소됨':'')+'</span></div><div class="obmRowActions">'+
+       '<div class="obmRowMain"><strong>'+escapeHtml(r.name)+'</strong>'+
+       ((r.kind==='intake'||state.mode==='pc'||r.status==='cancelled')?
+         '<span>'+(r.kind==='intake'?'신규 상담':state.mode==='pc'?'재원생 정기 상담':'')+
+         (r.status==='cancelled'?' · 취소됨':'')+'</span>':'')+
+       '</div><div class="obmRowActions">'+
        (r.status==='confirmed'?'<button type="button" data-action="edit" data-id="'+escapeHtml(r.id)+'">변경</button><button type="button" data-action="cancel" data-id="'+escapeHtml(r.id)+'">취소</button>':'<span class="obmCancelled">취소 기록</span>')+
        '</div></article>';
    }).join('')+'</div>';
