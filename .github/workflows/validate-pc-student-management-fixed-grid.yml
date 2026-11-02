@@ -1,0 +1,38 @@
+name: Validate PC student management fixed dashboard grid
+on:
+  push:
+    branches:
+      - fix/pc-student-management-fixed-dashboard-grid-20261102
+    paths:
+      - 'apps/pc/pc-student-management.css'
+      - 'apps/pc/pc-student-management.js'
+      - 'apps/pc/index.html'
+      - 'tests/pc-student-management-fixed-dashboard.test.cjs'
+      - 'tests/pc-student-management-fixed-dashboard-browser.test.cjs'
+      - '.github/workflows/validate-pc-student-management-fixed-grid.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Compile unchanged student manager
+        run: node --check apps/pc/pc-student-management.js
+      - name: Run dashboard structure and consultation regressions
+        run: |
+          node --test tests/pc-student-management-fixed-dashboard.test.cjs
+          node --test tests/pc-consultation-tenure-badge.test.cjs tests/pc-consultation-existing-record-needed.test.cjs
+      - name: Install disposable browser runner
+        run: |
+          npm install --prefix /tmp/olli-pc-layout-check --no-save --no-audit --no-fund playwright@1.58.2
+          /tmp/olli-pc-layout-check/node_modules/.bin/playwright install --with-deps chromium
+      - name: Test actual Chromium fixed grids and scroll behavior
+        env:
+          NODE_PATH: /tmp/olli-pc-layout-check/node_modules
+        run: node --test tests/pc-student-management-fixed-dashboard-browser.test.cjs
