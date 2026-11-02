@@ -27,8 +27,8 @@ test('card height cannot increase from new rows and scroll controls live only in
  assert.match(section,/height:100%;min-width:0;min-height:0/);
  assert.match(section,/display:flex;flex-direction:column/);
  assert.match(section,/overflow:hidden/);
- assert.match(block(css,'body.olliPcApp #recordAcademyDashboard .recordAcademyStatCard'),/height:122px/);
- assert.match(block(css,'body.olliPcApp #recordAcademyDashboard .recordAcademyStatGrid'),/grid-auto-rows:122px/);
+ assert.match(block(css,'body.olliPcApp #recordAcademyDashboard .recordAcademyStatCard'),/min-height:122px/);
+ assert.doesNotMatch(block(css,'body.olliPcApp #recordAcademyDashboard .recordAcademyStatGrid'),/grid-auto-rows/);
  for(const selector of ['.pcAcademyTodoList','.pcAcademyMaterialsList','.pcAcademyConsultationList']){
   const value=block(css,selector);
   assert.match(value,/min-height:0/);assert.match(value,/overflow-y:auto/);
@@ -38,21 +38,21 @@ test('card height cannot increase from new rows and scroll controls live only in
  assert.match(block(css,'.pcAcademyTodoSection'),/min-height:0/);
  assert.match(block(css,'#recordAcademyDashboard .pcAcademyMaterialsSection'),/min-height:0/);
 });
-test('all four stat labels are above two detail rows beside enlarged representative numbers',()=>{
+test('all four statistics restore the exact original title-above-value layout and font sizes',()=>{
  const start=js.indexOf('  function buildStatCard('),end=js.indexOf('  function renderDashboard()',start);
  assert.ok(start>=0&&end>start);
  const build=vm.runInNewContext(js.slice(start,end)+';buildStatCard',{escape:x=>String(x)});
  const card=build('원생수',89,'초등부 53명 · 유치부 36명');
- const guide=card.indexOf('recordAcademyStatGuide'),label=card.indexOf('원생수');
- assert.ok(card.indexOf('recordAcademyStatValue')<guide && guide<label);
- assert.ok(card.indexOf('89')<guide);
+ assert.ok(card.indexOf('recordAcademyStatLabel')<card.indexOf('recordAcademyStatBody'));
+ assert.ok(card.indexOf('recordAcademyStatValue')<card.indexOf('recordAcademyStatSub'));
  assert.equal((card.match(/<br>/g)||[]).length,1);
  assert.ok(card.indexOf('초등부 53명')<card.indexOf('유치부 36명'));
- assert.match(block(html,'.recordAcademyStatValue'),/64px/);
- assert.match(block(html,'body[data-olli-text-size="large"] .recordAcademyStatValue'),/64px/);
- assert.match(block(html,'.recordAcademyStatGuide'),/flex-direction:\s*column/);
- assert.doesNotMatch(block(html,'.recordAcademyStatLabel'),/translateX/);
- assert.match(html,/pc-student-management\.css\?v=20261102-fixed-academy-grid-2/);
+ assert.doesNotMatch(card,/recordAcademyStatGuide/);
+ assert.match(block(html,'.recordAcademyStatValue'),/font-size: calc\\(42px/);
+ assert.match(block(html,'body[data-olli-text-size="large"] .recordAcademyStatValue'),/font-size: calc\\(42px/);
+ assert.match(block(html,'.recordAcademyStatLabel'),/transform: translateX\\(4px\\)/);
+ assert.match(block(html,'.recordAcademyStatSub'),/width: 72px/);
+ assert.match(html,/pc-student-management\\.css\\?v=20261102-stat-card-original-3/);
 });
 test('no student save, synchronization, attendance, or mobile code is changed by this PC-only contract',()=>{
  assert.match(js,/function renderDashboard\(/);

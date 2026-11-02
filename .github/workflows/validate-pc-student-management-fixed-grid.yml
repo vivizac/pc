@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - fix/pc-student-management-fixed-dashboard-grid-20261102
+      - fix/pc-restore-original-stat-cards-20261102
     paths:
       - 'apps/pc/pc-student-management.css'
       - 'apps/pc/pc-student-management.js'

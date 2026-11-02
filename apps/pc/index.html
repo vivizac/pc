@@ -119,40 +119,33 @@
   font-size: calc(12px * var(--olli-text-scale));
   color: #8f8f8f;
   font-weight: 600;
-  line-height: 1.3;
   letter-spacing: -0.03em;
+  transform: translateX(4px);
 }
 .recordAcademyStatBody {
+  margin-top: 8px;
   display: flex;
-  min-width: 0;
-  min-height: 100%;
   align-items: center;
   gap: 12px;
   justify-content: space-between;
 }
-.recordAcademyStatGuide {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  flex: 0 1 auto;
-  min-width: 0;
-  gap: 4px;
-}
 .recordAcademyStatValue {
-  font-size: calc(64px * var(--olli-text-scale));
+  font-size: calc(42px * var(--olli-text-scale));
   font-weight: 400;
-  line-height: 1;
+  line-height: 0.95;
   color: #111;
   letter-spacing: -0.055em;
   flex: 0 0 auto;
+  transform: translateX(4px);
 }
 .recordAcademyStatSub {
-  margin: 0;
-  width: auto;
-  flex: 0 1 auto;
+  margin-top: 0;
+  margin-left: auto;
+  width: 72px;
+  flex: 0 0 72px;
   font-size: calc(11px * var(--olli-text-scale));
   color: #9b9b9b;
-  line-height: 1.42;
+  line-height: 1.32;
   letter-spacing: -0.03em;
   white-space: nowrap;
   text-align: left;
@@ -1649,7 +1642,7 @@
 <link rel="stylesheet" href="olli-booking-owner-ui.css?v=20261029-pc-compact-toolbar-1">
 <link rel="stylesheet" href="pc-attendance.css?v=20261026-month-unset-guide-1">
 <link rel="stylesheet" href="pc-record-editor.css?v=20260930-record-colors-3">
-<link rel="stylesheet" href="pc-student-management.css?v=20261102-fixed-academy-grid-2">
+<link rel="stylesheet" href="pc-student-management.css?v=20261102-stat-card-original-3">
 <link rel="stylesheet" href="pc-trash.css">
 <link rel="stylesheet" href="consultation-survey.css?v=20261029-pc-booking-link-1">
 <link rel="stylesheet" href="pc-team-talk.css?v=20261008-avatar-picker-1">
@@ -3812,7 +3805,7 @@ body[data-olli-text-size="large"] .recordAcademyConsultGroupEmpty {
   font-size: calc(12px * var(--olli-text-scale));
 }
 body[data-olli-text-size="large"] .recordAcademyStatValue {
-  font-size: calc(64px * var(--olli-text-scale));
+  font-size: calc(42px * var(--olli-text-scale));
 }
 body[data-olli-text-size="large"] .elementaryStudentRow,
 body[data-olli-text-size="large"] .kinderStudentRow {

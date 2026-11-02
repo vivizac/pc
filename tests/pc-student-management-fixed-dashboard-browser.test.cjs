@@ -8,7 +8,7 @@ assert.ok(style,'original PC statistics stylesheet');
 const attendance=fs.readFileSync(path.join(root,'apps/pc/pc-attendance.css'),'utf8');
 const management=fs.readFileSync(path.join(root,'apps/pc/pc-student-management.css'),'utf8');
 function stat(value,label,details){
- return `<div class="recordAcademyStatCard"><div class="recordAcademyStatBody"><div class="recordAcademyStatValue">${value}</div><div class="recordAcademyStatGuide"><div class="recordAcademyStatLabel">${label}</div><div class="recordAcademyStatSub">${details}</div></div></div></div>`;
+ return `<div class="recordAcademyStatCard"><div class="recordAcademyStatLabel">${label}</div><div class="recordAcademyStatBody"><div class="recordAcademyStatValue">${value}</div><div class="recordAcademyStatSub">${details}</div></div></div>`;
 }
 function fixture(){
  const cards=[stat(89,'원생수','초등부 53명<br>유치부 36명'),stat(14,'11월 상담','초등부 10명<br>유치부 4명'),stat(40,'올해 등록','이달 등록 0명<br>이달 퇴원 0명'),stat(22,'올해 퇴원','휴원 1명<br>퇴원 22명')].join('');
