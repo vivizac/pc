@@ -9,9 +9,11 @@ declare
  day date:=(now() at time zone 'Asia/Seoul')::date;
  r jsonb;
 begin
+ insert into public.students(id,academy_id,name) values(
+   '99999999-1111-4111-8111-111111111111',aid,'알림 테스트 학생');
  insert into public.olli_booking_reservations
   (academy_id,student_id,start_at,end_at,request_key)
- values(aid,'11111111-1111-4111-8111-111111111111',
+ values(aid,'99999999-1111-4111-8111-111111111111',
  (day+'12:00'::time) at time zone 'Asia/Seoul',
  (day+'12:30'::time) at time zone 'Asia/Seoul',
  'aaaa1111-1111-4111-8111-111111111111');
