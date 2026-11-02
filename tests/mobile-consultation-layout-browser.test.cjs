@@ -33,7 +33,7 @@ test('mobile-only layout reuses academy stat card source and Work header dimensi
    await page.addStyleTag({content:canonicalGlass});
    await page.evaluate(()=>{
     document.body.style.margin='0';
-    document.body.insertAdjacentHTML('beforeend','<div id="olliTalkBetaScreen" style="position:fixed;inset:0;visibility:hidden;pointer-events:none"><div class="olliTalkBetaHeader"><button class="olliTalkBetaBackBtn">‹</button></div><div class="olliTalkBetaComposer">Work</div></div>');
+    document.body.insertAdjacentHTML('beforeend','<div id="olliTalkBetaScreen" style="position:fixed;inset:0;visibility:hidden;pointer-events:none"><div class="olliTalkBetaHeader"><button class="olliTalkBetaBackBtn"><span class="memoRosterBackIcon" aria-hidden="true"></span></button></div><div class="olliTalkBetaComposer">Work</div></div>');
     localStorage.setItem('olli_current_academy_id','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
     localStorage.setItem('olli_account_session_token_v1','fixture-owner');
     window.OlliConsultationMessages={isOwner:()=>true};
@@ -67,6 +67,8 @@ test('mobile-only layout reuses academy stat card source and Work header dimensi
      const rect=e=>{const r=e.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,centerX:r.left+r.width/2}};
      const header=query('.obmMobileHeader');
      const referenceBack=document.querySelector('#olliTalkBetaScreen .olliTalkBetaBackBtn');
+     const referenceArrow=referenceBack.querySelector('.memoRosterBackIcon');
+     const bookingArrow=query('.obmMobileBack .memoRosterBackIcon');
      const referenceComposer=document.querySelector('#olliTalkBetaScreen .olliTalkBetaComposer');
      const row=query('.obmRow'),rowName=row?.querySelector('.obmRowMain strong'),actions=row?.querySelector('.obmRowActions');
      const back=query('.obmMobileBack'),plus=query('.obmMobileAdd'),title=query('.obmMobileHeading'),tabs=query('.obmTabs');
@@ -81,6 +83,14 @@ test('mobile-only layout reuses academy stat card source and Work header dimensi
       background:style(overlay).backgroundColor,
       header:rect(header),back:rect(back),plus:rect(plus),title:rect(title),tabs:rect(tabs),
       referenceBack:rect(referenceBack),
+      workBackStyle:{border:style(referenceBack).border,background:style(referenceBack).backgroundImage,shadow:style(referenceBack).boxShadow,blur:style(referenceBack).backdropFilter,radius:style(referenceBack).borderRadius},
+      consultationBackStyle:{border:style(back).border,background:style(back).backgroundImage,shadow:style(back).boxShadow,blur:style(back).backdropFilter,radius:style(back).borderRadius},
+      workArrow:{width:style(referenceArrow).width,height:style(referenceArrow).height,
+        left:getComputedStyle(referenceArrow,'::before').left,top:getComputedStyle(referenceArrow,'::before').top,
+        strokeWidth:getComputedStyle(referenceArrow,'::before').height},
+      bookingArrow:{width:style(bookingArrow).width,height:style(bookingArrow).height,
+        left:getComputedStyle(bookingArrow,'::before').left,top:getComputedStyle(bookingArrow,'::before').top,
+        strokeWidth:getComputedStyle(bookingArrow,'::before').height},
       workGlass:{background:style(referenceComposer).backgroundImage,border:style(referenceComposer).border,shadow:style(referenceComposer).boxShadow,blur:style(referenceComposer).backdropFilter},
       capsuleGlass:{background:style(tabs).backgroundImage,border:style(tabs).border,shadow:style(tabs).boxShadow,blur:style(tabs).backdropFilter},
       row:row?rect(row):null,rowName:rowName?rect(rowName):null,rowActions:actions?rect(actions):null,
@@ -123,6 +133,8 @@ test('mobile-only layout reuses academy stat card source and Work header dimensi
    assert.ok(Math.abs(layout.back.top-layout.plus.top)<1,'header buttons share top baseline');
    assert.ok(Math.abs(layout.back.top-layout.referenceBack.top)<1,'back and Work back share exact top');
    assert.ok(Math.abs(layout.plus.top-layout.referenceBack.top)<1,'plus and Work back share exact top');
+   assert.deepEqual(layout.consultationBackStyle,layout.workBackStyle,'consultation back uses exact Work glass style');
+   assert.deepEqual(layout.bookingArrow,layout.workArrow,'consultation back uses exact Work arrow geometry');
    assert.deepEqual(layout.capsuleGlass,layout.workGlass,'capsule shares Work composer glass and inner highlight');
    assert.equal(layout.regularSubtitle,false,'regular consultation label absent on mobile');
    assert.ok(layout.row&&layout.rowName&&layout.rowActions,'long-name booking row exists');
@@ -142,10 +154,13 @@ test('mobile-only layout reuses academy stat card source and Work header dimensi
 test('PC versions and toolbar source are preserved, mobile scripts cache-busted',()=>{
  assert.match(desktop,/olli-booking-owner-ui\.js\?v=20261102-manual-slots-search-4/);
  assert.match(desktop,/olli-booking-owner-ui\.css\?v=20261102-manual-slots-search-4/);
- assert.match(html,/olli-booking-owner-ui\.js\?v=20261103-mobile-align-glass-2/);
- assert.match(html,/olli-booking-owner-ui\.css\?v=20261103-mobile-align-glass-2/);
+ assert.match(html,/olli-booking-owner-ui\.js\?v=20261103-work-back-match-3/);
+ assert.match(html,/olli-booking-owner-ui\.css\?v=20261103-work-back-match-3/);
  assert.match(shared,/#olliConsultationBookingPanel \.obmPcToolbar/);
- assert.match(html,/olli-phone-control-style\.css\?v=20261103-consultation-glass-2/);
+ assert.match(html,/olli-phone-control-style\.css\?v=20261103-work-back-shared-3/);
  assert.match(canonicalGlass,/\.olliBookingMobileOverlay \.obmTabs/);
+ assert.match(canonicalGlass,/\.olliBookingMobileOverlay \.obmMobileBack/);
+ assert.match(js,/class="memoRosterBackIcon"/);
+ assert.doesNotMatch(shared,/\.obmMobileBackIcon/);
  assert.match(js,/state\.mode==='pc'\?'<button class="obmPcAddManual"/);
 });

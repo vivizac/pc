@@ -193,30 +193,10 @@
   -webkit-tap-highlight-color:transparent;
 }
 .olliBookingMobileOverlay .obmMobileBack{
-  border:0;
-  background:transparent;
-  color:#1b2632;
+  /* Exact Work back button glass treatment is shared via
+     olli-phone-control-style.css. The arrow is the canonical memoRosterBackIcon. */
+  color:var(--olli-talk-control-foreground,#201818);
 }
-.olliBookingMobileOverlay .obmMobileBackIcon{
-  width:21px;
-  height:21px;
-  display:block;
-  position:relative;
-}
-.olliBookingMobileOverlay .obmMobileBackIcon::before,
-.olliBookingMobileOverlay .obmMobileBackIcon::after{
-  content:'';
-  position:absolute;
-  left:4px;
-  top:10px;
-  width:13px;
-  height:2px;
-  background:currentColor;
-  border-radius:1px;
-  transform-origin:1px 1px;
-}
-.olliBookingMobileOverlay .obmMobileBackIcon::before{transform:rotate(-45deg)}
-.olliBookingMobileOverlay .obmMobileBackIcon::after{transform:rotate(45deg)}
 .olliBookingMobileOverlay .obmMobileAdd{
   border:0;
   background:#1687ff;

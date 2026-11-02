@@ -148,7 +148,7 @@
  function render(){
    const root=state.root;if(!root)return;
    const mobileTitle=state.mode==='mobile'
-     ?'<button type="button" class="obmMobileBack" data-action="back" aria-label="뒤로가기" title="뒤로가기"><span class="obmMobileBackIcon" aria-hidden="true"></span></button>'+
+     ?'<button type="button" class="obmMobileBack" data-action="back" aria-label="뒤로가기" title="뒤로가기"><span class="memoRosterBackIcon" aria-hidden="true"></span></button>'+
        '<h2 class="obmMobileHeading">상담 현황</h2>'+
        '<button type="button" class="obmMobileAdd" data-action="add-manual" aria-label="상담일정 추가" title="상담일정 추가" '+(state.ready&&!state.loading?'':'disabled')+'><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>'
      :'';
