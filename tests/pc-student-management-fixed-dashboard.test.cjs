@@ -50,7 +50,7 @@ test('all four stat labels are above two detail rows beside enlarged representat
  assert.ok(card.indexOf('초등부 53명')<card.indexOf('유치부 36명'));
  assert.match(block(html,'.recordAcademyStatValue'),/64px/);
  assert.match(block(html,'body[data-olli-text-size="large"] .recordAcademyStatValue'),/64px/);
- assert.match(block(html,'.recordAcademyStatGuide'),/flex-direction:column/);
+ assert.match(block(html,'.recordAcademyStatGuide'),/flex-direction:\s*column/);
  assert.doesNotMatch(block(html,'.recordAcademyStatLabel'),/translateX/);
  assert.match(html,/pc-student-management\.css\?v=20261102-fixed-academy-grid-1/);
 });
