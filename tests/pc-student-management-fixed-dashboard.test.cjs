@@ -3,8 +3,10 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const css=read('apps/pc/pc-student-management.css'),html=read('apps/pc/index.html'),js=read('apps/pc/pc-student-management.js');
 function block(source,selector){
- const start=source.indexOf(selector+'{');assert.ok(start>=0,'missing original rule '+selector);
- const begin=start+selector.length+1;const end=source.indexOf('}',begin);
+ const start=source.indexOf(selector);assert.ok(start>=0,'missing original rule '+selector);
+ const open=source.indexOf('{',start+selector.length);
+ assert.ok(open>=0,'missing opening brace for '+selector);
+ const begin=open+1;const end=source.indexOf('}',begin);
  return source.slice(begin,end);
 }
 test('student-management page alone never scrolls; boxes use a single fixed-height grid',()=>{
