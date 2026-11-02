@@ -42,10 +42,13 @@ for(const mode of ['pc','mobile']){
      window.__calls.push({name,params});
      if(name==='olli_booking_staff_manage')return {ok:true,appointments:[],settings:{}};
      if(name==='olli_booking_staff_manual_manage'){
-      if(params.p_action==='students')return {ok:true,students:[{id:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',name:'테스트 학생'}]};
+      if(params.p_action==='students')return {ok:true,students:[
+       {id:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',name:'테스트 학생',school:'한샘초',grade:'2학년'},
+       {id:'dddddddd-dddd-4ddd-8ddd-dddddddddddd',name:'다른 학생',school:'달서초',grade:'1학년'}
+      ]};
       if(params.p_action==='create')return {ok:true,reservation_id:'cccccccc-cccc-4ccc-8ccc-cccccccccccc'};
      }
-     if(name==='olli_booking_list_slots')return {ok:true,slots:[{start_at:params.p_date+'T16:00:00+09:00'}]};
+     if(name==='olli_booking_staff_manual_slots')return {ok:true,slots:[{start_at:params.p_date+'T16:00:00+09:00'}]};
      throw Error('Unexpected mock RPC: '+name);
     };
    });
@@ -59,8 +62,8 @@ for(const mode of ['pc','mobile']){
    // Regression: clicking inside the modal MUST NOT be interpreted as a backdrop click.
    await dialog.locator('label').first().click();
    assert.equal(await dialog.count(),1,'the student label must not close the dialog');
-   await page.locator('[data-manual-student]').click();
-   assert.equal(await dialog.count(),1,'opening the student selector must not close it');
+   await page.locator('[data-manual-search]').click();
+   assert.equal(await dialog.count(),1,'opening the student search must not close it');
    await page.locator('[data-slot-date]').click();
    assert.equal(await dialog.count(),1,'opening the date picker must not close it');
    await page.locator('[data-slot-time]').click();
@@ -68,10 +71,20 @@ for(const mode of ['pc','mobile']){
    await page.locator('[data-action="save-manual"]').click();
    assert.equal(await dialog.count(),1,'incomplete form must remain open');
    assert.equal(await page.evaluate(()=>window.__notices.at(-1)),'학생과 상담 시간을 모두 선택해 주세요.');
-   await page.locator('[data-manual-student]').selectOption('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+   await page.locator('[data-manual-search]').fill('테스');
+   assert.equal(await page.locator('[data-action="pick-manual-student"]').count(),1,'partial name filters results');
+   await page.locator('[data-action="pick-manual-student"]').click();
+   assert.equal(await page.locator('[data-manual-student]').inputValue(),'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+   await page.locator('[data-manual-search]').fill('다른');
+   assert.equal(await page.locator('[data-manual-student]').inputValue(),'','editing name clears selected ID');
+   await page.locator('[data-action="pick-manual-student"]').click();
+   assert.equal(await page.locator('[data-manual-student]').inputValue(),'dddddddd-dddd-4ddd-8ddd-dddddddddddd');
+   await page.locator('[data-manual-search]').fill('테스');
+   await page.locator('[data-action="pick-manual-student"]').click();
    await page.locator('[data-slot-date]').fill(date);
-   await page.waitForFunction(date=>window.__calls.some(c=>c.name==='olli_booking_list_slots'&&c.params.p_date===date),date);
+   await page.waitForFunction(date=>window.__calls.some(c=>c.name==='olli_booking_staff_manual_slots'&&c.params.p_date===date),date);
    await page.locator('[data-slot-time]').selectOption(slot);
+   assert.equal(await dialog.count(),1,'date and time choices leave the modal open');
    await page.locator('[data-action="save-manual"]').click();
    await page.waitForFunction(()=>window.__calls.some(c=>c.name==='olli_booking_staff_manual_manage'&&c.params.p_action==='create'));
    assert.equal(await page.evaluate(()=>window.__notices.at(-1)),'상담일정을 추가했습니다.');

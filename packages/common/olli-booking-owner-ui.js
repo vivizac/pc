@@ -3,7 +3,7 @@
  */
 (function (global) {
  'use strict';
- const state={mode:'pc',root:null,month:'',view:'calendar',selectedDay:'',rows:[],settings:null,error:'',busy:false,loading:false,ready:false,entryObserver:null,slotDate:'',slotChoices:[],publicUrl:''};
+ const state={mode:'pc',root:null,month:'',view:'calendar',selectedDay:'',rows:[],settings:null,error:'',busy:false,loading:false,ready:false,entryObserver:null,slotDate:'',slotChoices:[],slotRequest:0,manualStudents:[],manualStudentId:'',publicUrl:''};
  const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;};
  const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const currentMonth=()=>{const p=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit'}).formatToParts(new Date());const m=Object.fromEntries(p.map(v=>[v.type,v.value]));return m.year+'-'+m.month;};
@@ -43,9 +43,11 @@
    return rpc('olli_booking_settings_manage',{p_session_token:c.sessionToken,p_academy_id:c.academyId,
      p_action:'save',p_data:{...settings,expected_revision:expectedRevision}});
  }
- async function available(date){
+ async function available(date,{manual=false}={}){
    const c=auth();
-   return rpc('olli_booking_list_slots',{p_session_token:c.sessionToken,p_academy_id:c.academyId,p_date:date});
+   return rpc(manual?'olli_booking_staff_manual_slots':'olli_booking_list_slots',{
+     p_session_token:c.sessionToken,p_academy_id:c.academyId,p_date:date
+   });
  }
  const uniqueId=()=>global.crypto?.randomUUID?.()||'';
  function filteredRows(){
@@ -187,6 +189,7 @@
      node.addEventListener('click',click);
      node.addEventListener('submit',submit);
      node.addEventListener('change',change);
+     node.addEventListener('input',input);
    }
    render();void refresh();
  }
@@ -232,22 +235,23 @@
    const root=state.root,host=root?.querySelector('[data-modal-host]');
    if(!host)return;
    const scope=ctx();
-   state.busy=true;
+   state.busy=true;state.manualStudents=[];state.manualStudentId='';
    host.innerHTML='<div class="obmModalBackdrop"><div class="obmModal" role="dialog" aria-modal="true" aria-label="상담일정 추가"><h3>상담일정 추가</h3><p>재원생을 불러오고 있습니다.</p></div></div>';
    try{
      const result=await manualManage('students');
      if(root!==state.root||ctx().academyId!==scope.academyId||ctx().sessionToken!==scope.sessionToken)return;
      if(result?.ok!==true)throw new Error('재원생 목록을 불러오지 못했습니다.');
      const students=Array.isArray(result.students)?result.students:[];
+     state.manualStudents=students;
      const selectedDate=state.selectedDay&&state.selectedDay>=today()?state.selectedDay:today();
      const maxDate=new Date(Date.parse(today()+'T00:00:00Z')+120*86400000).toISOString().slice(0,10);
      host.innerHTML='<div class="obmModalBackdrop" data-action="dismiss"><div class="obmModal" role="dialog" aria-modal="true" aria-label="상담일정 추가"><h3>상담일정 추가</h3><p>원장님이 직접 재원생의 상담 시간을 등록합니다. 예약 설정에 맞는 빈 시간만 표시됩니다.</p>'+
-       '<label>학생 선택<select data-manual-student><option value="">학생 선택</option>'+students.map(s=>'<option value="'+escapeHtml(s.id)+'">'+escapeHtml(s.name)+'</option>').join('')+'</select></label>'+
+       '<label>학생 이름 검색<input type="search" data-manual-search placeholder="학생 이름을 입력해 검색" autocomplete="off" aria-label="학생 이름 검색" aria-controls="obmManualSearchResults" aria-expanded="false"><input type="hidden" data-manual-student value=""><div id="obmManualSearchResults" class="obmStudentMatches" data-manual-results role="listbox" aria-label="검색된 학생" hidden></div></label>'+
        '<label>날짜 선택<input type="date" data-slot-date min="'+today()+'" max="'+maxDate+'" value="'+selectedDate+'"></label>'+
-       '<label>가능 시간<select data-slot-time><option value="">시간 조회 중</option></select></label>'+
+       '<label>가능 시간<select data-slot-time><option value="">시간 조회 중</option></select></label><p class="obmSlotError" data-slot-error role="status"></p>'+
        (!students.length?'<p>등록 가능한 재원생이 없습니다.</p>':'')+
        '<div class="obmFormActions"><button type="button" data-action="dismiss">닫기</button><button type="button" class="obmPrimary" data-action="save-manual" '+(!students.length?'disabled':'')+'>일정 추가</button></div></div></div>';
-     await loadSlotChoices(selectedDate);
+     await loadSlotChoices(selectedDate,{manual:true});
    }catch(err){
      if(root===state.root&&ctx().academyId===scope.academyId&&ctx().sessionToken===scope.sessionToken){
        state.error=err?.message||'상담일정 추가 화면을 열지 못했습니다.';
@@ -255,19 +259,49 @@
      }
    }finally{state.busy=false;}
  }
- async function loadSlotChoices(date){
-   const select=state.root?.querySelector('[data-slot-time]');if(!select)return;
-   select.innerHTML='<option value="">조회 중</option>';
+ async function loadSlotChoices(date,{manual=false}={}){
+   const select=state.root?.querySelector('[data-slot-time]');
+   if(!select)return;
+   const request=++state.slotRequest;
+   select.innerHTML='<option value="">시간 조회 중</option>';
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')){
+     select.innerHTML='<option value="">날짜를 먼저 선택해 주세요</option>';return;
+   }
    try{
-     const result=await available(date);
-     const slots=result?.slots;
+     const result=await available(date,{manual});
+     if(request!==state.slotRequest||!select.isConnected
+       ||state.root?.querySelector('[data-slot-date]')?.value!==date)return;
+     if(result?.ok!==true||!Array.isArray(result.slots))
+       throw new Error('예약 시간 조회 결과가 올바르지 않습니다.');
      select.innerHTML='<option value="">시간 선택</option>';
-     for(const slot of Array.isArray(slots)?slots:[]){
+     for(const slot of result.slots){
        const option=el('option','',kstParts(slot.start_at).hm);
        option.value=slot.start_at;select.appendChild(option);
      }
-     if(select.options.length===1)select.options[0].textContent='예약 가능한 시간이 없습니다';
-   }catch(e){select.innerHTML='<option value="">시간 조회 실패</option>';alertError(e.message);}
+     if(select.options.length===1)
+       select.options[0].textContent='선택한 날짜에 빈 상담 시간이 없습니다';
+   }catch(e){
+     if(request!==state.slotRequest||!select.isConnected)return;
+     select.innerHTML='<option value="">시간 조회 실패 · 날짜를 다시 선택해 주세요</option>';
+     state.error=String(e?.message||'상담 시간 조회 실패');
+     const alertNode=state.root?.querySelector('.obmModal [data-slot-error]');
+     if(alertNode)alertNode.textContent=state.error;
+   }
+ }
+ function manualStudentMatches(query){
+   const container=state.root?.querySelector('[data-manual-results]');
+   const search=state.root?.querySelector('[data-manual-search]');
+   if(!container||!search)return;
+   const term=String(query||'').trim().toLocaleLowerCase('ko-KR');
+   if(!term){container.innerHTML='';container.hidden=true;search.setAttribute('aria-expanded','false');return;}
+   const matches=state.manualStudents.filter(student=>
+     String(student.name||'').toLocaleLowerCase('ko-KR').includes(term)).slice(0,20);
+   container.innerHTML=matches.length?matches.map(student=>
+     '<button type="button" class="obmStudentMatch" role="option" data-action="pick-manual-student" data-student-id="'+escapeHtml(student.id)+'">'+
+      '<strong>'+escapeHtml(student.name)+'</strong>'+
+      (student.school||student.grade?'<small>'+escapeHtml([student.school,student.grade].filter(Boolean).join(' · '))+'</small>':'')+
+     '</button>').join(''):'<p class="obmStudentNoMatch">검색 결과가 없습니다.</p>';
+   container.hidden=false;search.setAttribute('aria-expanded','true');
  }
  async function copyPublicLink(node){
    if(state.busy)return;
@@ -318,6 +352,18 @@
    if(action==='refresh'){void refresh();return;}
    if(action==='clear-day'){state.selectedDay='';render();return;}
    if(action==='add-manual'){await openManualBooking();return;}
+   if(action==='pick-manual-student'){
+     const selected=state.manualStudents.find(s=>String(s.id)===node.dataset.studentId);
+     const search=state.root?.querySelector('[data-manual-search]');
+     const hidden=state.root?.querySelector('[data-manual-student]');
+     if(selected&&search&&hidden){
+       state.manualStudentId=String(selected.id);
+       hidden.value=state.manualStudentId;
+       search.value=String(selected.name||'');
+       manualStudentMatches('');
+     }
+     return;
+   }
    if(action==='edit'){await editBooking(node.dataset.id);return;}
    if(action==='save-manual'){
      if(state.busy)return;
@@ -339,8 +385,8 @@
      }catch(err){
        if(ctx().academyId===scope.academyId&&ctx().sessionToken===scope.sessionToken){
          const msg=String(err?.message||'');
-         global.alert(/23505|23P01|duplicate|overlap|exclusion/i.test(msg)
-           ?'해당 학생의 기존 예약이 있거나 선택한 시간이 이미 예약되었습니다.'
+         global.alert(/23505|23P01|duplicate|overlap|exclusion|SLOT_NOT_AVAILABLE/i.test(msg)
+           ?'해당 학생의 기존 예약이 있거나 선택한 시간이 이미 예약되었습니다. 날짜와 시간을 다시 확인해 주세요.'
            :msg||'상담일정을 저장하지 못했습니다.');
          await refresh();
        }
@@ -376,7 +422,17 @@
  }
  function change(e){
    const dateInput=e.target.closest('[data-slot-date]');
-   if(dateInput)void loadSlotChoices(dateInput.value);
+   if(dateInput)void loadSlotChoices(dateInput.value,{
+     manual:Boolean(dateInput.closest('[aria-label="상담일정 추가"]'))
+   });
+ }
+ function input(e){
+   const search=e.target.closest('[data-manual-search]');
+   if(!search)return;
+   state.manualStudentId='';
+   const chosen=state.root?.querySelector('[data-manual-student]');
+   if(chosen)chosen.value='';
+   manualStudentMatches(search.value);
  }
 
  let mobileShortcutVisible=false;

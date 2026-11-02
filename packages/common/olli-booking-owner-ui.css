@@ -115,6 +115,16 @@
 .obmModal p{color:#747d89;margin:0;font-size:13px}
 .obmModal label{display:flex;flex-direction:column;gap:8px;font-size:13px}
 .obmModal input,.obmModal select{width:100%;padding:12px;border-radius:9px;border:1px solid #e1e6eb;background:#fff}
+.obmModal [data-manual-student]{display:none}
+.obmStudentMatches{width:100%;max-height:205px;overflow-y:auto;border:1px solid #e1e6eb;border-radius:9px;background:#fff}
+.obmStudentMatches[hidden]{display:none}
+.obmStudentMatch{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:11px 12px;border:0;border-bottom:1px solid #eff2f5;background:#fff;color:#17202b;text-align:left;cursor:pointer;font-size:13px}
+.obmStudentMatch:last-child{border-bottom:0}
+.obmStudentMatch:hover,.obmStudentMatch:focus-visible{background:#eef5ff}
+.obmStudentMatch small{color:#6b7582;font-size:11px}
+.obmStudentNoMatch{padding:10px 12px!important}
+.obmSlotError:empty{display:none}
+.obmSlotError{color:#c13535!important;font-size:12px!important}
 @media(max-width:740px){
  .olliBookingMobileOverlay .obmLayout{padding:16px 16px 32px}
  .olliBookingMobileOverlay .obmHeader h2{font-size:21px}

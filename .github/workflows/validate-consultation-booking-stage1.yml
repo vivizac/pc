@@ -18,6 +18,7 @@ on:
       - 'supabase/migrations/*_olli_booking_staff_stage3.sql'
       - 'tests/consultation-booking-stage3*'
       - 'supabase/migrations/*_olli_booking_staff_manual_create.sql'
+      - 'supabase/migrations/*_olli_booking_owner_manual_slots_search.sql'
       - 'tests/consultation-booking-manual-create*'
       - 'supabase/migrations/*_olli_booking_public_academy_stage4.sql'
       - 'packages/common/api/_lib/olli-booking-public-handler.cjs'
@@ -39,6 +40,7 @@ on:
   pull_request:
     paths:
       - 'supabase/migrations/*_olli_booking_staff_manual_create.sql'
+      - 'supabase/migrations/*_olli_booking_owner_manual_slots_search.sql'
       - 'tests/consultation-booking-manual-create*'
       - 'supabase/migrations/*_olli_booking_public_academy_stage4.sql'
       - 'packages/common/api/_lib/olli-booking-public-handler.cjs'
@@ -133,6 +135,7 @@ jobs:
       - name: Apply and validate manual appointment RPC in isolated PostgreSQL
         run: |
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102152500_olli_booking_staff_manual_create.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102174500_olli_booking_owner_manual_slots_search.sql
           psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-manual-create.integration.sql
           node --test tests/consultation-booking-manual-create.test.cjs
       - name: PC and mobile booking UI checks
