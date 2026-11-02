@@ -52,7 +52,7 @@ test('all four stat labels are above two detail rows beside enlarged representat
  assert.match(block(html,'body[data-olli-text-size="large"] .recordAcademyStatValue'),/64px/);
  assert.match(block(html,'.recordAcademyStatGuide'),/flex-direction:\s*column/);
  assert.doesNotMatch(block(html,'.recordAcademyStatLabel'),/translateX/);
- assert.match(html,/pc-student-management\.css\?v=20261102-fixed-academy-grid-1/);
+ assert.match(html,/pc-student-management\.css\?v=20261102-fixed-academy-grid-2/);
 });
 test('no student save, synchronization, attendance, or mobile code is changed by this PC-only contract',()=>{
  assert.match(js,/function renderDashboard\(/);
@@ -60,4 +60,16 @@ test('no student save, synchronization, attendance, or mobile code is changed by
  assert.match(js,/renderMaterialOrders\(\);/);
  assert.match(js,/renderConsultationPanel\(due\);/);
  assert.ok(!css.includes('@import'),'PC dashboard layout does not inject a second CSS file');
+});
+
+test('materials opener equals todo submit height; recurring manager shares existing count capsule style',()=>{
+ const material=block(css,'.pcAcademyMaterialsOpen'),add=block(css,'.pcAcademyTodoForm button');
+ assert.match(add,/height:48px/);assert.match(material,/height:48px/);
+ assert.match(material,/min-height:48px/);assert.match(material,/box-sizing:border-box/);
+ const shared=block(css,'.pcAcademySectionCount,#recordAcademyDashboard .pcAcademyRecurringManageBtn');
+ for(const snippet of ['height:30px','border-radius:999px','background:#f2f4f7','color:#747b85','font-size:11px','font-weight:820'])
+  assert.ok(shared.includes(snippet),snippet);
+ const repeat=block(css,'#recordAcademyDashboard .pcAcademyRecurringManageBtn');
+ assert.doesNotMatch(repeat,/background:|border-radius:|color:|font-size:/);assert.match(repeat,/border:0/);
+ assert.match(css,/#recordAcademyDashboard \.pcAcademyRecurringManageBtn svg\{[^}]*stroke:currentColor/);
 });

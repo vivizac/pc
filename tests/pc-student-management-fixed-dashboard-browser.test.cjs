@@ -22,7 +22,12 @@ function fixture(){
  <div class="recordAcademyStatGrid">${cards}</div>
  <div class="pcAcademyWorkOrderGrid">
  <section class="recordAcademyConsultSection pcAcademyTodoSection">
- <div class="pcAcademySectionHeader pcAcademyTodoHeader"><div class="pcAcademySectionTitle">학원 업무</div></div>
+ <div class="pcAcademySectionHeader pcAcademyTodoHeader">
+ <div class="pcAcademySectionTitle">학원 업무</div>
+ <div class="pcAcademyTodoHeaderActions">
+ <button type="button" class="pcAcademyRecurringManageBtn">
+ <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7a8 8 0 0 0-14-2L4 7m0-4v4h4"></path></svg>반복 업무 관리</button>
+ <span class="pcAcademySectionCount">8개 남음</span></div></div>
  <form class="pcAcademyTodoForm"><input placeholder="할 일 입력"><button type="button">추가</button></form>
  <div class="pcAcademyTodoList" id="todos"><div class="pcAcademyTodoItem">처리할 업무</div></div></section>
  <section class="recordAcademyConsultSection pcAcademyMaterialsSection">
@@ -78,5 +83,28 @@ test('PC page grid stays flush and only hidden-scroll inner lists move as data g
    }
    await page.close();
   }
+ }finally{await browser.close()}
+});
+
+test('material opener matches add button; recurring manager matches sibling counter in Chromium',async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+  const page=await browser.newPage({viewport:{width:1600,height:900}});
+  await page.setContent(fixture());
+  const measured=await page.evaluate(()=>{
+   function metrics(selector){
+    const el=document.querySelector(selector),rect=el.getBoundingClientRect(),style=getComputedStyle(el);
+    return {height:rect.height,backgroundColor:style.backgroundColor,color:style.color,borderRadius:style.borderRadius,fontSize:style.fontSize,fontWeight:style.fontWeight};
+   }
+   return {add:metrics('.pcAcademyTodoForm button'),materials:metrics('.pcAcademyMaterialsOpen'),
+    repeat:metrics('.pcAcademyRecurringManageBtn'),count:metrics('.pcAcademySectionCount'),
+    repeatIcon:getComputedStyle(document.querySelector('.pcAcademyRecurringManageBtn svg')).stroke};
+  });
+  assert.equal(measured.add.height,48);
+  assert.equal(measured.materials.height,measured.add.height);
+  for(const property of ['height','backgroundColor','color','borderRadius','fontSize','fontWeight'])
+   assert.equal(measured.repeat[property],measured.count[property],property+' capsule mismatch');
+  assert.equal(measured.repeatIcon,measured.repeat.color,'icon should inherit capsule text color');
+  await page.close();
  }finally{await browser.close()}
 });
