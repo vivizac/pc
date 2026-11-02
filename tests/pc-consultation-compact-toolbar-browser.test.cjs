@@ -16,7 +16,7 @@ function renderMock(view='calendar',mode='pc'){
   const labels=['이달 예약','오늘 상담','신규생 상담','이번 달 미예약 대상'];
   const stats='<div class="obmStats">'+labels.map((name,i)=>'<div><strong>'+(i+1)+'</strong><span>'+name+'</span></div>').join('')+'</div>';
   const days=Array.from({length:35},(_,i)=>'<button class="obmCalDay" type="button"><span class="obmCalDate">'+(i+1)+'</span></button>').join('');
-  const week=['월','화','수','목','금','토','일'].map(n=>'<span class="obmDayHead">'+n+'</span>').join('');
+  const week=['일','월','화','수','목','금','토'].map(n=>'<span class="obmDayHead">'+n+'</span>').join('');
   const context={state,escapeHtml:x=>String(x),renderStats:()=>stats,
     calendarHtml:()=>'<div class="obmCalendar">'+week+days+'</div>',
     bookingsHtml:()=>'<div data-booking-list></div>',
@@ -35,11 +35,12 @@ test('PC consultation status cards stay ahead of the right controls in one row',
         const panel=document.querySelector('#olliConsultationBookingPanel');
         const toolbar=panel.querySelector('.obmPcToolbar');
         const cards=[...toolbar.querySelectorAll('.obmStats>div')].map(el=>el.getBoundingClientRect().toJSON());
+        const addManual=toolbar.querySelector('[data-action="add-manual"]').getBoundingClientRect().toJSON();
         const month=toolbar.querySelector('.obmMonth').getBoundingClientRect().toJSON();
         const tabs=toolbar.querySelector('.obmTabs').getBoundingClientRect().toJSON();
         const refresh=toolbar.querySelector('[data-action="refresh"]').getBoundingClientRect().toJSON();
         const cal=panel.querySelector('.obmCalendar').getBoundingClientRect().toJSON();
-        return {cards,month,tabs,refresh,cal,toolbar:toolbar.getBoundingClientRect().toJSON(),
+        return {cards,addManual,month,tabs,refresh,cal,toolbar:toolbar.getBoundingClientRect().toJSON(),
           scroll:toolbar.scrollWidth,client:toolbar.clientWidth,copy:!!panel.querySelector('[data-action="copy-public-link"]')};
       });
       assert.equal(result.cards.length,4);
@@ -47,6 +48,8 @@ test('PC consultation status cards stay ahead of the right controls in one row',
         assert.ok(Math.abs(card.y-result.cards[0].y)<2,'cards should stay on one row');
         assert.ok(Math.abs(card.width/card.height-2.5)<0.04,'cards should have a 5:2 ratio');
       }
+      assert.ok(result.cards[3].right<result.addManual.left,'stats must precede manual appointment button');
+      assert.ok(result.addManual.right<=result.month.left,'manual appointment button must be directly left of month');
       assert.ok(result.cards[3].right<result.month.left,'stats must precede month');
       assert.ok(result.month.right<result.tabs.left&&result.tabs.right<result.refresh.left);
       assert.ok(Math.abs(result.month.y-result.cards[0].y)<12,'toolbar controls must align vertically');

@@ -7,6 +7,8 @@
 .obmHeader h2{font-size:25px;font-weight:800;letter-spacing:-.6px;margin:0}
 .obmHeader p{font-size:13px;color:#7a828d;margin:5px 0 0}
 .obmHeaderButtons{display:flex;gap:6px}
+.obmHeaderButtons [data-action="add-manual"]{background:#1687ff;color:#fff;border-color:#1687ff;font-weight:750;white-space:nowrap}
+.obmHeaderButtons [data-action="add-manual"]:disabled,.obmFormActions button:disabled{opacity:.5;cursor:not-allowed}
 .obmHeaderButtons button,.obmMonth button,.obmListHeader button{border:1px solid #e0e5eb;border-radius:9px;background:#fff;padding:9px 12px;font-size:12px;color:#4d5969;cursor:pointer}
 .obmTabs{display:flex;gap:4px;align-items:center;background:#e9edf3;padding:4px;border-radius:11px;width:fit-content;margin-bottom:16px}
 .obmTabs button{padding:9px 20px;color:#697582;background:transparent;border:0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
@@ -144,6 +146,8 @@
 #olliConsultationBookingPanel .obmPcToolbar .obmStats strong{font-size:20px;line-height:1;flex:0 0 auto}
 #olliConsultationBookingPanel .obmPcToolbar .obmStats span{font-size:11px;white-space:nowrap;line-height:1.2}
 #olliConsultationBookingPanel .obmPcTools{display:flex;align-items:center;gap:9px;flex:0 0 auto;margin-left:auto}
+#olliConsultationBookingPanel .obmPcTools .obmPcAddManual{flex:0 0 auto;min-height:38px;padding:9px 12px;border:1px solid #1687ff;border-radius:9px;background:#1687ff;color:#fff;font:750 12px Pretendard,sans-serif;white-space:nowrap;cursor:pointer}
+#olliConsultationBookingPanel .obmPcTools .obmPcAddManual:disabled{opacity:.5;cursor:not-allowed}
 #olliConsultationBookingPanel .obmPcTools .obmMonth{flex:0 0 auto;gap:6px;margin:0}
 #olliConsultationBookingPanel .obmPcTools .obmMonth strong{font-size:14px;white-space:nowrap}
 #olliConsultationBookingPanel .obmPcTools .obmMonth button{padding:4px 8px}
@@ -161,11 +165,15 @@
 @media(max-width:1280px){
  #olliConsultationBookingPanel .obmPcToolbar{gap:6px}
  #olliConsultationBookingPanel .obmPcToolbar>.obmStats{gap:4px}
- #olliConsultationBookingPanel .obmPcToolbar>.obmStats>div{width:123px;height:49.2px;gap:4px;padding:5px}
- #olliConsultationBookingPanel .obmPcToolbar .obmStats span{font-size:10px}
- #olliConsultationBookingPanel .obmPcTools{gap:5px}
- #olliConsultationBookingPanel .obmPcTools .obmTabs button{padding:9px 9px}
- #olliConsultationBookingPanel .obmPcTools .obmMonth button{padding:4px 6px}
+ #olliConsultationBookingPanel .obmPcToolbar>.obmStats>div{width:108px;height:43.2px;gap:3px;padding:4px}
+ #olliConsultationBookingPanel .obmPcToolbar .obmStats strong{font-size:16px}
+ #olliConsultationBookingPanel .obmPcToolbar .obmStats span{font-size:9px;letter-spacing:-.35px}
+ #olliConsultationBookingPanel .obmPcTools{gap:4px}
+ #olliConsultationBookingPanel .obmPcTools .obmPcAddManual{min-height:34px;padding:8px 6px;font-size:11px}
+ #olliConsultationBookingPanel .obmPcTools .obmTabs button{padding:8px 6px;font-size:11px}
+ #olliConsultationBookingPanel .obmPcTools .obmMonth button{padding:4px 4px}
+ #olliConsultationBookingPanel .obmPcTools .obmMonth strong{font-size:12px}
+ #olliConsultationBookingPanel .obmPcTools .obmHeaderButtons button{padding:8px 6px;font-size:11px}
 }
 #olliConsultationBookingPanel .obmCalDay{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:5px;min-width:0;min-height:85px;padding:8px;text-align:left;overflow:hidden}
 #olliConsultationBookingPanel .obmCalDate{display:block;align-self:flex-start;font-size:13px;line-height:1.2;font-weight:650;color:#27303e;margin:0 0 3px}

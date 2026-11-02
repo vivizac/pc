@@ -30,6 +30,14 @@
      p_start_at:options.startAt||null,p_request_key:options.requestKey||null
    });
  }
+ async function manualManage(action,options={}){
+   const c=auth();
+   return rpc('olli_booking_staff_manual_manage',{
+     p_session_token:c.sessionToken,p_academy_id:c.academyId,p_action:action,
+     p_student_id:options.studentId||null,p_start_at:options.startAt||null,
+     p_request_key:options.requestKey||null
+   });
+ }
  async function settingsSave(settings,expectedRevision){
    const c=auth();
    return rpc('olli_booking_settings_manage',{p_session_token:c.sessionToken,p_academy_id:c.academyId,
@@ -45,7 +53,7 @@
    if(state.mode==='mobile'){
      if(state.view==='today')list=list.filter(r=>kstParts(r.start_at).ymd===today());
      if(state.view==='week'){
-       const base=new Date(today()+'T00:00:00Z');const start=new Date(base);start.setUTCDate(start.getUTCDate()-(start.getUTCDay()+6)%7);
+       const base=new Date(today()+'T00:00:00Z');const start=new Date(base);start.setUTCDate(start.getUTCDate()-start.getUTCDay());
        const a=start.toISOString().slice(0,10);const end=new Date(start);end.setUTCDate(start.getUTCDate()+7);const b=end.toISOString().slice(0,10);
        list=list.filter(r=>{const d=kstParts(r.start_at).ymd;return d>=a&&d<b;});
      }
@@ -72,7 +80,7 @@
  function calendarHtml(){
    const [y,m]=state.month.split('-').map(Number);
    const days=new Date(Date.UTC(y,m,0)).getUTCDate();
-   const padding=(new Date(Date.UTC(y,m-1,1)).getUTCDay()+6)%7;
+   const padding=new Date(Date.UTC(y,m-1,1)).getUTCDay();
    const byDay=new Map();
    // This view already receives the owner's authenticated month-scoped booking
    // rows. Cancellations are not appointments, and no extra RPC is necessary.
@@ -81,7 +89,7 @@
      if(!byDay.has(parts.ymd))byDay.set(parts.ymd,[]);
      byDay.get(parts.ymd).push({name:String(r.name||'학생'),time:parts.hm});
    });
-   const heads=['월','화','수','목','금','토','일'].map(s=>'<span class="obmDayHead">'+s+'</span>').join('');
+   const heads=['일','월','화','수','목','금','토'].map(s=>'<span class="obmDayHead">'+s+'</span>').join('');
    let cells=Array.from({length:padding},()=>'<span class="obmEmpty" aria-hidden="true"></span>').join('');
    for(let day=1;day<=days;day++){
      const d=state.month+'-'+String(day).padStart(2,'0');
@@ -123,6 +131,7 @@
    const mobileTitle=state.mode==='mobile'?'<div><h2>상담 현황</h2><p>학원 상담 예약과 일정</p></div>':'';
    let header='<div class="obmHeader'+(state.mode==='pc'?' obmHeaderPc':'')+'">'+mobileTitle+'<div class="obmHeaderButtons">'+
     (state.mode==='mobile'?'<button type="button" data-action="close" aria-label="상담 현황 닫기">닫기</button>':'')+
+    (state.mode==='mobile'?'<button type="button" data-action="add-manual" '+(state.ready&&!state.loading?'':'disabled')+'>+ 상담일정 추가</button>':'')+
     '<button type="button" data-action="refresh" aria-label="예약 내역 새로고침">새로고침</button></div></div>';
    let tabs=state.mode==='pc'
      ?[['calendar','캘린더'],['list','예약 목록'],['settings','예약 설정']]
@@ -140,8 +149,9 @@
     : state.view==='settings'?settingsHtml()
     :(state.mode==='pc'?'':stats)+(pcCalendar?calendarHtml():'')+(pcCalendar?'':bookingList);
    // PC-only status cards and month/views/refresh share one compact horizontal toolbar.
+   const pcManual=state.mode==='pc'?'<button class="obmPcAddManual" type="button" data-action="add-manual" '+(state.ready&&!state.loading?'':'disabled')+'>+ 상담일정 추가</button>':'';
    const toolbar=state.mode==='pc'
-     ? '<div class="obmPcToolbar">'+stats+'<div class="obmPcTools">'+months+nav+header+'</div></div>'
+     ? '<div class="obmPcToolbar">'+stats+'<div class="obmPcTools">'+pcManual+months+nav+header+'</div></div>'
      : header+nav+(state.view==='settings'?'':months);
    // The PC copy button is in the fixed title bar. Show the URL below only when issued,
    // so clipboard-denied users can still select/copy it manually.
@@ -217,6 +227,34 @@
    host.innerHTML='<div class="obmModalBackdrop" data-action="dismiss"><div class="obmModal" role="dialog" aria-modal="true" aria-label="상담 일정 변경"><h3>상담 시간 변경</h3><p>'+escapeHtml(row.name)+' · 현재 '+escapeHtml(dateLabel(state.slotDate))+' '+escapeHtml(kstParts(row.start_at).hm)+'</p><label>날짜 선택<input type="date" data-slot-date value="'+state.slotDate+'"></label><label>가능 시간<select data-slot-time><option value="">시간 조회 중</option></select></label><div class="obmFormActions"><button type="button" data-action="dismiss">닫기</button><button type="button" class="obmPrimary" data-action="save-reschedule" data-id="'+escapeHtml(id)+'">변경 저장</button></div></div></div>';
    await loadSlotChoices(state.slotDate);
  }
+ async function openManualBooking(){
+   if(state.busy||!state.ready)return;
+   const root=state.root,host=root?.querySelector('[data-modal-host]');
+   if(!host)return;
+   const scope=ctx();
+   state.busy=true;
+   host.innerHTML='<div class="obmModalBackdrop"><div class="obmModal" role="dialog" aria-modal="true" aria-label="상담일정 추가"><h3>상담일정 추가</h3><p>재원생을 불러오고 있습니다.</p></div></div>';
+   try{
+     const result=await manualManage('students');
+     if(root!==state.root||ctx().academyId!==scope.academyId||ctx().sessionToken!==scope.sessionToken)return;
+     if(result?.ok!==true)throw new Error('재원생 목록을 불러오지 못했습니다.');
+     const students=Array.isArray(result.students)?result.students:[];
+     const selectedDate=state.selectedDay&&state.selectedDay>=today()?state.selectedDay:today();
+     const maxDate=new Date(Date.parse(today()+'T00:00:00Z')+120*86400000).toISOString().slice(0,10);
+     host.innerHTML='<div class="obmModalBackdrop" data-action="dismiss"><div class="obmModal" role="dialog" aria-modal="true" aria-label="상담일정 추가"><h3>상담일정 추가</h3><p>원장님이 직접 재원생의 상담 시간을 등록합니다. 예약 설정에 맞는 빈 시간만 표시됩니다.</p>'+
+       '<label>학생 선택<select data-manual-student><option value="">학생 선택</option>'+students.map(s=>'<option value="'+escapeHtml(s.id)+'">'+escapeHtml(s.name)+'</option>').join('')+'</select></label>'+
+       '<label>날짜 선택<input type="date" data-slot-date min="'+today()+'" max="'+maxDate+'" value="'+selectedDate+'"></label>'+
+       '<label>가능 시간<select data-slot-time><option value="">시간 조회 중</option></select></label>'+
+       (!students.length?'<p>등록 가능한 재원생이 없습니다.</p>':'')+
+       '<div class="obmFormActions"><button type="button" data-action="dismiss">닫기</button><button type="button" class="obmPrimary" data-action="save-manual" '+(!students.length?'disabled':'')+'>일정 추가</button></div></div></div>';
+     await loadSlotChoices(selectedDate);
+   }catch(err){
+     if(root===state.root&&ctx().academyId===scope.academyId&&ctx().sessionToken===scope.sessionToken){
+       state.error=err?.message||'상담일정 추가 화면을 열지 못했습니다.';
+       render();
+     }
+   }finally{state.busy=false;}
+ }
  async function loadSlotChoices(date){
    const select=state.root?.querySelector('[data-slot-time]');if(!select)return;
    select.innerHTML='<option value="">조회 중</option>';
@@ -272,7 +310,36 @@
    if(action==='month-prev'||action==='month-next'){state.month=plusMonth(state.month,action==='month-next'?1:-1);state.selectedDay='';void refresh();return;}
    if(action==='refresh'){void refresh();return;}
    if(action==='clear-day'){state.selectedDay='';render();return;}
+   if(action==='add-manual'){await openManualBooking();return;}
    if(action==='edit'){await editBooking(node.dataset.id);return;}
+   if(action==='save-manual'){
+     if(state.busy)return;
+     const studentId=state.root.querySelector('[data-manual-student]')?.value;
+     const startAt=state.root.querySelector('[data-slot-time]')?.value;
+     if(!studentId||!startAt){global.alert('학생과 상담 시간을 모두 선택해 주세요.');return;}
+     if(!global.confirm('선택한 학생의 상담일정을 추가하시겠습니까?'))return;
+     const scope=ctx();
+     state.busy=true;node.disabled=true;
+     try{
+       const requestKey=uniqueId();if(!requestKey)throw new Error('요청 식별키 생성 실패');
+       const result=await manualManage('create',{studentId,startAt,requestKey});
+       if(result?.ok!==true)throw new Error('상담일정 저장이 확인되지 않았습니다.');
+       if(ctx().academyId!==scope.academyId||ctx().sessionToken!==scope.sessionToken)return;
+       state.month=kstParts(startAt).ymd.slice(0,7);
+       state.selectedDay='';
+       await refresh();
+       global.alert('상담일정을 추가했습니다.');
+     }catch(err){
+       if(ctx().academyId===scope.academyId&&ctx().sessionToken===scope.sessionToken){
+         const msg=String(err?.message||'');
+         global.alert(/23505|23P01|duplicate|overlap|exclusion/i.test(msg)
+           ?'해당 학생의 기존 예약이 있거나 선택한 시간이 이미 예약되었습니다.'
+           :msg||'상담일정을 저장하지 못했습니다.');
+         await refresh();
+       }
+     }finally{state.busy=false;if(node.isConnected)node.disabled=false;}
+     return;
+   }
    if(action==='save-reschedule'){
      if(state.busy)return;const time=state.root.querySelector('[data-slot-time]')?.value;
      if(!time){global.alert('새 상담 시간을 선택해 주세요.');return;}
