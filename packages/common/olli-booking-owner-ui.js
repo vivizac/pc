@@ -303,9 +303,16 @@
    if(action==='close'){close();return;}
    if(action==='copy-public-link'){await copyPublicLink(node);return;}
    if(action==='dismiss'){
-     if(node.dataset.action==='dismiss' && (node.classList.contains('obmModalBackdrop') ||node.tagName==='BUTTON')){
-       state.root.querySelector('[data-modal-host]').innerHTML='';
-     }return;
+     // Delegated clicks from inputs/labels bubble through the backdrop.
+     // Dismiss only when the backdrop itself is the direct click target,
+     // or when the user explicitly chooses the modal's Close button.
+     const onBackdrop=node.classList.contains('obmModalBackdrop')&&e.target===node;
+     const onCloseButton=node.matches('button[data-action="dismiss"]');
+     if(onBackdrop||onCloseButton){
+       const host=state.root.querySelector('[data-modal-host]');
+       if(host)host.innerHTML='';
+     }
+     return;
    }
    if(action==='month-prev'||action==='month-next'){state.month=plusMonth(state.month,action==='month-next'?1:-1);state.selectedDay='';void refresh();return;}
    if(action==='refresh'){void refresh();return;}
