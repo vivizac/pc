@@ -66,7 +66,7 @@ test('PC consultation list omits reservation notice card even for academy owners
 
 test('PC consultation panel retains fixed height and scrolls its student list', () => {
   const css = fs.readFileSync(path.join(__dirname, '../apps/pc/pc-student-management.css'), 'utf8');
-  assert.match(css, /\.pcAcademyDetailPanel\{[^}]*height:calc\(100vh - var\(--pc-topbar-h\) - 52px\)/);
+  assert.match(css, /\.pcAcademyDetailPanel\{[^}]*height:100%;min-height:0;max-height:none/);
   assert.match(css, /\.recordBodyNew\.pcAcademyLayout \.pcAcademyDetailPanel\{display:flex;flex-direction:column;\}/);
   assert.match(css, /\.pcAcademyConsultationList\{[^}]*flex:1 1 auto;min-height:0;overflow-y:auto/);
   assert.doesNotMatch(css, /\.pcAcademyDetailPanel\{position:static;min-height:auto;max-height:none;\}/);
