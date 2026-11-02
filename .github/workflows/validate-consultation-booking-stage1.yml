@@ -21,6 +21,12 @@ on:
       - 'supabase/migrations/*_olli_booking_owner_manual_slots_search.sql'
       - 'supabase/migrations/*_olli_booking_owner_manual_evening_slots.sql'
       - 'tests/consultation-booking-manual-evening*'
+      - 'tests/consultation-reminder*'
+      - 'supabase/migrations/*_olli_consultation_daily_reminder*.sql'
+      - 'apps/mobile/supabase/functions/olli-consultation-reminder/*'
+      - 'apps/mobile/olli-consultation-reminders.js'
+      - 'apps/mobile/olli-push-sw.js'
+      - 'apps/mobile/olli-talk-push.js'
       - 'tests/consultation-booking-manual-create*'
       - 'supabase/migrations/*_olli_booking_public_academy_stage4.sql'
       - 'packages/common/api/_lib/olli-booking-public-handler.cjs'
@@ -45,6 +51,12 @@ on:
       - 'supabase/migrations/*_olli_booking_owner_manual_slots_search.sql'
       - 'supabase/migrations/*_olli_booking_owner_manual_evening_slots.sql'
       - 'tests/consultation-booking-manual-evening*'
+      - 'tests/consultation-reminder*'
+      - 'supabase/migrations/*_olli_consultation_daily_reminder*.sql'
+      - 'apps/mobile/supabase/functions/olli-consultation-reminder/*'
+      - 'apps/mobile/olli-consultation-reminders.js'
+      - 'apps/mobile/olli-push-sw.js'
+      - 'apps/mobile/olli-talk-push.js'
       - 'tests/consultation-booking-manual-create*'
       - 'supabase/migrations/*_olli_booking_public_academy_stage4.sql'
       - 'packages/common/api/_lib/olli-booking-public-handler.cjs'
@@ -147,6 +159,12 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102180000_olli_booking_owner_manual_evening_slots.sql
           psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-manual-evening.integration.sql
           node --test tests/consultation-booking-manual-evening.test.cjs
+      - name: Validate scheduled consultation reminder in isolated PostgreSQL
+        run: |
+          psql -v ON_ERROR_STOP=1 -f tests/consultation-reminder.bootstrap.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102194500_olli_consultation_daily_reminder.sql
+          psql -v ON_ERROR_STOP=1 -f tests/consultation-reminder.integration.sql
+          node --test tests/consultation-reminder-notification.test.cjs
       - name: PC and mobile booking UI checks
         run: |
           node --check packages/common/olli-booking-owner-ui.js
