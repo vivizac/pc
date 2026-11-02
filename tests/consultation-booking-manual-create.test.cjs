@@ -11,12 +11,15 @@ const sql=read('supabase/migrations/20261102152500_olli_booking_staff_manual_cre
 test('Manual appointment UI is shared by PC and mobile with one server mutation',()=>{
   for(const p of ['apps/pc/index.html','apps/mobile/index.html']){
     const html=read(p);
-    assert.match(html,/olli-booking-owner-ui\.js\?v=20261102-dialog-dismiss-3/);
-    assert.match(html,/olli-booking-owner-ui\.css\?v=20261102-dialog-dismiss-3/);
+    assert.match(html,/olli-booking-owner-ui\.js\?v=20261102-manual-slots-search-4/);
+    assert.match(html,/olli-booking-owner-ui\.css\?v=20261102-manual-slots-search-4/);
   }
   assert.match(ui,/data-action="add-manual"/);
   assert.match(ui,/data-action="save-manual"/);
   assert.match(ui,/data-manual-student/);
+  assert.match(ui,/data-manual-search/);
+  assert.match(ui,/pick-manual-student/);
+  assert.match(ui,/olli_booking_staff_manual_slots/);
   assert.match(ui,/manualManage\('students'\)/);
   assert.match(ui,/manualManage\('create',\{studentId,startAt,requestKey\}\)/);
   assert.match(css,/data-action="add-manual"/);
