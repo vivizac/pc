@@ -27,7 +27,7 @@ body.olliPcApp #recordAcademyDashboard .recordAcademyStatCard{
 body.olliPcApp #recordAcademyDashboard .recordAcademyConsultSection{
   display:flex;flex-direction:column;height:100%;min-width:0;min-height:0;
   overflow:hidden;margin:0;background:#fff;border:1px solid #e2e4e8;
-  border-radius:26px;padding:22px;box-shadow:0 8px 24px rgba(20,24,30,.035);
+  border-radius:26px;padding:22px;box-sizing:border-box;box-shadow:0 8px 24px rgba(20,24,30,.035);
 }
 .pcAcademySectionHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
 .pcAcademySectionTitle,.pcAcademyDetailName{font-size:18px;font-weight:880;letter-spacing:-.045em;color:#15171a;}
