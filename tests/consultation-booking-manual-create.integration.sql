@@ -7,6 +7,7 @@ declare
   second_student uuid:='a1a1a1a1-aaaa-4aaa-8aaa-a1a1a1a1a1a1';
   outside_student uuid:='a2a2a2a2-aaaa-4aaa-8aaa-a2a2a2a2a2a2';
   outside_start timestamptz;
+  parent_weeks smallint[];
   ts timestamptz;
   v_booking_id uuid;
   reply jsonb;
@@ -66,23 +67,26 @@ begin
       'aaaaaaaa-0000-4000-8000-000000000904');
     raise exception 'OTHER_ACADEMY_STUDENT_ALLOWED';
   exception when insufficient_privilege then null; end;
-  -- Owner can book week one while guardian rules remain limited to weeks 2/3.
+  -- Owner can book outside the configured guardian weeks without changing them.
+  select cfg.weeks into strict parent_weeks from public.olli_booking_settings cfg
+    where cfg.academy_id=aid;
   select (slot->>'start_at')::timestamptz into outside_start
     from generate_series((now() at time zone 'Asia/Seoul')::date+1,
       (now() at time zone 'Asia/Seoul')::date+90,interval '1 day') d
     cross join lateral jsonb_array_elements(
       public.olli_booking_staff_manual_slots('fixture-owner',aid,d::date)->'slots') slot
-    where 1+((extract(day from d::date)::int+
-      extract(dow from date_trunc('month',d::timestamp)::date)::int-1)/7)=1
+    where not ((1+((extract(day from d::date)::int+
+      extract(dow from date_trunc('month',d::timestamp)::date)::int-1)/7))::smallint
+      = any(parent_weeks))
       and extract(isodow from d)<6
     order by slot->>'start_at' limit 1;
-  if outside_start is null then raise exception 'OWNER_FIRST_WEEK_SLOTS_MISSING'; end if;
+  if outside_start is null then raise exception 'OWNER_OUTSIDE_PARENT_WEEKS_SLOTS_MISSING'; end if;
   if jsonb_array_length((public.olli_booking_list_slots('fixture-owner',aid,
        (outside_start at time zone 'Asia/Seoul')::date))->'slots')<>0
      then raise exception 'GUARDIAN_WEEK_RESTRICTIONS_CHANGED'; end if;
   reply:=public.olli_booking_staff_manual_manage('fixture-owner',aid,'create',
     outside_student,outside_start,'aaaaaaaa-0000-4000-8000-000000000905');
-  if reply->>'ok'<>'true' then raise exception 'OWNER_FIRST_WEEK_CREATE_FAILED'; end if;
+  if reply->>'ok'<>'true' then raise exception 'OWNER_OUTSIDE_PARENT_WEEKS_CREATE_FAILED'; end if;
   begin
     perform public.olli_booking_staff_manual_slots('bad-token',aid,
       (outside_start at time zone 'Asia/Seoul')::date);
