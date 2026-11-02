@@ -4,7 +4,7 @@ declare
   aid uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   other uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
   student uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
-  second_student uuid:='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  second_student uuid:='a1a1a1a1-aaaa-4aaa-8aaa-a1a1a1a1a1a1';
   ts timestamptz;
   v_booking_id uuid;
   reply jsonb;
