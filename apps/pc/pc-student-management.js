@@ -320,9 +320,10 @@
 
   function buildStatCard(label, value, subText = '') {
     const subHtml = String(subText || '').split(' · ').filter(Boolean).map((part) => escape(part)).join('<br>');
-    return '<div class="recordAcademyStatCard"><div class="recordAcademyStatLabel">'+escape(label)+'</div>'+
-      '<div class="recordAcademyStatBody"><div class="recordAcademyStatValue">'+escape(value ?? 0)+'</div>'+
-      (subHtml ? '<div class="recordAcademyStatSub">'+subHtml+'</div>' : '')+'</div></div>';
+    return '<div class="recordAcademyStatCard"><div class="recordAcademyStatBody">'+
+      '<div class="recordAcademyStatValue">'+escape(value ?? 0)+'</div>'+
+      '<div class="recordAcademyStatGuide"><div class="recordAcademyStatLabel">'+escape(label)+'</div>'+
+      (subHtml ? '<div class="recordAcademyStatSub">'+subHtml+'</div>' : '')+'</div></div></div>';
   }
 
   function renderDashboard() {
