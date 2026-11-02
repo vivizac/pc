@@ -246,13 +246,16 @@
 }
 
 
-#olliTalkBetaScreen .olliTalkBetaBackBtn .memoRosterBackIcon{
+#olliTalkBetaScreen .olliTalkBetaBackBtn .memoRosterBackIcon,
+.olliBookingMobileOverlay .obmMobileBack .memoRosterBackIcon{
   width:21px;
   height:21px;
   flex:0 0 21px;
 }
 #olliTalkBetaScreen .olliTalkBetaBackBtn .memoRosterBackIcon::before,
-#olliTalkBetaScreen .olliTalkBetaBackBtn .memoRosterBackIcon::after{
+#olliTalkBetaScreen .olliTalkBetaBackBtn .memoRosterBackIcon::after,
+.olliBookingMobileOverlay .obmMobileBack .memoRosterBackIcon::before,
+.olliBookingMobileOverlay .obmMobileBack .memoRosterBackIcon::after{
   left:4px;
   top:9px;
   width:13px;

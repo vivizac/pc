@@ -42,6 +42,7 @@ on:
       - 'tests/consultation-booking-browser.test.cjs'
       - 'tests/consultation-booking-modal-dismiss-browser.test.cjs'
       - 'tests/mobile-consultation-layout-browser.test.cjs'
+      - 'apps/mobile/olli-phone-control-style.css'
       - 'packages/common/olli-consultation-messages.js'
       - '.github/workflows/validate-consultation-booking-stage1.yml'
       - 'packages/common/*-runtime-manifest.json'
