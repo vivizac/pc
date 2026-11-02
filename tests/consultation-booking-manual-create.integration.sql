@@ -6,7 +6,7 @@ declare
   student uuid:='dddddddd-dddd-4ddd-8ddd-dddddddddddd';
   second_student uuid:='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
   ts timestamptz;
-  id uuid;
+  v_booking_id uuid;
   reply jsonb;
 begin
   insert into public.students(id,academy_id,name)
@@ -33,17 +33,17 @@ begin
   if ts is null then raise exception 'NO_FREE_TEST_SLOT'; end if;
   reply:=public.olli_booking_staff_manual_manage('fixture-owner',aid,'create',
     student,ts,'aaaaaaaa-0000-4000-8000-000000000901');
-  id:=(reply->>'reservation_id')::uuid;
+  v_booking_id:=(reply->>'reservation_id')::uuid;
   if reply->>'ok'<>'true' or not exists(
     select 1 from public.olli_booking_reservations r
-    where r.id=id and r.student_id=student and r.academy_id=aid and r.status='confirmed'
+    where r.id=v_booking_id and r.student_id=student and r.academy_id=aid and r.status='confirmed'
   ) then raise exception 'MANUAL_CREATE_FAILED'; end if;
   if (select count(*) from public.olli_booking_events
-    where reservation_id=id and action='created' and actor='staff')<>1 then
+    where reservation_id=v_booking_id and action='created' and actor='staff')<>1 then
       raise exception 'STAFF_AUDIT_MISSING'; end if;
   reply:=public.olli_booking_staff_manual_manage('fixture-owner',aid,'create',
     student,ts,'aaaaaaaa-0000-4000-8000-000000000901');
-  if (reply->>'reservation_id')::uuid<>id or
+  if (reply->>'reservation_id')::uuid<>v_booking_id or
     (select count(*) from public.olli_booking_reservations
       where academy_id=aid and request_key='aaaaaaaa-0000-4000-8000-000000000901')<>1 then
       raise exception 'MANUAL_RETRY_DUPLICATED'; end if;
