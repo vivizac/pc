@@ -53,7 +53,7 @@
    if(state.mode==='mobile'){
      if(state.view==='today')list=list.filter(r=>kstParts(r.start_at).ymd===today());
      if(state.view==='week'){
-       const base=new Date(today()+'T00:00:00Z');const start=new Date(base);start.setUTCDate(start.getUTCDate()-(start.getUTCDay()+6)%7);
+       const base=new Date(today()+'T00:00:00Z');const start=new Date(base);start.setUTCDate(start.getUTCDate()-start.getUTCDay());
        const a=start.toISOString().slice(0,10);const end=new Date(start);end.setUTCDate(start.getUTCDate()+7);const b=end.toISOString().slice(0,10);
        list=list.filter(r=>{const d=kstParts(r.start_at).ymd;return d>=a&&d<b;});
      }
@@ -80,7 +80,7 @@
  function calendarHtml(){
    const [y,m]=state.month.split('-').map(Number);
    const days=new Date(Date.UTC(y,m,0)).getUTCDate();
-   const padding=(new Date(Date.UTC(y,m-1,1)).getUTCDay()+6)%7;
+   const padding=new Date(Date.UTC(y,m-1,1)).getUTCDay();
    const byDay=new Map();
    // This view already receives the owner's authenticated month-scoped booking
    // rows. Cancellations are not appointments, and no extra RPC is necessary.
@@ -89,7 +89,7 @@
      if(!byDay.has(parts.ymd))byDay.set(parts.ymd,[]);
      byDay.get(parts.ymd).push({name:String(r.name||'학생'),time:parts.hm});
    });
-   const heads=['월','화','수','목','금','토','일'].map(s=>'<span class="obmDayHead">'+s+'</span>').join('');
+   const heads=['일','월','화','수','목','금','토'].map(s=>'<span class="obmDayHead">'+s+'</span>').join('');
    let cells=Array.from({length:padding},()=>'<span class="obmEmpty" aria-hidden="true"></span>').join('');
    for(let day=1;day<=days;day++){
      const d=state.month+'-'+String(day).padStart(2,'0');
@@ -149,16 +149,16 @@
     : state.view==='settings'?settingsHtml()
     :(state.mode==='pc'?'':stats)+(pcCalendar?calendarHtml():'')+(pcCalendar?'':bookingList);
    // PC-only status cards and month/views/refresh share one compact horizontal toolbar.
+   const pcManual=state.mode==='pc'?'<button class="obmPcAddManual" type="button" data-action="add-manual" '+(state.ready&&!state.loading?'':'disabled')+'>+ 상담일정 추가</button>':'';
    const toolbar=state.mode==='pc'
-     ? '<div class="obmPcToolbar">'+stats+'<div class="obmPcTools">'+months+nav+header+'</div></div>'
+     ? '<div class="obmPcToolbar">'+stats+'<div class="obmPcTools">'+pcManual+months+nav+header+'</div></div>'
      : header+nav+(state.view==='settings'?'':months);
    // The PC copy button is in the fixed title bar. Show the URL below only when issued,
    // so clipboard-denied users can still select/copy it manually.
    const footer=state.mode==='pc'
      ? (state.publicUrl?'<div class="obmFooter"><p class="obmLinkAddress">'+escapeHtml(state.publicUrl)+'</p></div>':'')
      : '<div class="obmFooter"><div class="obmLinkRow"><span>알림톡 승인 템플릿에 등록할 <strong>학원 통합 예약 링크</strong>입니다. 학생별 링크를 발급하지 않습니다.</span><button type="button" data-action="copy-public-link">통합 링크 복사</button></div>'+(state.publicUrl?'<p class="obmLinkAddress">'+escapeHtml(state.publicUrl)+'</p>':'')+'</div>';
-   const pcManual=state.mode==='pc'?'<div class="obmManualActions"><button type="button" data-action="add-manual" '+(state.ready&&!state.loading?'':'disabled')+'>+ 상담일정 추가</button></div>':'';
-   root.innerHTML='<div class="obmLayout">'+toolbar+error+pcManual+content+footer+
+   root.innerHTML='<div class="obmLayout">'+toolbar+error+content+footer+
      '</div><div class="obmModalHost" data-modal-host></div>';
  }
  async function refresh(){

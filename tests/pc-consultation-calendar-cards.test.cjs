@@ -18,11 +18,11 @@ function kstParts(date){
  }).formatToParts(new Date(date)).map(p=>[p.type,p.value]));
  return {ymd:m.year+'-'+m.month+'-'+m.day,hm:m.hour+':'+m.minute};
 }
-function calendar(rows,selectedDay=''){
+function calendar(rows,selectedDay='',month='2026-11'){
  const start=js.indexOf(' function calendarHtml(){');
  const end=js.indexOf(' function bookingsHtml(){',start);
  assert.ok(start>=0&&end>start,'use the actual owner calendar function');
- const context={state:{month:'2026-11',selectedDay,rows},escapeHtml,kstParts,Date,Intl,Map,
+ const context={state:{month,selectedDay,rows},escapeHtml,kstParts,Date,Intl,Map,
   today:()=> '2026-11-03'};
  return vm.runInNewContext(js.slice(start,end)+'\ncalendarHtml();',context);
 }
@@ -75,10 +75,10 @@ test('remove only PC subheading while keeping mobile heading and refresh action'
  assert.match(js,/obmHeaderPc/);
  assert.match(js,/data-action="refresh"/);
  assert.match(css,/#olliConsultationBookingPanel \.obmHeaderPc\{justify-content:flex-end/);
- assert.match(pc,/olli-booking-owner-ui\.css\?v=20261102-manual-add-1/);
- assert.match(pc,/olli-booking-owner-ui\.js\?v=20261102-manual-add-1/);
+ assert.match(pc,/olli-booking-owner-ui\.css\?v=20261102-sunday-first-2/);
+ assert.match(pc,/olli-booking-owner-ui\.js\?v=20261102-sunday-first-2/);
   assert.match(mobile,/olli-booking-owner-ui\.css\?v=\d{8}-[\w-]+/);
- assert.match(mobile,/olli-booking-owner-ui\.js\?v=20261102-manual-add-1/);
+ assert.match(mobile,/olli-booking-owner-ui\.js\?v=20261102-sunday-first-2/);
 });
 
 test('PC toolbar order and calendar-only content preserve the mobile version',()=>{
@@ -94,12 +94,16 @@ test('PC toolbar order and calendar-only content preserve the mobile version',()
   return root.innerHTML;
  }
  const calendar=page('pc','calendar');
+ const addIndex=calendar.indexOf('data-action="add-manual"');
  const monthIndex=calendar.indexOf('class="obmMonth"');
  const tabIndex=calendar.indexOf('class="obmTabs"');
  const refreshIndex=calendar.indexOf('data-action="refresh"');
  assert.ok(calendar.includes('class="obmPcToolbar"'));
  const statsIndex=calendar.indexOf('data-stats');
- assert.ok(statsIndex>0&&statsIndex<monthIndex&&monthIndex<tabIndex&&tabIndex<refreshIndex,'stats, month, tabs, refresh in this order');
+ assert.ok(statsIndex>0&&statsIndex<addIndex&&addIndex<monthIndex&&monthIndex<tabIndex&&tabIndex<refreshIndex,'stats, add, month, tabs, refresh in this order');
+ assert.equal((calendar.match(/data-action="add-manual"/g)||[]).length,1);
+ assert.match(calendar,/class="obmPcTools"><button class="obmPcAddManual"[^>]+data-action="add-manual"[^>]*>\+ 상담일정 추가<\/button><div class="obmMonth"/);
+ assert.doesNotMatch(calendar,/obmManualActions/);
  assert.ok(calendar.includes('data-calendar'));
  assert.doesNotMatch(calendar,/data-bookings|class="obmListHeader"/);
  const list=page('pc','list','2026-11-03');
@@ -123,4 +127,19 @@ test('PC date selection switches to the preserved booking-list tab',()=>{
  const handler=js.slice(js.indexOf(' async function click(e){'),js.indexOf("   const action=node.dataset.action;",js.indexOf(' async function click(e){')));
  assert.ok(handler.includes("if(state.mode==='pc')state.view='list'"));
  assert.ok(handler.includes("state.view=node.dataset.view;state.selectedDay=''"));
+});
+
+test('owner booking calendar Sunday-first for November, June and August',()=>{
+ const nov=calendar([]);
+ assert.deepEqual([...nov.matchAll(/<span class="obmDayHead">([일월화수목금토])<\/span>/g)].map(x=>x[1]),['일','월','화','수','목','금','토']);
+ assert.equal((nov.match(/class="obmEmpty"/g)||[]).length,0);
+ assert.equal((calendar([],'','2026-06').match(/class="obmEmpty"/g)||[]).length,1);
+ assert.equal((calendar([],'','2026-08').match(/class="obmEmpty"/g)||[]).length,6);
+});
+test('mobile booking week uses Sunday through Saturday',()=>{
+ const a=js.indexOf(' function filteredRows(){'),z=js.indexOf(' function dueUnbooked(){',a);
+ assert.ok(a>=0&&z>a);
+ const rows=[row('prev','2026-10-31T12:00:00+09:00','prev'),row('sun','2026-11-01T12:00:00+09:00','sun'),row('mon','2026-11-02T12:00:00+09:00','mon'),row('sat','2026-11-07T12:00:00+09:00','sat'),row('next','2026-11-08T12:00:00+09:00','next')];
+ const ctx={state:{mode:'mobile',view:'week',rows},today:()=> '2026-11-02',Date,kstParts};
+ assert.deepEqual(Array.from(vm.runInNewContext(js.slice(a,z)+'\nfilteredRows();',ctx),r=>r.id),['sun','mon','sat']);
 });
