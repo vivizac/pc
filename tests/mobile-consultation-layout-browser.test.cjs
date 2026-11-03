@@ -139,6 +139,12 @@ test('mobile-only layout reuses academy stat card source and Work header dimensi
    assert.equal(layout.background,'rgb(255, 255, 255)');
    assert.equal(layout.count,4);
    assert.deepEqual(layout.labels,['이번 달 예약','오늘 상담','신규생 상담','이번 달 미예약 대상']);
+   const relative=await overlay.evaluate(el=>{
+     const grid=el.querySelector('.obmMobileStatGrid').getBoundingClientRect();
+     const capsule=el.querySelector('.obmTabs').getBoundingClientRect();
+     return {statsBottom:grid.bottom,capsuleTop:capsule.top};
+   });
+   assert.ok(relative.statsBottom<relative.capsuleTop,'tabs always follow the 4 statistic cards');
    assert.deepEqual(layout.stats,[
      {total:'5',regular:'재원생 3',intake:'신규생 2'},
      {total:'5',regular:'재원생 3',intake:'신규생 2'},
@@ -198,8 +204,8 @@ test('mobile-only layout reuses academy stat card source and Work header dimensi
 test('PC versions and toolbar source are preserved, mobile scripts cache-busted',()=>{
  assert.match(desktop,/olli-booking-owner-ui\.js\?v=20261102-manual-slots-search-4/);
  assert.match(desktop,/olli-booking-owner-ui\.css\?v=20261102-manual-slots-search-4/);
- assert.match(html,/olli-booking-owner-ui\.js\?v=20261103-mobile-stats-split-1/);
- assert.match(html,/olli-booking-owner-ui\.css\?v=20261103-mobile-stats-split-1/);
+ assert.match(html,/olli-booking-owner-ui\.js\?v=20261103-local-first-realtime-1/);
+ assert.match(html,/olli-booking-owner-ui\.css\?v=20261103-local-first-realtime-1/);
  assert.match(shared,/#olliConsultationBookingPanel \.obmPcToolbar/);
  assert.match(html,/olli-phone-control-style\.css\?v=20261103-work-back-shared-3/);
  assert.match(canonicalGlass,/\.olliBookingMobileOverlay \.obmTabs/);

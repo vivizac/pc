@@ -258,6 +258,13 @@
   color:#1687ff;
   box-shadow:0 1px 4px rgba(0,0,0,.08);
 }
+/* Small, passive status while locally-cached bookings stay interactive. */
+.olliBookingMobileOverlay .obmSyncStatus{
+  margin:-6px 3px 11px;
+  color:#7b8794;
+  font-size:11px;
+  line-height:1.4;
+}
 /* Keep the Academy Management metric card source, with a two-line
    right-hand split and blue numbers. The card box dimensions stay shared. */
 .olliBookingMobileOverlay .recordAcademyStatValue{color:#1687ff}
