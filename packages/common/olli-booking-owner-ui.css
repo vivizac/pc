@@ -130,13 +130,26 @@
  .olliBookingMobileOverlay .obmMobileHeader{font-size:21px}
  .olliBookingMobileOverlay .obmTabs{width:100%;overflow:visible}
  .olliBookingMobileOverlay .obmTabs button{flex:1;min-width:0;padding:0 5px;font-size:12px}
- .olliBookingMobileOverlay .obmRow{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:start;column-gap:8px;row-gap:9px;padding:14px 12px}
- .olliBookingMobileOverlay .obmRowTime{grid-column:1/-1;min-width:0}
+ /* Each student owns an independent card rather than a shared list border. */
+ .olliBookingMobileOverlay .obmRows{display:grid;gap:10px;overflow:visible;background:transparent;border:0;border-radius:0}
+ .olliBookingMobileOverlay .obmRow{
+   grid-template-columns:minmax(0,1fr) auto;
+   grid-template-rows:auto auto;
+   align-items:start;
+   column-gap:8px;row-gap:9px;padding:14px 12px;
+   border:1px solid #eaedf1;border-radius:16px;background:#fff;
+   box-shadow:0 5px 16px rgba(20,24,30,.045);
+ }
+ .olliBookingMobileOverlay .obmRowTime{grid-column:1;grid-row:1;min-width:0}
  .olliBookingMobileOverlay .obmRowTime strong{font-size:14px;white-space:normal;line-height:1.35;overflow-wrap:anywhere}
  .olliBookingMobileOverlay .obmRowMain{grid-column:1;grid-row:2;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;flex-wrap:wrap}
+ .olliBookingMobileOverlay .obmRowIdentity{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;min-width:0;max-width:100%}
+ .olliBookingMobileOverlay .obmRowIdentity strong{min-width:0;max-width:100%;overflow-wrap:anywhere}
+ .olliBookingMobileOverlay .obmRowIdentity .obmRowType{white-space:nowrap;font-size:11px;color:#8f969e;font-weight:650}
+ .olliBookingMobileOverlay .obmRowCancelledLabel{font-size:11px;color:#a4a9b0}
  .olliBookingMobileOverlay .obmRowMain strong{font-size:14px;white-space:normal;overflow-wrap:anywhere;line-height:1.4}
  .olliBookingMobileOverlay .obmRowMain span{white-space:normal;overflow-wrap:anywhere;line-height:1.3}
- .olliBookingMobileOverlay .obmRowActions{grid-column:2;grid-row:2;justify-content:flex-end;align-items:flex-start;flex:0 0 auto}
+ .olliBookingMobileOverlay .obmRowActions{grid-column:2;grid-row:1 / 3;justify-content:flex-end;align-items:center;align-self:center;flex:0 0 auto}
  .olliBookingMobileOverlay .obmRowActions button{padding:8px 9px;white-space:nowrap}
  .olliBookingMobileOverlay .obmSettings{padding:14px}
  .olliBookingMobileOverlay .obmTimeGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -245,8 +258,20 @@
   color:#1687ff;
   box-shadow:0 1px 4px rgba(0,0,0,.08);
 }
-/* Match Academy Management's original card metrics; only values are blue. */
+/* Keep the Academy Management metric card source, with a two-line
+   right-hand split and blue numbers. The card box dimensions stay shared. */
 .olliBookingMobileOverlay .recordAcademyStatValue{color:#1687ff}
+.olliBookingMobileOverlay .obmMobileStatBreakdown{
+  flex:0 1 auto;min-width:0;margin-left:auto;
+  font-variant-numeric:tabular-nums;
+}
+.olliBookingMobileOverlay .obmMobileStatBreakdown span{
+  display:flex;justify-content:flex-end;align-items:center;gap:4px;
+  white-space:nowrap;
+}
+.olliBookingMobileOverlay .obmMobileStatBreakdown b{
+  font-weight:800;color:#1687ff;
+}
 #olliConsultationBookingPanel[hidden]{display:none!important}
 #olliConsultationBookingPanel{width:100%;min-width:0}
 #olliConsultationBookingPanel .obmLayout{max-width:none}

@@ -38,6 +38,8 @@ test('mobile-only layout reuses academy stat card source and Work header dimensi
     localStorage.setItem('olli_account_session_token_v1','fixture-owner');
     window.OlliConsultationMessages={isOwner:()=>true};
     window.__rpcCalls=[];
+    window.getAcademyManagementStudentsForStats=()=>[];
+    window.getThisMonthConsultationDueStudents=()=>[{id:'unbooked-1'},{id:'unbooked-2'}];
     window.callOlliRpc=async(name,p)=>{
       window.__rpcCalls.push({name,p});
       if(name==='olli_booking_staff_manage'){
@@ -45,12 +47,21 @@ test('mobile-only layout reuses academy stat card source and Work header dimensi
           timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'
         }).formatToParts(new Date()).map(x=>[x.type,x.value]));
         const day=parts.year+'-'+parts.month+'-'+parts.day;
-        return {ok:true,appointments:[{
-          id:'11111111-1111-4111-8111-111111111111',
-          name:'김가나다라마바사아자차카타파하',
-          kind:'regular',status:'confirmed',
-          start_at:day+'T16:00:00+09:00'
-        }],settings:{weeks:[2,3],weekdays:[1,2,3,4,5],start_time:'11:00:00',end_time:'17:00:00',slot_minutes:30}};
+        const examples=[
+          ['김가나다라마바사아자차카타파하','regular','10:00'],
+          ['박하늘','intake','11:00'],
+          ['최민서','regular','12:00'],
+          ['김서준','intake','13:00'],
+          ['이유진','regular','16:00']
+        ];
+        const appointments=examples.map(([name,kind,hm],index)=>({
+          id:'11111111-1111-4111-8111-'+String(index+1).padStart(12,'0'),
+          student_id:'22222222-2222-4222-8222-'+String(index+1).padStart(12,'0'),
+          name,kind,status:'confirmed',start_at:day+'T'+hm+':00+09:00'
+        }));
+        return {ok:true,appointments,settings:{
+          weeks:[2,3],weekdays:[1,2,3,4,5],start_time:'11:00:00',end_time:'17:00:00',slot_minutes:30
+        }};
       }
       if(name==='olli_booking_staff_manual_manage'&&p.p_action==='students')return {ok:true,students:[]};
       if(name==='olli_booking_staff_manual_slots')return {ok:true,slots:[]};
@@ -71,6 +82,7 @@ test('mobile-only layout reuses academy stat card source and Work header dimensi
      const bookingArrow=query('.obmMobileBack .memoRosterBackIcon');
      const referenceComposer=document.querySelector('#olliTalkBetaScreen .olliTalkBetaComposer');
      const row=query('.obmRow'),rowName=row?.querySelector('.obmRowMain strong'),actions=row?.querySelector('.obmRowActions');
+     const bookingCards=[...overlay.querySelectorAll('.obmRows > .obmRow')];
      const back=query('.obmMobileBack'),plus=query('.obmMobileAdd'),title=query('.obmMobileHeading'),tabs=query('.obmTabs');
      const cards=[...overlay.querySelectorAll('.obmMobileStatGrid .recordAcademyStatCard')];
      const reference=document.querySelector('#reference .recordAcademyStatCard');
@@ -95,6 +107,18 @@ test('mobile-only layout reuses academy stat card source and Work header dimensi
       capsuleGlass:{background:style(tabs).backgroundImage,border:style(tabs).border,shadow:style(tabs).boxShadow,blur:style(tabs).backdropFilter},
       row:row?rect(row):null,rowName:rowName?rect(rowName):null,rowActions:actions?rect(actions):null,
       regularSubtitle:row?.textContent.includes('재원생 정기 상담')||false,
+      bookingCount:bookingCards.length,
+      bookingRects:bookingCards.map(rect),
+      bookingTypes:bookingCards.map(c=>c.querySelector('.obmRowType')?.textContent.trim()),
+      bookingNames:bookingCards.map(c=>c.querySelector('.obmRowIdentity strong')?.textContent.trim()),
+      bookingBackground:bookingCards.map(c=>style(c).backgroundColor),
+      bookingCardRadius:bookingCards.map(c=>style(c).borderRadius),
+      bookingListBackground:style(query('.obmRows')).backgroundColor,
+      stats:cards.map(c=>({
+        total:c.querySelector('.recordAcademyStatValue')?.textContent.trim(),
+        regular:c.querySelector('.obmMobileStatBreakdown span:first-child')?.textContent.trim(),
+        intake:c.querySelector('.obmMobileStatBreakdown span:last-child')?.textContent.trim()
+      })),
       count:cards.length,
       labels:cards.map(c=>c.querySelector('.recordAcademyStatLabel').textContent.trim()),
       cards:cards.map(rect),reference:rect(reference),
@@ -115,6 +139,23 @@ test('mobile-only layout reuses academy stat card source and Work header dimensi
    assert.equal(layout.background,'rgb(255, 255, 255)');
    assert.equal(layout.count,4);
    assert.deepEqual(layout.labels,['이번 달 예약','오늘 상담','신규생 상담','이번 달 미예약 대상']);
+   assert.deepEqual(layout.stats,[
+     {total:'5',regular:'재원생 3',intake:'신규생 2'},
+     {total:'5',regular:'재원생 3',intake:'신규생 2'},
+     {total:'2',regular:'재원생 0',intake:'신규생 2'},
+     {total:'2',regular:'재원생 2',intake:'신규생 0'}
+   ],'confirmed appointments and unbooked registered students are split correctly');
+   assert.equal(layout.bookingCount,5,'each confirmed student has an independent card');
+   assert.deepEqual(layout.bookingTypes,[
+     '재원생 정기 상담','신규 상담','재원생 정기 상담','신규 상담','재원생 정기 상담'
+   ]);
+   assert.equal(new Set(layout.bookingNames).size,5,'each student is shown separately');
+   for(let i=1;i<layout.bookingRects.length;i++){
+     assert.ok(layout.bookingRects[i].top-layout.bookingRects[i-1].bottom>=8,'student cards remain visibly separated');
+   }
+   assert.ok(layout.bookingBackground.every(x=>x==='rgb(255, 255, 255)'),'each booking is its own white card');
+   assert.ok(layout.bookingCardRadius.every(x=>x!=='0px'),'each booking has independent rounded borders');
+   assert.equal(layout.bookingListBackground,'rgba(0, 0, 0, 0)','shared list background removed');
    assert.equal(layout.statPadding,layout.refPadding);
    assert.equal(layout.cards[0].height,layout.reference.height,'academy card heights match');
    assert.equal(layout.statRadius,layout.refRadius);
@@ -136,10 +177,13 @@ test('mobile-only layout reuses academy stat card source and Work header dimensi
    assert.deepEqual(layout.consultationBackStyle,layout.workBackStyle,'consultation back uses exact Work glass style');
    assert.deepEqual(layout.bookingArrow,layout.workArrow,'consultation back uses exact Work arrow geometry');
    assert.deepEqual(layout.capsuleGlass,layout.workGlass,'capsule shares Work composer glass and inner highlight');
-   assert.equal(layout.regularSubtitle,false,'regular consultation label absent on mobile');
+   assert.equal(layout.regularSubtitle,true,'regular student consultation guide visible on mobile');
    assert.ok(layout.row&&layout.rowName&&layout.rowActions,'long-name booking row exists');
    assert.ok(layout.rowName.right<=layout.rowActions.left,'student name does not overlap buttons');
    assert.ok(layout.rowActions.right<=width-10,'actions stay inside viewport');
+   const actionCenter=layout.rowActions.top+layout.rowActions.height/2;
+   const cardCenter=layout.bookingRects[0].top+layout.bookingRects[0].height/2;
+   assert.ok(Math.abs(actionCenter-cardCenter)<3,'edit and cancel controls vertically center in student card');
    assert.equal(layout.overflows,false);
    await overlay.locator('.obmMobileAdd').click();
    await page.getByRole('dialog',{name:'상담일정 추가'}).waitFor({state:'visible'});
@@ -154,8 +198,8 @@ test('mobile-only layout reuses academy stat card source and Work header dimensi
 test('PC versions and toolbar source are preserved, mobile scripts cache-busted',()=>{
  assert.match(desktop,/olli-booking-owner-ui\.js\?v=20261102-manual-slots-search-4/);
  assert.match(desktop,/olli-booking-owner-ui\.css\?v=20261102-manual-slots-search-4/);
- assert.match(html,/olli-booking-owner-ui\.js\?v=20261103-work-back-match-3/);
- assert.match(html,/olli-booking-owner-ui\.css\?v=20261103-work-back-match-3/);
+ assert.match(html,/olli-booking-owner-ui\.js\?v=20261103-mobile-stats-split-1/);
+ assert.match(html,/olli-booking-owner-ui\.css\?v=20261103-mobile-stats-split-1/);
  assert.match(shared,/#olliConsultationBookingPanel \.obmPcToolbar/);
  assert.match(html,/olli-phone-control-style\.css\?v=20261103-work-back-shared-3/);
  assert.match(canonicalGlass,/\.olliBookingMobileOverlay \.obmTabs/);

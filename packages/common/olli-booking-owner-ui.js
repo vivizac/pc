@@ -72,19 +72,31 @@
  }
  function renderStats(){
    const confirmed=state.rows.filter(r=>r.status==='confirmed');
-   const todayN=confirmed.filter(r=>kstParts(r.start_at).ymd===today()).length;
+   const todayRows=confirmed.filter(r=>kstParts(r.start_at).ymd===today());
+   const todayN=todayRows.length;
    const newN=confirmed.filter(r=>r.kind==='intake').length;
    const unbooked=dueUnbooked();
    const monthLabel=state.mode==='pc'?'이달의 예약':'이번 달 예약';
    if(state.mode==='mobile'){
-     // Reuse Academy Management stat card markup exactly; omit side guides.
+     // Counts are separated using the same confirmed bookings as the totals.
+     const todayNewN=todayRows.filter(r=>r.kind==='intake').length;
+     // The due list is for registered students, never new intake inquiries.
+     // An unavailable due list must remain unknown instead of showing zero.
+     const unbookedN=unbooked===null?'—':unbooked.length;
      const items=[
-       ['이번 달 예약',confirmed.length],['오늘 상담',todayN],
-       ['신규생 상담',newN],['이번 달 미예약 대상',unbooked===null?'—':unbooked.length]
+       ['이번 달 예약',confirmed.length,confirmed.length-newN,newN],
+       ['오늘 상담',todayN,todayN-todayNewN,todayNewN],
+       ['신규생 상담',newN,0,newN],
+       ['이번 달 미예약 대상',unbookedN,unbookedN,unbooked===null?'—':0]
      ];
-     return '<div class="recordAcademyStatGrid obmMobileStatGrid">'+items.map(([label,value])=>
+     return '<div class="recordAcademyStatGrid obmMobileStatGrid">'+items.map(([label,value,regular,intake])=>
        '<div class="recordAcademyStatCard"><div class="recordAcademyStatLabel">'+escapeHtml(label)+'</div>'+
-       '<div class="recordAcademyStatBody"><div class="recordAcademyStatValue">'+escapeHtml(value)+'</div></div></div>'
+       '<div class="recordAcademyStatBody"><div class="recordAcademyStatValue">'+escapeHtml(value)+'</div>'+
+       '<div class="recordAcademySplitLegend obmMobileStatBreakdown" aria-label="'+
+       escapeHtml('재원생 '+regular+'명, 신규생 '+intake+'명')+'">'+
+       '<span>재원생 <b>'+escapeHtml(regular)+'</b></span>'+
+       '<span>신규생 <b>'+escapeHtml(intake)+'</b></span>'+
+       '</div></div></div>'
      ).join('')+'</div>';
    }
    return '<div class="obmStats"><div><strong>'+confirmed.length+'</strong><span>'+monthLabel+'</span></div><div><strong>'+todayN+'</strong><span>오늘 상담</span></div><div><strong>'+newN+'</strong><span>신규생 상담</span></div>'+
@@ -117,16 +129,20 @@
    return '<div class="obmCalendar" aria-label="월간 상담 예약 달력">'+heads+cells+'</div>';
  }
  function bookingsHtml(){
-   let rows=filteredRows();
+   const rows=filteredRows();
    if(!rows.length)return '<div class="obmEmptyMessage">'+(state.selectedDay?'선택한 날짜에':'해당 기간에')+' 예약된 상담이 없습니다.</div>';
    const safe=rows.slice().sort((a,b)=>String(a.start_at).localeCompare(String(b.start_at)));
    return '<div class="obmRows">'+safe.map(r=>{
      const date=kstParts(r.start_at);
+     const identity=state.mode==='mobile'
+       ?'<div class="obmRowIdentity"><strong>'+escapeHtml(r.name)+'</strong>'+
+         '<span class="obmRowType">'+(r.kind==='intake'?'신규 상담':'재원생 정기 상담')+'</span></div>'+
+         (r.status==='cancelled'?'<span class="obmRowCancelledLabel">취소됨</span>':'')
+       :'<strong>'+escapeHtml(r.name)+'</strong>'+
+         '<span>'+(r.kind==='intake'?'신규 상담':'재원생 정기 상담')+
+         (r.status==='cancelled'?' · 취소됨':'')+'</span>';
      return '<article class="obmRow"><div class="obmRowTime"><strong><span class="obmRowDate">'+escapeHtml(dateLabel(date.ymd).replace(/\s+\(/g,'('))+'</span> <span class="obmRowClock">'+escapeHtml(date.hm)+'</span></strong></div>'+
-       '<div class="obmRowMain"><strong>'+escapeHtml(r.name)+'</strong>'+
-       ((r.kind==='intake'||state.mode==='pc'||r.status==='cancelled')?
-         '<span>'+(r.kind==='intake'?'신규 상담':state.mode==='pc'?'재원생 정기 상담':'')+
-         (r.status==='cancelled'?' · 취소됨':'')+'</span>':'')+
+       '<div class="obmRowMain">'+identity+
        '</div><div class="obmRowActions">'+
        (r.status==='confirmed'?'<button type="button" data-action="edit" data-id="'+escapeHtml(r.id)+'">변경</button><button type="button" data-action="cancel" data-id="'+escapeHtml(r.id)+'">취소</button>':'<span class="obmCancelled">취소 기록</span>')+
        '</div></article>';
