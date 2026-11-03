@@ -441,6 +441,12 @@
   function todayKey() { return dateKey(new Date()); }
   function nextWeekStartKey() { return dateKey(addDays(mondayOf(new Date()), 7)); }
   function currentWeekEndDate() { return addDays(mondayOf(new Date()), 5); }
+  // Popup and save must use the same effective week, including newly added future classes.
+  function sessionOrderReferenceDate() {
+    const currentEnd = currentWeekEndDate();
+    const visibleEnd = addDays(state.weekStart, 5);
+    return visibleEnd > currentEnd ? visibleEnd : currentEnd;
+  }
   function isReservedMoveDate(value) { return clean(value) >= nextWeekStartKey(); }
   function upcomingDateForWeekday(weekday) {
     const today = parseDate(todayKey());
@@ -923,12 +929,14 @@
   }
 
   async function setWeeklySessionOrder(studentId, enrollmentId, order) {
-    const date = new Date();
+    const date = sessionOrderReferenceDate();
     const weeklySessions = activeWeeklySessions(studentId, date);
-    if (weeklySessions.length !== 2 || typeof service.setSessionOrder !== 'function') return false;
+    if (typeof service.setSessionOrder !== 'function') throw new Error('수업 회차 저장 기능을 불러오지 못했습니다.');
+    if (weeklySessions.length !== 2) throw new Error('해당 주에 유효한 정규수업이 2개인지 확인해 주세요. 시간표를 새로고침한 후 다시 시도해 주세요.');
     const selected = weeklySessions.find((item) => clean(item.id) === clean(enrollmentId));
-    if (!selected || ![1, 2].includes(Number(order))) return false;
-    await service.setSessionOrder(studentId, enrollmentId, Number(order), todayKey());
+    if (!selected) throw new Error('선택한 수업이 해당 주에 유효하지 않습니다. 시간표를 새로고침해 주세요.');
+    if (![1, 2].includes(Number(order))) throw new Error('1회차 또는 2회차를 선택해 주세요.');
+    await service.setSessionOrder(studentId, enrollmentId, Number(order), dateKey(date));
     await refreshStudentsFromServer();
     state.data = null;
     await loadWeek();
@@ -2290,7 +2298,7 @@
     const division = divisionOf(student);
     const timeOptions = timeOptionsFor(division, dialog.targetWeekday);
     const capacity = capacityFor(division);
-    const weekReferenceDate = currentWeekEndDate();
+    const weekReferenceDate = sessionOrderReferenceDate();
     const currentRows = rows.filter((item) => enrollmentEffectiveOn(item, weekReferenceDate));
     const hasTwoCurrentSessions = currentRows.length === 2;
     const selectedEffectiveDate = clean(dialog.effectiveDate) || todayKey();
