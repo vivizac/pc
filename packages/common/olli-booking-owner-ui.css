@@ -114,7 +114,7 @@
 .obmModal h3{margin:0;font-size:19px}
 .obmModal p{color:#747d89;margin:0;font-size:13px}
 .obmModal label{display:flex;flex-direction:column;gap:8px;font-size:13px}
-.obmModal input,.obmModal select{width:100%;padding:12px;border-radius:9px;border:1px solid #e1e6eb;background:#fff}
+.obmModal input,.obmModal select{box-sizing:border-box;min-width:0;max-width:100%;width:100%;padding:12px;border-radius:9px;border:1px solid #e1e6eb;background:#fff}
 .obmModal [data-manual-student]{display:none}
 .obmStudentMatches{width:100%;max-height:205px;overflow-y:auto;border:1px solid #e1e6eb;border-radius:9px;background:#fff}
 .obmStudentMatches[hidden]{display:none}
