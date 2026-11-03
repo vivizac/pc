@@ -110,11 +110,11 @@
 .obmAcademyEntry:focus-visible{outline:2px solid #0A84FF;outline-offset:3px}
 .recordAcademyStatGrid > .obmAcademyEntry{grid-column:1 / -1;margin-top:0}
 .obmModalBackdrop{position:fixed;inset:0;background:#14192570;z-index:170000;display:grid;place-items:center;padding:15px}
-.obmModal{width:100%;max-width:400px;border-radius:15px;background:#fff;padding:22px;display:flex;flex-direction:column;gap:15px}
+.obmModal{width:100%;max-width:400px;min-width:0;box-sizing:border-box;border-radius:15px;background:#fff;padding:22px;display:flex;flex-direction:column;gap:15px}
 .obmModal h3{margin:0;font-size:19px}
 .obmModal p{color:#747d89;margin:0;font-size:13px}
 .obmModal label{display:flex;flex-direction:column;gap:8px;font-size:13px}
-.obmModal input,.obmModal select{width:100%;padding:12px;border-radius:9px;border:1px solid #e1e6eb;background:#fff}
+.obmModal input,.obmModal select{box-sizing:border-box;min-width:0;max-width:100%;width:100%;padding:12px;border-radius:9px;border:1px solid #e1e6eb;background:#fff}
 .obmModal [data-manual-student]{display:none}
 .obmStudentMatches{width:100%;max-height:205px;overflow-y:auto;border:1px solid #e1e6eb;border-radius:9px;background:#fff}
 .obmStudentMatches[hidden]{display:none}
@@ -126,6 +126,12 @@
 .obmSlotError:empty{display:none}
 .obmSlotError{color:#c13535!important;font-size:12px!important}
 @media(max-width:740px){
+ /* Date inputs have an intrinsic width on mobile browsers: constrain every flex/grid ancestor. */
+ .olliBookingMobileOverlay .obmModalBackdrop{grid-template-columns:minmax(0,1fr);padding:12px}
+ .olliBookingMobileOverlay .obmModal{width:100%;max-width:400px;max-height:calc(100dvh - 24px);overflow-x:hidden;overflow-y:auto}
+ .olliBookingMobileOverlay .obmModal label{min-width:0;max-width:100%}
+ .olliBookingMobileOverlay .obmModal input,.olliBookingMobileOverlay .obmModal select{box-sizing:border-box;min-width:0;max-width:100%}
+ .olliBookingMobileOverlay .obmModal input[type="date"]{display:block;inline-size:100%}
  .olliBookingMobileOverlay .obmLayout{padding:calc(var(--olli-phone-guide-top,18px) + 62px - env(safe-area-inset-top)) var(--olli-phone-guide-x,16px) 32px}
  .olliBookingMobileOverlay .obmMobileHeader{font-size:21px}
  .olliBookingMobileOverlay .obmTabs{width:100%;overflow:visible}

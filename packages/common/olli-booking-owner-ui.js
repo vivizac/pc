@@ -384,9 +384,11 @@
    const row=state.rows.find(x=>x.id===id&&x.status==='confirmed');if(!row)return;
    const host=state.root.querySelector('[data-modal-host]');
    if(!host)return;
-   state.slotDate=kstParts(row.start_at).ymd;
-   host.innerHTML='<div class="obmModalBackdrop" data-action="dismiss"><div class="obmModal" role="dialog" aria-modal="true" aria-label="상담 일정 변경"><h3>상담 시간 변경</h3><p>'+escapeHtml(row.name)+' · 현재 '+escapeHtml(dateLabel(state.slotDate))+' '+escapeHtml(kstParts(row.start_at).hm)+'</p><label>날짜 선택<input type="date" data-slot-date value="'+state.slotDate+'"></label><label>가능 시간<select data-slot-time><option value="">시간 조회 중</option></select></label><div class="obmFormActions"><button type="button" data-action="dismiss">닫기</button><button type="button" class="obmPrimary" data-action="save-reschedule" data-id="'+escapeHtml(id)+'">변경 저장</button></div></div></div>';
-   await loadSlotChoices(state.slotDate);
+   const bookedDate=kstParts(row.start_at).ymd;
+   const maxDate=new Date(Date.parse(today()+'T00:00:00Z')+120*86400000).toISOString().slice(0,10);
+   state.slotDate=bookedDate>=today()?bookedDate:today();
+   host.innerHTML='<div class="obmModalBackdrop" data-action="dismiss"><div class="obmModal" role="dialog" aria-modal="true" aria-label="상담 일정 변경"><h3>상담 시간 변경</h3><p>'+escapeHtml(row.name)+' · 현재 '+escapeHtml(dateLabel(bookedDate))+' '+escapeHtml(kstParts(row.start_at).hm)+'</p><label>날짜 선택<input type="date" data-slot-date min="'+today()+'" max="'+maxDate+'" value="'+state.slotDate+'"></label><label>가능 시간<select data-slot-time><option value="">시간 조회 중</option></select></label><p class="obmSlotError" data-slot-error role="status"></p><div class="obmFormActions"><button type="button" data-action="dismiss">닫기</button><button type="button" class="obmPrimary" data-action="save-reschedule" data-id="'+escapeHtml(id)+'">변경 저장</button></div></div></div>';
+   await loadSlotChoices(state.slotDate,{manual:true});
  }
  async function openManualBooking(){
    if(state.busy||!state.ready)return;
@@ -437,7 +439,7 @@
        option.value=slot.start_at;select.appendChild(option);
      }
      if(select.options.length===1)
-       select.options[0].textContent='선택한 날짜에 빈 상담 시간이 없습니다';
+       select.options[0].textContent='빈 상담 시간이 없습니다 · 다른 날짜를 선택해 주세요';
    }catch(e){
      if(request!==state.slotRequest||!select.isConnected)return;
      select.innerHTML='<option value="">시간 조회 실패 · 날짜를 다시 선택해 주세요</option>';
@@ -604,7 +606,7 @@
  function change(e){
    const dateInput=e.target.closest('[data-slot-date]');
    if(dateInput)void loadSlotChoices(dateInput.value,{
-     manual:Boolean(dateInput.closest('[aria-label="상담일정 추가"]'))
+     manual:Boolean(dateInput.closest('[aria-label="상담일정 추가"],[aria-label="상담 일정 변경"]'))
    });
  }
  function input(e){

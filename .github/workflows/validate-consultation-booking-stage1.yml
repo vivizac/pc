@@ -21,6 +21,8 @@ on:
       - 'supabase/migrations/*_olli_booking_owner_manual_slots_search.sql'
       - 'supabase/migrations/*_olli_booking_owner_manual_evening_slots.sql'
       - 'tests/consultation-booking-manual-evening*'
+      - 'tests/consultation-booking-reschedule*'
+      - 'supabase/migrations/*_olli_booking_staff_reschedule_owner_slots.sql'
       - 'tests/consultation-reminder*'
       - 'supabase/migrations/*_olli_consultation_daily_reminder*.sql'
       - 'apps/mobile/supabase/functions/olli-consultation-reminder/*'
@@ -57,6 +59,8 @@ on:
       - 'supabase/migrations/*_olli_booking_owner_manual_slots_search.sql'
       - 'supabase/migrations/*_olli_booking_owner_manual_evening_slots.sql'
       - 'tests/consultation-booking-manual-evening*'
+      - 'tests/consultation-booking-reschedule*'
+      - 'supabase/migrations/*_olli_booking_staff_reschedule_owner_slots.sql'
       - 'tests/consultation-reminder*'
       - 'supabase/migrations/*_olli_consultation_daily_reminder*.sql'
       - 'apps/mobile/supabase/functions/olli-consultation-reminder/*'
@@ -169,6 +173,10 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102180000_olli_booking_owner_manual_evening_slots.sql
           psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-manual-evening.integration.sql
           node --test tests/consultation-booking-manual-evening.test.cjs
+      - name: Validate owner reschedule availability, retry and overlap in isolated PostgreSQL
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261103150000_olli_booking_staff_reschedule_owner_slots.sql
+          psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-reschedule.integration.sql
       - name: Validate scheduled consultation reminder in isolated PostgreSQL
         run: |
           psql -v ON_ERROR_STOP=1 -f tests/consultation-reminder.bootstrap.sql
@@ -239,6 +247,8 @@ jobs:
         run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/pc-consultation-compact-toolbar-browser.test.cjs
       - name: Verify owner manual booking modal controls on PC and mobile
         run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-booking-modal-dismiss-browser.test.cjs
+      - name: Verify owner reschedule dialog, time lookup and mobile date width
+        run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-booking-reschedule-browser.test.cjs
       - name: Verify mobile consultation header, pills and academy-style stat cards
         run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/mobile-consultation-layout-browser.test.cjs
       - name: Verify mobile local-first loading, realtime updates and tenant safety
