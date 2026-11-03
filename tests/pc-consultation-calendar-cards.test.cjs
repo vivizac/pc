@@ -120,7 +120,9 @@ test('PC toolbar order and calendar-only content preserve the mobile version',()
  assert.doesNotMatch(mobileToday,/data-action="close"|data-action="refresh"|학원 상담 예약과 일정/);
  assert.ok(mobileToday.includes('data-bookings')&&mobileToday.includes('전체 예약'));
  const mobileSettings=page('mobile','settings');
- assert.doesNotMatch(mobileSettings,/class="obmMonth"/);
+ assert.match(mobileSettings,/class="obmMonth"/,'mobile settings retain the stats-first toolbar');
+ const statsPos=mobileSettings.indexOf('data-stats'),tabsPos=mobileSettings.indexOf('class="obmTabs"');
+ assert.ok(statsPos>=0&&tabsPos>statsPos,'stats precede capsule in mobile settings too');
  assert.match(css,/#olliConsultationBookingPanel \.obmPcToolbar\{[^}]*display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:nowrap/s);
  assert.match(css,/#olliConsultationBookingPanel \.obmPcToolbar>\.obmStats>div\{[^}]*aspect-ratio:5\/2/s);
  assert.match(css,/#olliConsultationBookingPanel \.obmPcTools \.obmHeaderPc\{[^}]*margin:0/s);
