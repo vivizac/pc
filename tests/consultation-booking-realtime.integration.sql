@@ -6,11 +6,16 @@ declare
   v_count integer;
   v_payload jsonb;
 begin
+  insert into public.students(id,academy_id,name) values
+  ('33333333-3333-4333-8333-333333333331',
+   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','신호테스트 학생 1'),
+  ('33333333-3333-4333-8333-333333333332',
+   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','신호테스트 학생 2');
   insert into public.olli_booking_reservations
   (academy_id,student_id,start_at,end_at,request_key)
   values (
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    '11111111-1111-4111-8111-111111111111',
+    '33333333-3333-4333-8333-333333333331',
     '2090-02-20T11:00:00+09:00','2090-02-20T11:30:00+09:00',
     'c1000000-0000-4000-8000-000000000001'
   ) returning id into v_id;
@@ -30,7 +35,7 @@ begin
   (academy_id,student_id,start_at,end_at,request_key)
   values (
     'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-    '22222222-2222-4222-8222-222222222222',
+    '33333333-3333-4333-8333-333333333332',
     '2090-02-20T12:00:00+09:00','2090-02-20T12:30:00+09:00',
     'c1000000-0000-4000-8000-000000000002'
   ) returning id into v_other;
