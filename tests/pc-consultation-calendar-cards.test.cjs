@@ -78,7 +78,7 @@ test('PC keeps original refresh while mobile uses back and plus, without close o
  assert.match(pc,/olli-booking-owner-ui\.css\?v=20261102-manual-slots-search-4/);
  assert.match(pc,/olli-booking-owner-ui\.js\?v=20261102-manual-slots-search-4/);
   assert.match(mobile,/olli-booking-owner-ui\.css\?v=\d{8}-[\w-]+/);
- assert.match(mobile,/olli-booking-owner-ui\.js\?v=20261103-work-back-match-3/);
+ assert.match(mobile,/olli-booking-owner-ui\.js\?v=20261103-local-first-realtime-1/);
 });
 
 test('PC toolbar order and calendar-only content preserve the mobile version',()=>{
@@ -120,7 +120,9 @@ test('PC toolbar order and calendar-only content preserve the mobile version',()
  assert.doesNotMatch(mobileToday,/data-action="close"|data-action="refresh"|학원 상담 예약과 일정/);
  assert.ok(mobileToday.includes('data-bookings')&&mobileToday.includes('전체 예약'));
  const mobileSettings=page('mobile','settings');
- assert.doesNotMatch(mobileSettings,/class="obmMonth"/);
+ assert.match(mobileSettings,/class="obmMonth"/,'mobile settings retain the stats-first toolbar');
+ const statsPos=mobileSettings.indexOf('data-stats'),tabsPos=mobileSettings.indexOf('class="obmTabs"');
+ assert.ok(statsPos>=0&&tabsPos>statsPos,'stats precede capsule in mobile settings too');
  assert.match(css,/#olliConsultationBookingPanel \.obmPcToolbar\{[^}]*display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:nowrap/s);
  assert.match(css,/#olliConsultationBookingPanel \.obmPcToolbar>\.obmStats>div\{[^}]*aspect-ratio:5\/2/s);
  assert.match(css,/#olliConsultationBookingPanel \.obmPcTools \.obmHeaderPc\{[^}]*margin:0/s);

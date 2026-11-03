@@ -77,7 +77,7 @@ test('PC half-hour timetable keeps internal scroll and disables wheel division s
   assert.match(block, /section && section\.querySelector\('\.olliTtHalfHourGrid'\)/);
   assert.match(block, /resetWheelState\(\);\s*return;/);
   assert.match(block, /nextButton\.click\(\)/);
-  assert.match(index, /pc-start-page\.js\?v=20261002-half-hour-wheel-guard-1/);
+  assert.match(index, /pc-start-page\.js\?v=20261027-student-info-bluegray-1/);
 });
 
 
@@ -92,8 +92,8 @@ test('PC half-hour timetable keeps scrolling but hides the scrollbar UI', () => 
   assert.match(css, /\.olliTtSection:has\(\.olliTtHalfHourGrid\) \.olliTtScroll \{[\s\S]*?scrollbar-width: none;[\s\S]*?-ms-overflow-style: none;/);
   assert.match(css, /\.olliTtSection:has\(\.olliTtHalfHourGrid\) \.olliTtScroll::\-webkit-scrollbar \{[\s\S]*?width: 0;[\s\S]*?display: none;/);
   assert.doesNotMatch(css, /olliTtHalfHourExternalScroll|olliTtHalfHourShell/);
-  assert.match(index, /pc-timetable\.css\?v=20261007-holiday-cell-1/);
-  assert.match(index, /pc-timetable\.js\?v=20261002-half-hour-hidden-scrollbar-1/);
+  assert.match(index, /pc-timetable\.css\?v=20261019-sidebar-anchor-2/);
+  assert.match(index, /pc-timetable\.js\?v=20261019-sidebar-anchor-2/);
 });
 
 

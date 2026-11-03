@@ -3,7 +3,7 @@
  */
 (function (global) {
  'use strict';
- const state={mode:'pc',root:null,month:'',view:'calendar',selectedDay:'',rows:[],settings:null,error:'',busy:false,loading:false,ready:false,entryObserver:null,slotDate:'',slotChoices:[],slotRequest:0,manualStudents:[],manualStudentId:'',publicUrl:''};
+ const state={mode:'pc',root:null,month:'',view:'calendar',selectedDay:'',rows:[],settings:null,error:'',busy:false,loading:false,ready:false,entryObserver:null,mobileScope:'',mobileCacheAt:0,mobileRequest:0,mobileNeedsRefresh:false,mobileRenderDeferred:false,slotDate:'',slotChoices:[],slotRequest:0,manualStudents:[],manualStudentId:'',publicUrl:''};
  const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;};
  const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const currentMonth=()=>{const p=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit'}).formatToParts(new Date());const m=Object.fromEntries(p.map(v=>[v.type,v.value]));return m.year+'-'+m.month;};
@@ -72,19 +72,31 @@
  }
  function renderStats(){
    const confirmed=state.rows.filter(r=>r.status==='confirmed');
-   const todayN=confirmed.filter(r=>kstParts(r.start_at).ymd===today()).length;
+   const todayRows=confirmed.filter(r=>kstParts(r.start_at).ymd===today());
+   const todayN=todayRows.length;
    const newN=confirmed.filter(r=>r.kind==='intake').length;
    const unbooked=dueUnbooked();
    const monthLabel=state.mode==='pc'?'이달의 예약':'이번 달 예약';
    if(state.mode==='mobile'){
-     // Reuse Academy Management stat card markup exactly; omit side guides.
+     // Counts are separated using the same confirmed bookings as the totals.
+     const todayNewN=todayRows.filter(r=>r.kind==='intake').length;
+     // The due list is for registered students, never new intake inquiries.
+     // An unavailable due list must remain unknown instead of showing zero.
+     const unbookedN=unbooked===null?'—':unbooked.length;
      const items=[
-       ['이번 달 예약',confirmed.length],['오늘 상담',todayN],
-       ['신규생 상담',newN],['이번 달 미예약 대상',unbooked===null?'—':unbooked.length]
+       ['이번 달 예약',confirmed.length,confirmed.length-newN,newN],
+       ['오늘 상담',todayN,todayN-todayNewN,todayNewN],
+       ['신규생 상담',newN,0,newN],
+       ['이번 달 미예약 대상',unbookedN,unbookedN,unbooked===null?'—':0]
      ];
-     return '<div class="recordAcademyStatGrid obmMobileStatGrid">'+items.map(([label,value])=>
+     return '<div class="recordAcademyStatGrid obmMobileStatGrid">'+items.map(([label,value,regular,intake])=>
        '<div class="recordAcademyStatCard"><div class="recordAcademyStatLabel">'+escapeHtml(label)+'</div>'+
-       '<div class="recordAcademyStatBody"><div class="recordAcademyStatValue">'+escapeHtml(value)+'</div></div></div>'
+       '<div class="recordAcademyStatBody"><div class="recordAcademyStatValue">'+escapeHtml(value)+'</div>'+
+       '<div class="recordAcademySplitLegend obmMobileStatBreakdown" aria-label="'+
+       escapeHtml('재원생 '+regular+'명, 신규생 '+intake+'명')+'">'+
+       '<span>재원생 <b>'+escapeHtml(regular)+'</b></span>'+
+       '<span>신규생 <b>'+escapeHtml(intake)+'</b></span>'+
+       '</div></div></div>'
      ).join('')+'</div>';
    }
    return '<div class="obmStats"><div><strong>'+confirmed.length+'</strong><span>'+monthLabel+'</span></div><div><strong>'+todayN+'</strong><span>오늘 상담</span></div><div><strong>'+newN+'</strong><span>신규생 상담</span></div>'+
@@ -117,16 +129,20 @@
    return '<div class="obmCalendar" aria-label="월간 상담 예약 달력">'+heads+cells+'</div>';
  }
  function bookingsHtml(){
-   let rows=filteredRows();
+   const rows=filteredRows();
    if(!rows.length)return '<div class="obmEmptyMessage">'+(state.selectedDay?'선택한 날짜에':'해당 기간에')+' 예약된 상담이 없습니다.</div>';
    const safe=rows.slice().sort((a,b)=>String(a.start_at).localeCompare(String(b.start_at)));
    return '<div class="obmRows">'+safe.map(r=>{
      const date=kstParts(r.start_at);
+     const identity=state.mode==='mobile'
+       ?'<div class="obmRowIdentity"><strong>'+escapeHtml(r.name)+'</strong>'+
+         '<span class="obmRowType">'+(r.kind==='intake'?'신규 상담':'재원생 정기 상담')+'</span></div>'+
+         (r.status==='cancelled'?'<span class="obmRowCancelledLabel">취소됨</span>':'')
+       :'<strong>'+escapeHtml(r.name)+'</strong>'+
+         '<span>'+(r.kind==='intake'?'신규 상담':'재원생 정기 상담')+
+         (r.status==='cancelled'?' · 취소됨':'')+'</span>';
      return '<article class="obmRow"><div class="obmRowTime"><strong><span class="obmRowDate">'+escapeHtml(dateLabel(date.ymd).replace(/\s+\(/g,'('))+'</span> <span class="obmRowClock">'+escapeHtml(date.hm)+'</span></strong></div>'+
-       '<div class="obmRowMain"><strong>'+escapeHtml(r.name)+'</strong>'+
-       ((r.kind==='intake'||state.mode==='pc'||r.status==='cancelled')?
-         '<span>'+(r.kind==='intake'?'신규 상담':state.mode==='pc'?'재원생 정기 상담':'')+
-         (r.status==='cancelled'?' · 취소됨':'')+'</span>':'')+
+       '<div class="obmRowMain">'+identity+
        '</div><div class="obmRowActions">'+
        (r.status==='confirmed'?'<button type="button" data-action="edit" data-id="'+escapeHtml(r.id)+'">변경</button><button type="button" data-action="cancel" data-id="'+escapeHtml(r.id)+'">취소</button>':'<span class="obmCancelled">취소 기록</span>')+
        '</div></article>';
@@ -145,12 +161,118 @@
    '<div class="obmSettingGroup"><label class="obmSwitch"><input name="allow_parent_reschedule" type="checkbox" '+(s.allow_parent_reschedule?'checked':'')+'>학부모 예약 변경 허용</label><label class="obmSwitch"><input name="allow_parent_cancel" type="checkbox" '+(s.allow_parent_cancel?'checked':'')+'>학부모 예약 취소 허용</label></div>'+
    '<div class="obmFormActions"><button type="submit" class="obmPrimary">설정 저장</button></div></form>';
  }
+
+ // Owner-only local read mirror. This is never a write queue or source of
+ // truth: all changes still require successful server RPCs first.
+ const OWNER_CACHE_PREFIX='olli_booking_owner_month_snapshot_v1:';
+ const OWNER_CACHE_MAX_AGE_MS=30*86400000;
+ const OWNER_CACHE_MAX_BYTES=950000;
+ const ownerMemoryCache=new Map();
+ function ownerSnapshotKey(academyId,month){
+   return OWNER_CACHE_PREFIX+String(academyId||'')+':'+String(month||'');
+ }
+ function readOwnerSnapshot(scope,month){
+   if(!isOwner()||!scope?.academyId||!scope?.sessionToken||!/^20\d{2}-(0[1-9]|1[0-2])$/.test(month||''))return null;
+   const key=ownerSnapshotKey(scope.academyId,month);
+   let saved=ownerMemoryCache.get(key);
+   if(!saved){try{saved=JSON.parse(localStorage.getItem(key)||'null')}catch{return null;}}
+   if(saved?.version!==1||saved.academyId!==scope.academyId||saved.month!==month
+     ||!Number.isFinite(saved.savedAt)||saved.savedAt>Date.now()+60000
+     ||Date.now()-saved.savedAt>OWNER_CACHE_MAX_AGE_MS
+     ||!Array.isArray(saved.rows)||!saved.settings||typeof saved.settings!=='object')return null;
+   if(saved.rows.some(r=>!r||typeof r!=='object'||typeof r.id!=='string'
+      ||typeof r.start_at!=='string'||!Number.isFinite(Date.parse(r.start_at))
+      ||r.status!=='confirmed'&&r.status!=='cancelled'))return null;
+   ownerMemoryCache.set(key,saved);
+   return saved;
+ }
+ function saveOwnerSnapshot(scope,month,rows,settings){
+   if(!scope?.academyId||!Array.isArray(rows)||!settings||typeof settings!=='object')return;
+   const safeRows=rows.map(r=>({
+     id:String(r.id||''),
+     student_id:r.student_id||null,
+     intake_id:r.intake_id||null,
+     name:String(r.name||''),
+     kind:r.kind==='intake'?'intake':'regular',
+     status:r.status,
+     start_at:String(r.start_at||''),
+     end_at:String(r.end_at||'')
+   }));
+   if(safeRows.some(r=>!r.id||!Number.isFinite(Date.parse(r.start_at))
+     ||r.status!=='confirmed'&&r.status!=='cancelled'))return;
+   const snapshot={version:1,academyId:scope.academyId,month,
+     rows:safeRows,settings,savedAt:Date.now()};
+   let serialized;
+   try{serialized=JSON.stringify(snapshot)}catch{return;}
+   if(serialized.length>OWNER_CACHE_MAX_BYTES)return;
+   const key=ownerSnapshotKey(scope.academyId,month);
+   ownerMemoryCache.set(key,snapshot);
+   try{localStorage.setItem(key,serialized)}
+   catch(_){/* Keep memory-only last good snapshot. Never clear app storage. */}
+ }
+ function showOwnerSnapshot(){
+   const scope=ctx();
+   const saved=readOwnerSnapshot(scope,state.month);
+   state.mobileScope=scope.academyId;
+   state.mobileCacheAt=saved?.savedAt||0;
+   state.rows=saved?.rows||[];
+   state.settings=saved?.settings||null;
+   state.ready=Boolean(saved);
+   state.error='';
+ }
+ function hasActiveBookingModal(){
+   return state.mode==='mobile'&&Boolean(state.root?.querySelector('[data-modal-host] .obmModalBackdrop'));
+ }
+ async function refreshMobileBooking(){
+   const scope=ctx(),month=state.month,request=++state.mobileRequest;
+   const same=()=>state.mode==='mobile'&&request===state.mobileRequest
+     &&state.month===month&&state.mobileScope===scope.academyId
+     &&ctx().academyId===scope.academyId&&ctx().sessionToken===scope.sessionToken&&isOwner();
+   if(!scope.academyId||!scope.sessionToken||!isOwner())return false;
+   state.loading=true;state.error='';
+   if(!hasActiveBookingModal())render();
+   let success=false;
+   try{
+     const result=await manage('list',{month});
+     if(!same())return false;
+     if(result?.ok!==true||!Array.isArray(result.appointments)||!result.settings)
+       throw new Error('상담 예약 데이터를 확인하지 못했습니다.');
+     const appointments=result.appointments;
+     // Save only a complete, authenticated server response for the current
+     // academy and month. A partial or failed request never destroys the mirror.
+     state.rows=appointments;
+     state.settings=result.settings;
+     state.ready=true;
+     state.mobileCacheAt=Date.now();
+     saveOwnerSnapshot(scope,month,appointments,result.settings);
+     if(month===currentMonth()){
+       const count=confirmedTodayCount(appointments);
+       rememberMobileShortcutCount(scope.academyId,today(),count);
+       updateMobileShortcutBadge(count);
+     }
+     success=true;
+     state.mobileNeedsRefresh=false;
+   }catch(e){
+     if(same()){
+       // Preserve last known-good local data on offline/transient errors.
+       state.error=state.ready?'최신 상담 정보를 확인하지 못했습니다. 저장된 데이터를 표시합니다.':
+         String(e?.message||'상담 예약 서버 연결 실패');
+     }
+   }finally{
+     if(same()){
+       state.loading=false;
+       if(!hasActiveBookingModal())render();
+       else state.mobileRenderDeferred=true;
+     }
+   }
+   return success;
+ }
  function render(){
    const root=state.root;if(!root)return;
    const mobileTitle=state.mode==='mobile'
      ?'<button type="button" class="obmMobileBack" data-action="back" aria-label="뒤로가기" title="뒤로가기"><span class="memoRosterBackIcon" aria-hidden="true"></span></button>'+
        '<h2 class="obmMobileHeading">상담 현황</h2>'+
-       '<button type="button" class="obmMobileAdd" data-action="add-manual" aria-label="상담일정 추가" title="상담일정 추가" '+(state.ready&&!state.loading?'':'disabled')+'><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>'
+       '<button type="button" class="obmMobileAdd" data-action="add-manual" aria-label="상담일정 추가" title="상담일정 추가" '+(state.ready?'':'disabled')+'><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>'
      :'';
    let header=state.mode==='mobile'
      ?'<div class="obmHeader obmMobileHeader">'+mobileTitle+'</div>'
@@ -163,27 +285,42 @@
    const months='<div class="obmMonth"><button type="button" data-action="month-prev" aria-label="이전 달">‹</button><strong>'+escapeHtml(state.month)+'</strong><button type="button" data-action="month-next" aria-label="다음 달">›</button></div>';
    const error=state.error?'<div class="obmError" role="alert">'+escapeHtml(state.error)+'</div>':'';
    const pcCalendar=state.mode==='pc'&&state.view==='calendar';
-   const stats=state.ready&&!state.loading&&state.view!=='settings'?renderStats():'';
+   const stats=state.mode==='mobile'?(state.ready?renderStats():
+       '<div class="recordAcademyStatGrid obmMobileStatGrid obmStatsPending">'+
+       ['이번 달 예약','오늘 상담','신규생 상담','이번 달 미예약 대상'].map(label=>
+         '<div class="recordAcademyStatCard"><div class="recordAcademyStatLabel">'+label+
+         '</div><div class="recordAcademyStatBody"><div class="recordAcademyStatValue">—</div></div></div>'
+       ).join('')+'</div>')
+     :state.view==='settings'?'':state.ready&&!state.loading?renderStats():'';
    const bookingList='<div class="obmListHeader"><strong>'+(state.selectedDay&&state.mode==='pc'?escapeHtml(dateLabel(state.selectedDay)):'예약 목록')+'</strong>'+
      (state.selectedDay&&state.mode==='pc'?'<button type="button" data-action="clear-day">날짜 선택 해제</button>':'')+'</div>'+bookingsHtml();
-   const content=state.loading?'<div class="obmEmptyMessage">예약 정보를 불러오는 중입니다.</div>'
-    : !state.ready?'<div class="obmEmptyMessage">상담 예약 정보를 연결하지 못했습니다. 서버 설정과 로그인 상태를 확인해 주세요.</div>'
-    : state.view==='settings'?settingsHtml()
-    :(state.mode==='pc'?'':stats)+(pcCalendar?calendarHtml():'')+(pcCalendar?'':bookingList);
-   // PC-only status cards and month/views/refresh share one compact horizontal toolbar.
+   const content=state.mode==='mobile'
+     ?state.view==='settings'
+       ?(state.ready?settingsHtml():'<div class="obmEmptyMessage">설정을 확인 중입니다.</div>')
+       :state.ready?bookingList:
+        '<div class="obmEmptyMessage">'+(state.loading?'상담 정보를 확인 중입니다.':'상담 데이터를 아직 저장하지 않았습니다. 온라인에서 한 번 열면 다음부터 바로 표시됩니다.')+'</div>'
+     :state.loading?'<div class="obmEmptyMessage">예약 정보를 불러오는 중입니다.</div>'
+     :!state.ready?'<div class="obmEmptyMessage">상담 예약 정보를 연결하지 못했습니다. 서버 설정과 로그인 상태를 확인해 주세요.</div>'
+     :state.view==='settings'?settingsHtml()
+     :(state.mode==='pc'?'':stats)+(pcCalendar?calendarHtml():'')+(pcCalendar?'':bookingList);
+   // PC toolbar is unchanged. Mobile capsule follows the stat cards.
    const pcManual=state.mode==='pc'?'<button class="obmPcAddManual" type="button" data-action="add-manual" '+(state.ready&&!state.loading?'':'disabled')+'>+ 상담일정 추가</button>':'';
    const toolbar=state.mode==='pc'
      ? '<div class="obmPcToolbar">'+stats+'<div class="obmPcTools">'+pcManual+months+nav+header+'</div></div>'
-     : header+nav+(state.view==='settings'?'':months);
+     : header+months+stats+nav;
+   const mobileStatus=state.mode==='mobile'&&state.loading&&state.ready
+     ?'<div class="obmSyncStatus" role="status">저장된 상담 데이터를 표시 중 · 최신 정보 확인 중</div>':'';
+
    // The PC copy button is in the fixed title bar. Show the URL below only when issued,
    // so clipboard-denied users can still select/copy it manually.
    const footer=state.mode==='pc'
      ? (state.publicUrl?'<div class="obmFooter"><p class="obmLinkAddress">'+escapeHtml(state.publicUrl)+'</p></div>':'')
      : '<div class="obmFooter"><div class="obmLinkRow"><span>알림톡 승인 템플릿에 등록할 <strong>학원 통합 예약 링크</strong>입니다. 학생별 링크를 발급하지 않습니다.</span><button type="button" data-action="copy-public-link">통합 링크 복사</button></div>'+(state.publicUrl?'<p class="obmLinkAddress">'+escapeHtml(state.publicUrl)+'</p>':'')+'</div>';
-   root.innerHTML='<div class="obmLayout">'+toolbar+error+content+footer+
+   root.innerHTML='<div class="obmLayout">'+toolbar+mobileStatus+error+content+footer+
      '</div><div class="obmModalHost" data-modal-host></div>';
  }
  async function refresh(){
+   if(state.mode==='mobile')return refreshMobileBooking();
    if(state.loading)return;
    const initialCtx=ctx();
    state.loading=true;state.error='';render();
@@ -204,6 +341,7 @@
  function mount(node,mode){
    state.mode=mode;state.root=node;state.view=mode==='mobile'?'today':'calendar';
    state.month=currentMonth();state.selectedDay='';state.ready=false;state.error='';
+   if(mode==='mobile'){state.mobileRequest++;showOwnerSnapshot();state.loading=false;}
    if(!node.dataset.obmBound){
      node.dataset.obmBound='true';
      node.addEventListener('click',click);
@@ -365,10 +503,19 @@
      if(onBackdrop||onCloseButton){
        const host=state.root.querySelector('[data-modal-host]');
        if(host)host.innerHTML='';
+       if(state.mode==='mobile'){
+         if(state.mobileRenderDeferred){state.mobileRenderDeferred=false;render();}
+         if(state.mobileNeedsRefresh){state.mobileNeedsRefresh=false;void refresh();}
+       }
      }
      return;
    }
-   if(action==='month-prev'||action==='month-next'){state.month=plusMonth(state.month,action==='month-next'?1:-1);state.selectedDay='';void refresh();return;}
+   if(action==='month-prev'||action==='month-next'){
+     state.month=plusMonth(state.month,action==='month-next'?1:-1);
+     state.selectedDay='';
+     if(state.mode==='mobile'){state.mobileRequest++;showOwnerSnapshot();}
+     void refresh();return;
+   }
    if(action==='refresh'){void refresh();return;}
    if(action==='clear-day'){state.selectedDay='';render();return;}
    if(action==='add-manual'){await openManualBooking();return;}
@@ -583,7 +730,69 @@
    grid.appendChild(entry);
    return true;
  }
+
+ let bookingRealtimeWatcher=null;
+ let bookingListenersReady=false;
+ let mobileLastForegroundRefresh=0;
+ function mobileBookingVisible(){
+   return state.mode==='mobile'&&state.root?.id==='olliBookingMobileOverlay'
+     &&state.root.isConnected&&!state.root.hidden&&isOwner();
+ }
+ function requestMobileBookingRefresh(){
+   if(!mobileBookingVisible())return;
+   if(state.mobileScope!==ctx().academyId){
+     state.mobileRequest++;
+     showOwnerSnapshot();
+     render();
+   }
+   if(state.busy||hasActiveBookingModal()){state.mobileNeedsRefresh=true;return;}
+   void refreshMobileBooking();
+ }
+ function initBookingRealtime(){
+   if(document.body.classList.contains('olliPcApp'))return;
+   if(!bookingRealtimeWatcher&&typeof global.OlliRealtime?.watchDomain==='function'){
+     // Extends the existing academy session channel; booking rows are never
+     // published in the broadcast.
+     bookingRealtimeWatcher=global.OlliRealtime.watchDomain('booking',async ({academyId,isCurrent})=>{
+       if(!isOwner()||academyId!==ctx().academyId)return true;
+       if(!mobileBookingVisible()){
+         void refreshMobileShortcutCount({minIntervalMs:0});
+         void global.OlliConsultationReminders?.refresh?.({force:true});
+         return true;
+       }
+       if(state.busy||hasActiveBookingModal()){
+         state.mobileNeedsRefresh=true;
+         return true;
+       }
+       const updated=await refreshMobileBooking();
+       if(updated)void global.OlliConsultationReminders?.refresh?.({force:true});
+       return updated&&isCurrent();
+     });
+   }
+   if(bookingListenersReady)return;
+   bookingListenersReady=true;
+   const resumeBooking=()=>{
+     if(document.hidden||!mobileBookingVisible())return;
+     if(Date.now()-mobileLastForegroundRefresh<20000)return;
+     mobileLastForegroundRefresh=Date.now();
+     requestMobileBookingRefresh();
+   };
+   document.addEventListener('visibilitychange',resumeBooking);
+   global.addEventListener?.('focus',resumeBooking);
+   global.addEventListener?.('online',resumeBooking);
+   global.addEventListener?.('olli:booking-changed',requestMobileBookingRefresh);
+   global.addEventListener?.('olli:realtime-status',event=>{
+     if(!mobileBookingVisible())return;
+     if(event?.detail?.academyId!==ctx().academyId){
+       state.mobileRequest++;
+       showOwnerSnapshot();
+       render();
+       void refreshMobileBooking();
+     }
+   });
+ }
  function initMobileShortcut(){
+   initBookingRealtime();
    const root=document.getElementById('recordAcademyDashboard');
    if(!root||state.entryObserver)return;
    state.entryObserver=new MutationObserver(()=>syncMobileShortcut());

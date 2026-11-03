@@ -9,7 +9,7 @@
   const CONTEXT_CHECK_INTERVAL_MS = 5000;
   const RETRY_DELAY_MS = 10000;
   const SUBSCRIBE_TIMEOUT_MS = 8000;
-  const VALID_DOMAINS = new Set(['observation', 'schedule', 'chat']);
+  const VALID_DOMAINS = new Set(['observation', 'schedule', 'chat', 'booking']);
 
   const state = {
     client: null,
