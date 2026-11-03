@@ -53,7 +53,8 @@ test('dropoff-only uses dropoff location; daily overrides recurring, keeping oth
 });
 
 test('PC timetable script gets its own cache-busted version', () => {
-  assert.match(html, /pc-timetable\.js\?v=20261013-pickup-time-location-1/);
+  assert.match(html, /pc-timetable\.js\?v=20261103-daily-pickup-makeup-color-1/);
+  assert.match(html, /pc-timetable\.css\?v=20261103-daily-pickup-makeup-color-1/);
 });
 
 test('earlier pickup times sort first, with matching locations grouped at equal times', () => {
@@ -80,4 +81,53 @@ test('dropoff-only uses its dropoff time; missing/invalid times appear after tim
   ];
   assert.deepEqual(renderSortedPickups(rows).map(item => item.id),
     ['dropoff', 'arrival', 'blank', 'invalid']);
+});
+
+
+function renderPickupCards(items, holiday = false) {
+  const start = code.indexOf('  function pickupCellHtml(date, classTime) {');
+  const end = code.indexOf('  function pickupGridHtml(dates)', start);
+  assert.ok(start !== -1 && end > start, 'original pickup renderer must exist');
+  const render = new Function(
+    'slotPickups', 'isHolidayDate', 'pickupScope', 'dateKey', 'clean', 'esc', 'pickupTimeLabel',
+    code.slice(start, end) + '\nreturn pickupCellHtml;'
+  )(
+    () => items,
+    () => holiday,
+    item => item.pickup_scope === 'daily' ? 'daily' : 'weekly',
+    () => '2026-11-03',
+    value => String(value ?? '').trim(),
+    value => String(value ?? ''),
+    value => String(value ?? '')
+  );
+  return render(new Date(2026, 10, 3), 4);
+}
+
+test('only daily pickup reservations receive makeup-colored card class', () => {
+  const rendered = renderPickupCards([
+    { id: 'daily', student_name: '하루', pickup_scope: 'daily', pickup_label: '학교', pickup_time: '16:00' },
+    { id: 'weekly', student_name: '매주', pickup_scope: 'weekly', pickup_label: '학원', pickup_time: '16:30' },
+    { id: 'legacy', student_name: '기존', pickup_label: '집', pickup_time: '16:15' }
+  ]);
+  assert.match(rendered, /class="olliTtPickupCard daily" data-tt-pickup-manage="daily"/);
+  assert.match(rendered, /class="olliTtPickupCard" data-tt-pickup-manage="weekly"/);
+  assert.match(rendered, /class="olliTtPickupCard" data-tt-pickup-manage="legacy"/);
+  assert.doesNotMatch(rendered, /class="olliTtPickupCard daily" data-tt-pickup-manage="weekly"/);
+});
+
+test('daily pickup color tokens exactly match original makeup card and preserve holiday override', () => {
+  const css = fs.readFileSync(path.join(root, 'pc-timetable.css'), 'utf8');
+  const makeup = css.match(/#recordRoomScreen \.olliTtStudent\.makeup \{([^}]+)\}/)?.[1];
+  const daily = css.match(/#recordRoomScreen \.olliTtPickupCard\.daily \{([^}]+)\}/)?.[1];
+  assert.ok(makeup && daily, 'both markup styles must be present');
+  const value = (rule, key) => {
+    const match = rule.match(new RegExp('(?:^|;)\\s*' + key + '\\s*:\\s*([^;]+)'));
+    assert.ok(match, key + ' must be explicitly defined');
+    return match[1].trim();
+  };
+  for (const key of ['border-color', 'color', 'background']) {
+    assert.equal(value(daily, key), value(makeup, key), key);
+  }
+  assert.match(css, /#recordRoomScreen \.olliTtPickupCell\.holiday \.olliTtPickupCard \{/);
+  assert.match(css, /#recordRoomScreen \.olliTtPickupCard\.daily > span \{ color:/);
 });

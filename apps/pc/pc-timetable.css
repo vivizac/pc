@@ -411,6 +411,8 @@ body.olliPcSidebarCollapsed #recordRoomScreen .olliTtSection { --olli-tt-student
 #recordRoomScreen .olliTtPickupCell.holiday .olliTtPickupCard span { color:#8f959d; }
 #recordRoomScreen .olliTtPickupEntries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 #recordRoomScreen .olliTtPickupCard { min-width: 0; min-height: 28px; padding: 4px 7px; border: 1px solid #cfe0e8; border-radius: 9px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px; color: #3d5360; background: #eef6f8; }
+#recordRoomScreen .olliTtPickupCard.daily { border-color: #8ac6b5; color: #267763; background: #e5f6f0; }
+#recordRoomScreen .olliTtPickupCard.daily > span { color: #267763; }
 #recordRoomScreen .olliTtPickupCard strong,
 #recordRoomScreen .olliTtPickupCard span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #recordRoomScreen .olliTtPickupCard strong { font-size: calc(10px * var(--olli-text-scale)); font-weight: 820; }
