@@ -43,7 +43,7 @@ test('N expires at exactly 14 days, and unknown or future timestamps never show 
   assert.equal(badge({}, 'enrollments', 'expired', now), false, 'legacy cache');
 });
 
-test('only registered regular student cards and pickup cards use the independent N class', () => {
+test('only registered regular student cards and pickup cards use the independent recent-card class', () => {
   assert.match(ui, /isTimetableNewCard\('enrollments', item\.id\) \? ' olliTtNewCard' : ''/);
   assert.match(ui, /isTimetableNewCard\('pickups', item\.id\) \? ' olliTtNewCard' : ''/);
   assert.match(ui, /class="olliTtStudent regular \$\{division\}\$\{newCardClass\}/);
@@ -51,15 +51,28 @@ test('only registered regular student cards and pickup cards use the independent
   assert.doesNotMatch(ui, /isTimetableNewCard\('(waitlist|makeups|trials)'/);
 });
 
-test('badge is pseudo-element at right top without shifting neighboring cards or stealing pointer events', () => {
-  assert.match(css, /\.olliTtStudent\.olliTtNewCard::after/);
+test('regular NEW badge is next to the name, pickup keeps original N corner badge', () => {
+  assert.match(ui, /const studentNameHtml = newCardClass/);
+  assert.match(ui, /class="olliTtNewName"/);
+  assert.match(ui, /class="olliTtNewNameText"/);
+  assert.match(ui, /\$\{studentNameHtml\}\$\{pauseBadge\}/);
+  assert.match(css, /\.olliTtStudent\.regular\.olliTtNewCard \.olliTtNewName::after/);
+  assert.match(css, /content: "NEW";/);
   assert.match(css, /\.olliTtPickupCard\.olliTtNewCard::after/);
   assert.match(css, /content: "N";/);
+  assert.doesNotMatch(css, /\.olliTtStudent\.olliTtNewCard::after/);
   assert.match(css, /position: absolute;/);
-  assert.match(css, /top: -4px;/);
-  assert.match(css, /right: -3px;/);
   assert.match(css, /pointer-events: none;/);
   assert.match(css, /isolation: isolate;/);
+});
+
+test('regular NEW student card uses Olli blue border and white background without overriding status colors', () => {
+  assert.match(css, /\.olliTtCell:not\(\.holiday\) \.olliTtStudent\.regular\.olliTtNewCard:where\(:not\(\.attended\):not\(\.absent\):not\(\.absenceUpcoming\):not\(\.pausedStudent\)\)/);
+  assert.match(css, /border-color: #0A84FF;/);
+  assert.match(css, /background: #fff;/);
+  assert.match(css, /\.olliTtNewName::after \{[\s\S]*?right: 0;/);
+  assert.match(css, /\.olliTtNewName::after \{[\s\S]*?content: "NEW";/);
+  assert.match(css, /\.olliTtNewName \{[\s\S]*?padding-right: 32px;/);
 });
 
 test('week service fetches authenticated badge metadata, retaining existing schedule writes and cached week', () => {
@@ -83,6 +96,7 @@ test('badge RPC is scoped to the authenticated academy and actual insert timesta
 
 test('PC timetable cache-busts only the modified stylesheet and scripts', () => {
   for (const asset of ['pc-timetable.js', 'pc-timetable-service.js', 'pc-timetable.css']) {
-    assert.ok(html.includes(asset + '?v=20261104-new-card-badge-1'), asset);
+    const version = asset === 'pc-timetable-service.js' ? '20261104-new-card-badge-1' : '20261104-new-card-badge-2';
+    assert.ok(html.includes(asset + '?v=' + version), asset);
   }
 });
