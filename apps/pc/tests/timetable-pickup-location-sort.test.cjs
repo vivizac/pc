@@ -53,7 +53,7 @@ test('dropoff-only uses dropoff location; daily overrides recurring, keeping oth
 });
 
 test('PC timetable script gets its own cache-busted version', () => {
-  assert.match(html, /pc-timetable\.js\?v=20261104-new-card-badge-1/);
+  assert.match(html, /pc-timetable\.js\?v=20261104-new-card-badge-2/);
 });
 
 test('earlier pickup times sort first, with matching locations grouped at equal times', () => {
