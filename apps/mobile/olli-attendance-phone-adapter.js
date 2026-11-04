@@ -731,6 +731,37 @@
       return `${renderSessionDivider(label)}${renderRowsForSession(renderRows, group.students, 'regular')}`;
     }).join('');
   }
+  // When server refresh changes only attendance icons, leave the student cards
+  // (and the kindergarten age text) mounted. This also covers day-sort rosters
+  // with repeated students in separate sessions, where the generic row patcher
+  // cannot safely rely on unique student IDs.
+  function patchAttendanceIconsWithoutListRebuild(list, nextHtml) {
+    if (!list?.children?.length || typeof global.document?.createElement !== 'function') return false;
+    const template = global.document.createElement('template');
+    if (!template.content) return false;
+    template.innerHTML = nextHtml;
+    const snapshot = list.cloneNode(true);
+    const oldIcons = Array.from(snapshot.querySelectorAll('.recordAttendanceLeadBtn'));
+    const nextIcons = Array.from(template.content.querySelectorAll('.recordAttendanceLeadBtn'));
+    const liveIcons = Array.from(list.querySelectorAll('.recordAttendanceLeadBtn'));
+    if (!oldIcons.length || oldIcons.length !== nextIcons.length || liveIcons.length !== nextIcons.length) return false;
+    oldIcons.forEach((icon, index) => icon.replaceWith(nextIcons[index].cloneNode(true)));
+    // Any name, age, section, ordering, or markup change still takes the
+    // original full-render path; only a status-only diff is patched in place.
+    if (snapshot.innerHTML !== template.innerHTML) return false;
+    liveIcons.forEach((icon, index) => {
+      if (icon.getAttribute('aria-busy') === 'true') return;
+      const next = nextIcons[index];
+      if (icon.className !== next.className) icon.className = next.className;
+      for (const name of ['title', 'aria-label']) {
+        const value = next.getAttribute(name);
+        if (value === null) icon.removeAttribute(name);
+        else if (icon.getAttribute(name) !== value) icon.setAttribute(name, value);
+      }
+    });
+    return true;
+  }
+
   function renderTodayAttendanceList(view, name) {
     const list = global.document.getElementById('recordList');
     if (!list || typeof global.getStudentsByType !== 'function') return false;
@@ -746,7 +777,10 @@
     const regularEmpty = regularHtml ? '' : `<div class="recordEmpty recordTodayEmpty">${query ? '검색된 당일 등원 학생이 없습니다.' : '오늘 등원 예정인 학생이 없습니다.'}</div>`;
     const makeupSection = makeupHtml ? `${renderSessionDivider('보강')}${makeupHtml}` : '';
     const nextHtml = `${regularHtml}${regularEmpty}${makeupSection}`;
-    if (!global.canReusePhoneRecordList?.(view, name) || list.innerHTML !== nextHtml) list.innerHTML = nextHtml;
+    const canReuse = global.canReusePhoneRecordList?.(view, name) === true;
+    if (!canReuse || list.innerHTML !== nextHtml) {
+      if (!canReuse || !patchAttendanceIconsWithoutListRebuild(list, nextHtml)) list.innerHTML = nextHtml;
+    }
     // The day-sort renderer owns this DOM, so it must mark it as reusable too.
     if (typeof global.markPhoneRecordListRendered === 'function') {
       global.markPhoneRecordListRendered(view, name);
