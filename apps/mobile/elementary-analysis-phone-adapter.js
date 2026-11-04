@@ -10,7 +10,6 @@ function setElementaryMemoRecords(student, records) { const key = getElementaryR
 const memoFeedbackArchiveFullHistory = new Map();
 const MEMO_FEEDBACK_ARCHIVE_OFFLINE_SERVER_CACHE_LIMIT = 80;
 const MEMO_FEEDBACK_ARCHIVE_MEMORY_STUDENT_LIMIT = 6;
-const MEMO_FEEDBACK_ARCHIVE_RPC_READ_LIMIT = 5000;
 
 function getMemoFeedbackArchiveKey(student) { return student?.id ? `${MEMO_FEEDBACK_ARCHIVE_PREFIX}${student.id}` : ''; }
 function getMemoFeedbackArchiveItems(student) {
@@ -114,6 +113,7 @@ function normalizeMemoFeedbackArchiveRows(rows, sourceTable = '') {
 async function loadMemoFeedbackArchiveItemsFromSupabase(student) {
   if (!student?.id) throw new Error('피드백을 조회할 학생 ID가 없습니다.');
   const requestedAcademyId = String(typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '');
+  const readLimit = 5000; // Protected feedback RPC's existing server-side hard limit.
   if (!isSupabaseConfigured()) throw new Error('Supabase 연결을 확인해 주세요.');
   const existingItems = getMemoFeedbackArchiveItems(student);
   const secureReader = typeof window.loadOlliFeedbackRowsSecure === 'function'
@@ -123,8 +123,8 @@ async function loadMemoFeedbackArchiveItemsFromSupabase(student) {
   if (!secureReader) throw new Error('피드백 보관함 보호 조회 모듈이 준비되지 않았습니다.');
 
   const results = await Promise.allSettled([
-    secureReader('feedbacks', student, MEMO_FEEDBACK_ARCHIVE_RPC_READ_LIMIT),
-    secureReader('fail_feedbacks', student, MEMO_FEEDBACK_ARCHIVE_RPC_READ_LIMIT)
+    secureReader('feedbacks', student, 5000),
+    secureReader('fail_feedbacks', student, 5000)
   ]);
 
   if (results.some(result => result.status === 'rejected')) {
@@ -134,7 +134,7 @@ async function loadMemoFeedbackArchiveItemsFromSupabase(student) {
   // The existing RPC caps p_limit at 5,000. A full page is potentially
   // incomplete: never replace a previously visible list with an unknown tail.
   if (results.some(result => !Array.isArray(result.value)
-    || result.value.length >= MEMO_FEEDBACK_ARCHIVE_RPC_READ_LIMIT)) {
+    || result.value.length >= readLimit)) {
     throw new Error('피드백 보관함 조회 결과가 불완전해 기존 기록을 유지합니다.');
   }
   if (String(typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '') !== requestedAcademyId) {
@@ -144,8 +144,9 @@ async function loadMemoFeedbackArchiveItemsFromSupabase(student) {
   const failItems = normalizeMemoFeedbackArchiveRows(results[1].value, 'fail_feedbacks');
   const otherItems = existingItems.filter(item => {
     const sourceTable = String(item?.sourceTable || item?.row?.source_table || '').trim();
-    return !isMemoFeedbackArchiveServerConfirmed(item)
-      || (sourceTable !== 'feedbacks' && sourceTable !== 'fail_feedbacks');
+    // Older local-only entries may be labelled with a source table even
+    // though they do not yet have a verified server row ID.
+    return sourceTable !== 'feedbacks' && sourceTable !== 'fail_feedbacks' || !item?.row?.id;
   });
 
   const seen = new Set();
