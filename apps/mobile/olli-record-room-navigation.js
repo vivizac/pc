@@ -170,6 +170,29 @@ function refreshRecordAcademyManagementFromServer(options = {}){
 
 window.refreshRecordAcademyManagementFromServer = refreshRecordAcademyManagementFromServer;
 
+// Retrieve the full feedback board using stable id-keyset pages. A 500-row
+// REST response is only one page, never proof that the list is complete.
+const OLLI_RECORD_FEEDBACK_PAGE_SIZE = 500;
+const OLLI_RECORD_FEEDBACK_MAX_PAGES = 200;
+async function loadOlliRecordFeedbackPages(basePath, isCurrentRequest = () => true) {
+  const rows = [];
+  let beforeId = '';
+  for (let page = 0; page < OLLI_RECORD_FEEDBACK_MAX_PAGES; page += 1) {
+    if (!isCurrentRequest()) return null;
+    const cursor = beforeId ? `&id=lt.${encodeURIComponent(beforeId)}` : '';
+    const path = `${basePath}&order=id.desc&limit=${OLLI_RECORD_FEEDBACK_PAGE_SIZE}${cursor}`;
+    const batch = await supabase('GET', path);
+    if (!isCurrentRequest()) return null;
+    if (!Array.isArray(batch)) throw new Error('피드백 서버 조회 응답을 확인할 수 없습니다.');
+    rows.push(...batch);
+    if (batch.length < OLLI_RECORD_FEEDBACK_PAGE_SIZE) return rows;
+    const lastId = String(batch[batch.length - 1]?.id || '').trim();
+    if (!lastId || lastId === beforeId) throw new Error('피드백 페이지 연결 정보가 없어 기존 목록을 유지합니다.');
+    beforeId = lastId;
+  }
+  throw new Error('피드백 페이지 조회가 완료되지 않아 기존 목록을 유지합니다.');
+}
+
 async function loadRecords(name, options = {}) {
   const list = document.getElementById('recordList');
   const loadToken = (window.__olliRecordListLoadToken = (window.__olliRecordListLoadToken || 0) + 1);
@@ -233,9 +256,15 @@ async function loadRecords(name, options = {}) {
   }
 
   const academyId = requireOlliAcademyId('기록 조회');
-  let feedbackPath = `feedbacks?academy_id=eq.${encodeURIComponent(academyId)}&order=id.desc&limit=500`;
-  let failFeedbackPath = `fail_feedbacks?academy_id=eq.${encodeURIComponent(academyId)}&order=id.desc&limit=500`;
-  let summaryPath = `summary_feedbacks?academy_id=eq.${encodeURIComponent(academyId)}&order=id.desc&limit=500`;
+  let feedbackPath = `feedbacks?academy_id=eq.${encodeURIComponent(academyId)}`;
+  let failFeedbackPath = `fail_feedbacks?academy_id=eq.${encodeURIComponent(academyId)}`;
+  let summaryPath = `summary_feedbacks?academy_id=eq.${encodeURIComponent(academyId)}`;
+  const requestedRecordMode = currentRecordMode;
+  const requestedRecordView = currentRecordView;
+  const requestStillCurrent = () => loadToken === window.__olliRecordListLoadToken
+    && currentRecordView === requestedRecordView
+    && currentRecordMode === requestedRecordMode
+    && String(getOlliCurrentAcademyId() || '') === String(academyId);
   if (name) {
     const encodedName = encodeURIComponent(name);
     feedbackPath += `&student_name=ilike.*${encodedName}*`;
@@ -247,18 +276,19 @@ async function loadRecords(name, options = {}) {
     let rawData = [];
     let sourceTableName = 'feedbacks';
 
-    if (currentRecordMode === 'summary') {
-      rawData = await supabase('GET', summaryPath);
+    if (requestedRecordMode === 'summary') {
+      rawData = await loadOlliRecordFeedbackPages(summaryPath, requestStillCurrent);
       sourceTableName = 'summary_feedbacks';
-    } else if (currentRecordMode === 'fail') {
-      rawData = await supabase('GET', failFeedbackPath);
+    } else if (requestedRecordMode === 'fail') {
+      rawData = await loadOlliRecordFeedbackPages(failFeedbackPath, requestStillCurrent);
       sourceTableName = 'fail_feedbacks';
     } else {
-      rawData = await supabase('GET', feedbackPath);
+      rawData = await loadOlliRecordFeedbackPages(feedbackPath, requestStillCurrent);
       sourceTableName = 'feedbacks';
     }
 
-    if (!Array.isArray(rawData)) { list.innerHTML = '<div class="recordEmpty">오류가 발생했습니다.</div>'; return; }
+    if (!requestStillCurrent() || rawData === null) return;
+    if (!Array.isArray(rawData)) throw new Error('피드백 서버 조회 결과를 확인할 수 없습니다.');
 
     const normalized = filterOlliActiveRows(rawData).map(item => ({
       ...item,
@@ -349,7 +379,13 @@ async function loadRecords(name, options = {}) {
       </div>`;
     }).join('');
   } catch (err) {
-    list.innerHTML = `<div class="recordEmpty">${escapeHtml(err.message || '오류가 발생했습니다.')}</div>`;
+    if (!requestStillCurrent()) return;
+    // Never label a partial server response as an empty archive and do not
+    // replace an already rendered list on network/pagination failure.
+    if (!list.querySelector('.savedFeedbackStudentBlock')) {
+      list.innerHTML = `<div class="recordEmpty">${escapeHtml(err.message || '오류가 발생했습니다.')}</div>`;
+    }
+    console.warn('피드백 전체 목록 서버 조회 실패 (기존 화면 유지):', err?.message || err);
   }
 }
 

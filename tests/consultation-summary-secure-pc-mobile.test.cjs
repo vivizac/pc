@@ -195,7 +195,8 @@ test('mobile memo archive preserves existing cache on partial RPC errors', async
   assert.equal(saved, 0);
   failSecond = false;
   const loaded = await load({ id: 'student-1' });
-  assert.equal(loaded.length, 2);
+  assert.equal(loaded.length, 3, 'unconfirmed local records survive a complete server refresh');
+  assert.ok(loaded.some(item => item.id === 'cached'));
   assert.equal(saved, 1);
 });
 

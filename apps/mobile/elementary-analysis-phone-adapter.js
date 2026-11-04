@@ -5,22 +5,66 @@ function getElementaryRecordsKey(student) { return student?.id ? ELEMENTARY_RECO
 function getElementaryMemoRecords(student) { const key = getElementaryRecordsKey(student); if (!key) return []; try { const raw = localStorage.getItem(key); const list = raw ? JSON.parse(raw) : []; return Array.isArray(list) ? list : []; } catch { return []; } }
 function setElementaryMemoRecords(student, records) { const key = getElementaryRecordsKey(student); if (!key) return; localStorage.setItem(key, JSON.stringify(Array.isArray(records) ? records.slice(0, 80) : [])); }
 
+// Full server-read history stays in memory while the student is open. Local
+// storage is only a bounded offline preview, never the authoritative list.
+const memoFeedbackArchiveFullHistory = new Map();
+const MEMO_FEEDBACK_ARCHIVE_OFFLINE_SERVER_CACHE_LIMIT = 80;
+const MEMO_FEEDBACK_ARCHIVE_MEMORY_STUDENT_LIMIT = 6;
+
 function getMemoFeedbackArchiveKey(student) { return student?.id ? `${MEMO_FEEDBACK_ARCHIVE_PREFIX}${student.id}` : ''; }
 function getMemoFeedbackArchiveItems(student) {
   const key = getMemoFeedbackArchiveKey(student);
   if (!key) return [];
+  if (memoFeedbackArchiveFullHistory.has(key)) return memoFeedbackArchiveFullHistory.get(key).slice();
   try {
     const raw = localStorage.getItem(key);
     const list = raw ? JSON.parse(raw) : [];
     return Array.isArray(list) ? list.filter(item => String(item?.content || '').trim()) : [];
-  } catch {
+  } catch (error) {
+    console.warn('피드백 보관함 로컬 조회 실패 (원본은 유지):', error?.name || 'StorageError');
     return [];
   }
+}
+function isMemoFeedbackArchiveServerConfirmed(item) {
+  const sourceTable = String(item?.sourceTable || item?.row?.source_table || '').trim();
+  return (sourceTable === 'feedbacks' || sourceTable === 'fail_feedbacks') && !!item?.row?.id;
 }
 function setMemoFeedbackArchiveItems(student, items) {
   const key = getMemoFeedbackArchiveKey(student);
   if (!key) return;
-  localStorage.setItem(key, JSON.stringify(Array.isArray(items) ? items.slice(0, 80) : []));
+  const list = Array.isArray(items) ? items.filter(item => String(item?.content || '').trim()) : [];
+  // Update the visible full history first, without trimming server records.
+  memoFeedbackArchiveFullHistory.delete(key);
+  memoFeedbackArchiveFullHistory.set(key, list);
+  while (memoFeedbackArchiveFullHistory.size > MEMO_FEEDBACK_ARCHIVE_MEMORY_STUDENT_LIMIT) {
+    memoFeedbackArchiveFullHistory.delete(memoFeedbackArchiveFullHistory.keys().next().value);
+  }
+
+  // Preserve every unconfirmed/local-only record in the offline snapshot.
+  // Only confirmed server records are limited to 80 for iOS storage safety.
+  const confirmed = new Set(list.filter(isMemoFeedbackArchiveServerConfirmed)
+    .slice(0, MEMO_FEEDBACK_ARCHIVE_OFFLINE_SERVER_CACHE_LIMIT));
+  const offlineSnapshot = list.filter(item => !isMemoFeedbackArchiveServerConfirmed(item) || confirmed.has(item));
+  try {
+    const serialized = JSON.stringify(offlineSnapshot);
+    localStorage.setItem(key, serialized);
+    if (localStorage.getItem(key) !== serialized) {
+      const error = new Error('피드백 보관함 로컬 저장 검증 실패');
+      error.name = 'FeedbackStorageReadbackMismatch';
+      throw error;
+    }
+  } catch (error) {
+    // Do not delete the old snapshot, clear other keys or discard the memory
+    // history if the iPhone localStorage quota is exceeded.
+    console.warn('피드백 보관함 로컬 캐시 저장 실패 (서버 기록 유지):', error?.name || 'StorageError');
+    if (typeof window.recordOlliFeedbackStorageCheck === 'function') {
+      window.recordOlliFeedbackStorageCheck('elementary_feedback_archive', 'save', 'failed', {
+        phase:'write', count:list.length, error,
+        reason:typeof getOlliFeedbackStorageErrorReason === 'function'
+          ? getOlliFeedbackStorageErrorReason(error, 'write') : 'storage_exception'
+      });
+    }
+  }
 }
 function addMemoFeedbackArchiveItem(student, content, meta = {}) {
   if (!student?.id || !String(content || '').trim()) return null;
@@ -74,6 +118,8 @@ function normalizeMemoFeedbackArchiveRows(rows, sourceTable = '') {
 
 async function loadMemoFeedbackArchiveItemsFromSupabase(student) {
   if (!student?.id) throw new Error('피드백을 조회할 학생 ID가 없습니다.');
+  const requestedAcademyId = String(typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '');
+  const readLimit = 5000; // Protected feedback RPC's existing server-side hard limit.
   if (!isSupabaseConfigured()) throw new Error('Supabase 연결을 확인해 주세요.');
   const existingItems = getMemoFeedbackArchiveItems(student);
   const secureReader = typeof window.loadOlliFeedbackRowsSecure === 'function'
@@ -83,19 +129,30 @@ async function loadMemoFeedbackArchiveItemsFromSupabase(student) {
   if (!secureReader) throw new Error('피드백 보관함 보호 조회 모듈이 준비되지 않았습니다.');
 
   const results = await Promise.allSettled([
-    secureReader('feedbacks', student, 120),
-    secureReader('fail_feedbacks', student, 120)
+    secureReader('feedbacks', student, 5000),
+    secureReader('fail_feedbacks', student, 5000)
   ]);
 
   if (results.some(result => result.status === 'rejected')) {
     throw new Error('피드백 보관함 서버 조회 실패: ' + results.filter(result => result.status === 'rejected').map(result => result.reason?.message || '연결 오류').join(', '));
   }
 
+  // The existing RPC caps p_limit at 5,000. A full page is potentially
+  // incomplete: never replace a previously visible list with an unknown tail.
+  if (results.some(result => !Array.isArray(result.value)
+    || result.value.length >= readLimit)) {
+    throw new Error('피드백 보관함 조회 결과가 불완전해 기존 기록을 유지합니다.');
+  }
+  if (String(typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '') !== requestedAcademyId) {
+    throw new Error('학원이 변경되어 이전 학원의 피드백 목록 적용을 건너뜁니다.');
+  }
   const feedbackItems = normalizeMemoFeedbackArchiveRows(results[0].value, 'feedbacks');
   const failItems = normalizeMemoFeedbackArchiveRows(results[1].value, 'fail_feedbacks');
   const otherItems = existingItems.filter(item => {
     const sourceTable = String(item?.sourceTable || item?.row?.source_table || '').trim();
-    return sourceTable !== 'feedbacks' && sourceTable !== 'fail_feedbacks';
+    // Older local-only entries may be labelled with a source table even
+    // though they do not yet have a verified server row ID.
+    return sourceTable !== 'feedbacks' && sourceTable !== 'fail_feedbacks' || !item?.row?.id;
   });
 
   const seen = new Set();
