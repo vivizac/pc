@@ -183,8 +183,8 @@ test('memo archive uses secure feedback reads and fixed survey visibility', () =
 
   assert.match(attendanceFeedback, /window\.loadOlliFeedbackRowsSecure = loadAttendanceFeedbackRowsSecure/);
   assert.match(analysisAdapter, /const secureReader = typeof window\.loadOlliFeedbackRowsSecure === 'function'/);
-  assert.match(analysisAdapter, /secureReader\('feedbacks', student, 120\)/);
-  assert.match(analysisAdapter, /secureReader\('fail_feedbacks', student, 120\)/);
+  assert.match(analysisAdapter, /secureReader\('feedbacks', student, 5000\)/);
+  assert.match(analysisAdapter, /secureReader\('fail_feedbacks', student, 5000\)/);
   assert.doesNotMatch(analysisAdapter, /feedbacks\?select=\*&student_id=/);
   assert.doesNotMatch(analysisAdapter, /fail_feedbacks\?select=\*&student_id=/);
   assert.doesNotMatch(analysisAdapter, /supabase\('GET'/);
