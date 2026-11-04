@@ -73,7 +73,7 @@ test('server attendance sync and startup guard remain connected', () => {
   assert.match(startup, /refreshOlliVisibleViewsAfterStudentServerRefresh\(result\)/);
   assert.match(startup, /studentRefresh\?\.changed === true \|\| !recordList\?\.children\?\.length/);
   for (const file of ['olli-record-room-navigation.js', 'olli-attendance-phone-adapter.js', 'olli-app-startup.js']) {
-    const version = file === 'olli-attendance-phone-adapter.js' ? '20261011-roster-render-budget-1' : '20261011-prepared-rear-1';
+    const version = file === 'olli-attendance-phone-adapter.js' ? '20261104-attendance-idle-save-1' : '20261011-prepared-rear-1';
     assert.ok(html.includes(file + '?v=' + version));
   }
 });
