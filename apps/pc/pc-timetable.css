@@ -411,9 +411,9 @@ body.olliPcSidebarCollapsed #recordRoomScreen .olliTtSection { --olli-tt-student
 #recordRoomScreen .olliTtPickupCell.holiday .olliTtPickupCard span { color:#8f959d; }
 #recordRoomScreen .olliTtPickupEntries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 #recordRoomScreen .olliTtPickupCard { min-width: 0; min-height: 28px; padding: 4px 7px; border: 1px solid #cfe0e8; border-radius: 9px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px; color: #3d5360; background: #eef6f8; }
-/* Newly registered regular student cards use Olli blue and white.
-   Attendance/absence/paused overrides below retain their existing status colors. */
-#recordRoomScreen .olliTtStudent.regular.olliTtNewCard {
+/* Olli blue + white applies only to unmarked, active class cards.
+   Attendance, absence, paused, and holiday status colors remain authoritative. */
+#recordRoomScreen .olliTtCell:not(.holiday) .olliTtStudent.regular.olliTtNewCard:where(:not(.attended):not(.absent):not(.absenceUpcoming):not(.pausedStudent)) {
   border-color: #0A84FF;
   background: #fff;
 }
