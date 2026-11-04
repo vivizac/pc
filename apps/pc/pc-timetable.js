@@ -1187,6 +1187,19 @@
   function linkedAttendanceRegisterHtml() { return attendanceRegisterRuntimeApi().linkedAttendanceRegisterHtml(); }
   function renderAttendanceRegister() { return attendanceRegisterRuntimeApi().renderAttendanceRegister(); }
 
+  // Badge eligibility is tied to actual card creation, not the first class
+  // date or the currently viewed week. Unknown/legacy timestamps never show N.
+  function isTimetableNewCard(kind, cardId, nowMs = Date.now()) {
+    const rows = state.data?.recent_card_badges?.[kind];
+    if (!clean(cardId) || !Array.isArray(rows)) return false;
+    return rows.some((row) => {
+      if (clean(row?.id) !== clean(cardId)) return false;
+      const createdMs = Date.parse(clean(row?.created_at));
+      const ageMs = nowMs - createdMs;
+      return Number.isFinite(createdMs) && ageMs >= 0 && ageMs < 14 * 24 * 60 * 60 * 1000;
+    });
+  }
+
   function cellContentsHtml(division, date, time, classGroup, memoText) {
     const regular = slotRegulars(division, date, time, classGroup);
     const waits = slotWaitlist(division, date, time, classGroup);
@@ -1207,7 +1220,11 @@
       const attended = isToday(date) && attendanceStatus === 'present';
       const secondSessionMark = isSecondWeeklySession(item, date) ? '<strong class="olliTtSecondSessionMark" aria-label="주 2회차">▲</strong>' : '';
       const pauseBadge = pausedStudent ? '<span class="olliTtPauseBadge">휴원</span>' : '';
-      return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}${mutedAbsence ? ' absenceUpcoming' : ''}${pausedStudent ? ' pausedStudent' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${sessionKey}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(item.student_name)}${pauseBadge}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
+      const newCardClass = isTimetableNewCard('enrollments', item.id) ? ' olliTtNewCard' : '';
+      const studentNameHtml = newCardClass
+        ? `<span class="olliTtNewName" title="신규 등록"><span class="olliTtNewNameText">${esc(item.student_name)}</span></span>`
+        : esc(item.student_name);
+      return `<div class="olliTtStudent regular ${division}${newCardClass}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}${mutedAbsence ? ' absenceUpcoming' : ''}${pausedStudent ? ' pausedStudent' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${sessionKey}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${studentNameHtml}${pauseBadge}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
     }).join('');
     const waitHtml = waits.map((item) => {
       const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;
@@ -1288,7 +1305,8 @@
       const pickupPlace = onlyDropoff ? (clean(item.dropoff_label) || clean(item.pickup_label)) : clean(item.pickup_label);
       const pickupTime = onlyDropoff ? pickupTimeLabel(item.dropoff_time) : pickupTimeLabel(item.pickup_time);
       const pickupKind = onlyDropoff ? '하원 · ' : '';
-      return `<div class="olliTtPickupCard" data-tt-pickup-manage="${esc(item.id)}" data-tt-pickup-date="${dateKey(date)}"><strong class="olliTtPickupStudentName"><span>${esc(item.student_name)}</span>${dropoffMark}</strong><span>${esc(pickupKind + pickupPlace)} ${esc(pickupTime)}</span></div>`;
+      const newCardClass = isTimetableNewCard('pickups', item.id) ? ' olliTtNewCard' : '';
+      return `<div class="olliTtPickupCard${newCardClass}" data-tt-pickup-manage="${esc(item.id)}" data-tt-pickup-date="${dateKey(date)}"><strong class="olliTtPickupStudentName"><span>${esc(item.student_name)}</span>${dropoffMark}</strong><span>${esc(pickupKind + pickupPlace)} ${esc(pickupTime)}</span></div>`;
     }).join('');
     return `<div class="olliTtPickupCell${holiday ? ' holiday' : ''}" data-tt-pickup-cell="1" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-class-time="${classTime}"${holiday ? ' data-holiday="1" aria-disabled="true"' : ''}><div class="olliTtPickupEntries">${cards}</div></div>`;
   }

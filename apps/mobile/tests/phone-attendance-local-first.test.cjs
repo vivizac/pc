@@ -49,15 +49,14 @@ test('legacy coarse attendance migrates once to the first exact session', () => 
   assert.match(adapter, /global\.writeRecordDailyAttendanceStore\(store\)/);
 });
 
-test('attendance tapping updates local status before any schedule network wait', () => {
-  const start = adapter.indexOf('async function toggleTodayAttendance');
-  const end = adapter.indexOf('function afterRecordListLoaded', start);
-  const body = adapter.slice(start, end);
-  const localWrite = body.indexOf('writeLocalStatus(student, targetDateKey, kind, nextStatus, false, target.timeSlot, target.classGroup)');
-  const serverWrite = body.indexOf('await setAttendanceRegisterStatus');
-  assert.ok(localWrite >= 0, 'local attendance write must exist');
-  assert.ok(serverWrite > localWrite, 'server save must follow local attendance write');
-  assert.doesNotMatch(body.slice(0, localWrite), /await syncTodaySchedule/);
+test('attendance taps preview locally; idle timer sends only final exact-session status', () => {
+  const toggle = adapter.slice(adapter.indexOf('async function toggleTodayAttendance'), adapter.indexOf('function afterRecordListLoaded'));
+  const flush = adapter.slice(adapter.indexOf('async function flushAttendanceSave'), adapter.indexOf('async function toggleTodayAttendance'));
+  assert.match(toggle, /writeLocalStatus\(student, targetDateKey, kind, nextStatus, false, target\.timeSlot, target\.classGroup\)/);
+  assert.match(toggle, /queueAttendanceSave\(entry\)/);
+  assert.doesNotMatch(toggle, /await setAttendanceRegisterStatus/);
+  assert.match(flush, /await setAttendanceRegisterStatus/);
+  assert.match(adapter, /const ATTENDANCE_IDLE_SAVE_MS = 450/);
 });
 
 test('phone attendance writes exact session status through v2 RPC', () => {
@@ -75,13 +74,12 @@ test('attendance controls carry time and class through touch and keyboard handle
   assert.match(observationRuntime, /adapter\.toggleTodayAttendance\(event, studentId, sessionKind, timeSlot, classGroup\)/);
 });
 
-test('attendance save failure restores only the selected exact session', () => {
-  const start = adapter.indexOf('async function toggleTodayAttendance');
-  const end = adapter.indexOf('function afterRecordListLoaded', start);
-  const body = adapter.slice(start, end);
-  assert.match(body, /getLocalSessionSnapshot\(student\.id, targetDateKey, kind, target\.timeSlot, target\.classGroup\)/);
-  assert.match(body, /restoreLocalSession\(student, targetDateKey, kind, target\.timeSlot, target\.classGroup, beforeSession\)/);
-  assert.doesNotMatch(body, /restoreLocalItem/);
+test('attendance save failure restores the selected session from its last confirmed snapshot', () => {
+  const toggle = adapter.slice(adapter.indexOf('async function toggleTodayAttendance'), adapter.indexOf('function afterRecordListLoaded'));
+  const flush = adapter.slice(adapter.indexOf('async function flushAttendanceSave'), adapter.indexOf('async function toggleTodayAttendance'));
+  assert.match(toggle, /getLocalSessionSnapshot\(student\.id, targetDateKey, kind, target\.timeSlot, target\.classGroup\)/);
+  assert.match(flush, /restoreLocalSession\(entry\.student, entry\.dateKey, entry\.kind, entry\.timeSlot, entry\.classGroup, entry\.confirmedSnapshot\)/);
+  assert.doesNotMatch(flush, /restoreLocalItem/);
 });
 
 test('attendance background refresh does not block the already rendered list', () => {
@@ -97,7 +95,7 @@ test('attendance server refresh only rerenders schedule when the visible snapsho
 
 test('phone loads cache-busted shared and adapter attendance scripts', () => {
   assert.match(html, /olli-attendance-data\.js\?v=20260924-week-local-first-1/);
-  assert.ok(html.includes('olli-attendance-phone-adapter.js?v=20261011-roster-render-budget-1'));
+  assert.ok(html.includes('olli-attendance-phone-adapter.js?v=20261104-attendance-idle-save-1'));
   assert.ok(html.includes('olli-record-room-navigation.js?v=20261011-prepared-rear-1'));
 });
 

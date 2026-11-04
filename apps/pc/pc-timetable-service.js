@@ -242,7 +242,7 @@
       console.warn('시간표 결석 상태 조회 실패:', error);
       return [];
     });
-    const [data, kinderLayout, calendarDays, teacherContext, memoContext, teacherOverrideContext, pickupDropoffContext] = await Promise.all([
+    const [data, kinderLayout, calendarDays, teacherContext, memoContext, teacherOverrideContext, pickupDropoffContext, recentCardBadges] = await Promise.all([
       rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart })),
       rpc('olli_schedule_kinder_class_layouts', contextPayload()),
       loadCalendarRange(start, end),
@@ -252,6 +252,10 @@
       rpc('olli_schedule_pickup_dropoff_flags', contextPayload({ p_start_date: start, p_end_date: end })).catch((error) => {
         console.warn('픽업 하원 표시 조회 실패:', error);
         return { flags: [] };
+      }),
+      rpc('olli_schedule_recent_card_badges', contextPayload()).catch((error) => {
+        console.warn('시간표 신규 카드 표시 조회 실패:', error);
+        return { enrollments: [], pickups: [] };
       })
     ]);
     assertCurrentContext();
@@ -273,6 +277,12 @@
           pickupScope:clean(item && item.pickup_scope) || 'weekly'
         }])
     );
+    // Presentation-only badge metadata. Keep the existing week RPC and all
+    // schedule/pickup write paths unchanged.
+    data.recent_card_badges = {
+      enrollments: Array.isArray(recentCardBadges?.enrollments) ? recentCardBadges.enrollments : [],
+      pickups: Array.isArray(recentCardBadges?.pickups) ? recentCardBadges.pickups : []
+    };
     data.pickups = (Array.isArray(data.pickups) ? data.pickups : []).map((item) => {
       const dropoff = pickupDropoffMap.get(clean(item && item.id)) || {};
       return {
