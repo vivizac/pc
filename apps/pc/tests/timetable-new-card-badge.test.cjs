@@ -98,13 +98,13 @@ test('badge RPC is scoped to the authenticated academy and actual insert timesta
 test('new registration and added sessions qualify, but move-created enrollment rows do not', () => {
   // The live schedule_change RPC writes source='add' for new slots, and
   // source='move' for a moved destination. The badge RPC must use that fact.
-  assert.match(registrationOnlyMigration, /e\\.source in \\('add', 'manual'\\)/);
-  assert.match(registrationOnlyMigration, /e\\.source = 'waitlist'[\\s\\S]*?added\\.change_type = 'add'/);
-  assert.match(registrationOnlyMigration, /e\\.source = 'legacy'[\\s\\S]*?s\\.created_at > now\\(\\) - interval '14 days'/);
-  assert.match(registrationOnlyMigration, /and not exists \\(\\s*select 1 from public\\.olli_schedule_changes moved/);
-  assert.match(registrationOnlyMigration, /moved\\.target_enrollment_id = e\\.id/);
-  assert.match(registrationOnlyMigration, /moved\\.change_type = 'move'/);
-  assert.match(registrationOnlyMigration, /e\\.created_at > now\\(\\) - interval '14 days'/);
+  assert.match(registrationOnlyMigration, /e\.source in \('add', 'manual'\)/);
+  assert.match(registrationOnlyMigration, /e\.source = 'waitlist'[\s\S]*?added\.change_type = 'add'/);
+  assert.match(registrationOnlyMigration, /e\.source = 'legacy'[\s\S]*?s\.created_at > now\(\) - interval '14 days'/);
+  assert.match(registrationOnlyMigration, /and not exists \(\s*select 1 from public\.olli_schedule_changes moved/);
+  assert.match(registrationOnlyMigration, /moved\.target_enrollment_id = e\.id/);
+  assert.match(registrationOnlyMigration, /moved\.change_type = 'move'/);
+  assert.match(registrationOnlyMigration, /e\.created_at > now\(\) - interval '14 days'/);
 });
 
 test('badge correction preserves pickup N, access policy and prior RPC signature exactly', () => {
@@ -119,7 +119,7 @@ test('badge correction preserves pickup N, access policy and prior RPC signature
   ]) {
     assert.ok(registrationOnlyMigration.includes(expression), expression);
   }
-  assert.doesNotMatch(registrationOnlyMigration, /\\b(?:insert into|update public\\.|delete from|truncate table|drop table)\\b/i);
+  assert.doesNotMatch(registrationOnlyMigration, /\b(?:insert into|update public\.|delete from|truncate table|drop table)\b/i);
 });
 
 test('PC timetable cache-busts only the modified stylesheet and scripts', () => {
