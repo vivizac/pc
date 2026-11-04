@@ -411,6 +411,36 @@ body.olliPcSidebarCollapsed #recordRoomScreen .olliTtSection { --olli-tt-student
 #recordRoomScreen .olliTtPickupCell.holiday .olliTtPickupCard span { color:#8f959d; }
 #recordRoomScreen .olliTtPickupEntries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 #recordRoomScreen .olliTtPickupCard { min-width: 0; min-height: 28px; padding: 4px 7px; border: 1px solid #cfe0e8; border-radius: 9px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px; color: #3d5360; background: #eef6f8; }
+/* Newly registered timetable and pickup cards: the N badge is an independent
+   paint layer, not a grid/flex child. Neither sibling cards nor row sizes move. */
+#recordRoomScreen .olliTtStudent.olliTtNewCard,
+#recordRoomScreen .olliTtPickupCard.olliTtNewCard {
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+  overflow: visible;
+}
+#recordRoomScreen .olliTtStudent.olliTtNewCard::after,
+#recordRoomScreen .olliTtPickupCard.olliTtNewCard::after {
+  content: "N";
+  position: absolute;
+  top: -4px;
+  right: -3px;
+  z-index: 2;
+  width: 15px;
+  height: 15px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #f04856;
+  box-shadow: 0 1px 3px rgba(27, 39, 58, .18);
+  font: 850 9px/1 'Pretendard', sans-serif;
+  pointer-events: none;
+}
+
 #recordRoomScreen .olliTtPickupCard strong,
 #recordRoomScreen .olliTtPickupCard span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #recordRoomScreen .olliTtPickupCard strong { font-size: calc(10px * var(--olli-text-scale)); font-weight: 820; }
