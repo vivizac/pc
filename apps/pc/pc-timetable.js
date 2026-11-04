@@ -1221,7 +1221,10 @@
       const secondSessionMark = isSecondWeeklySession(item, date) ? '<strong class="olliTtSecondSessionMark" aria-label="주 2회차">▲</strong>' : '';
       const pauseBadge = pausedStudent ? '<span class="olliTtPauseBadge">휴원</span>' : '';
       const newCardClass = isTimetableNewCard('enrollments', item.id) ? ' olliTtNewCard' : '';
-      return `<div class="olliTtStudent regular ${division}${newCardClass}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}${mutedAbsence ? ' absenceUpcoming' : ''}${pausedStudent ? ' pausedStudent' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${sessionKey}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(item.student_name)}${pauseBadge}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
+      const studentNameHtml = newCardClass
+        ? `<span class="olliTtNewName" title="신규 등록"><span class="olliTtNewNameText">${esc(item.student_name)}</span></span>`
+        : esc(item.student_name);
+      return `<div class="olliTtStudent regular ${division}${newCardClass}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}${mutedAbsence ? ' absenceUpcoming' : ''}${pausedStudent ? ' pausedStudent' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${sessionKey}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${studentNameHtml}${pauseBadge}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
     }).join('');
     const waitHtml = waits.map((item) => {
       const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;
