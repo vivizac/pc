@@ -1,5 +1,5 @@
 # 올리 개발 AI 업무 규칙 — Engineering Skill Playbook
-작성일: 2026-11-04 | 상태: 제안(검토용) | 코드 수정/배포 없음
+작성일: 2026-11-04 | 상태: AGENTS.md에서 참조할 개발 작업 지침 | 이 문서 자체는 코드 수정/배포 없음
 
 > 이 문서는 Anthropic의 공개 Engineering 업무 스킬(code-review, debug, testing-strategy, deploy-checklist)의 절차를 참고해 **올리 전용**으로 재구성한 작업 지침이다. Anthropic 플러그인이 ChatGPT에 설치되거나 자동 실행되는 것은 아니다.
 > 기존 `AGENTS.md` 및 `OLLI_COMMON_SOURCE.md`의 규칙을 대체하지 않는다. 충돌하면 **데이터 보존·기존 검증 계약**을 우선한다.
@@ -81,6 +81,6 @@
 - 실제 Vercel Production 배포 SHA는 이 문서 작성 시 조사하지 않았으므로 **미확인**.
 
 ## 7. 적용 상태
-이 문서는 업무 절차안이다. 올리 앱의 AI 실행 코드에 자동 연결되지 않았고, 앱 기능 변경·배포·DB 작업은 하지 않았다. 해당 문서를 개발 작업의 참조 기준으로 실제 적용할 때에는 기존 `AGENTS.md`와의 우선순위를 명시한다.
+이 문서는 루트 `AGENTS.md`가 개발 작업 시작 시 확인하도록 연결한 업무 지침이다. **AI 도구는 매 개발 작업 때 이 문서를 직접 읽고 적용한다.** 올리 앱의 런타임에 플러그인이 설치되거나 자동 실행되는 것은 아니며, 이 문서의 추가만으로 앱 기능·DB·배포는 변경되지 않는다. 기존 `AGENTS.md`와 `OLLI_COMMON_SOURCE.md`의 규칙이 우선한다.
 
 참고: https://github.com/anthropics/knowledge-work-plugins
