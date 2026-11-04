@@ -182,3 +182,11 @@ test('pending state survives card-free local painting without reconstructing age
   assert.equal(h.requests.length, 1);
   assert.equal(h.requests[0].params.p_status, 'present');
 });
+
+test('server status-only updates patch icon attributes without replacing kindergarten age labels', () => {
+  assert.match(source, /function patchAttendanceIconsWithoutListRebuild\(list, nextHtml\)/);
+  assert.match(source, /snapshot\.innerHTML !== template\.innerHTML/);
+  assert.match(source, /oldIcons\.forEach\(\(icon, index\) => icon\.replaceWith\(nextIcons\[index\]\.cloneNode\(true\)\)\)/);
+  assert.match(source, /if \(!canReuse \|\| !patchAttendanceIconsWithoutListRebuild\(list, nextHtml\)\) list\.innerHTML = nextHtml/);
+  assert.match(source, /if \(icon\.getAttribute\('aria-busy'\) === 'true'\) return/);
+});
