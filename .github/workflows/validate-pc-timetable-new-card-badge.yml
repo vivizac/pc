@@ -1,0 +1,48 @@
+name: Validate PC timetable new-card badges
+
+on:
+  pull_request:
+    paths:
+      - 'apps/pc/pc-timetable.js'
+      - 'apps/pc/pc-timetable.css'
+      - 'apps/pc/pc-timetable-service.js'
+      - 'apps/pc/index.html'
+      - 'apps/pc/tests/timetable-new-card-badge.test.cjs'
+      - 'supabase/migrations/*_olli_schedule_recent_card_badges.sql'
+      - '.github/workflows/validate-pc-timetable-new-card-badge.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/pc/pc-timetable.js'
+      - 'apps/pc/pc-timetable.css'
+      - 'apps/pc/pc-timetable-service.js'
+      - 'apps/pc/index.html'
+      - 'apps/pc/tests/timetable-new-card-badge.test.cjs'
+      - 'supabase/migrations/*_olli_schedule_recent_card_badges.sql'
+      - '.github/workflows/validate-pc-timetable-new-card-badge.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/pc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify original timetable sources
+        run: |
+          node --check pc-timetable.js
+          node --check pc-timetable-service.js
+      - name: Verify creation-date window, security and no-layout badge
+        run: node --test tests/timetable-new-card-badge.test.cjs
+      - name: Check existing timetable and pickup regressions
+        run: |
+          node --test tests/timetable-pickup-dropoff-search.test.cjs
+          node --test tests/timetable-pickup-location-sort.test.cjs
+          node --test tests/timetable-session-order-reference-date.test.cjs
