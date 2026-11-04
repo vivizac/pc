@@ -4,6 +4,37 @@
   const REGISTER_STATUS_TO_LOCAL = Object.freeze({ present: 'attended', absent: 'absent', makeup: 'makeup', blank: '' });
   const LOCAL_STATUS_TO_REGISTER = Object.freeze({ attended: 'present', absent: 'absent', makeup: 'makeup', '': 'blank' });
   const todayScheduleState = { academyId: '', sessionToken: '', dateKey: '', loaded: false, loading: null, signature: '', regular: new Map(), regularSessions: new Map(), makeup: new Map() };
+  // Only the last status of a short tap sequence is committed. Each exact class session
+  // has its own queue entry; the existing stored record is left intact until the RPC succeeds.
+  const ATTENDANCE_IDLE_SAVE_MS = 450;
+  const attendancePendingSaves = new Map();
+  function attendanceSaveKey(academyId, studentId, day, kind, slot, group) {
+    return JSON.stringify([academyId, String(studentId), day, kind, Number(slot), clean(group) || 'A']);
+  }
+  function hasPendingAttendanceMonth(month, academyId) {
+    return [...attendancePendingSaves.values()].some(entry =>
+      entry.academyId === academyId && entry.dateKey.startsWith(month + '-')
+    );
+  }
+  function isCurrentAttendanceContext(entry) {
+    const data = shared();
+    return clean(data?.currentAcademyId?.()) === entry.academyId
+      && clean(data?.currentSessionToken?.()) === entry.sessionToken;
+  }
+  function paintAttendanceLeadButton(button, status, pending) {
+    if (!button?.classList?.contains('recordAttendanceLeadBtn')) return false;
+    button.classList.remove('attended', 'absent', 'makeup', 'blank');
+    button.classList.add(status || 'blank');
+    const label = status === 'attended' ? '출석' : status === 'absent' ? '결석'
+      : status === 'makeup' ? '보강' : '판정없음';
+    const title = label + (button.classList.contains('missingEnrollment') ? ' · 등록일 미입력' : '')
+      + (pending ? ' · 저장 대기' : '');
+    button.setAttribute('title', title);
+    button.setAttribute('aria-label', title);
+    if (pending) button.setAttribute('aria-busy', 'true');
+    else button.removeAttribute('aria-busy');
+    return true;
+  }
 
   function shared() { return global.OlliAttendanceData || null; }
   function clean(value) { return String(value == null ? '' : value).trim(); }
@@ -401,6 +432,8 @@
     if (!yearMonth) return false;
     const cached = data.getCachedMonth(yearMonth);
     if (!Array.isArray(cached)) return false;
+    // A server cache can be older than an unsaved local tap sequence.
+    if (hasPendingAttendanceMonth(yearMonth, clean(data.currentAcademyId?.()))) return false;
     mergeServerMonth(cached, yearMonth);
     if (options.render !== false) renderCurrentRecordList();
     return true;
@@ -413,9 +446,15 @@
     if (!yearMonth) return false;
     try {
       const cached = typeof data.getCachedMonth === 'function' ? data.getCachedMonth(yearMonth) : null;
-      if (options.skipLocal !== true && Array.isArray(cached)) mergeServerMonth(cached, yearMonth);
+      const academyId = clean(data.currentAcademyId?.());
+      if (options.skipLocal !== true && Array.isArray(cached) && !hasPendingAttendanceMonth(yearMonth, academyId)) {
+        mergeServerMonth(cached, yearMonth);
+      }
       const before = attendanceRowsSignature(cached);
       const rows = await data.loadMonth(yearMonth);
+      // Do not let an in-flight refresh overwrite another student's pending edit
+      // or apply old-academy data after an academy switch.
+      if (academyId !== clean(data.currentAcademyId?.()) || hasPendingAttendanceMonth(yearMonth, academyId)) return false;
       const changed = !Array.isArray(cached) || attendanceRowsSignature(rows) !== before;
       if (changed) {
         mergeServerMonth(rows, yearMonth);
@@ -779,11 +818,11 @@
     return nextHtml;
   }
 
-  async function setAttendanceRegisterStatus(student, targetDateKey, sessionKind, localStatus, timeSlot, classGroup) {
+  async function setAttendanceRegisterStatus(student, targetDateKey, sessionKind, localStatus, timeSlot, classGroup, context) {
     const data = shared();
     if (!data || typeof global.supabase !== 'function') throw new Error('출석 서버 연결을 찾지 못했습니다.');
-    const academyId = clean(typeof data.currentAcademyId === 'function' ? data.currentAcademyId() : '');
-    const sessionToken = clean(typeof data.currentSessionToken === 'function' ? data.currentSessionToken() : '');
+    const academyId = clean(context?.academyId || (typeof data.currentAcademyId === 'function' ? data.currentAcademyId() : ''));
+    const sessionToken = clean(context?.sessionToken || (typeof data.currentSessionToken === 'function' ? data.currentSessionToken() : ''));
     const kind = normalizeSessionKind(sessionKind);
     const targetSlot = Number(timeSlot);
     const targetGroup = clean(classGroup) || 'A';
@@ -828,6 +867,64 @@
     return result;
   }
 
+  function queueAttendanceSave(entry, idleMs = ATTENDANCE_IDLE_SAVE_MS) {
+    if (entry.timer) global.clearTimeout(entry.timer);
+    entry.timer = global.setTimeout(() => {
+      entry.timer = null;
+      void flushAttendanceSave(entry);
+    }, idleMs);
+  }
+
+  async function flushAttendanceSave(entry) {
+    if (attendancePendingSaves.get(entry.key) !== entry || entry.saving) return;
+    const sentStatus = entry.desiredStatus;
+    entry.saving = true;
+    try {
+      if (!isCurrentAttendanceContext(entry)) throw new Error('학원 또는 로그인 정보가 바뀌었습니다. 출석 상태를 다시 확인해 주세요.');
+      await setAttendanceRegisterStatus(
+        entry.student, entry.dateKey, entry.kind, sentStatus, entry.timeSlot, entry.classGroup, entry
+      );
+      entry.confirmedSnapshot = sentStatus
+        ? { status: sentStatus, server_synced: true, updated_at: new Date().toISOString() }
+        : null;
+      // Taps made while the RPC was running are still provisional; never stamp
+      // their newer state as saved or overwrite them with the older response.
+      if (entry.desiredStatus !== sentStatus) return;
+      attendancePendingSaves.delete(entry.key);
+      if (isCurrentAttendanceContext(entry)) {
+        writeLocalStatus(entry.student, entry.dateKey, entry.kind, sentStatus, true, entry.timeSlot, entry.classGroup);
+        paintAttendanceLeadButton(entry.button, sentStatus, false);
+        if (!hasPendingAttendanceMonth(entry.dateKey.slice(0, 7), entry.academyId)) {
+          // Refresh cache without rebuilding every child name/age card.
+          await Promise.all([
+            syncCurrentMonth(entry.dateKey, { render: false, skipLocal: true }),
+            syncTodaySchedule(entry.dateKey, { render: false, skipLocal: true })
+          ]);
+        }
+      }
+    } catch (error) {
+      attendancePendingSaves.delete(entry.key);
+      if (entry.timer) global.clearTimeout(entry.timer);
+      entry.timer = null;
+      if (isCurrentAttendanceContext(entry)) {
+        // Restore the last *confirmed* exact session, not the state from
+        // before an earlier successful write in the same tap sequence.
+        restoreLocalSession(entry.student, entry.dateKey, entry.kind, entry.timeSlot, entry.classGroup, entry.confirmedSnapshot);
+        paintAttendanceLeadButton(entry.button, entry.confirmedSnapshot?.status || '', false);
+      }
+      const message = String(error?.message || error || '출석 저장에 실패했습니다.');
+      if (typeof global.showPushToast === 'function') global.showPushToast(message);
+      else global.alert(message);
+    } finally {
+      entry.saving = false;
+      if (attendancePendingSaves.get(entry.key) === entry && !entry.timer) {
+        // The debounce may have expired during a slow request. Flush the newest
+        // state in order, without running two status writes for one session.
+        queueAttendanceSave(entry, 0);
+      }
+    }
+  }
+
   async function toggleTodayAttendance(event, studentId, requestedKind, timeSlot, classGroup) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
     if (isStudentSelectionMode() || typeof global.getAllStudents !== 'function') return;
@@ -835,7 +932,19 @@
     if (!student) return;
     const today = new Date();
     const targetDateKey = dateKey(today);
-    hydrateLocalAttendanceSnapshot(today, { render: false });
+    const data = shared();
+    const academyId = clean(data?.currentAcademyId?.());
+    const sessionToken = clean(data?.currentSessionToken?.());
+    if (!academyId || !sessionToken) {
+      const message = '학원 또는 로그인 정보를 확인할 수 없습니다. 다시 로그인해 주세요.';
+      if (typeof global.showPushToast === 'function') global.showPushToast(message);
+      else global.alert(message);
+      return;
+    }
+    // Do not replay an older month cache over an already pending tap.
+    if (!hasPendingAttendanceMonth(targetDateKey.slice(0, 7), academyId)) {
+      hydrateLocalAttendanceSnapshot(today, { render: false });
+    }
 
     const requested = clean(requestedKind).toLowerCase();
     const scheduleEntry = getTodayScheduleEntry(student.id);
@@ -850,34 +959,34 @@
       return;
     }
 
-    const currentStatus = getAttendanceSessionStatus(student.id, targetDateKey, kind, target.timeSlot, target.classGroup);
-    const beforeSession = getLocalSessionSnapshot(student.id, targetDateKey, kind, target.timeSlot, target.classGroup);
-
+    const key = attendanceSaveKey(academyId, student.id, targetDateKey, kind, target.timeSlot, target.classGroup);
+    const button = event?.target?.closest?.('.recordAttendanceLeadBtn')
+      || (event?.currentTarget?.classList?.contains?.('recordAttendanceLeadBtn') ? event.currentTarget : null);
+    let entry = attendancePendingSaves.get(key);
+    if (!entry) {
+      entry = {
+        key, academyId, sessionToken, dateKey: targetDateKey, kind,
+        timeSlot: target.timeSlot, classGroup: target.classGroup, student,
+        desiredStatus: getAttendanceSessionStatus(student.id, targetDateKey, kind, target.timeSlot, target.classGroup),
+        confirmedSnapshot: getLocalSessionSnapshot(student.id, targetDateKey, kind, target.timeSlot, target.classGroup),
+        saving: false, timer: null, button: null
+      };
+      attendancePendingSaves.set(key, entry);
+    }
+    entry.button = button || entry.button;
+    const currentStatus = entry.desiredStatus;
     let nextStatus = '';
-    if (kind === 'makeup') {
-      nextStatus = currentStatus === 'makeup' ? '' : 'makeup';
-    } else if (currentStatus === 'attended') {
-      nextStatus = 'absent';
-    } else if (currentStatus === 'absent') {
-      nextStatus = '';
-    } else {
-      nextStatus = 'attended';
-    }
+    if (kind === 'makeup') nextStatus = currentStatus === 'makeup' ? '' : 'makeup';
+    else if (currentStatus === 'attended') nextStatus = 'absent';
+    else if (currentStatus === 'absent') nextStatus = '';
+    else nextStatus = 'attended';
 
+    entry.desiredStatus = nextStatus;
     writeLocalStatus(student, targetDateKey, kind, nextStatus, false, target.timeSlot, target.classGroup);
-    renderCurrentRecordList();
-    try {
-      await setAttendanceRegisterStatus(student, targetDateKey, kind, nextStatus, target.timeSlot, target.classGroup);
-      writeLocalStatus(student, targetDateKey, kind, nextStatus, true, target.timeSlot, target.classGroup);
-      await Promise.all([syncCurrentMonth(today, { render: false }), syncTodaySchedule(today, { render: false })]);
-      renderCurrentRecordList();
-    } catch (error) {
-      restoreLocalSession(student, targetDateKey, kind, target.timeSlot, target.classGroup, beforeSession);
-      renderCurrentRecordList();
-      const message = String(error?.message || error || '출석 저장에 실패했습니다.');
-      if (typeof global.showPushToast === 'function') global.showPushToast(message);
-      else global.alert(message);
-    }
+    // The leading icon is the only visual node that changes. Avoid replacing
+    // student rows (including kindergarten age labels) during rapid taps.
+    if (!paintAttendanceLeadButton(entry.button, nextStatus, true)) renderCurrentRecordList();
+    queueAttendanceSave(entry);
   }
 
   function afterRecordListLoaded(_view, _name, options = {}) {
