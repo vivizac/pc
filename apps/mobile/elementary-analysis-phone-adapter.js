@@ -42,11 +42,17 @@ function setMemoFeedbackArchiveItems(student, items) {
 
   // Preserve every unconfirmed/local-only record in the offline snapshot.
   // Only confirmed server records are limited to 80 for iOS storage safety.
-  const pending = list.filter(item => !isMemoFeedbackArchiveServerConfirmed(item));
-  const confirmed = list.filter(isMemoFeedbackArchiveServerConfirmed)
-    .slice(0, MEMO_FEEDBACK_ARCHIVE_OFFLINE_SERVER_CACHE_LIMIT);
+  const confirmed = new Set(list.filter(isMemoFeedbackArchiveServerConfirmed)
+    .slice(0, MEMO_FEEDBACK_ARCHIVE_OFFLINE_SERVER_CACHE_LIMIT));
+  const offlineSnapshot = list.filter(item => !isMemoFeedbackArchiveServerConfirmed(item) || confirmed.has(item));
   try {
-    localStorage.setItem(key, JSON.stringify([...pending, ...confirmed]));
+    const serialized = JSON.stringify(offlineSnapshot);
+    localStorage.setItem(key, serialized);
+    if (localStorage.getItem(key) !== serialized) {
+      const error = new Error('피드백 보관함 로컬 저장 검증 실패');
+      error.name = 'FeedbackStorageReadbackMismatch';
+      throw error;
+    }
   } catch (error) {
     // Do not delete the old snapshot, clear other keys or discard the memory
     // history if the iPhone localStorage quota is exceeded.
