@@ -7,6 +7,7 @@ const source = fs.readFileSync('olli-attendance-phone-adapter.js', 'utf8');
 
 function harness(initialStatus = '') {
   const requests = [];
+  const serverStatuses = new Map();
   const toasts = [];
   const callbacks = new Map();
   let nextTimerId = 1;
@@ -17,6 +18,7 @@ function harness(initialStatus = '') {
   const day = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, '0'), String(today.getDate()).padStart(2, '0')].join('-');
   let store = {};
   const student = { id: 'student-1', name: '학생', type: 'kinder' };
+  if (initialStatus) serverStatuses.set('4|A', initialStatus === 'attended' ? 'present' : initialStatus);
   if (initialStatus) store = { [day]: { [student.id]: {
     student_id: student.id, status: initialStatus,
     sessions: { regular: { '4|A': { status: initialStatus, server_synced: true } } }
@@ -47,15 +49,25 @@ function harness(initialStatus = '') {
       getCachedMonth: () => null,
       getCachedWeek: () => null,
       loadWeek: async () => ({ enrollments: [], one_time_sessions: [] }),
-      loadMonth: async () => [],
+      loadMonth: async () => Array.from(serverStatuses, ([session, status]) => {
+        const [time_slot, class_group] = session.split('|');
+        return {
+          student_id: student.id, session_date: day, session_kind: 'register_override',
+          register_session_kind: 'regular', register_status: status,
+          time_slot: Number(time_slot), class_group
+        };
+      }),
       invalidateMonth() {},
       invalidateWeek() {},
       legacyPairs: () => []
     },
     supabase: async (method, route, params) => {
       requests.push({method, route, params});
-      if (global.rpcResponse) return global.rpcResponse(method, route, params);
-      return {ok:true};
+      const result = global.rpcResponse ? await global.rpcResponse(method, route, params) : {ok:true};
+      if (result?.ok !== false && route === 'rpc/olli_schedule_set_attendance_session_status_v2') {
+        serverStatuses.set(params.p_time_slot + '|' + params.p_class_group, params.p_status);
+      }
+      return result;
     },
     getAllStudents: () => [student],
     getStudentStatus: () => 'active',
