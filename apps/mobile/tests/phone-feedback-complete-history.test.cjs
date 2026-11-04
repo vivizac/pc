@@ -42,6 +42,7 @@ function createArchiveHarness(options = {}) {
   const disk = new Map();
   const log = [];
   let failedWrites = !!options.failedWrites;
+  let ignoredWrites = !!options.ignoredWrites;
   let activeAcademy = 'academy-a';
   let reader = options.reader || (async () => []);
   const storage = {
@@ -52,7 +53,7 @@ function createArchiveHarness(options = {}) {
         error.name = 'QuotaExceededError';
         throw error;
       }
-      disk.set(key,String(value));
+      if (!ignoredWrites) disk.set(key,String(value));
     },
     removeItem(key) { disk.delete(key); }
   };
@@ -67,7 +68,7 @@ function createArchiveHarness(options = {}) {
     isSupabaseConfigured:()=>true,
     getOlliCurrentAcademyId:()=>activeAcademy,
     filterOlliActiveRows:rows=>rows,
-    getOlliFeedbackStorageErrorReason:()=> 'quota_exceeded'
+    getOlliFeedbackStorageErrorReason:error=> error?.name === 'FeedbackStorageReadbackMismatch' ? 'readback_mismatch' : 'quota_exceeded'
   };
   vm.createContext(scope);
   vm.runInContext(archiveSource + '\nwindow.__archive = {read:getMemoFeedbackArchiveItems,write:setMemoFeedbackArchiveItems,add:addMemoFeedbackArchiveItem,load:loadMemoFeedbackArchiveItemsFromSupabase};', scope);
@@ -75,7 +76,8 @@ function createArchiveHarness(options = {}) {
     disk, log, api:scope.window.__archive,
     setReader:fn=>{reader=fn;},
     setAcademy:id=>{activeAcademy=id;},
-    failWrites:value=>{failedWrites=!!value;}
+    failWrites:value=>{failedWrites=!!value;},
+    ignoreWrites:value=>{ignoredWrites=!!value;}
   };
 }
 
@@ -149,6 +151,24 @@ test('localStorage quota failure preserves both previous disk data and new full 
   assert.equal(h.disk.get('feedback-student-1'),oldSnapshot);
   assert.equal(h.api.read(student())[0].id,'new');
   assert.ok(h.log.some(v=>v[0]==='elementary_feedback_archive' && v[2]==='failed'));
+});
+
+test('silently ignored iOS localStorage writes are recorded, with no loss of visible history', () => {
+  const h = createArchiveHarness({ignoredWrites:true});
+  h.api.write(student(),[{id:'new',content:'recovered server text'}]);
+  assert.equal(h.disk.size,0);
+  assert.equal(h.api.read(student())[0].id,'new');
+  assert.ok(h.log.some(v=>v[0]==='elementary_feedback_archive' && v[3]?.reason==='readback_mismatch'));
+});
+
+test('offline snapshot retains newest-first item ordering when local drafts are interleaved', () => {
+  const h = createArchiveHarness();
+  h.api.write(student(),[
+    {id:2,content:'new',sourceTable:'feedbacks',row:{id:2}},
+    {id:'pending',content:'local draft'},
+    {id:1,content:'old',sourceTable:'feedbacks',row:{id:1}}
+  ]);
+  assert.deepEqual(JSON.parse(h.disk.get('feedback-student-1')).map(x=>x.id),[2,'pending',1]);
 });
 
 test('academy switch before RPC resolves cannot apply obsolete history', async () => {
