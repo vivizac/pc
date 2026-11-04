@@ -7,6 +7,7 @@ const css = fs.readFileSync('pc-timetable.css', 'utf8');
 const service = fs.readFileSync('pc-timetable-service.js', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
 const migration = fs.readFileSync('../../supabase/migrations/20261104153500_olli_schedule_recent_card_badges.sql', 'utf8');
+const registrationOnlyMigration = fs.readFileSync('../../supabase/migrations/20261104201500_olli_schedule_recent_card_badges_registration_only.sql', 'utf8');
 
 const helperMatch = ui.match(/  function isTimetableNewCard\(kind, cardId, nowMs = Date\.now\(\)\) \{[\s\S]*?\n  \}\n\n  function cellContentsHtml/);
 assert.ok(helperMatch, 'exact production badge eligibility helper must exist');
@@ -92,6 +93,33 @@ test('badge RPC is scoped to the authenticated academy and actual insert timesta
   assert.match(migration, /e\.created_at > now\(\) - interval '14 days'/);
   assert.match(migration, /p\.created_at > now\(\) - interval '14 days'/);
   assert.doesNotMatch(migration, /drop table|truncate table|delete from/i);
+});
+
+test('new registration and added sessions qualify, but move-created enrollment rows do not', () => {
+  // The live schedule_change RPC writes source='add' for new slots, and
+  // source='move' for a moved destination. The badge RPC must use that fact.
+  assert.match(registrationOnlyMigration, /e\.source in \('add', 'manual'\)/);
+  assert.match(registrationOnlyMigration, /e\.source = 'waitlist'[\s\S]*?added\.change_type = 'add'/);
+  assert.match(registrationOnlyMigration, /e\.source = 'legacy'[\s\S]*?s\.created_at > now\(\) - interval '14 days'/);
+  assert.match(registrationOnlyMigration, /and not exists \(\s*select 1 from public\.olli_schedule_changes moved/);
+  assert.match(registrationOnlyMigration, /moved\.target_enrollment_id = e\.id/);
+  assert.match(registrationOnlyMigration, /moved\.change_type = 'move'/);
+  assert.match(registrationOnlyMigration, /e\.created_at > now\(\) - interval '14 days'/);
+});
+
+test('badge correction preserves pickup N, access policy and prior RPC signature exactly', () => {
+  const pickupSection = source => source.slice(source.indexOf('  select coalesce(jsonb_agg', source.indexOf('  into v_enrollments')), source.indexOf('  return jsonb_build_object(', source.indexOf('  into v_enrollments')));
+  assert.equal(pickupSection(registrationOnlyMigration), pickupSection(migration),
+    'pickup card rules must stay exactly as before');
+  for (const expression of [
+    'public.olli_schedule_recent_card_badges(', 'private.olli_schedule_can_access(p_session_token, p_academy_id)',
+    'security definer', 'set search_path to',
+    'revoke all on function public.olli_schedule_recent_card_badges(text, uuid)',
+    'grant execute on function public.olli_schedule_recent_card_badges(text, uuid) to anon, authenticated'
+  ]) {
+    assert.ok(registrationOnlyMigration.includes(expression), expression);
+  }
+  assert.doesNotMatch(registrationOnlyMigration, /\b(?:insert into|update public\.|delete from|truncate table|drop table)\b/i);
 });
 
 test('PC timetable cache-busts only the modified stylesheet and scripts', () => {

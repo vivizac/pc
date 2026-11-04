@@ -9,6 +9,7 @@ on:
       - 'apps/pc/index.html'
       - 'apps/pc/tests/timetable-new-card-badge.test.cjs'
       - 'supabase/migrations/*_olli_schedule_recent_card_badges.sql'
+      - 'supabase/migrations/*_olli_schedule_recent_card_badges_*.sql'
       - '.github/workflows/validate-pc-timetable-new-card-badge.yml'
   push:
     branches: [main]
@@ -19,6 +20,7 @@ on:
       - 'apps/pc/index.html'
       - 'apps/pc/tests/timetable-new-card-badge.test.cjs'
       - 'supabase/migrations/*_olli_schedule_recent_card_badges.sql'
+      - 'supabase/migrations/*_olli_schedule_recent_card_badges_*.sql'
       - '.github/workflows/validate-pc-timetable-new-card-badge.yml'
 
 permissions:
