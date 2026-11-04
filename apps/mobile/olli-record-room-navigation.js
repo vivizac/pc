@@ -260,7 +260,9 @@ async function loadRecords(name, options = {}) {
   let failFeedbackPath = `fail_feedbacks?academy_id=eq.${encodeURIComponent(academyId)}`;
   let summaryPath = `summary_feedbacks?academy_id=eq.${encodeURIComponent(academyId)}`;
   const requestedRecordMode = currentRecordMode;
+  const requestedRecordView = currentRecordView;
   const requestStillCurrent = () => loadToken === window.__olliRecordListLoadToken
+    && currentRecordView === requestedRecordView
     && currentRecordMode === requestedRecordMode
     && String(getOlliCurrentAcademyId() || '') === String(academyId);
   if (name) {
@@ -380,7 +382,7 @@ async function loadRecords(name, options = {}) {
     if (!requestStillCurrent()) return;
     // Never label a partial server response as an empty archive and do not
     // replace an already rendered list on network/pagination failure.
-    if (!list.children.length || list.querySelector('.recordEmpty')) {
+    if (!list.querySelector('.savedFeedbackStudentBlock')) {
       list.innerHTML = `<div class="recordEmpty">${escapeHtml(err.message || '오류가 발생했습니다.')}</div>`;
     }
     console.warn('피드백 전체 목록 서버 조회 실패 (기존 화면 유지):', err?.message || err);
