@@ -8,6 +8,7 @@ const service = fs.readFileSync('pc-timetable-service.js', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
 const migration = fs.readFileSync('../../supabase/migrations/20261104153500_olli_schedule_recent_card_badges.sql', 'utf8');
 const registrationOnlyMigration = fs.readFileSync('../../supabase/migrations/20261104201500_olli_schedule_recent_card_badges_registration_only.sql', 'utf8');
+const readdedSlotMigration = fs.readFileSync('../../supabase/migrations/20261105153800_olli_schedule_recent_card_badges_exclude_readded_slots.sql', 'utf8');
 
 const helperMatch = ui.match(/  function isTimetableNewCard\(kind, cardId, nowMs = Date\.now\(\)\) \{[\s\S]*?\n  \}\n\n  function cellContentsHtml/);
 assert.ok(helperMatch, 'exact production badge eligibility helper must exist');
@@ -120,6 +121,42 @@ test('badge correction preserves pickup N, access policy and prior RPC signature
     assert.ok(registrationOnlyMigration.includes(expression), expression);
   }
   assert.doesNotMatch(registrationOnlyMigration, /\b(?:insert into|update public\.|delete from|truncate table|drop table)\b/i);
+});
+
+test('existing weekly slot recreated via add must not receive NEW, even after deletion or class-group change', () => {
+  // Matches two live regression examples: Thursday 4 (민형), Friday 4 (태양).
+  const sql = readdedSlotMigration;
+  assert.match(sql, /and not exists \(\s*select 1 from public\.olli_schedule_enrollments previous/);
+  assert.match(sql, /previous\.academy_id = e\.academy_id/);
+  assert.match(sql, /previous\.student_id = e\.student_id/);
+  assert.match(sql, /previous\.id <> e\.id/);
+  assert.match(sql, /previous\.created_at < e\.created_at/);
+  assert.match(sql, /previous\.weekday = e\.weekday/);
+  assert.match(sql, /previous\.time_slot = e\.time_slot/);
+  const historicalCheck = sql.slice(sql.indexOf('-- Re-registering an old weekly seat'), sql.indexOf('    and s.academy_id = p_academy_id'));
+  assert.doesNotMatch(historicalCheck, /previous\.status\s*=/, 'cancelled/expired old slots still count as historical seats');
+  assert.doesNotMatch(historicalCheck, /previous\.class_group\s*=/, 'A-to-B groups must not restart NEW');
+  assert.doesNotMatch(historicalCheck, /previous\.session_order\s*=/, '1st/2nd session reassignment must not restart NEW');
+  assert.doesNotMatch(historicalCheck, /previous\.effective_to\s*=/, 'past schedules still count as historical slots');
+});
+
+test('read-only NEW correction preserves registration, 14-day clock, pickup N and security guards', () => {
+  const sql = readdedSlotMigration;
+  const pickupSection = source => source.slice(
+    source.indexOf('  select coalesce(jsonb_agg', source.indexOf('  into v_enrollments')),
+    source.indexOf('  return jsonb_build_object(', source.indexOf('  into v_enrollments'))
+  );
+  assert.equal(pickupSection(sql), pickupSection(registrationOnlyMigration), 'pickup N source/conditions unchanged');
+  for (const condition of [
+    'create or replace function public.olli_schedule_recent_card_badges(',
+    'private.olli_schedule_can_access(p_session_token, p_academy_id)',
+    "e.created_at > now() - interval '14 days'",
+    "e.source in ('add', 'manual')",
+    "added.change_type = 'add'",
+    "moved.change_type = 'move'",
+    "p.created_at > now() - interval '14 days'"
+  ]) assert.ok(sql.includes(condition), condition);
+  assert.doesNotMatch(sql, /\b(?:insert into|update public\.|delete from|truncate table|drop table|alter table)\b/i);
 });
 
 test('PC timetable cache-busts only the modified stylesheet and scripts', () => {
