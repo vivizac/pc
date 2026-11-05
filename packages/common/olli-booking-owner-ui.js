@@ -296,7 +296,7 @@
      (state.selectedDay&&state.mode==='pc'?'<button type="button" data-action="clear-day">날짜 선택 해제</button>':'')+'</div>'+bookingsHtml();
    const content=state.mode==='mobile'
      ?state.view==='settings'
-       ?(state.ready?settingsHtml():'<div class="obmEmptyMessage">설정을 확인 중입니다.</div>')
+       ?(state.ready?settingsHtml()+'<div class="obmShortcutsSetup"><button type="button" data-action="shortcut-setup">아이폰 아침 브리핑 연결</button></div>':'<div class="obmEmptyMessage">설정을 확인 중입니다.</div>')
        :state.ready?bookingList:
         '<div class="obmEmptyMessage">'+(state.loading?'상담 정보를 확인 중입니다.':'상담 데이터를 아직 저장하지 않았습니다. 온라인에서 한 번 열면 다음부터 바로 표시됩니다.')+'</div>'
      :state.loading?'<div class="obmEmptyMessage">예약 정보를 불러오는 중입니다.</div>'
@@ -496,6 +496,7 @@
    const action=node.dataset.action;
    if(action==='back'){close();return;}
    if(action==='copy-public-link'){await copyPublicLink(node);return;}
+    if(action==='shortcut-setup'&&state.mode==='mobile'){global.OlliShortcutBriefing?.open?.();return;}
    if(action==='dismiss'){
      // Delegated clicks from inputs/labels bubble through the backdrop.
      // Dismiss only when the backdrop itself is the direct click target,
