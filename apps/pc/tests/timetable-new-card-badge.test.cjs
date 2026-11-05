@@ -74,26 +74,22 @@ test('regular student NEW renders as the same top-right N overlay as pickup, not
 });
 
 test('new kinder and elementary cards match their normal division border colors', () => {
-  const selector = division => new RegExp(
-    '#recordRoomScreen \\\\.olliTtCell:not\\\\(\\\\.holiday\\\\) \\\\.olliTtStudent\\\\.regular\\\\.'
-    + division
-    + '\\\\.olliTtNewCard:where\\\\(:not\\\\(\\\\.attended\\\\):not\\\\(\\\\.absent\\\\):not\\\\(\\\\.absenceUpcoming\\\\):not\\\\(\\\\.pausedStudent\\\\)\\\\) \\\\{([^}]+)\\\\}'
-  );
   for (const [division, border] of [['elementary', '#bfdcf3'], ['kinder', '#f5c7d4']]) {
-    const standard = css.match(new RegExp(
-      '#recordRoomScreen \\\\.olliTtStudent\\\\.regular\\\\.' + division
-      + ' \\\\{([^}]+)\\\\}'
-    ));
-    const fresh = css.match(selector(division));
-    assert.ok(standard && fresh, division + ' normal/new styles both present');
-    assert.match(standard[1], new RegExp('border-color: ' + border + ';'));
-    assert.match(fresh[1], new RegExp('border-color: ' + border + ';'));
-    assert.match(fresh[1], /background: #fff;/);
+    const normalSelector = '#recordRoomScreen .olliTtStudent.regular.' + division + ' {';
+    const newSelector = '#recordRoomScreen .olliTtCell:not(.holiday) .olliTtStudent.regular.'
+      + division + '.olliTtNewCard:where(:not(.attended):not(.absent):not(.absenceUpcoming):not(.pausedStudent)) {';
+    assert.ok(css.includes(normalSelector), 'normal '+ division + ' style exists');
+    assert.ok(css.includes(newSelector), 'new '+ division + ' style exists');
+    const normalBlock = css.split(normalSelector)[1].split('}')[0];
+    const newBlock = css.split(newSelector)[1].split('}')[0];
+    assert.ok(normalBlock.includes('border-color: '+ border + ';'), 'normal ' + division + ' border color');
+    assert.ok(newBlock.includes('border-color: '+ border + ';'), 'NEW ' + division + ' border matches normal');
+    assert.ok(newBlock.includes('background: #fff;'), 'preserve NEW white background');
   }
-  assert.match(css, /\.olliTtStudent\.regular\.attended/);
-  assert.match(css, /\.olliTtStudent\.regular\.absent/);
-  assert.match(css, /\.olliTtStudent\.regular\.pausedStudent/);
-  assert.match(css, /\.olliTtStudent\.regular\.absenceUpcoming/);
+  assert.match(css, /\\.olliTtStudent\\.regular\\.attended/);
+  assert.match(css, /\\.olliTtStudent\\.regular\\.absent/);
+  assert.match(css, /\\.olliTtStudent\\.regular\\.pausedStudent/);
+  assert.match(css, /\\.olliTtStudent\\.regular\\.absenceUpcoming/);
 });
 
 test('week service fetches authenticated badge metadata, retaining existing schedule writes and cached week', () => {
