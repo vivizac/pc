@@ -53,28 +53,47 @@ test('only registered regular student cards and pickup cards use the independent
   assert.doesNotMatch(ui, /isTimetableNewCard\('(waitlist|makeups|trials)'/);
 });
 
-test('regular NEW badge is next to the name, pickup keeps original N corner badge', () => {
-  assert.match(ui, /const studentNameHtml = newCardClass/);
-  assert.match(ui, /class="olliTtNewName"/);
-  assert.match(ui, /class="olliTtNewNameText"/);
+test('regular student NEW renders as the same top-right N overlay as pickup, not a name capsule', () => {
+  assert.match(ui, /const studentNameHtml = esc\(item\.student_name\);/);
+  assert.match(ui, /isTimetableNewCard\('enrollments', item\.id\) \? ' olliTtNewCard' : ''/);
   assert.match(ui, /\$\{studentNameHtml\}\$\{pauseBadge\}/);
-  assert.match(css, /\.olliTtStudent\.regular\.olliTtNewCard \.olliTtNewName::after/);
-  assert.match(css, /content: "NEW";/);
-  assert.match(css, /\.olliTtPickupCard\.olliTtNewCard::after/);
-  assert.match(css, /content: "N";/);
-  assert.doesNotMatch(css, /\.olliTtStudent\.olliTtNewCard::after/);
-  assert.match(css, /position: absolute;/);
-  assert.match(css, /pointer-events: none;/);
-  assert.match(css, /isolation: isolate;/);
+  assert.doesNotMatch(ui, /olliTtNewName(?:Text)?/);
+  assert.doesNotMatch(css, /\.olliTtNewName(?:Text)?/);
+  assert.doesNotMatch(css, /content: "NEW";/);
+  assert.match(css, /#recordRoomScreen \.olliTtStudent\.regular\.olliTtNewCard,\s*#recordRoomScreen \.olliTtPickupCard\.olliTtNewCard \{/);
+  assert.match(css, /#recordRoomScreen \.olliTtStudent\.regular\.olliTtNewCard::after,\s*#recordRoomScreen \.olliTtPickupCard\.olliTtNewCard::after \{/);
+  const shared = css.match(/#recordRoomScreen \.olliTtStudent\.regular\.olliTtNewCard::after,\s*#recordRoomScreen \.olliTtPickupCard\.olliTtNewCard::after \{([^}]+)\}/);
+  assert.ok(shared, 'both cards must use one identical N overlay style');
+  for (const property of [
+    'content: "N";', 'top: -4px;', 'right: -3px;', 'width: 15px;',
+    'height: 15px;', 'border-radius: 50%;', 'background: #f04856;',
+    'pointer-events: none;'
+  ]) {
+    assert.ok(shared[1].includes(property), property);
+  }
 });
 
-test('regular NEW student card uses Olli blue border and white background without overriding status colors', () => {
-  assert.match(css, /\.olliTtCell:not\(\.holiday\) \.olliTtStudent\.regular\.olliTtNewCard:where\(:not\(\.attended\):not\(\.absent\):not\(\.absenceUpcoming\):not\(\.pausedStudent\)\)/);
-  assert.match(css, /border-color: #0A84FF;/);
-  assert.match(css, /background: #fff;/);
-  assert.match(css, /\.olliTtNewName::after \{[\s\S]*?right: 0;/);
-  assert.match(css, /\.olliTtNewName::after \{[\s\S]*?content: "NEW";/);
-  assert.match(css, /\.olliTtNewName \{[\s\S]*?padding-right: 32px;/);
+test('new kinder and elementary cards match their normal division border colors', () => {
+  const selector = division => new RegExp(
+    '#recordRoomScreen \\\\.olliTtCell:not\\\\(\\\\.holiday\\\\) \\\\.olliTtStudent\\\\.regular\\\\.'
+    + division
+    + '\\\\.olliTtNewCard:where\\\\(:not\\\\(\\\\.attended\\\\):not\\\\(\\\\.absent\\\\):not\\\\(\\\\.absenceUpcoming\\\\):not\\\\(\\\\.pausedStudent\\\\)\\\\) \\\\{([^}]+)\\\\}'
+  );
+  for (const [division, border] of [['elementary', '#bfdcf3'], ['kinder', '#f5c7d4']]) {
+    const standard = css.match(new RegExp(
+      '#recordRoomScreen \\\\.olliTtStudent\\\\.regular\\\\.' + division
+      + ' \\\\{([^}]+)\\\\}'
+    ));
+    const fresh = css.match(selector(division));
+    assert.ok(standard && fresh, division + ' normal/new styles both present');
+    assert.match(standard[1], new RegExp('border-color: ' + border + ';'));
+    assert.match(fresh[1], new RegExp('border-color: ' + border + ';'));
+    assert.match(fresh[1], /background: #fff;/);
+  }
+  assert.match(css, /\.olliTtStudent\.regular\.attended/);
+  assert.match(css, /\.olliTtStudent\.regular\.absent/);
+  assert.match(css, /\.olliTtStudent\.regular\.pausedStudent/);
+  assert.match(css, /\.olliTtStudent\.regular\.absenceUpcoming/);
 });
 
 test('week service fetches authenticated badge metadata, retaining existing schedule writes and cached week', () => {
@@ -161,7 +180,7 @@ test('read-only NEW correction preserves registration, 14-day clock, pickup N an
 
 test('PC timetable cache-busts only the modified stylesheet and scripts', () => {
   for (const asset of ['pc-timetable.js', 'pc-timetable-service.js', 'pc-timetable.css']) {
-    const version = asset === 'pc-timetable-service.js' ? '20261104-new-card-badge-1' : '20261104-new-card-badge-2';
+    const version = asset === 'pc-timetable-service.js' ? '20261104-new-card-badge-1' : '20261105-new-card-n-corner-1';
     assert.ok(html.includes(asset + '?v=' + version), asset);
   }
 });
