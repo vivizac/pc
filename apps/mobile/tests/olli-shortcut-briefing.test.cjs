@@ -50,3 +50,36 @@ test('blank days and 24-hour times have stable spoken output',()=>{
   assert.match(speak({consultations:[],tasks:[]}),/상담은 없습니다/);
   assert.match(speak({consultations:[{time:'00:05',kind:'신규 상담'}],tasks:[]}),/오전 12시 5분/);
 });
+
+
+test('new sb_secret key is only sent via apikey header, never Authorization',async()=>{
+  let headers;
+  const handler=createHandler({
+    env:{SUPABASE_SECRET_KEY:'sb_secret_mock_key'},
+    fetchFn:async (_url, options)=>{
+      headers=options.headers;
+      return {ok:true,json:async()=>({ok:true,date:'2026-11-06',consultations:[],tasks:[]})};
+    }
+  });
+  const out=res();
+  await handler({method:'POST',body:{token}},out);
+  assert.equal(out.code,200);
+  assert.equal(headers.apikey,'sb_secret_mock_key');
+  assert.equal(Object.hasOwn(headers,'Authorization'),false);
+});
+
+test('legacy service-role JWT keeps bearer authentication',async()=>{
+  let headers;
+  const handler=createHandler({
+    env:{SUPABASE_SERVICE_ROLE_KEY:'legacy.jwt.key'},
+    fetchFn:async (_url,options)=>{
+      headers=options.headers;
+      return {ok:true,json:async()=>({ok:true,date:'2026-11-06',consultations:[],tasks:[]})};
+    }
+  });
+  const out=res();
+  await handler({method:'POST',body:{token}},out);
+  assert.equal(out.code,200);
+  assert.equal(headers.Authorization,'Bearer legacy.jwt.key');
+  assert.equal(headers.apikey,'legacy.jwt.key');
+});

@@ -60,14 +60,22 @@ function createHandler({fetchFn = fetch, env = process.env} = {}) {
       const secret = env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
       if (!secret) return response(res, 503, {ok:false,code:'NOT_CONFIGURED'});
       const hash = crypto.createHash('sha256').update(token, 'utf8').digest('hex');
+      // New Supabase sb_secret keys are API keys, not JWTs. Never place them in Authorization.
+      // Legacy service_role JWT keys still require the original bearer header.
+      const headers = {apikey:secret,'Content-Type':'application/json'};
+      if (!secret.startsWith('sb_secret_')) headers.Authorization = 'Bearer ' + secret;
       const result = await fetchFn((env.SUPABASE_URL || API_URL) + '/rest/v1/rpc/olli_shortcut_briefing_read', {
         method:'POST',
         redirect:'error',
-        headers:{apikey:secret,Authorization:'Bearer ' + secret,'Content-Type':'application/json'},
+        headers,
         body:JSON.stringify({p_token_hash:hash})
       });
       const data = await result.json().catch(() => null);
-      if (!result.ok) return response(res, 502, {ok:false,code:'STORAGE_UNAVAILABLE'});
+      if (!result.ok) {
+        // Status and Postgres error code only: never log headers, API keys, or briefing tokens.
+        console.warn('Shortcuts briefing storage RPC failed', result.status || 'unknown', String(data?.code || 'unknown').slice(0,30));
+        return response(res, 502, {ok:false,code:'STORAGE_UNAVAILABLE'});
+      }
       if (data?.ok !== true) return response(res, 401, {ok:false,code:'TOKEN_EXPIRED_OR_REVOKED'});
       return response(res, 200, {ok:true,date:data.date,consultation_count:Array.isArray(data.consultations)?data.consultations.length:0,text:speak(data)});
     } catch (_) {
