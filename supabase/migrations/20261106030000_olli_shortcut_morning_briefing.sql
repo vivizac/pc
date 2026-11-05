@@ -58,7 +58,7 @@ create or replace function public.olli_shortcut_briefing_read(
 ) returns jsonb language plpgsql security definer set search_path to ''
 as $$
 declare
-  v_academy uuid; v_member uuid;
+  v_academy uuid; v_member uuid; v_role text;
   v_day date := (now() at time zone 'Asia/Seoul')::date;
   v_consultations jsonb := '[]'::jsonb;
   v_tasks jsonb := '[]'::jsonb;
@@ -69,7 +69,7 @@ begin
   if coalesce(p_token_hash,'') !~ '^[0-9a-f]{64}$' then
     return jsonb_build_object('ok',false,'code','INVALID_TOKEN');
   end if;
-  select t.academy_id,t.member_id into v_academy,v_member
+  select t.academy_id,t.member_id,m.role into v_academy,v_member,v_role
   from public.olli_shortcut_briefing_tokens t
   join public.academy_members m on m.id=t.member_id and m.academy_id=t.academy_id
   join public.academies a on a.id=t.academy_id
@@ -99,6 +99,7 @@ begin
     from public.olli_academy_tasks a
     where a.academy_id=v_academy and a.completed=false and a.deleted_at is null
       and (a.assigned_to_member_id=v_member or a.assigned_to_member_id is null)
+      and (coalesce(a.owner_only,false)=false or v_role in ('owner','super_admin'))
     order by a.created_at limit 5
   ) t;
 
