@@ -86,10 +86,10 @@ test('new kinder and elementary cards match their normal division border colors'
     assert.ok(newBlock.includes('border-color: '+ border + ';'), 'NEW ' + division + ' border matches normal');
     assert.ok(newBlock.includes('background: #fff;'), 'preserve NEW white background');
   }
-  assert.match(css, /\\.olliTtStudent\\.regular\\.attended/);
-  assert.match(css, /\\.olliTtStudent\\.regular\\.absent/);
-  assert.match(css, /\\.olliTtStudent\\.regular\\.pausedStudent/);
-  assert.match(css, /\\.olliTtStudent\\.regular\\.absenceUpcoming/);
+  assert.match(css, /\.olliTtStudent\.regular\.attended/);
+  assert.match(css, /\.olliTtStudent\.regular\.absent/);
+  assert.match(css, /\.olliTtStudent\.regular\.pausedStudent/);
+  assert.match(css, /\.olliTtStudent\.regular\.absenceUpcoming/);
 });
 
 test('week service fetches authenticated badge metadata, retaining existing schedule writes and cached week', () => {
