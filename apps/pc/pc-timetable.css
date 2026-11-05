@@ -411,14 +411,11 @@ body.olliPcSidebarCollapsed #recordRoomScreen .olliTtSection { --olli-tt-student
 #recordRoomScreen .olliTtPickupCell.holiday .olliTtPickupCard span { color:#8f959d; }
 #recordRoomScreen .olliTtPickupEntries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 #recordRoomScreen .olliTtPickupCard { min-width: 0; min-height: 28px; padding: 4px 7px; border: 1px solid #cfe0e8; border-radius: 9px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px; color: #3d5360; background: #eef6f8; }
-/* New regular cards keep their existing white background and the ordinary
-   border color for each division; absence/attendance status colors take priority. */
-#recordRoomScreen .olliTtCell:not(.holiday) .olliTtStudent.regular.elementary.olliTtNewCard:where(:not(.attended):not(.absent):not(.absenceUpcoming):not(.pausedStudent)) {
-  border-color: #bfdcf3;
-  background: #fff;
-}
+/* Both kinder and elementary NEW cards use the uploaded #74AAF6 border
+   and their existing white background. Attendance and absence states retain priority. */
+#recordRoomScreen .olliTtCell:not(.holiday) .olliTtStudent.regular.elementary.olliTtNewCard:where(:not(.attended):not(.absent):not(.absenceUpcoming):not(.pausedStudent)),
 #recordRoomScreen .olliTtCell:not(.holiday) .olliTtStudent.regular.kinder.olliTtNewCard:where(:not(.attended):not(.absent):not(.absenceUpcoming):not(.pausedStudent)) {
-  border-color: #f5c7d4;
+  border-color: #74AAF6;
   background: #fff;
 }
 /* Student and pickup NEW indicators use the same top-right N badge.
