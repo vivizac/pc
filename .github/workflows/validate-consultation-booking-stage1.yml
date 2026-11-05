@@ -229,7 +229,9 @@ jobs:
 
   guardian-browser:
     name: Mock-only guardian browser E2E (no live DB or SMS)
-    runs-on: ubuntu-latest
+    # Playwright 1.56.1 Chromium is not supported on Ubuntu 26.04,
+    # which ubuntu-latest may now resolve to. Keep browser QA enabled.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
