@@ -1,0 +1,27 @@
+name: Validate Olli iPhone Shortcuts briefing
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/api/olli-shortcut-briefing.js'
+      - 'apps/mobile/olli-shortcut-briefing-setup.js'
+      - 'apps/mobile/olli-shortcut-briefing-setup.css'
+      - 'apps/mobile/index.html'
+      - 'apps/mobile/tests/olli-shortcut-briefing.test.cjs'
+      - 'packages/common/olli-booking-owner-ui.js'
+      - 'supabase/migrations/*olli_shortcut_morning_briefing.sql'
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate JavaScript syntax
+        run: |
+          node --check apps/mobile/api/olli-shortcut-briefing.js
+          node --check apps/mobile/olli-shortcut-briefing-setup.js
+          node --check packages/common/olli-booking-owner-ui.js
+      - name: Test Shortcuts read-only endpoint
+        run: node --test apps/mobile/tests/olli-shortcut-briefing.test.cjs
