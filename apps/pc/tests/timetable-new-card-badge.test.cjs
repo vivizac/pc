@@ -73,18 +73,20 @@ test('regular student NEW renders as the same top-right N overlay as pickup, not
   }
 });
 
-test('new kinder and elementary cards match their normal division border colors', () => {
-  for (const [division, border] of [['elementary', '#bfdcf3'], ['kinder', '#f5c7d4']]) {
-    const normalSelector = '#recordRoomScreen .olliTtStudent.regular.' + division + ' {';
-    const newSelector = '#recordRoomScreen .olliTtCell:not(.holiday) .olliTtStudent.regular.'
-      + division + '.olliTtNewCard:where(:not(.attended):not(.absent):not(.absenceUpcoming):not(.pausedStudent)) {';
-    assert.ok(css.includes(normalSelector), 'normal '+ division + ' style exists');
-    assert.ok(css.includes(newSelector), 'new '+ division + ' style exists');
-    const normalBlock = css.split(normalSelector)[1].split('}')[0];
-    const newBlock = css.split(newSelector)[1].split('}')[0];
-    assert.ok(normalBlock.includes('border-color: '+ border + ';'), 'normal ' + division + ' border color');
-    assert.ok(newBlock.includes('border-color: '+ border + ';'), 'NEW ' + division + ' border matches normal');
-    assert.ok(newBlock.includes('background: #fff;'), 'preserve NEW white background');
+test('both kinder and elementary NEW borders share uploaded #74AAF6; normal borders stay unchanged', () => {
+  const suffix = '.olliTtNewCard:where(:not(.attended):not(.absent):not(.absenceUpcoming):not(.pausedStudent))';
+  const selector = division => '#recordRoomScreen .olliTtCell:not(.holiday) .olliTtStudent.regular.' + division + suffix;
+  const commonSelector = selector('elementary') + ',\n' + selector('kinder') + ' {';
+  assert.ok(css.includes(commonSelector), 'both NEW division selectors share one source of truth');
+  assert.equal(css.split(commonSelector).length, 2, 'only one shared NEW border rule');
+  const newRule = css.split(commonSelector)[1].split('}')[0];
+  assert.match(newRule, /border-color: #74AAF6;/);
+  assert.match(newRule, /background: #fff;/);
+  for (const [division, original] of [['elementary', '#bfdcf3'], ['kinder', '#f5c7d4']]) {
+    const selector = '#recordRoomScreen .olliTtStudent.regular.' + division + ' {';
+    assert.ok(css.includes(selector), 'normal ' + division + ' style still exists');
+    assert.ok(css.split(selector)[1].split('}')[0].includes('border-color: ' + original + ';'),
+      'normal ' + division + ' border color is unchanged');
   }
   assert.match(css, /\.olliTtStudent\.regular\.attended/);
   assert.match(css, /\.olliTtStudent\.regular\.absent/);
@@ -176,7 +178,7 @@ test('read-only NEW correction preserves registration, 14-day clock, pickup N an
 
 test('PC timetable cache-busts only the modified stylesheet and scripts', () => {
   for (const asset of ['pc-timetable.js', 'pc-timetable-service.js', 'pc-timetable.css']) {
-    const version = asset === 'pc-timetable-service.js' ? '20261104-new-card-badge-1' : '20261105-new-card-n-corner-1';
+    const version = asset === 'pc-timetable-service.js' ? '20261104-new-card-badge-1' : asset === 'pc-timetable.js' ? '20261105-new-card-n-corner-1' : '20261105-new-border-74aaf6-1';
     assert.ok(html.includes(asset + '?v=' + version), asset);
   }
 });
