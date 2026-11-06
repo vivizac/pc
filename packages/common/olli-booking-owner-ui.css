@@ -315,16 +315,16 @@
 #olliConsultationBookingPanel .obmPcTools .obmHeaderButtons button{padding:9px 8px}
 #olliConsultationBookingPanel .obmCalendar{height:clamp(590px,calc(100dvh - 235px),790px);grid-template-rows:28px;grid-auto-rows:minmax(85px,1fr);align-content:stretch;box-sizing:border-box}
 @media(max-width:1440px){
- #olliConsultationBookingPanel .obmPcToolbar>.obmStats>div{width:132px;height:52.8px;padding:6px}
+ #olliConsultationBookingPanel .obmPcToolbar>.obmStats>div{width:115px;height:46px;padding:6px}
  #olliConsultationBookingPanel .obmPcToolbar .obmStats strong{font-size:18px}
  #olliConsultationBookingPanel .obmPcToolbar .obmStats span{font-size:10.5px}
 }
 @media(max-width:1280px){
  #olliConsultationBookingPanel .obmPcToolbar{gap:6px}
  #olliConsultationBookingPanel .obmPcToolbar>.obmStats{gap:4px}
- #olliConsultationBookingPanel .obmPcToolbar>.obmStats>div{width:108px;height:43.2px;gap:3px;padding:4px}
+ #olliConsultationBookingPanel .obmPcToolbar>.obmStats>div{width:92px;height:36.8px;gap:3px;padding:4px}
  #olliConsultationBookingPanel .obmPcToolbar .obmStats strong{font-size:16px}
- #olliConsultationBookingPanel .obmPcToolbar .obmStats span{font-size:9px;letter-spacing:-.35px}
+ #olliConsultationBookingPanel .obmPcToolbar .obmStats span{font-size:9px;letter-spacing:-.35px;white-space:normal;text-align:center}
  #olliConsultationBookingPanel .obmPcTools{gap:4px}
  #olliConsultationBookingPanel .obmPcTools .obmPcAddManual,#olliConsultationBookingPanel .obmPcTools .obmPcAddIntake{min-height:34px;padding:8px 6px;font-size:11px}
  #olliConsultationBookingPanel .obmPcTools .obmTabs button{padding:8px 6px;font-size:11px}
