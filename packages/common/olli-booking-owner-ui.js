@@ -107,7 +107,7 @@
        '</div></div></div>'
      ).join('')+'</div>';
    }
-   return '<div class="obmStats"><div><strong>'+confirmed.length+'</strong><span>'+monthLabel+'</span></div><div><strong>'+todayN+'</strong><span>오늘 상담</span></div><div><strong>'+newN+'</strong><span>신규생 상담</span></div>'+
+   return '<div class="obmStats"><div><strong>'+confirmed.length+'</strong><span>'+monthLabel+'</span></div><div><strong>'+todayN+'</strong><span>오늘 상담</span></div><div><strong>'+newN+'</strong><span>신규 상담·체험</span></div>'+
     (unbooked===null?'':'<div><strong>'+unbooked.length+'</strong><span>이번 달 미예약 대상</span></div>')+'</div>';
  }
  function calendarHtml(){
