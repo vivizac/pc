@@ -8,7 +8,7 @@
 .obmHeader p{font-size:13px;color:#7a828d;margin:5px 0 0}
 .obmHeaderButtons{display:flex;gap:6px}
 .obmHeaderButtons [data-action="add-manual"]{background:#1687ff;color:#fff;border-color:#1687ff;font-weight:750;white-space:nowrap}
-.obmHeaderButtons [data-action="add-manual"]:disabled,.obmFormActions button:disabled{opacity:.5;cursor:not-allowed}
+.obmHeaderButtons [data-action="add-manual"]:disabled,.obmHeaderButtons [data-action="add-intake"]:disabled,.obmFormActions button:disabled{opacity:.5;cursor:not-allowed}
 .obmHeaderButtons button,.obmMonth button,.obmListHeader button{border:1px solid #e0e5eb;border-radius:9px;background:#fff;padding:9px 12px;font-size:12px;color:#4d5969;cursor:pointer}
 .obmTabs{display:flex;gap:4px;align-items:center;background:#e9edf3;padding:4px;border-radius:11px;width:fit-content;margin-bottom:16px}
 .obmTabs button{padding:9px 20px;color:#697582;background:transparent;border:0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
@@ -116,6 +116,11 @@
 .obmModal label{display:flex;flex-direction:column;gap:8px;font-size:13px}
 .obmModal input,.obmModal select{box-sizing:border-box;min-width:0;max-width:100%;width:100%;padding:12px;border-radius:9px;border:1px solid #e1e6eb;background:#fff}
 .obmModal [data-manual-student]{display:none}
+.obmIntakeType{border:0;padding:0;margin:0;min-width:0}
+.obmIntakeType legend{font-size:13px;font-weight:650;padding:0 0 8px}
+.obmIntakeTypeOptions{display:flex;flex-wrap:wrap;gap:12px}
+.obmModal .obmIntakeTypeOptions label{display:inline-flex;flex-direction:row;align-items:center;gap:7px;font-size:13px;cursor:pointer}
+.obmModal .obmIntakeTypeOptions input[type="radio"]{width:17px;height:17px;min-width:17px;max-width:17px;accent-color:#1687ff;padding:0;margin:0;cursor:pointer}
 .obmStudentMatches{width:100%;max-height:205px;overflow-y:auto;border:1px solid #e1e6eb;border-radius:9px;background:#fff}
 .obmStudentMatches[hidden]{display:none}
 .obmStudentMatch{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:11px 12px;border:0;border-bottom:1px solid #eff2f5;background:#fff;color:#17202b;text-align:left;cursor:pointer;font-size:13px}
@@ -298,6 +303,8 @@
 #olliConsultationBookingPanel .obmPcTools{display:flex;align-items:center;gap:9px;flex:0 0 auto;margin-left:auto}
 #olliConsultationBookingPanel .obmPcTools .obmPcAddManual{flex:0 0 auto;min-height:38px;padding:9px 12px;border:1px solid #1687ff;border-radius:9px;background:#1687ff;color:#fff;font:750 12px Pretendard,sans-serif;white-space:nowrap;cursor:pointer}
 #olliConsultationBookingPanel .obmPcTools .obmPcAddManual:disabled{opacity:.5;cursor:not-allowed}
+#olliConsultationBookingPanel .obmPcTools .obmPcAddIntake{flex:0 0 auto;min-height:38px;padding:9px 12px;border:1px solid #1687ff;border-radius:9px;background:#fff;color:#1687ff;font:750 12px Pretendard,sans-serif;white-space:nowrap;cursor:pointer}
+#olliConsultationBookingPanel .obmPcTools .obmPcAddIntake:disabled{opacity:.5;cursor:not-allowed}
 #olliConsultationBookingPanel .obmPcTools .obmMonth{flex:0 0 auto;gap:6px;margin:0}
 #olliConsultationBookingPanel .obmPcTools .obmMonth strong{font-size:14px;white-space:nowrap}
 #olliConsultationBookingPanel .obmPcTools .obmMonth button{padding:4px 8px}
@@ -319,7 +326,7 @@
  #olliConsultationBookingPanel .obmPcToolbar .obmStats strong{font-size:16px}
  #olliConsultationBookingPanel .obmPcToolbar .obmStats span{font-size:9px;letter-spacing:-.35px}
  #olliConsultationBookingPanel .obmPcTools{gap:4px}
- #olliConsultationBookingPanel .obmPcTools .obmPcAddManual{min-height:34px;padding:8px 6px;font-size:11px}
+ #olliConsultationBookingPanel .obmPcTools .obmPcAddManual,#olliConsultationBookingPanel .obmPcTools .obmPcAddIntake{min-height:34px;padding:8px 6px;font-size:11px}
  #olliConsultationBookingPanel .obmPcTools .obmTabs button{padding:8px 6px;font-size:11px}
  #olliConsultationBookingPanel .obmPcTools .obmMonth button{padding:4px 4px}
  #olliConsultationBookingPanel .obmPcTools .obmMonth strong{font-size:12px}
