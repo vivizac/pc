@@ -23,6 +23,8 @@ on:
       - 'tests/consultation-booking-manual-evening*'
       - 'tests/consultation-booking-reschedule*'
       - 'supabase/migrations/*_olli_booking_staff_reschedule_owner_slots.sql'
+      - 'supabase/migrations/*_olli_booking_staff_intake_trial.sql'
+      - 'tests/consultation-booking-intake-trial*'
       - 'tests/consultation-reminder*'
       - 'supabase/migrations/*_olli_consultation_daily_reminder*.sql'
       - 'apps/mobile/supabase/functions/olli-consultation-reminder/*'
@@ -61,6 +63,8 @@ on:
       - 'tests/consultation-booking-manual-evening*'
       - 'tests/consultation-booking-reschedule*'
       - 'supabase/migrations/*_olli_booking_staff_reschedule_owner_slots.sql'
+      - 'supabase/migrations/*_olli_booking_staff_intake_trial.sql'
+      - 'tests/consultation-booking-intake-trial*'
       - 'tests/consultation-reminder*'
       - 'supabase/migrations/*_olli_consultation_daily_reminder*.sql'
       - 'apps/mobile/supabase/functions/olli-consultation-reminder/*'
@@ -177,6 +181,11 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261103150000_olli_booking_staff_reschedule_owner_slots.sql
           psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-reschedule.integration.sql
+      - name: Apply and verify staff intake and trial migration in isolated PostgreSQL
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261106081947_olli_booking_staff_intake_trial.sql
+          psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-intake-trial.integration.sql
+          node --test tests/consultation-booking-intake-trial.test.cjs
       - name: Validate scheduled consultation reminder in isolated PostgreSQL
         run: |
           psql -v ON_ERROR_STOP=1 -f tests/consultation-reminder.bootstrap.sql
@@ -249,6 +258,8 @@ jobs:
         run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/pc-consultation-compact-toolbar-browser.test.cjs
       - name: Verify owner manual booking modal controls on PC and mobile
         run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-booking-modal-dismiss-browser.test.cjs
+      - name: Verify new consultation and trial radio form on PC (mock browser)
+        run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-booking-intake-trial-browser.test.cjs
       - name: Verify owner reschedule dialog, time lookup and mobile date width
         run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-booking-reschedule-browser.test.cjs
       - name: Verify mobile consultation header, pills and academy-style stat cards

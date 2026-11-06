@@ -202,8 +202,8 @@ test('mobile-only layout reuses academy stat card source and Work header dimensi
 });
 
 test('PC versions and toolbar source are preserved, mobile scripts cache-busted',()=>{
- assert.match(desktop,/olli-booking-owner-ui\.js\?v=20261102-manual-slots-search-4/);
- assert.match(desktop,/olli-booking-owner-ui\.css\?v=20261102-manual-slots-search-4/);
+ assert.match(desktop,/olli-booking-owner-ui\.js\?v=20261106-intake-trial-1/);
+ assert.match(desktop,/olli-booking-owner-ui\.css\?v=20261106-intake-trial-1/);
  assert.match(html,/olli-booking-owner-ui\.js\?v=20261103-local-first-realtime-1/);
  assert.match(html,/olli-booking-owner-ui\.css\?v=20261103-local-first-realtime-1/);
  assert.match(shared,/#olliConsultationBookingPanel \.obmPcToolbar/);
@@ -212,5 +212,5 @@ test('PC versions and toolbar source are preserved, mobile scripts cache-busted'
  assert.match(canonicalGlass,/\.olliBookingMobileOverlay \.obmMobileBack/);
  assert.match(js,/class="memoRosterBackIcon"/);
  assert.doesNotMatch(shared,/\.obmMobileBackIcon/);
- assert.match(js,/state\.mode==='pc'\?'<button class="obmPcAddManual"/);
+ assert.match(js,/const pcManual=state\.mode==='pc'\s*\?'<button class="obmPcAddManual"/);
 });

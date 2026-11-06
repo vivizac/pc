@@ -56,7 +56,7 @@ for(const mode of ['pc','mobile']){
    await page.evaluate(mode=>window.OlliBookingDashboard.open(mode),mode);
    await page.locator('[data-action="add-manual"]').waitFor({state:'visible'});
    await page.locator('[data-action="add-manual"]').click();
-   const dialog=page.getByRole('dialog',{name:'상담일정 추가'});
+   const dialog=page.getByRole('dialog',{name:mode==='pc'?'재원생 상담':'상담일정 추가'});
    await dialog.waitFor({state:'visible'});
    await page.locator('[data-slot-time] option[value*="T"]').first().waitFor({state:'attached'});
    // Regression: clicking inside the modal MUST NOT be interpreted as a backdrop click.
