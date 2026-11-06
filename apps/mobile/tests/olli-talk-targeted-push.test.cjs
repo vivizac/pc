@@ -44,7 +44,7 @@ test('push dispatch follows recipient registration for both targeted and broadca
 test('Olli Talk Web Push explicitly requests audible notifications', () => {
   const serviceWorker = fs.readFileSync(path.join(root, 'olli-push-sw.js'), 'utf8');
   assert.match(serviceWorker, /showNotification\([\s\S]*?silent:\s*false/);
-  assert.match(push, /olli-push-sw\.js\?v=20261102-consultation-10am-1/);
+  assert.match(push, /olli-push-sw\.js\?v=20261106-shared-chat-1/);
 });
 
 test('foreground push plays a local Olli chime only while the app is visible and notifications are enabled', () => {
@@ -65,7 +65,7 @@ test('iOS audio is unlocked from a real user gesture before later foreground pus
 });
 
 test('foreground notification sound bundle is cache-busted', () => {
-  assert.match(html, /olli-talk-push\.js\?v=20261102-10am-badge-1/);
+  assert.match(html, /olli-talk-push\.js\?v=20261106-shared-chat-1/);
 });
 
 
@@ -132,5 +132,5 @@ test('Work Hub material read keeps using the dedicated material read RPC', () =>
 });
 
 test('live Work badge refresh keeps the service worker cache-busted', () => {
-  assert.match(push, /olli-push-sw\.js\?v=20261102-consultation-10am-1/);
+  assert.match(push, /olli-push-sw\.js\?v=20261106-shared-chat-1/);
 });

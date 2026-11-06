@@ -4,6 +4,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 
 | 수정 대상 | JavaScript | CSS |
 |---|---|---|
+| 공동 팀챗 통합 관리·일반 공동 대화 (작업 브랜치, 서버 gate 기본 꺼짐) | `packages/common/olli-shared-team-chat.js` | `packages/common/olli-shared-team-chat.css` |
 | 사이드바·상단 헤더·화면 전환 | `pc-shell.js` | `pc-shell.css` |
 | 학생관리·할 일·상담예정 학생 영역 | `pc-student-management.js` | `pc-student-management.css` |
 | 성향기록부·학생 명단·관찰기록 패널 | `pc-attendance.js` | `pc-attendance.css` |

@@ -8634,6 +8634,7 @@
 
         hydrateOlliTalkDeferredFirstPaintAssets();
         bindOlliTalkRealtime();
+        window.OlliSharedTeamChat?.refreshEntry?.();
         loadOlliTalkMembers()
           .then(members=>{
             renderOlliTalkMentionMenu();

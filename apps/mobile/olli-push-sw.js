@@ -65,6 +65,16 @@ self.addEventListener('push', (event) => {
     const title = String(payload.title || '올리톡');
     const body = String(payload.body || '');
     const data = payload.data && typeof payload.data === 'object' ? payload.data : {};
+    if(data.type==='olli-shared-chat'){
+      // Shared-room IDs never enter academy Work/payroll badge state.
+      const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+      for(const client of windows)client.postMessage({type:'OLLI_SHARED_CHAT_REFRESH',roomId:data.roomId});
+      await self.registration.showNotification('올리 공동 팀챗',{
+        body:'공동 대화방에 새 메시지가 있습니다.',tag:'olli-shared-chat-'+String(data.roomId)+'-'+String(data.messageId),
+        renotify:false,silent:false,icon:'./icon.png',badge:'./icon.png',data
+      });
+      return;
+    }
     const tag = String(payload.tag || ('olli-talk-' + (data.messageId || Date.now())));
     const badgeCount=safeCount(data.badgeCount);
     const isConsultation=data.type==='olli-consultation-reminder';
@@ -125,7 +135,9 @@ self.addEventListener('notificationclick', (event) => {
     for (const client of windows) {
       try {
         await client.focus();
-        client.postMessage(data.type === 'olli-consultation-reminder'
+        client.postMessage(data.type === 'olli-shared-chat'
+          ? {type:'OLLI_SHARED_CHAT_OPEN',roomId:data.roomId}
+          : data.type === 'olli-consultation-reminder'
           ? { type:'OLLI_CONSULTATION_OPEN_FROM_NOTIFICATION' }
           : data.type === 'olli-material-request'
           ? { type:'OLLI_WORK_OPEN_MATERIALS', requestId:data.requestId||null }

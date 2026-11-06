@@ -223,6 +223,7 @@ function themeOption(mode,label,detail){
 function detailHtml(){
   const disabled=(!canEdit()||state.saving)?' disabled':'';
   return '<div class="olliTeamTalkSettingsPage">'
+    +(currentRole()==='owner'?'<section class="olliTeamTalkSettingsCard"><button type="button" onclick="OlliSharedTeamChat.manage()">팀챗 통합 관리</button><p>같은 원장의 참여 학원과 팀챗 표시 이름을 관리합니다.</p></section>':'')
     +'<div class="settingsDetailIntro"><div class="settingsDetailTitle">팀챗을<br>내 스타일로 설정합니다.</div></div>'
     +avatarSettingsHtml()
     +'<section class="olliTeamTalkSettingsCard">'
