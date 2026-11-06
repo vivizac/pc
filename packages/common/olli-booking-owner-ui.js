@@ -94,7 +94,7 @@
      const items=[
        ['이번 달 예약',confirmed.length,confirmed.length-newN,newN],
        ['오늘 상담',todayN,todayN-todayNewN,todayNewN],
-       ['신규 상담·체험',newN,0,newN],
+       ['신규생 상담',newN,0,newN],
        ['이번 달 미예약 대상',unbookedN,unbookedN,unbooked===null?'—':0]
      ];
      return '<div class="recordAcademyStatGrid obmMobileStatGrid">'+items.map(([label,value,regular,intake])=>
@@ -305,7 +305,7 @@
    const pcCalendar=state.mode==='pc'&&state.view==='calendar';
    const stats=state.mode==='mobile'?(state.ready?renderStats():
        '<div class="recordAcademyStatGrid obmMobileStatGrid obmStatsPending">'+
-       ['이번 달 예약','오늘 상담','신규 상담·체험','이번 달 미예약 대상'].map(label=>
+       ['이번 달 예약','오늘 상담','신규생 상담','이번 달 미예약 대상'].map(label=>
          '<div class="recordAcademyStatCard"><div class="recordAcademyStatLabel">'+label+
          '</div><div class="recordAcademyStatBody"><div class="recordAcademyStatValue">—</div></div></div>'
        ).join('')+'</div>')
