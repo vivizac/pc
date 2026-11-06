@@ -11,6 +11,10 @@ const a=src.indexOf('  async function manualNoticeAcademyBookingUrl(ctx) {');
 const b=src.indexOf('  function manualConsultationCopyIconSvg() {',a);
 assert.ok(a>=0&&b>a,'manual copy functions must remain together');
 const segment=src.slice(a,b);
+const nameStart=src.indexOf('  function manualGivenName(');
+const nameEnd=src.indexOf('  function manualNoticeStage(',nameStart);
+assert.ok(nameStart>=0&&nameEnd>nameStart,'student name substitution functions must exist');
+const getNameValue=vm.runInNewContext('(function(){\n'+src.slice(nameStart,nameEnd)+'\nreturn manualNameValue\n})()',{});
 const academy='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const slug='0123456789abcdef0123456789abcdef0123';
 const bookingUrl='https://booking.example.org/consultation-booking.html?academy='+slug;
@@ -26,12 +30,12 @@ function prepare(body,options={}){
  }};
  const sandbox={
    global:fakeWindow, context, sameContext:ctx=>ctx.academyId===account&&ctx.sessionToken==='owner-session',
-   manualNoticeStudent:()=>({name:'김하늘',type:'kinder'}),
-   manualNoticeStage:()=>'after_1',
+   manualNoticeStudent:()=>({name:options.name||'김하늘',type:'kinder'}),
+   manualNoticeStage:()=>options.stage||'after_1',
    manualNoticeConfig:async()=>({academy_name:'비비작',booking_url:old}),
-   loadManualNotices:async()=>({'kinder:after_1':body}),
+   loadManualNotices:async()=>({[options.stage==='annual:every_12'?'annual:every_12':'kinder:'+(options.stage||'after_1')]:body}),
    manualNoticeDefaults:()=>'', manualGivenName:n=>n,
-   manualNameValue:(n)=>n,
+   manualNameValue:(n,kind)=>options.stage==='annual:every_12'?getNameValue(n,kind):n,
    navigator:{clipboard:{writeText:async value=>{copied=value;}}},
    setTimeout:()=>{}, URL, document:{}, console
  };
@@ -102,4 +106,29 @@ test('mobile and PC load the same one-source copy functionality',()=>{
   assert.match(html,/olli-consultation-messages\.js/);
   assert.ok(require('../packages/common/'+app+'-runtime-manifest.json').files.includes('olli-consultation-messages.js'));
  }
+});
+
+test('annual recurring notice uses the new phrase and per-student possessive name',async()=>{
+ const old='올해도 #{학생이름_소유격} 정기상담 기간이 돌아왔습니다^^';
+ const r=await prepare('안녕하세요, 어머님 😊\\n\\n'+old,{stage:'annual:every_12',name:'김지오'}).copy();
+ assert.ok(r.copied.includes('지오의 정기상담 신청 안내 입니다^^'));
+ assert.ok(!r.copied.includes('올해도'));
+ assert.equal(getNameValue('김하늘','possessive'),'하늘이의');
+ assert.equal(getNameValue('김지오','possessive'),'지오의');
+ assert.ok(src.includes('"annual:every_12": "안녕하세요, 어머님 😊\\n\\n#{학생이름_소유격} 정기상담 신청 안내 입니다^^'));
+});
+test('legacy notice migration does not change 1, 6, or initial 12 month messages',()=>{
+ const normalize=vm.runInNewContext('(function(){\\n'+segment+'\\nreturn updateLegacyAnnualNoticeLine\\n})()', {});
+ const old='올해도 #{학생이름_소유격} 정기상담 기간이 돌아왔습니다^^';
+ const replacement='#{학생이름_소유격} 정기상담 신청 안내 입니다^^';
+ assert.equal(normalize('annual:every_12',old),replacement);
+ for(const stage of ['after_1','after_3','every_6','every_12']){
+  for(const group of ['kinder','elementary']){
+   assert.equal(normalize(group+':'+stage,old),old,'must not change '+group+':'+stage);
+  }
+ }
+ assert.ok(src.includes('"kinder:after_1": "안녕하세요 어머님'));
+ assert.ok(src.includes('"kinder:every_6": "안녕하세요, 어머님'));
+ assert.ok(src.includes('"elementary:after_1": "안녕하세요 어머님'));
+ assert.ok(src.includes('"elementary:every_6": "안녕하세요, 어머님'));
 });
