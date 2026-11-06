@@ -212,5 +212,5 @@ test('PC versions and toolbar source are preserved, mobile scripts cache-busted'
  assert.match(canonicalGlass,/\.olliBookingMobileOverlay \.obmMobileBack/);
  assert.match(js,/class="memoRosterBackIcon"/);
  assert.doesNotMatch(shared,/\.obmMobileBackIcon/);
- assert.match(js,/state\.mode==='pc'\?'<button class="obmPcAddManual"/);
+ assert.match(js,/const pcManual=state\.mode==='pc'\s*\?'<button class="obmPcAddManual"/);
 });
