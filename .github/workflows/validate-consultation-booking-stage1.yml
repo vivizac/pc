@@ -183,7 +183,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-reschedule.integration.sql
       - name: Apply and verify staff intake and trial migration in isolated PostgreSQL
         run: |
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261106180000_olli_booking_staff_intake_trial.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261106081947_olli_booking_staff_intake_trial.sql
           psql -v ON_ERROR_STOP=1 -f tests/consultation-booking-intake-trial.integration.sql
           node --test tests/consultation-booking-intake-trial.test.cjs
       - name: Validate scheduled consultation reminder in isolated PostgreSQL
