@@ -258,6 +258,8 @@ jobs:
         run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/pc-consultation-compact-toolbar-browser.test.cjs
       - name: Verify owner manual booking modal controls on PC and mobile
         run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-booking-modal-dismiss-browser.test.cjs
+      - name: Verify new consultation and trial radio form on PC (mock browser)
+        run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-booking-intake-trial-browser.test.cjs
       - name: Verify owner reschedule dialog, time lookup and mobile date width
         run: NODE_PATH=$PWD/tests/consultation-messages/node_modules node --test tests/consultation-booking-reschedule-browser.test.cjs
       - name: Verify mobile consultation header, pills and academy-style stat cards
