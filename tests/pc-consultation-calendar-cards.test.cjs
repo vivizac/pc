@@ -75,8 +75,8 @@ test('PC keeps original refresh while mobile uses back and plus, without close o
  assert.match(js,/obmHeaderPc/);
  assert.match(js,/data-action="refresh"/);
  assert.match(css,/#olliConsultationBookingPanel \.obmHeaderPc\{justify-content:flex-end/);
- assert.match(pc,/olli-booking-owner-ui\.css\?v=20261102-manual-slots-search-4/);
- assert.match(pc,/olli-booking-owner-ui\.js\?v=20261102-manual-slots-search-4/);
+ assert.match(pc,/olli-booking-owner-ui\.css\?v=20261106-intake-trial-1/);
+ assert.match(pc,/olli-booking-owner-ui\.js\?v=20261106-intake-trial-1/);
   assert.match(mobile,/olli-booking-owner-ui\.css\?v=\d{8}-[\w-]+/);
  assert.match(mobile,/olli-booking-owner-ui\.js\?v=20261103-local-first-realtime-1/);
 });
