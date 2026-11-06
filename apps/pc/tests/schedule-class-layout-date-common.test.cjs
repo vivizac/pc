@@ -2,8 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const path = require('node:path');
 
-const source = fs.readFileSync('olli-command-schedule-common.js', 'utf8');
+const source = fs.readFileSync(path.resolve(__dirname, '../../../packages/common/olli-command-schedule-common.js'), 'utf8');
 
 function loadSchedule(data) {
   const service = {
@@ -24,10 +25,10 @@ function loadSchedule(data) {
 }
 
 function groups(result, timeSlot = 2) {
-  return result.allSlots
-    .filter(slot => slot.division === 'elementary' && Number(slot.timeSlot) === Number(timeSlot))
-    .map(slot => slot.classGroup)
-    .sort();
+  // Host Array.from compares domain values instead of VM-specific prototypes.
+  return Array.from(result.allSlots
+    .filter(slot => slot.division === 'elementary' && Number(slot.timeSlot) === Number(timeSlot)),
+    slot => slot.classGroup).sort();
 }
 
 function fixture() {

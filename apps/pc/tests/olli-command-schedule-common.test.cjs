@@ -2,8 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const path = require('node:path');
 
-const source = fs.readFileSync('olli-command-schedule-common.js', 'utf8');
+const source = fs.readFileSync(path.resolve(__dirname, '../../../packages/common/olli-command-schedule-common.js'), 'utf8');
 
 function loadSchedule(weekData, calendarDays = [], options = {}) {
   const calls = options.calls || {};
@@ -953,7 +954,7 @@ test('absence command marks the regular session absent and stores the reason mem
   assert.equal(prepared.command.reason, '감기');
 
   await schedule.executePreparedWrite(prepared.command);
-  assert.deepEqual(calls.setAttendanceSessionStatus, {
+  assert.deepEqual(structuredClone(calls.setAttendanceSessionStatus), {
     studentId:'student-1',
     sessionDate:'2026-09-18',
     sessionKind:'regular',

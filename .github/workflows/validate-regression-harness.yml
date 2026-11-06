@@ -1,0 +1,43 @@
+name: Validate regression harness repairs
+on:
+  pull_request:
+    paths:
+      - 'tests/regression/**'
+      - 'tests/consultation-messages-ui.test.cjs'
+      - 'tests/consultation-summary-source-provenance.test.cjs'
+      - 'tests/team-talk-avatar-picker.test.cjs'
+      - 'apps/pc/tests/*schedule*common.test.cjs'
+      - 'apps/pc/tests/observation-memo-safety-contract.test.cjs'
+      - 'apps/mobile/tests/olli-talk-mentions-tasks.test.cjs'
+      - 'apps/mobile/tests/olli-talk-keyboard-close-return.test.cjs'
+      - 'apps/mobile/tests/phone-drawer-rear-search-state.test.cjs'
+      - '.github/workflows/validate-regression-harness.yml'
+permissions:
+  contents: read
+jobs:
+  repaired-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix tests/shared-chat --ignore-scripts
+      - run: npx --prefix tests/shared-chat playwright install --with-deps chromium
+      - name: Reporter failure handling and current root contracts
+        env:
+          NODE_PATH: ${{ github.workspace }}/tests/shared-chat/node_modules
+        run: node --test tests/regression/runner.test.cjs tests/consultation-summary-source-provenance.test.cjs tests/team-talk-avatar-picker.test.cjs tests/consultation-messages-ui.test.cjs
+      - name: Date-specific class groups and active observation editor isolation
+        run: |
+          node --test apps/pc/tests/schedule-class-layout-date-common.test.cjs
+          node --test --test-name-pattern='edit state contract' apps/pc/tests/observation-memo-safety-contract.test.cjs
+      - name: Mention escaping, drawer search and keyboard blur fixtures
+        working-directory: apps/mobile
+        run: |
+          node --check tests/olli-talk-mentions-tasks.test.cjs
+          node --test --test-name-pattern='teacher mention regex' tests/olli-talk-mentions-tasks.test.cjs
+          node --test tests/phone-drawer-rear-search-state.test.cjs
+          node --test --test-name-pattern='blur remembers' tests/olli-talk-keyboard-close-return.test.cjs
+      # This job checks the named repairs. The unfiltered local audit includes
+      # all historical assertions and must also pass before release.

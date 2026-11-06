@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
 const root = path.join(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'olli-talk-beta.js'), 'utf8');
@@ -39,11 +40,15 @@ test('Olli Talk routes Olli-prefixed messages through the shared schedule comman
 });
 
 test('teacher mention regex escaping remains valid', () => {
-  assert.match(source, /function escapeRegExp\(value\)/);
-  assert.ok(source.includes("'\\\\test('teacher mention regex escaping remains valid', () => {
-  assert.match(source, /replace\(\/\[\.\*\+\?\^\$\(\)\|\[\\\]\{\}\\\\\]\/g, '\\\\$&'\)/);
-});'"));
-  assert.doesNotMatch(source, /async function callOlliTalkRpc\(name, params\).*escapeRegExp/);
+  const start=source.indexOf('  function escapeRegExp(value){');
+  const end=source.indexOf('\n  function resolveMentionedMembers',start);
+  assert.ok(start>=0&&end>start,'the production mention escaping function must be present');
+  const escape=vm.runInNewContext('('+source.slice(start,end).trim()+')');
+  for(const name of ['김민서','교사(A)','지점+이름','이름[1]','x.y','\\name','^$']){
+    const pattern=new RegExp('^'+escape(name)+'$');
+    assert.equal(pattern.test(name),true,name);
+    assert.equal(pattern.test(name+'다른이름'),false,name);
+  }
 });
 
 test('mobile moves shared one-minute operational commands to Olli Talk', () => {
