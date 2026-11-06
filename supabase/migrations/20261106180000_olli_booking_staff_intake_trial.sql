@@ -11,7 +11,7 @@ alter table public.olli_booking_intakes
 
 create function public.olli_booking_staff_intake_create(
  p_session_token text, p_academy_id uuid,
- p_child_name text, p_age_years smallint, p_visit_type text,
+ p_child_name text, p_age_years integer, p_visit_type text,
  p_start_at timestamptz, p_request_key uuid
 ) returns jsonb
 language plpgsql security definer set search_path=''
@@ -88,9 +88,9 @@ end;
 $function$;
 
 revoke all on function public.olli_booking_staff_intake_create(
- text,uuid,text,smallint,text,timestamptz,uuid) from public,anon,authenticated;
+ text,uuid,text,integer,text,timestamptz,uuid) from public,anon,authenticated;
 grant execute on function public.olli_booking_staff_intake_create(
- text,uuid,text,smallint,text,timestamptz,uuid) to anon,authenticated,service_role;
+ text,uuid,text,integer,text,timestamptz,uuid) to anon,authenticated,service_role;
 
 -- Retain all original owner list/change/cancel behavior; expose subtype and age.
 create or replace function public.olli_booking_staff_manage(
