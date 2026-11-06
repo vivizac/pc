@@ -95,14 +95,16 @@ test('PC toolbar order and calendar-only content preserve the mobile version',()
  }
  const calendar=page('pc','calendar');
  const addIndex=calendar.indexOf('data-action="add-manual"');
+ const intakeIndex=calendar.indexOf('data-action="add-intake"');
  const monthIndex=calendar.indexOf('class="obmMonth"');
  const tabIndex=calendar.indexOf('class="obmTabs"');
  const refreshIndex=calendar.indexOf('data-action="refresh"');
  assert.ok(calendar.includes('class="obmPcToolbar"'));
  const statsIndex=calendar.indexOf('data-stats');
- assert.ok(statsIndex>0&&statsIndex<addIndex&&addIndex<monthIndex&&monthIndex<tabIndex&&tabIndex<refreshIndex,'stats, add, month, tabs, refresh in this order');
+ assert.ok(statsIndex>0&&statsIndex<addIndex&&addIndex<intakeIndex&&intakeIndex<monthIndex&&monthIndex<tabIndex&&tabIndex<refreshIndex,'stats, add, month, tabs, refresh in this order');
  assert.equal((calendar.match(/data-action="add-manual"/g)||[]).length,1);
- assert.match(calendar,/class="obmPcTools"><button class="obmPcAddManual"[^>]+data-action="add-manual"[^>]*>\+ 상담일정 추가<\/button><div class="obmMonth"/);
+ assert.equal((calendar.match(/data-action="add-intake"/g)||[]).length,1);
+ assert.match(calendar,/class="obmPcTools"><button class="obmPcAddManual"[^>]+data-action="add-manual"[^>]*>\+ 재원생 상담<\/button><button class="obmPcAddIntake"[^>]+data-action="add-intake"[^>]*>\+ 신규 상담<\/button><div class="obmMonth"/);
  assert.doesNotMatch(calendar,/obmManualActions/);
  assert.ok(calendar.includes('data-calendar'));
  assert.doesNotMatch(calendar,/data-bookings|class="obmListHeader"/);
@@ -117,6 +119,7 @@ test('PC toolbar order and calendar-only content preserve the mobile version',()
  assert.match(mobileToday,/class="obmMobileHeading"/);
  assert.match(mobileToday,/class="obmMobileAdd"/);
  assert.equal((mobileToday.match(/data-action="add-manual"/g)||[]).length,1);
+ assert.doesNotMatch(mobileToday,/data-action="add-intake"/,'only PC adds an intake action');
  assert.doesNotMatch(mobileToday,/data-action="close"|data-action="refresh"|학원 상담 예약과 일정/);
  assert.ok(mobileToday.includes('data-bookings')&&mobileToday.includes('전체 예약'));
  const mobileSettings=page('mobile','settings');
