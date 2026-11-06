@@ -334,14 +334,6 @@
   function manualNoticeDefaults(key) {
     return (MANUAL_NOTICE_BODIES[key] || '') + '\n\n' + MANUAL_NOTICE_INFO;
   }
-  // Preserve saved custom notices; adjust only the former annual line when displayed/copied.
-  function updateLegacyAnnualNoticeLine(key, body) {
-    if (key !== 'annual:every_12') return body;
-    return String(body || '').replace(
-      '올해도 #{학생이름_소유격} 정기상담 기간이 돌아왔습니다^^',
-      '#{학생이름_소유격} 정기상담 신청 안내 입니다^^'
-    );
-  }
 
   function manualNoticeEditorMarkup() {
     const slots=global.OlliConsultationMessageTemplates?.slots||[];
@@ -458,6 +450,14 @@
         url.hash || url.searchParams.size !== 1)
       throw new Error('학원 예약 링크 형식이 올바르지 않습니다.');
     return url.toString();
+  }
+  // Preserve saved custom notices; adjust only the former annual line when displayed/copied.
+  function updateLegacyAnnualNoticeLine(key, body) {
+    if (key !== 'annual:every_12') return body;
+    return String(body || '').replace(
+      '올해도 #{학생이름_소유격} 정기상담 기간이 돌아왔습니다^^',
+      '#{학생이름_소유격} 정기상담 신청 안내 입니다^^'
+    );
   }
   function composeManualNoticeWithLink(body, academyUrl, oldBookingUrl) {
     const previous = String(oldBookingUrl || '').trim();
