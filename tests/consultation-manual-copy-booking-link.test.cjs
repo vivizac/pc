@@ -110,15 +110,15 @@ test('mobile and PC load the same one-source copy functionality',()=>{
 
 test('annual recurring notice uses the new phrase and per-student possessive name',async()=>{
  const old='올해도 #{학생이름_소유격} 정기상담 기간이 돌아왔습니다^^';
- const r=await prepare('안녕하세요, 어머님 😊\\n\\n'+old,{stage:'annual:every_12',name:'김지오'}).copy();
+ const r=await prepare('안녕하세요, 어머님 😊\n\n'+old,{stage:'annual:every_12',name:'김지오'}).copy();
  assert.ok(r.copied.includes('지오의 정기상담 신청 안내 입니다^^'));
  assert.ok(!r.copied.includes('올해도'));
  assert.equal(getNameValue('김하늘','possessive'),'하늘이의');
  assert.equal(getNameValue('김지오','possessive'),'지오의');
- assert.ok(src.includes('"annual:every_12": "안녕하세요, 어머님 😊\\n\\n#{학생이름_소유격} 정기상담 신청 안내 입니다^^'));
+ assert.ok(src.includes('"annual:every_12": "안녕하세요, 어머님 😊\n\n#{학생이름_소유격} 정기상담 신청 안내 입니다^^'));
 });
 test('legacy notice migration does not change 1, 6, or initial 12 month messages',()=>{
- const normalize=vm.runInNewContext('(function(){\\n'+segment+'\\nreturn updateLegacyAnnualNoticeLine\\n})()', {});
+ const normalize=vm.runInNewContext('(function(){\n'+segment+'\nreturn updateLegacyAnnualNoticeLine\n})()', {});
  const old='올해도 #{학생이름_소유격} 정기상담 기간이 돌아왔습니다^^';
  const replacement='#{학생이름_소유격} 정기상담 신청 안내 입니다^^';
  assert.equal(normalize('annual:every_12',old),replacement);
