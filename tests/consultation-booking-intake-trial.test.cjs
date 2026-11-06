@@ -8,7 +8,7 @@ const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const ui=read('packages/common/olli-booking-owner-ui.js');
 const css=read('packages/common/olli-booking-owner-ui.css');
-const sql=read('supabase/migrations/20261106180000_olli_booking_staff_intake_trial.sql');
+const sql=read('supabase/migrations/20261106081947_olli_booking_staff_intake_trial.sql');
 const original=read('supabase/migrations/20261103150000_olli_booking_staff_reschedule_owner_slots.sql');
 test('PC only offers a separate free-text intake/age booking dialog',()=>{
  assert.match(ui,/data-action="add-intake"/);
