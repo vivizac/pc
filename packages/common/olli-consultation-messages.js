@@ -307,7 +307,7 @@
     "elementary:every_6": "안녕하세요, 어머님 😊\n#{학생이름_주격} 비비작에서 수업을 시작한 지 어느덧 6개월이 지났습니다^^\n그동안의 수업 작품을 바탕으로 #{학생이름_소유격} 그림에서는 어떤 성향이 보이는지, 학원 생활에는 잘 적응하고 있는지 함께 이야기 나누려 합니다.",
     "kinder:every_12": "안녕하세요, 어머님\n지난 1년 동안 #{학생이름_주격} 어떤 성장을 했을까요? 😊\n\n그동안 담임 선생님이 기록한 수업 피드백과 아이의 작품을 바탕으로 #{학생이름_소유격} 생각과 표현에 어떤 변화가 있었는지 살펴보며 이야기 나누고자 합니다.",
     "elementary:every_12": "안녕하세요, 어머님\n지난 1년 동안 #{학생이름_주격} 어떤 성장을 했을까요? 😊\n\n그동안 담임 선생님이 기록한 수업 피드백과 아이의 작품을 바탕으로 #{학생이름_소유격} 생각과 표현에 어떤 변화가 있었는지 살펴보며 이야기 나누고자 합니다.",
-    "annual:every_12": "안녕하세요, 어머님 😊\n\n올해도 #{학생이름_소유격} 정기상담 기간이 돌아왔습니다^^\n\n그동안의 그림과 수업 과정을 함께 살펴보거나, 가정에서 궁금하셨던 점이 있다면 편하게 상담을 신청해 주세요. 😊"
+    "annual:every_12": "안녕하세요, 어머님 😊\n\n#{학생이름_소유격} 정기상담 신청 안내 입니다^^\n\n그동안의 그림과 수업 과정을 함께 살펴보거나, 가정에서 궁금하셨던 점이 있다면 편하게 상담을 신청해 주세요. 😊"
   };
   const manualNoticeCache = { academyId:'', sessionToken:'', notices:null, promise:null };
   async function loadManualNotices(force=false) {
@@ -334,6 +334,15 @@
   function manualNoticeDefaults(key) {
     return (MANUAL_NOTICE_BODIES[key] || '') + '\n\n' + MANUAL_NOTICE_INFO;
   }
+  // Preserve saved custom notices; adjust only the former annual line when displayed/copied.
+  function updateLegacyAnnualNoticeLine(key, body) {
+    if (key !== 'annual:every_12') return body;
+    return String(body || '').replace(
+      '올해도 #{학생이름_소유격} 정기상담 기간이 돌아왔습니다^^',
+      '#{학생이름_소유격} 정기상담 신청 안내 입니다^^'
+    );
+  }
+
   function manualNoticeEditorMarkup() {
     const slots=global.OlliConsultationMessageTemplates?.slots||[];
     return '<div class="ocm-manual-editor"><h3>안내문 복사 문구</h3><p class="ocm-muted">솔라피 승인 문구와 별도로 저장됩니다. 변경하면 PC·모바일 복사에 반영됩니다.</p>'
@@ -347,7 +356,7 @@
       if (!host.isConnected) return;
       host.querySelectorAll('[data-manual-key]').forEach(item=>{
         const key=item.dataset.manualKey;
-        item.querySelector('[data-manual-body]').value=notices[key]??manualNoticeDefaults(key);
+        item.querySelector('[data-manual-body]').value=updateLegacyAnnualNoticeLine(key, notices[key]??manualNoticeDefaults(key));
       });
     }catch(error){
       host.querySelector('p').textContent='안내문 조회 실패: '+(error.message||error);
@@ -472,7 +481,7 @@
     if (!sameContext(copyContext)) throw new Error('로그인 학원이 변경되었습니다. 다시 시도해 주세요.');
     // Copy-only content is independent of the approved Solapi template body.
 
-    let body = notices[key] ?? manualNoticeDefaults(key);
+    let body = updateLegacyAnnualNoticeLine(key, notices[key] ?? manualNoticeDefaults(key));
     // The old template contained '#{학생이름_주격}가'; the token already includes the subject particle.
     body = body.replace(/#\{학생이름_주격\}가/g, '#{학생이름_주격}');
     body = body.replace(/#\{학생이름_주격\}/g, manualNameValue(student.name, 'nominative'))
