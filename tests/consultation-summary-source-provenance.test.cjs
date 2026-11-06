@@ -18,7 +18,7 @@ test('new provenance is additive: preserve legacy UUID failure-source references
   assert.match(migration, /to service_role/);
   // Only the reviewed original month is assigned to the consultation.
   for (const id of [25, 27, 29, 30, 31, 33, 34]) {
-    assert.match(migration, new RegExp('\\\\(' + id + '::bigint'));
+    assert.match(migration, new RegExp('\\(' + id + '::bigint'));
   }
   assert.doesNotMatch(migration, /update public.summary_feedbacks\s+set content/i);
 });

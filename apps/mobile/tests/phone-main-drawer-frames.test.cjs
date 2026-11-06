@@ -6,6 +6,7 @@ const source = fs.readFileSync('olli-main-subpage-drawer.js', 'utf8');
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
 function setup({ idleSupported = true } = {}) {
+  const windowEvents = new EventTarget();
   const frames = [], idle = [], events = [], nodes = new Map(), timers = new Map();
   let academy = 'academy-1', division = 'elementary', nextTimer = 0, context;
   function element(id, display = 'none') {
@@ -42,6 +43,9 @@ function setup({ idleSupported = true } = {}) {
   element('studentMemoScreen'); element('kcfPersistentTopLayer'); element('observationPersistentNavLayer');
   const body = element('body', 'block');
   const window = {
+    addEventListener: (...args) => windowEvents.addEventListener(...args),
+    removeEventListener: (...args) => windowEvents.removeEventListener(...args),
+    dispatchEvent: (...args) => windowEvents.dispatchEvent(...args),
     matchMedia: () => ({ matches: false }),
     setTimeout: (fn, delay) => { const id = ++nextTimer; timers.set(id, { fn, delay }); return id; },
     clearTimeout: id => timers.delete(id),

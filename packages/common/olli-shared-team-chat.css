@@ -1,0 +1,29 @@
+.olliSharedChatDialog{box-sizing:border-box;width:min(760px,100vw);height:min(900px,94dvh);max-width:100vw;max-height:100dvh;border:1px solid #d4deec;border-radius:20px;padding:20px;background:#f5f7fb;color:#17243b;z-index:1000000;font:15px/1.5 system-ui,sans-serif;overflow:auto}
+.olliSharedChatDialog::backdrop{background:#10203788}
+.olliSharedChatDialog[open]{display:flex;flex-direction:column;gap:12px}
+.olliSharedChatDialog *{box-sizing:border-box}
+.olliSharedChatDialog header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.olliSharedChatDialog button{padding:8px 12px;border:1px solid #b8c8de;border-radius:10px;color:#1b4271;background:#fff;font:inherit;cursor:pointer}
+.olliSharedChatDialog button:disabled{opacity:.5;cursor:wait}
+.olliSharedChatDialog button:focus-visible,.olliSharedChatDialog input:focus-visible,.olliSharedChatDialog textarea:focus-visible{outline:3px solid #0a84ff;outline-offset:2px}
+.olliSharedChatStatus,.olliSharedChatPrivacy{margin:0;color:#42536b;font-size:13px;overflow-wrap:anywhere}
+.olliSharedChatMessages{min-height:120px;flex:1;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:12px}
+.olliSharedChatMessage{width:90%;padding:12px 14px;background:#fff;border-radius:14px;border:1px solid #e0e6ef;overflow-wrap:anywhere;flex-shrink:0}
+.olliSharedChatMessage.mine{align-self:flex-end;background:#e6f1ff}
+.olliSharedChatMessage.system{align-self:center;background:transparent;text-align:center;font-size:13px}
+.olliSharedChatMessage p{margin:6px 0;white-space:pre-wrap}
+.olliSharedChatMessage small{color:#52627a}
+.olliSharedChatSender{font-weight:650}
+.olliSharedChatBranch{display:inline-block;vertical-align:middle;margin-left:6px;background:#e1e7f2;border-radius:6px;padding:1px 6px;color:#354d70;font-size:12px;font-weight:500}
+.olliSharedChatMessageTools,.olliSharedChatDialog nav{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.olliSharedChatMessageTools button{font-size:12px;padding:3px 8px}
+.olliSharedChatDialog form{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.olliSharedChatDialog textarea{width:100%;resize:vertical;min-height:64px;max-height:180px;border:1px solid #9eb2ce;border-radius:10px;padding:10px;font:16px/1.5 system-ui}
+.olliSharedChatMembers{max-height:150px;overflow:auto;display:grid;gap:8px;padding:8px 0}
+.olliSharedChatMembers label{display:flex;align-items:center;gap:6px}
+.olliSharedChatAcademy{display:grid;grid-template-columns:24px 1fr;align-items:center;gap:8px;padding:12px 0;border-bottom:1px solid #dce3ee}
+.olliSharedChatAcademy input[type=text]{grid-column:2;width:100%;min-width:0;padding:10px;border:1px solid #a8bbd4;border-radius:8px;font:16px system-ui}
+.olliSharedChatDialog [data-shared-management]>button{margin:14px 10px 0 0}
+[data-shared-chat-entry]{font:inherit;border:1px solid #c8d6e8;border-radius:9px;background:#fff;color:#24538b;padding:7px 10px;white-space:nowrap}
+[data-shared-chat-entry][hidden]{display:none!important}
+@media(max-width:600px){.olliSharedChatDialog{width:100vw;height:100dvh;border-radius:0;border:0;padding:14px;padding-bottom:max(14px,env(safe-area-inset-bottom))}.olliSharedChatDialog header strong{font-size:17px}.olliSharedChatDialog header button{font-size:12px}.olliSharedChatMessage{width:95%}}

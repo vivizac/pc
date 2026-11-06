@@ -1,5 +1,13 @@
 # OLLI Realtime 단계별 전환
 
+## 2026-11-06 공동 팀챗 작업 브랜치 (운영 미적용)
+
+`olli-shared-team-chat.js`는 기존 `chat` 도메인의 내용 없는 invalidation을 받아 서버 권한과 원본을 재조회한다.
+새 공동 RPC는 활성 참여 학원에 신호를 fan-out하고, 참여 해제 시 철회 대상에도 알린다.
+같은 읽음 위치 저장은 신호를 생성하지 않는다. 그룹 메시지 본문·첨부·업무 데이터는 신호에 넣지 않는다.
+관찰노트·시간표·출석 watcher, CAS, 저장 큐는 변경하지 않았다. 실제 Supabase WebSocket 및 iOS 검증은 미완료다.
+상세한 release gate와 테스트 범위는 [공동 팀챗 개발 기록](docs/olli-team-chat-integration-20261106.md)을 참조한다.
+
 기준일: 2026-09-11
 
 ## 현재 운영 상태

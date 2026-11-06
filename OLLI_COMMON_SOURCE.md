@@ -8,6 +8,10 @@
 
 ## 수정 전 보호 규칙
 
+- 공동 팀챗 신규 원본은 `packages/common/olli-shared-team-chat.js/.css` 및 PC 전용 scope용 `olli-shared-chat-sw.js`다.
+  기존 학원 대화·AI·급여·업무 메시지를 새 방으로 이동하지 않는다. 신규 기능의 서버 release gate는 기본 꺼짐이다.
+  설계·가입/해제 기록 정책·검증 제한·출시 차단 조건은 [공동 팀챗 개발 기록](docs/olli-team-chat-integration-20261106.md)을 따른다.
+
 `apps/mobile`의 관찰노트·수업기록 전용 adapter와 테스트를 함께 확인한다.
 
 - 공통 저장 코어의 revision/CAS 충돌 보호를 유지한다.

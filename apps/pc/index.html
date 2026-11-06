@@ -1715,6 +1715,7 @@
       <div class="olliPcTeamTalkChatHead">
         <div class="olliPcTeamTalkTitleWrap">
           <div class="olliPcTeamTalkTitle">Team Chat</div>
+          <button type="button" data-shared-chat-entry hidden>공동 대화</button>
           <div class="olliPcTeamTalkMemberCount" id="olliPcTeamTalkMemberCount"></div>
         </div>
         <button class="olliPcTeamTalkRefresh" id="olliPcTeamTalkRefresh" type="button" aria-label="팀톡 새로고침" title="새로고침">
@@ -2830,7 +2831,9 @@
 <script src="pc-recurring-task-settings.js?v=20261029-todo-popup-2"></script>
 <link rel="stylesheet" href="pc-recurring-task-settings.css?v=20261029-todo-popup-2">
 <script src="olli-team-talk-avatar-catalog.js?v=20261011-avatars-06-09-1"></script>
-<script src="olli-settings-team-talk-common.js?v=20261008-avatar-picker-1"></script>
+<link rel="stylesheet" href="olli-shared-team-chat.css?v=20261106-shared-chat-1">
+<script src="olli-shared-team-chat.js?v=20261106-shared-chat-1"></script>
+<script src="olli-settings-team-talk-common.js?v=20261106-shared-chat-1"></script>
 <link rel="stylesheet" href="olli-teacher-payroll-common.css?v=20261027-student-info-bluegray-1">
 <link rel="stylesheet" href="olli-tuition-common.css?v=20261027-student-info-bluegray-1">
 <script src="olli-tuition-common.js?v=20261019-tuition-monthly-2"></script>
@@ -4687,7 +4690,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 });
 </script>
-<script src="pc-team-talk.js?v=20261008-avatar-picker-1"></script>
+<script src="pc-team-talk.js?v=20261106-shared-chat-1"></script>
 <script src="pc-team-talk-material-orders.js?v=20261012-needed-date-archive-1"></script>
 <script src="pc-shell.js?v=20261029-pc-booking-link-1"></script>
 <script src="pc-student-management.js?v=20261029-todo-popup-1"></script>

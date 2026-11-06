@@ -4,7 +4,8 @@ const {chromium}=require('playwright');
 const js=fs.readFileSync(path.join(__dirname,'../packages/common/olli-consultation-messages.js'),'utf8');
 let css=fs.readFileSync(path.join(__dirname,'../packages/common/olli-consultation-messages.css'),'utf8');
 if(process.env.OLLI_TEST_FONT_PATH)css+="@font-face{font-family:OlliTest;src:url(data:font/otf;base64,"+fs.readFileSync(process.env.OLLI_TEST_FONT_PATH).toString('base64')+")}body{font-family:OlliTest,sans-serif}";
-const fixture={ok:true,settings:{enabled:false,booking_url:'',channel_id:'',template_id:'',template_body:'',template_confirmed:false},students:[{id:'student',name:'김테스트',division:'kinder',phone:null,enabled:null,confirmed:null}],deliveries:[]};
+const fixture={ok:true,settings:{enabled:false,booking_url:'',selected_channel_id:'',channel_mode:'academy',template_id:'',template_body:'',template_confirmed:false},
+ channels:[{id:'approved-channel',name:'테스트 승인 채널',mode:'academy'}],students:[{id:'student',name:'김테스트',division:'kinder',phone:null,enabled:null,confirmed:null}],deliveries:[]};
 test('PC/mobile settings, read-only recipients, context isolation and Naver message layout',async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.OLLI_CHROMIUM_PATH ? {executablePath:process.env.OLLI_CHROMIUM_PATH} : {}),args:['--no-sandbox']});
  try{
@@ -21,7 +22,8 @@ test('PC/mobile settings, read-only recipients, context isolation and Naver mess
     window.getOlliCurrentRole=()=>localStorage.getItem('olli_current_member_role');
     window.callOlliRpc=async(name,args)=>{
      window.calls.push({name,args});
-     if(args.p_action==='settings')window.fixture.settings=args.p_data;
+     if(args.p_action==='settings')Object.assign(window.fixture.settings,args.p_data);
+     if(args.p_action==='channel')Object.assign(window.fixture.settings,{selected_channel_id:args.p_data.channel_id,channel_mode:args.p_data.channel_mode,enabled:false,template_confirmed:false});
      if(args.p_action==='disable')window.fixture.settings.enabled=false;
      if(args.p_action==='contact')Object.assign(window.fixture.students[0],args.p_data);
      return structuredClone(window.fixture);
@@ -32,11 +34,19 @@ test('PC/mobile settings, read-only recipients, context isolation and Naver mess
    assert.equal(await page.getByRole('switch',{name:'상담 안내 문자 사용'}).isChecked(),false);
    assert.equal(await page.locator('dialog').count(),1);
    const bounds=await page.locator('dialog').boundingBox();assert.ok(bounds.x>=0 && bounds.x+bounds.width<=width);
+   assert.equal(await page.locator('[name=channel_id]').count(),0,'owners select an approved channel instead of editing provider identifiers');
+   await page.evaluate(()=>{const select=document.querySelector('[name=selected_channel_id]');select.add(new Option('forged','forged'));select.value='forged';select.dispatchEvent(new Event('change'));});
+   assert.equal(await page.evaluate(()=>calls.filter(c=>c.args.p_action==='channel').length),0);
+   await page.locator('[name=selected_channel_id]').selectOption('approved-channel');
+   await page.getByRole('status').filter({hasText:'발송 채널을 변경했습니다'}).waitFor();
+   assert.equal(await page.getByRole('switch',{name:'상담 안내 문자 사용'}).isChecked(),false);
    await page.locator('[name=booking_url]').fill('https://booking.naver.com/booking/13/bizes/123');
-   await page.locator('[name=channel_id]').fill('KA01PF');await page.locator('[name=template_id]').fill('KA01TP');
+   await page.locator('[name=template_id]').fill('KA01TP');
    await page.locator('[name=template_confirmed]').check();await page.locator('[name=template_body]').fill('#{학생명}\n#{예약링크}');assert.equal(await page.locator('[name=template_confirmed]').isChecked(),false);
    await page.locator('[name=template_confirmed]').check();await page.locator('[name=enabled]').first().check();await page.locator('[data-settings] [type=submit]').click();
    await page.getByRole('status').filter({hasText:'다음 자동 발송'}).waitFor();
+   assert.equal(await page.evaluate(()=>fixture.settings.selected_channel_id),'approved-channel');
+   assert.equal(await page.evaluate(()=>calls.filter(c=>c.args.p_action==='settings').some(c=>['selected_channel_id','channel_mode','channel_id'].some(k=>Object.hasOwn(c.args.p_data,k)))),false);
    await page.locator('[name=template_mode]').selectOption('by_type');
    const slot=page.locator('[data-template-key="kinder:after_1"]');
    await slot.locator('summary').click();await slot.locator('[data-use-common]').uncheck();
@@ -61,7 +71,7 @@ test('PC/mobile settings, read-only recipients, context isolation and Naver mess
    assert.equal(await slot.locator('[data-variant-body]').inputValue(),'수정된 첫 상담 #{학생명}');
    await page.locator('[data-tab=contacts]').click();assert.equal(await page.locator('[data-send]').isDisabled(),true);
    await page.locator('[data-tab=settings]').click();
-   await page.screenshot({path:'/tmp/olli-consultation-'+width+'.png'});
+   if(process.env.OLLI_SCREENSHOT_DIR){fs.mkdirSync(process.env.OLLI_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.OLLI_SCREENSHOT_DIR,'olli-consultation-'+width+'.png')});}
    await page.evaluate(()=>{localStorage.setItem('olli_current_academy_id','other');window.dispatchEvent(new Event('focus'));});assert.equal(await page.locator('dialog').count(),0);
    await page.evaluate(()=>{localStorage.setItem('olli_current_member_role','teacher');OlliConsultationMessages.open();});assert.equal(await page.locator('dialog').count(),0);
    assert.deepEqual(errors,[]);await page.close();

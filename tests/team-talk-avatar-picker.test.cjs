@@ -21,6 +21,7 @@ const pcTalkCss=read('apps/pc/pc-team-talk.css');
 const mobileHtml=read('apps/mobile/index.html');
 const pcHtml=read('apps/pc/index.html');
 const migration=read('supabase/migrations/20261008021500_team_talk_member_avatars.sql');
+const avatarSeedScopeMigration=read('supabase/migrations/20261008033000_scope_vivizac_team_talk_avatar_seed.sql');
 
 test('avatar icons 06 and 09 refresh on mobile and PC without changing their keys',()=>{
   assert.match(catalog,/key==='avatar-06'\|\|key==='avatar-09'/);

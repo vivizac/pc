@@ -7,13 +7,15 @@ const source = fs.readFileSync(path.join(__dirname, '..', 'olli-record-search-co
 
 function setup({mounted=true, query='학생', focused=false}={}) {
   const classes = new Set(['record-search-open','record-search-has-query','record-keyboard-open','record-keyboard-closing','record-search-list-restoring']);
-  const cleared = [], properties = new Map();
+  const cleared = [], properties = new Map([['--record-keyboard-offset','300px']]);
   const screen = {hasAttribute:key=>mounted && key==='data-olli-drawer-rear-mounted',classList:{
     contains:key=>classes.has(key),add:(...keys)=>keys.forEach(k=>classes.add(k)),
     remove:(...keys)=>keys.forEach(k=>classes.delete(k)),toggle:(key,on)=>on?classes.add(key):classes.delete(key)}};
   const input={value:query};
   const context={window:{innerHeight:800,visualViewport:{offsetTop:0,height:500},__olliRecordSearchViewportBottomBaseline:800,__olliRecordKeyboardLastOffset:300},
-    document:{activeElement:focused?input:null,documentElement:{clientHeight:800,style:{setProperty:(k,v)=>properties.set(k,v)}},getElementById:id=>id==='recordRoomScreen'?screen:id==='searchName'?input:null},
+    document:{activeElement:focused?input:null,documentElement:{clientHeight:800,style:{
+      setProperty:(k,v)=>properties.set(k,v),getPropertyValue:k=>properties.get(k)||'',removeProperty:k=>properties.delete(k)
+    }},getElementById:id=>id==='recordRoomScreen'?screen:id==='searchName'?input:null},
     setTimeout:()=>1,clearTimeout:id=>cleared.push(id),requestAnimationFrame:()=>1};
   vm.runInNewContext(source.slice(0,source.indexOf('window.prepareOlliRecordSearchForDrawer =')),context);
   return {context,classes,input,properties,cleared};
