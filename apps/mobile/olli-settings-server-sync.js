@@ -232,10 +232,56 @@ function renderAcademyConsultationList(students){
   }).join('') + '</div>';
 }
 
+// 모바일 학원관리 통계만 보호된 Supabase 학생 조회를 기준으로 계산합니다.
+// 출석/상담/학생 카드용 로컬 캐시와 pending 저장 상태는 변경하지 않습니다.
+let olliMobileAcademyServerStats = { academyId: '', students: null, error: '' };
+let olliMobileAcademyStatsRequestId = 0;
+
+async function refreshMobileAcademyStatsFromServer(){
+  const academyId = typeof getOlliCurrentAcademyId === 'function' ? String(getOlliCurrentAcademyId() || '') : '';
+  const requestId = ++olliMobileAcademyStatsRequestId;
+  if (!academyId) return { skipped: true };
+  const isCurrent = () => requestId === olliMobileAcademyStatsRequestId
+    && typeof getOlliCurrentAcademyId === 'function'
+    && String(getOlliCurrentAcademyId() || '') === academyId;
+  try {
+    const storage = window.OlliStorageCore;
+    if (!storage?.FeatureRegistry || !storage?.ServerAdapter) {
+      throw new Error('학생 통계 서버 모듈을 찾지 못했습니다.');
+    }
+    const spec = storage.FeatureRegistry.require('students_list');
+    const rows = await storage.ServerAdapter.read(spec, { academyId }, { limit: 5000 });
+    if (!isCurrent()) return { stale: true };
+    if (!Array.isArray(rows)) throw new Error('학생 통계 서버 응답이 올바르지 않습니다.');
+    const students = rows
+      .filter(row => row && (row.division === 'elementary' || row.division === 'kinder'))
+      .filter(row => !isOlliSoftDeletedRow(row))
+      .filter(row => !row.academy_id || String(row.academy_id) === academyId)
+      .map(row => normalizeStudentObject({
+        ...row,
+        academy_id: row.academy_id || academyId,
+        type: row.division
+      }, row.division));
+    olliMobileAcademyServerStats = { academyId, students, error: '' };
+  } catch (error) {
+    if (!isCurrent()) return { stale: true };
+    olliMobileAcademyServerStats = { academyId, students: null, error: String(error?.message || error) };
+    console.warn('모바일 학생관리 서버 통계 조회 실패:', error);
+  }
+  if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy'
+      && typeof renderRecordAcademyManagementDashboard === 'function') {
+    renderRecordAcademyManagementDashboard();
+  }
+  return { changed: true, error: olliMobileAcademyServerStats.error || null };
+}
+
 function renderRecordAcademyManagementDashboard(){
   const dashboard = document.getElementById('recordAcademyDashboard');
   if (!dashboard) return;
-  const students = getAcademyManagementStudentsForStats();
+  const localStudents = getAcademyManagementStudentsForStats();
+  const academyId = typeof getOlliCurrentAcademyId === 'function' ? String(getOlliCurrentAcademyId() || '') : '';
+  const serverStats = olliMobileAcademyServerStats.academyId === academyId ? olliMobileAcademyServerStats : null;
+  const students = Array.isArray(serverStats?.students) ? serverStats.students : localStudents;
   const active = students.filter(isAcademyManagementActiveStudent);
   const thisYearRegistered = students.filter(s => {
     const enrolled = getStudentEnrollmentDateForStats(s);
@@ -256,21 +302,26 @@ function renderRecordAcademyManagementDashboard(){
     return withdrawnAt ? isCurrentYearDate(withdrawnAt) : true;
   });
   const pausedStudents = students.filter(s => getStudentStatus(s) === 'paused');
-  const consultationDue = getThisMonthConsultationDueStudents(students);
+  // 실제 상담 대상은 기존 로컬 운영 학생만 사용합니다 (통계 전용 학생 제외).
+  const consultationDue = getThisMonthConsultationDueStudents(localStudents.filter(s => s.is_stat_only !== true));
   const activeElementary = active.filter(s => s.type === 'elementary').length;
   const activeKinder = active.filter(s => s.type === 'kinder').length;
   const consultationElementary = consultationDue.filter(s => s.type === 'elementary').length;
   const consultationKinder = consultationDue.filter(s => s.type === 'kinder').length;
   const now = new Date();
   const consultationCardLabel = `${now.getMonth()+1}월 상담`;
+  const statsSourceNotice = !Array.isArray(serverStats?.students)
+    ? `<div class="recordAcademyStatsSourceNotice" role="status" style="font-size:12px;color:#667085;padding:0 2px 8px;">${serverStats?.error ? '서버 통계 조회 실패 · 로컬 수치 표시 중' : '서버 통계 확인 중 · 로컬 수치 표시 중'}</div>`
+    : '';
   dashboard.innerHTML = `
+    ${statsSourceNotice}
     <div class="recordAcademyStatGrid">
       ${buildAcademyStatCard('원생수', active.length, 0, 'blue', { sub: `초등부 ${activeElementary}명 · 유치부 ${activeKinder}명` })}
       ${buildAcademyStatCard(consultationCardLabel, consultationDue.length, consultationDue.length, 'blue', { sub: `초등부 ${consultationElementary}명 · 유치부 ${consultationKinder}명` })}
       ${buildAcademyStatCard('올해 등록', thisYearRegistered.length, thisYearRegistered.length, 'red', { sub: `이달 등록 ${thisMonthRegistered.length}명 · 이달 퇴원 ${thisMonthWithdrawn.length}명` })}
       ${buildAcademyStatCard('올해 퇴원', thisYearWithdrawn.length, thisYearWithdrawn.length, 'red', { sub: `휴원 ${pausedStudents.length}명 · 퇴원 ${thisYearWithdrawn.length}명` })}
     </div>
-    <div class="recordAcademyConsultSection">${renderAcademyConsultationList(students)}</div>
+    <div class="recordAcademyConsultSection">${renderAcademyConsultationList(localStudents)}</div>
   `;
 }
 
