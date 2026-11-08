@@ -142,6 +142,10 @@ function refreshRecordAcademyManagementFromServer(options = {}){
           console.warn('학원관리 학생 동기화 실패:', error);
           return false;
         })
+      : Promise.resolve(false),
+    // 통계는 로컬 학생 동기화와 독립된 인증 서버 조회를 사용합니다.
+    (typeof refreshMobileAcademyStatsFromServer === 'function')
+      ? refreshMobileAcademyStatsFromServer()
       : Promise.resolve(false)
   ]).then(() => {
     if (academyLoadToken !== academyManagementLoadToken) return { changed: false, stale: true };
