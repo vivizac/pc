@@ -82,6 +82,12 @@ jobs:
           # October HTML and layout. Run only status/cache contracts relevant here.
           node --test --test-name-pattern='attendance taps preview|attendance save failure restores|phone attendance writes exact session status|attendance local store separates|month merge distinguishes|attendance background refresh does not block' tests/phone-attendance-local-first.test.cjs
           node --test --test-name-pattern='cached elementary and kinder display|real student changes still repaint once' tests/phone-attendance-render-budget.test.cjs
+      - name: Validate Mobile academy statistics first-render cache
+        working-directory: apps/mobile
+        run: |
+          node --check olli-settings-server-sync.js
+          node --check tests/mobile-academy-server-stats.test.cjs
+          node --test tests/mobile-academy-server-stats.test.cjs
       - name: Validate Mobile feedback complete-read and local-data safety
         working-directory: apps/mobile
         run: |
