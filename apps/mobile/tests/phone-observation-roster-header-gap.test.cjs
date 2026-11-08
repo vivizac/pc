@@ -19,10 +19,10 @@ test('observation roster header-to-first-card gap increases by 50% without chang
   const row = getRule('#observationRosterScreen .memoBodyRosterRow');
   const adjacentRow = getRule('#observationRosterScreen .memoBodyRosterRow + .memoBodyRosterRow');
 
-  assert.match(header, /margin:\s*2px 0 28px;/);
+  assert.match(header, /margin:\s*2px 0 35px;/);
   assert.match(list, /margin:\s*0;/);
   assert.match(row, /height:54px;/);
   assert.match(row, /min-height:54px;/);
   assert.match(adjacentRow, /border-top:1px solid #eeeeee;/);
-  assert.match(html, /olli-observation-roster-phone\.css\?v=20261108-header-gap-28px-1/);
+  assert.match(html, /olli-observation-roster-phone\.css\?v=20261108-header-gap-35px-1/);
 });
