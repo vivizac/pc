@@ -49,3 +49,20 @@ test('PC와 모바일 모두 통계 포함·상담 제외·서버 플래그 로�
     assert.match(source, /\.filter\(student => student\.is_stat_only !== true\)/);
   }
 });
+
+test('PC 학생 병합에서 서버의 통계 전용 플래그를 유지', () => {
+  const source = fs.readFileSync(path.join(root, 'apps/pc/olli-data-student-operations.js'), 'utf8');
+  const start = source.indexOf('function mergeStudentInfoPreservingLocal(');
+  const end = source.indexOf('\nasync function ensureStudentSavedToSupabase(', start);
+  assert.ok(start >= 0 && end > start);
+  const ctx = {
+    normalizeStudentObject: (student) => ({ ...student }),
+    getOlliCurrentAcademyId: () => 'academy-a'
+  };
+  vm.createContext(ctx);
+  vm.runInContext(source.slice(start, end), ctx);
+  const local = { id: 'test-1', name: '테스트', type: 'kinder', status: 'active', is_stat_only: false };
+  const remote = { ...local, is_stat_only: true };
+  assert.equal(ctx.mergeStudentInfoPreservingLocal(local, remote).is_stat_only, true);
+  assert.equal(ctx.mergeStudentInfoPreservingLocal(remote, { ...remote, is_stat_only: false }).is_stat_only, false);
+});
