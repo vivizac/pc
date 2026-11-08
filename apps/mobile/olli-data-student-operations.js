@@ -698,6 +698,7 @@ function supabaseRowToStudent(row) {
     grade: row.grade || '',
     className: row.class_no || row.className || '',
     status: row.status || 'active',
+    is_stat_only: row.is_stat_only === true,
     is_deleted: row.is_deleted === true || String(row.is_deleted || '').toLowerCase() === 'true',
     deleted_at: row.deleted_at || '',
     deleted_by: row.deleted_by || '',
@@ -1008,7 +1009,7 @@ async function loadStudentsFromSupabase(options = {}) {
   if (!isSupabaseConfigured()) return { changed: false, skipped: true };
   const academyId = getOlliCurrentAcademyId();
   if (!academyId) return { changed: false, skipped: true };
-  const beforeSnapshot = JSON.stringify(getAllStudents());
+  const beforeSnapshot = JSON.stringify(getAllStudents({ includeStatOnly: true }));
   const academyContext = window.OlliStorageCore?.AcademyContext;
   const requestToken = academyContext?.captureToken ? academyContext.captureToken() : null;
   const requestIsCurrent = () => academyContext?.isTokenCurrent
@@ -1019,7 +1020,7 @@ async function loadStudentsFromSupabase(options = {}) {
     if (!requestIsCurrent()) return { changed: false, stale: true };
     const rows = await loadStudentRowsFromSecureServer(academyId);
     const pendingStatusMap = getPendingStudentStatusMap();
-    const localById = new Map(getAllStudents().map(s => [String(s.id || ''), s]));
+    const localById = new Map(getAllStudents({ includeStatOnly: true }).map(s => [String(s.id || ''), s]));
     const byId = new Map();
     if (Array.isArray(rows) && rows.length) {
       rows
@@ -1064,11 +1065,11 @@ async function loadStudentsFromSupabase(options = {}) {
     const nextStudents = Array.from(byId.values())
       .filter(s => s.academy_id === academyId)
       .sort((a,b) => a.name.localeCompare(b.name, 'ko'));
-    if (JSON.stringify(nextStudents) !== JSON.stringify(getAllStudents())) setAllStudents(nextStudents);
+    if (JSON.stringify(nextStudents) !== JSON.stringify(getAllStudents({ includeStatOnly: true }))) setAllStudents(nextStudents, { replaceStatOnly: true });
     if (!options.skipLifecycleSync) {
       await syncOlliStudentLifecycleAfterLoad();
     }
-    return { changed: beforeSnapshot !== JSON.stringify(getAllStudents()) };
+    return { changed: beforeSnapshot !== JSON.stringify(getAllStudents({ includeStatOnly: true })) };
   } catch (err) {
     if (!requestIsCurrent()) return { changed: false, stale: true };
     console.warn('students table load skipped:', err.message || err);
