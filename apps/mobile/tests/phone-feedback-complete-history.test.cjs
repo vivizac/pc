@@ -225,5 +225,5 @@ test('record board abandons obsolete screen requests without painting outdated r
 
 test('versioned mobile entry includes changed archive and record board scripts', () => {
   assert.match(html,/elementary-analysis-phone-adapter\.js\?v=20261104-feedback-full-history-1/);
-  assert.match(html,/olli-record-room-navigation\.js\?v=20261104-feedback-full-history-1/);
+  assert.match(html,/olli-record-room-navigation\.js\?v=20261108-mobile-server-stats-1/);
 });
