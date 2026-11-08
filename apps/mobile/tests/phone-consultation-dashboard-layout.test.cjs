@@ -109,7 +109,7 @@ test('new server keeps data synchronization but never overlays or replaces the o
 test('restored scripts and stylesheet are explicitly cache-busted for installed phones', () => {
   assert.match(html,/olli-academy-dashboard\.css\?v=20261024-original-ui-restore-1/);
   assert.match(html,/olli-consultation-mobile-runtime\.js\?v=20261108-stat-only-dashboard-2/);
-  assert.match(html,/olli-settings-server-sync\.js\?v=20261108-mobile-server-stats-snapshot-1/);
+  assert.match(html,/olli-settings-server-sync\.js\?v=20261108-mobile-server-stats-snapshot-2/);
   assert.match(html,/olli-consultation-messages\.js\?v=20261027-mobile-instant-copy-icon-1/);
 });
 

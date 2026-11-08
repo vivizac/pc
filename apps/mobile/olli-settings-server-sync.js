@@ -380,13 +380,7 @@ function renderRecordAcademyManagementDashboard(){
   const consultationKinder = consultationDue.filter(s => s.type === 'kinder').length;
   const now = new Date();
   const consultationCardLabel = `${now.getMonth()+1}월 상담`;
-  const statsSourceText = hasLiveServerStats ? ''
-    : cachedSummary ? (serverStats?.error ? '서버 통계 조회 실패 · 마지막 서버 집계 표시 중' : '마지막 서버 집계 · 최신 확인 중')
-    : serverStats?.error ? '서버 통계 조회 실패 · 로컬 수치 표시 중' : '서버 통계 확인 중';
-  const statsSourceNotice = statsSourceText
-    ? `<div class="recordAcademyStatsSourceNotice" role="status" style="font-size:12px;color:#667085;padding:0 2px 8px;">${statsSourceText}</div>` : '';
   dashboard.innerHTML = `
-    ${statsSourceNotice}
     <div class="recordAcademyStatGrid">
       ${buildAcademyStatCard('원생수', summary ? summary.active : '—', 0, 'blue', { sub: summary ? `초등부 ${summary.activeElementary}명 · 유치부 ${summary.activeKinder}명` : '초등부 — · 유치부 —' })}
       ${buildAcademyStatCard(consultationCardLabel, consultationDue.length, consultationDue.length, 'blue', { sub: `초등부 ${consultationElementary}명 · 유치부 ${consultationKinder}명` })}

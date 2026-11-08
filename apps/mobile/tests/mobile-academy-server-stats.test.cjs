@@ -10,7 +10,7 @@ const html = fs.readFileSync('index.html', 'utf8');
 test('mobile dashboard has an independent secure server stats source and is wired on entry', () => {
   assert.match(dashboardSource, /ServerAdapter\.read\(spec, \{ academyId \}, \{ limit: 5000 \}\)/);
   assert.match(navigationSource, /refreshMobileAcademyStatsFromServer\(\)/);
-  assert.match(html, /olli-settings-server-sync\.js\?v=20261108-mobile-server-stats-snapshot-1/);
+  assert.match(html, /olli-settings-server-sync\.js\?v=20261108-mobile-server-stats-snapshot-2/);
   assert.match(html, /olli-record-room-navigation\.js\?v=20261108-mobile-server-stats-1/);
   assert.match(dashboardSource, /renderAcademyConsultationList\(localStudents\)/);
 });
@@ -80,13 +80,13 @@ function harness(serverRows, rejectServer = false, sharedStore = new Map()) {
 test('90 actual and 13 statistics-only students show 103 after first secure fetch without roster mutation', async () => {
   const h = harness();
   h.context.renderRecordAcademyManagementDashboard();
-  assert.match(h.dashboard.innerHTML, /서버 통계 확인 중/);
+  assert.doesNotMatch(h.dashboard.innerHTML, /recordAcademyStatsSourceNotice|서버 통계 확인 중/);
   assert.equal(readDashboardActiveCount(h.dashboard.innerHTML), '—');
   await h.context.refreshMobileAcademyStatsFromServer();
   assert.equal(readDashboardActiveCount(h.dashboard.innerHTML), '103');
   assert.match(h.dashboard.innerHTML, /초등부 60명[\s\S]*?유치부 43명/);
   assert.doesNotMatch(h.dashboard.innerHTML, /통계전용/);
-  assert.doesNotMatch(h.dashboard.innerHTML, /서버 통계 확인 중/);
+  assert.doesNotMatch(h.dashboard.innerHTML, /recordAcademyStatsSourceNotice|서버 통계 확인 중/);
   assert.equal(h.getWrites(), 0);
   assert.equal(h.normal.length, 90);
   assert.equal(h.getCalls(), 1);
@@ -102,7 +102,7 @@ test('90 actual and 13 statistics-only students show 103 after first secure fetc
 test('server failure identifies local fallback without modifying students', async () => {
   const h = harness(null, true);
   await h.context.refreshMobileAcademyStatsFromServer();
-  assert.match(h.dashboard.innerHTML, /서버 통계 조회 실패 · 로컬 수치 표시 중/);
+  assert.doesNotMatch(h.dashboard.innerHTML, /recordAcademyStatsSourceNotice|서버 통계 조회 실패/);
   assert.match(h.dashboard.innerHTML, /원생수[\s\S]*?90/);
   assert.equal(h.getWrites(), 0);
 });
@@ -111,7 +111,7 @@ test('a stale server response cannot overwrite the current academy stats', async
   const h = harness();
   h.switchAcademy('different-academy');
   h.context.renderRecordAcademyManagementDashboard();
-  assert.match(h.dashboard.innerHTML, /서버 통계 확인 중/);
+  assert.doesNotMatch(h.dashboard.innerHTML, /recordAcademyStatsSourceNotice|서버 통계 확인 중/);
   // No value from another academy is reused as server statistics.
   assert.doesNotMatch(h.dashboard.innerHTML, /초등부 60명[\s\S]*?유치부 43명/);
 });
@@ -122,7 +122,7 @@ test('same account and academy restore 103 immediately after relogin, before ser
   const second = harness(null, false, first.store);
   second.context.renderRecordAcademyManagementDashboard();
   assert.equal(readDashboardActiveCount(second.dashboard.innerHTML), '103');
-  assert.match(second.dashboard.innerHTML, /마지막 서버 집계 · 최신 확인 중/);
+  assert.doesNotMatch(second.dashboard.innerHTML, /recordAcademyStatsSourceNotice|마지막 서버 집계/);
   assert.equal(second.getCalls(), 0);
   assert.equal(second.getWrites(), 0);
   await second.context.refreshMobileAcademyStatsFromServer();
@@ -137,7 +137,7 @@ test('offline reconnect retains last verified 103 without changing operational s
   assert.equal(readDashboardActiveCount(offline.dashboard.innerHTML), '103');
   await offline.context.refreshMobileAcademyStatsFromServer();
   assert.equal(readDashboardActiveCount(offline.dashboard.innerHTML), '103');
-  assert.match(offline.dashboard.innerHTML, /서버 통계 조회 실패 · 마지막 서버 집계 표시 중/);
+  assert.doesNotMatch(offline.dashboard.innerHTML, /recordAcademyStatsSourceNotice|마지막 서버 집계|서버 통계 조회 실패/);
   assert.equal(offline.getWrites(), 0);
 });
 
