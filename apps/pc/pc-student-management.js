@@ -616,6 +616,16 @@
     app.updateRecordLayout();
     renderDashboard();
     loadServerTodos({ render:true }).catch(() => {});
+    // 학생관리 통계는 로컬 목록을 즉시 표시한 뒤 서버의 전체 학생 목록으로 갱신합니다.
+    // is_stat_only 학생은 통계에는 포함되지만 상담·출석·학생 카드에는 노출되지 않습니다.
+    if (typeof loadStudentsFromSupabase === 'function') {
+      Promise.resolve(loadStudentsFromSupabase({ skipLifecycleSync: true }))
+        .then((result) => {
+          if (result?.error || result?.stale || result?.skipped) return;
+          if (core()?.state?.section === 'academy') renderDashboard();
+        })
+        .catch((error) => console.warn('학생관리 통계 서버 갱신 실패:', error));
+    }
     if (typeof loadRecords === 'function') Promise.resolve(loadRecords('')).catch((error) => console.warn('학생관리 백그라운드 동기화 실패:', error));
     setTimeout(bindRows, 50);
   }
