@@ -102,6 +102,6 @@ test('mobile observation roster uses a 1px black divider equal to gray rows only
  assert.match(section,/border-top:\s*1px solid #000000\s*;/,'group boundary must match the 1px gray divider');
  assert.match(mobile,/memoBodyRosterRow\$\{newSection \? ' memoBodyRosterSectionStart' : ''\}/,
    'section-start modifier must still be applied only when sort key changes');
- assert.match(html,/olli-observation-roster-phone\.css\?v=20261102-sort-divider-1px-1/,
+ assert.match(html,/olli-observation-roster-phone\.css\?v=20261108-header-gap-50pct-1/,
    'bust old stylesheet cache on mobile');
 });
