@@ -828,6 +828,8 @@ function mergeStudentInfoPreservingLocal(localStudent, remoteStudent) {
     className: remote.className || local.className,
     memoUpdatedAt: remote.memoUpdatedAt || local.memoUpdatedAt,
     status: local.status || remote.status || 'active',
+    // 서버의 통계 전용 플래그를 로컬 병합 과정에서도 보존합니다.
+    is_stat_only: remoteStudent ? remote.is_stat_only === true : local.is_stat_only === true,
     withdrawn_at: remote.withdrawn_at || local.withdrawn_at || '',
     paused_at: remote.paused_at || local.paused_at || '',
     status_changed_at: remote.status_changed_at || local.status_changed_at || '',
