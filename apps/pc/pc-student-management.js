@@ -3,10 +3,6 @@
 
   const consultationStatusCache = new Map();
   const consultationStatusInFlight = new Map();
-  // Test enrollments exist only in the statistics store, never in the real student roster.
-  const statOnlyCountsCache = new Map();
-  const statOnlyCountsInFlight = new Map();
-  const statOnlyRetryAfter = new Map();
   let serverTodoItems = [];
   let serverTodoAcademyId = '';
   let serverTodoLoadPromise = null;
@@ -60,47 +56,6 @@
     }
     const call = typeof global.supabase === 'function' ? global.supabase : supabase;
     return call('POST', 'rpc/' + name, params);
-  }
-
-  function statOnlyCountsForCurrentAcademy() {
-    const academyId = todoServerContext().academyId;
-    return statOnlyCountsCache.get(academyId) || { total: 0, this_year: 0, this_month: 0 };
-  }
-
-  function loadStatOnlyCounts() {
-    const context = todoServerContext();
-    if (!context.academyId || !context.sessionToken) return Promise.resolve(false);
-    if (statOnlyCountsCache.has(context.academyId)) return Promise.resolve(true);
-    if (statOnlyCountsInFlight.has(context.academyId)) return statOnlyCountsInFlight.get(context.academyId);
-    if (Date.now() < (statOnlyRetryAfter.get(context.academyId) || 0)) return Promise.resolve(false);
-
-    const academyId = context.academyId;
-    const pending = (async () => {
-      const result = await callTodoRpc('olli_stat_test_counts', {
-        p_session_token: context.sessionToken,
-        p_academy_id: academyId
-      });
-      if (!result || result.ok !== true) throw new Error(result?.message || '통계 전용 테스트 인원 조회 실패');
-      const latestContext = todoServerContext();
-      if (latestContext.academyId !== academyId || latestContext.sessionToken !== context.sessionToken) return false;
-      const safeCount = (value) => {
-        const number = Number(value);
-        return Number.isSafeInteger(number) && number >= 0 ? number : 0;
-      };
-      statOnlyCountsCache.set(academyId, {
-        total: safeCount(result.total),
-        this_year: safeCount(result.this_year),
-        this_month: safeCount(result.this_month)
-      });
-      if (core()?.state?.section === 'academy') renderDashboard();
-      return true;
-    })().catch((error) => {
-      statOnlyRetryAfter.set(academyId, Date.now() + 30000);
-      console.warn('PC 통계 전용 테스트 인원 조회 실패:', error?.message || error);
-      return false;
-    }).finally(() => statOnlyCountsInFlight.delete(academyId));
-    statOnlyCountsInFlight.set(academyId, pending);
-    return pending;
   }
 
   function serverTodosForCurrentAcademy() {
@@ -382,25 +337,6 @@
         }
       : null;
     const allStudents = students();
-    // Some Olli versions also support is_stat_only rows in the student source.
-    // Avoid double-counting if either or both statistics-only representations exist.
-    const privateStatOnly = statOnlyCountsForCurrentAcademy();
-    void loadStatOnlyCounts();
-    const flagged = allStudents.filter((student) => student.is_stat_only === true);
-    const flaggedActive = flagged.filter((student) => typeof isAcademyManagementActiveStudent !== 'function' || isAcademyManagementActiveStudent(student)).length;
-    const flaggedYear = flagged.filter((student) => {
-      const date = typeof getStudentEnrollmentDateForStats === 'function' ? getStudentEnrollmentDateForStats(student) : null;
-      return typeof isCurrentYearDate === 'function' && isCurrentYearDate(date);
-    }).length;
-    const flaggedMonth = flagged.filter((student) => {
-      const date = typeof getStudentEnrollmentDateForStats === 'function' ? getStudentEnrollmentDateForStats(student) : null;
-      return typeof isCurrentMonthYear === 'function' && isCurrentMonthYear(date);
-    }).length;
-    const statOnly = {
-      total: Math.max(0, privateStatOnly.total - flaggedActive),
-      this_year: Math.max(0, privateStatOnly.this_year - flaggedYear),
-      this_month: Math.max(0, privateStatOnly.this_month - flaggedMonth)
-    };
     const active = allStudents.filter((student) => typeof isAcademyManagementActiveStudent !== 'function' || isAcademyManagementActiveStudent(student));
     const thisYearRegistered = allStudents.filter((student) => {
       const enrolled = typeof getStudentEnrollmentDateForStats === 'function' ? getStudentEnrollmentDateForStats(student) : null;
@@ -429,9 +365,9 @@
     const month = new Date().getMonth() + 1;
 
     dashboard.innerHTML = '<div class="recordAcademyStatGrid">'
-      + buildStatCard('원생수', active.length + statOnly.total, '초등부 '+activeElementary+'명 · 유치부 '+activeKinder+'명'+(statOnly.total ? ' · 테스트 '+statOnly.total+'명' : ''))
+      + buildStatCard('원생수', active.length, '초등부 '+activeElementary+'명 · 유치부 '+activeKinder+'명')
       + buildStatCard(month+'월 상담', due.length, '초등부 '+consultationElementary+'명 · 유치부 '+consultationKinder+'명')
-      + buildStatCard('올해 등록', thisYearRegistered.length + statOnly.this_year, '이달 등록 '+(thisMonthRegistered.length + statOnly.this_month)+'명'+(statOnly.this_month ? ' (테스트 '+statOnly.this_month+'명 포함)' : '')+' · 이달 퇴원 '+thisMonthWithdrawn.length+'명')
+      + buildStatCard('올해 등록', thisYearRegistered.length, '이달 등록 '+thisMonthRegistered.length+'명 · 이달 퇴원 '+thisMonthWithdrawn.length+'명')
       + buildStatCard('올해 퇴원', thisYearWithdrawn.length, '휴원 '+paused.length+'명 · 퇴원 '+thisYearWithdrawn.length+'명')
       + '</div><div class="pcAcademyWorkOrderGrid"><section class="recordAcademyConsultSection pcAcademyTodoSection" id="pcAcademyTodoSection"></section>'
       + '<section class="recordAcademyConsultSection pcAcademyMaterialsSection" id="pcAcademyMaterialsSection"></section></div>';
