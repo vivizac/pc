@@ -1,0 +1,25 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const {createRequire}=require('node:module');const path=require('node:path');const req=createRequire(path.join(__dirname,'tuition/package.json'));const {PGlite}=req('@electric-sql/pglite');const {randomUUID}=require('node:crypto');
+const A='00000000-0000-0000-0000-000000000001',B='00000000-0000-0000-0000-000000000002',S='00000000-0000-0000-0000-000000000011';
+test('receipt ledger: permissions, snapshot, partial payments, retry, conflict and reversal',async()=>{const db=new PGlite();try{
+await db.exec(`create schema private;create role anon;create role authenticated;create table academies(id uuid primary key);create table students(id uuid primary key,academy_id uuid);insert into academies values('${A}'),('${B}');insert into students values('${S}','${A}');
+create function private.olli_academy_finance_owner_member(token text,academy uuid) returns uuid language plpgsql as $$begin if token<>'owner' or academy<>'${A}' then raise exception 'FORBIDDEN';end if;return '${A}'::uuid;end $$;
+create table private.estimate(amount bigint);insert into private.estimate values(110000);
+create function private.olli_academy_revenue_estimate(academy uuid,month date) returns jsonb language sql as $$select jsonb_build_object('students',jsonb_build_array(jsonb_build_object('student_id','${S}','name','학생 A','tuition_amount',amount,'fee_amount',0,'needs_review',false))) from private.estimate$$;`);
+await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261108051033_standalone_receipts.sql'),'utf8'));
+const overview=async(token='owner',academy=A)=>(await db.query('select olli_receipts_overview($1,$2,$3) r',[token,academy,'2026-11-01'])).rows[0].r;
+const write=async(action,data,id=randomUUID(),token='owner',academy=A)=>(await db.query('select olli_receipts_write($1,$2,$3,$4,$5) r',[token,academy,id,action,data])).rows[0].r;
+await assert.rejects(overview('bad'),/FORBIDDEN/);await assert.rejects(overview('owner',B),/FORBIDDEN/);
+let r=await overview();assert.equal(r.students[0].invoice_id,null);assert.equal((await db.query('select count(*) n from private.olli_receipt_invoices')).rows[0].n,0);
+await write('favorite',{student_id:S,enabled:true});assert.equal((await overview()).students[0].favorite,true);
+const issueId=randomUUID();assert.equal((await write('issue',{month:'2026-11-01'},issueId)).issued,1);assert.equal((await write('issue',{month:'2026-11-01'},issueId)).issued,1);assert.equal((await write('issue',{month:'2026-11-01'})).issued,0);
+let s=(await overview()).students[0];const invoice_id=s.invoice_id;
+await db.exec('update private.estimate set amount=150000');assert.equal((await overview()).students[0].amount,110000);
+const data={invoice_id,revision:0,amount:40000,method:'transfer',paid_on:'2026-11-01',note:'부분납부'},id=randomUUID();const entry=await write('payment',data,id);assert.deepEqual(await write('payment',data,id),entry);assert.equal((await overview()).students[0].paid,40000);
+await assert.rejects(write('payment',{...data,amount:45000},id),/REQUEST_ID_REUSED/);await assert.rejects(write('payment',data),/CONFLICT/);await assert.rejects(write('payment',{...data,revision:1,amount:71000}),/INVALID_AMOUNT/);
+await write('payment',{...data,revision:1,amount:70000});s=(await overview()).students[0];assert.equal(s.paid,110000);assert.equal(Number(s.revision),2);
+await assert.rejects(write('reversal',{invoice_id,entry_id:entry.entry_id,revision:2,note:''}),/사유/);
+await write('reversal',{invoice_id,entry_id:entry.entry_id,revision:2,note:'중복 확인 정정'});assert.equal((await overview()).students[0].paid,70000);
+await assert.rejects(write('reversal',{invoice_id,entry_id:entry.entry_id,revision:3,note:'다시 취소'}),/PAYMENT_NOT_REVERSIBLE/);
+const history=(await db.query('select olli_receipts_history($1,$2,$3) r',['owner',A,invoice_id])).rows[0].r;assert.equal(history.entries.length,3);
+await db.exec('set role anon');await assert.rejects(db.query('select * from private.olli_receipt_entries'),/permission denied/);await db.exec('reset role');
+}finally{await db.close();}});
