@@ -176,7 +176,7 @@ function getAcademyManagementStudentsForStats(){
   try {
     const academyId = getOlliCurrentAcademyId ? getOlliCurrentAcademyId() : '';
     const pendingStatusMap = (typeof getPendingStudentStatusMap === 'function') ? getPendingStudentStatusMap() : {};
-    return getAllStudents()
+    return getAllStudents({ includeStatOnly: true })
       .filter(item => {
         const rawType = String(item?.type || item?.division || '').trim();
         return rawType === 'elementary' || rawType === 'kinder';
@@ -208,6 +208,7 @@ function isAcademyManagementActiveStudent(student){
 function getThisMonthConsultationDueStudents(students){
   return (Array.isArray(students) ? students : [])
     .filter(isAcademyManagementActiveStudent)
+    .filter(student => student.is_stat_only !== true)
     .filter(student => getDueConsultationRuleLabelsForStudent(student).length > 0);
 }
 
