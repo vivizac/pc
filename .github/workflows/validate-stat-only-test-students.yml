@@ -1,0 +1,34 @@
+name: Validate statistics-only test student counts
+on:
+  push:
+    branches:
+      - feat/stat-only-test-students-13-20261108
+    paths:
+      - 'apps/pc/pc-student-management.js'
+      - 'supabase/migrations/20261108042843_stat_only_test_students_13.sql'
+      - 'tests/stat-only-test-students.test.cjs'
+      - '.github/workflows/validate-stat-only-test-students.yml'
+  pull_request:
+    paths:
+      - 'apps/pc/pc-student-management.js'
+      - 'supabase/migrations/20261108042843_stat_only_test_students_13.sql'
+      - 'tests/stat-only-test-students.test.cjs'
+      - '.github/workflows/validate-stat-only-test-students.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  statistics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax check
+        run: node --check apps/pc/pc-student-management.js
+      - name: Statistics-only and existing student management regressions
+        run: |
+          node --test tests/stat-only-test-students.test.cjs
+          node --test tests/pc-student-management-fixed-dashboard.test.cjs tests/pc-consultation-tenure-badge.test.cjs
