@@ -71,7 +71,7 @@ test('90 real students plus 13 server-only tests show 103 total and no roster mu
   assert.match(h.dashboard.innerHTML, /원생수[\s\S]*?90/);
   await h.context.refreshMobileAcademyStatsFromServer();
   assert.match(h.dashboard.innerHTML, /원생수[\s\S]*?103/);
-  assert.match(h.dashboard.innerHTML, /초등부 60명[\\s\\S]*?유치부 43명/);
+  assert.match(h.dashboard.innerHTML, /초등부 60명[\s\S]*?유치부 43명/);
   assert.doesNotMatch(h.dashboard.innerHTML, /통계전용/);
   assert.doesNotMatch(h.dashboard.innerHTML, /서버 통계 확인 중/);
   assert.equal(h.getWrites(), 0);
@@ -93,5 +93,5 @@ test('a stale server response cannot overwrite the current academy stats', async
   h.context.renderRecordAcademyManagementDashboard();
   assert.match(h.dashboard.innerHTML, /서버 통계 확인 중/);
   // No value from another academy is reused as server statistics.
-  assert.doesNotMatch(h.dashboard.innerHTML, /초등부 60명[\\s\\S]*?유치부 43명/);
+  assert.doesNotMatch(h.dashboard.innerHTML, /초등부 60명[\s\S]*?유치부 43명/);
 });
