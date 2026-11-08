@@ -73,4 +73,13 @@ test('PC student management counts the 13 test enrollments without adding them t
   assert.match(dashboard.innerHTML, /올해 등록\|14\|이달 등록 14명 \(테스트 13명 포함\)/);
   assert.match(dashboard.innerHTML, /월 상담\|0/);
   assert.doesNotMatch(dashboard.innerHTML, /테스트학생0[1-9]/);
+
+  // Other deployed Olli clients may already contain flagged statistics-only rows.
+  // The same 13 people must never count twice.
+  const flagged = { ...student, id: 'flagged-student', is_stat_only: true };
+  context.students = () => [student, flagged];
+  context.consultationStudents = (list) => { assert.equal(list.length, 2); return []; };
+  render();
+  assert.match(dashboard.innerHTML, /원생수\|14\|/);
+  assert.match(dashboard.innerHTML, /올해 등록\|14\|이달 등록 14명/);
 });
