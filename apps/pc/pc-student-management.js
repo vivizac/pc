@@ -382,9 +382,25 @@
         }
       : null;
     const allStudents = students();
-    // Counts load separately; student/consultation lists remain strictly real-student-only.
-    const statOnly = statOnlyCountsForCurrentAcademy();
+    // Some Olli versions also support is_stat_only rows in the student source.
+    // Avoid double-counting if either or both statistics-only representations exist.
+    const privateStatOnly = statOnlyCountsForCurrentAcademy();
     void loadStatOnlyCounts();
+    const flagged = allStudents.filter((student) => student.is_stat_only === true);
+    const flaggedActive = flagged.filter((student) => typeof isAcademyManagementActiveStudent !== 'function' || isAcademyManagementActiveStudent(student)).length;
+    const flaggedYear = flagged.filter((student) => {
+      const date = typeof getStudentEnrollmentDateForStats === 'function' ? getStudentEnrollmentDateForStats(student) : null;
+      return typeof isCurrentYearDate === 'function' && isCurrentYearDate(date);
+    }).length;
+    const flaggedMonth = flagged.filter((student) => {
+      const date = typeof getStudentEnrollmentDateForStats === 'function' ? getStudentEnrollmentDateForStats(student) : null;
+      return typeof isCurrentMonthYear === 'function' && isCurrentMonthYear(date);
+    }).length;
+    const statOnly = {
+      total: Math.max(0, privateStatOnly.total - flaggedActive),
+      this_year: Math.max(0, privateStatOnly.this_year - flaggedYear),
+      this_month: Math.max(0, privateStatOnly.this_month - flaggedMonth)
+    };
     const active = allStudents.filter((student) => typeof isAcademyManagementActiveStudent !== 'function' || isAcademyManagementActiveStudent(student));
     const thisYearRegistered = allStudents.filter((student) => {
       const enrolled = typeof getStudentEnrollmentDateForStats === 'function' ? getStudentEnrollmentDateForStats(student) : null;
