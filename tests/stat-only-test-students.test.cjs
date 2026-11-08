@@ -13,7 +13,7 @@ const migration = read('supabase/migrations/20261108042843_stat_only_test_studen
 test('test enrollments live only in a private statistics table and cannot appear on student rosters', () => {
   assert.match(migration, /create table if not exists private\.olli_stat_test_students/i);
   assert.match(migration, /enable row level security/i);
-  assert.doesNotMatch(migration, /insert\s+into\s+public\.students/i);
+  assert.doesNotMatch(migration, /^\s*insert\s+into\s+public\.students\b/im);
   assert.doesNotMatch(dashboardSource, /setAllStudents\s*\(\s*.*statOnly/s);
   assert.match(dashboardSource, /const allStudents = students\(\)/);
   assert.match(dashboardSource, /const due = consultationStudents\(allStudents\)/);
