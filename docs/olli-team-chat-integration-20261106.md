@@ -132,8 +132,8 @@ Supabase 설정을 사용하므로 브랜치 UI에서 운영 푸시 URL을 별�
 ## 향후 migration·rollback 계획 (이번 작업에서 실행하지 않음)
 
 후속 테스트 복구 및 전체 재비교 결과는 [회귀 실패 분류 기록](olli-regression-triage-20261106.md)을 따른다.
-위 431개는 최초 비교의 역사적 수치이며, 숨겨졌던 Mobile 검사 실행 후 최신 전체 실패는 463개다.
-기존 실패 12개를 복구했지만 전체 회귀 통과·출시 승인을 의미하지 않는다.
+위 431개는 최초 비교 수치이며, 숨겨졌던 Mobile 검사 실행 후 463개가 기록됐다.
+11월 9일 전체 재실행에서는 기존 미해결 실패 418개와 로컬 HTTP 연결 차단 2개가 남았다.
 
 Migration은 Supabase CLI 2.81.3 `migration new team_chat_shared_rooms`로 생성했다.
 `supabase/migrations/20261106055458_team_chat_shared_rooms.sql`을 검토·테스트 환경 적용한 뒤에도

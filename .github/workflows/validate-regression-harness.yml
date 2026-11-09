@@ -9,6 +9,11 @@ on:
       - 'apps/pc/tests/*schedule*common.test.cjs'
       - 'apps/pc/tests/observation-memo-safety-contract.test.cjs'
       - 'apps/mobile/tests/olli-talk-mentions-tasks.test.cjs'
+      - 'apps/mobile/tests/olli-talk-current-behavior.test.cjs'
+      - 'apps/mobile/olli-talk-beta.js'
+      - 'apps/mobile/olli-talk-beta.css'
+      - 'apps/mobile/olli-mobile-keyboard-activation.js'
+      - 'apps/mobile/index.html'
       - 'apps/mobile/tests/olli-talk-keyboard-close-return.test.cjs'
       - 'apps/mobile/tests/phone-drawer-rear-search-state.test.cjs'
       - '.github/workflows/validate-regression-harness.yml'
@@ -32,12 +37,13 @@ jobs:
         run: |
           node --test apps/pc/tests/schedule-class-layout-date-common.test.cjs
           node --test --test-name-pattern='edit state contract' apps/pc/tests/observation-memo-safety-contract.test.cjs
-      - name: Mention escaping, drawer search and keyboard blur fixtures
+      - name: Mobile Team Chat browser behavior and retained source contracts
+        working-directory: apps/mobile
+        run: node --test tests/olli-talk-current-behavior.test.cjs tests/olli-talk-mentions-tasks.test.cjs
+      - name: Drawer search and keyboard blur fixtures
         working-directory: apps/mobile
         run: |
-          node --check tests/olli-talk-mentions-tasks.test.cjs
-          node --test --test-name-pattern='teacher mention regex' tests/olli-talk-mentions-tasks.test.cjs
           node --test tests/phone-drawer-rear-search-state.test.cjs
           node --test --test-name-pattern='blur remembers' tests/olli-talk-keyboard-close-return.test.cjs
       # This job checks the named repairs. The unfiltered local audit includes
-      # all historical assertions and must also pass before release.
+      # all remaining test files and must also pass before release.
