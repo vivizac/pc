@@ -12,12 +12,13 @@ const shell=script('apps/pc/pc-shell.js');
 const consultation=script('apps/pc/consultation-survey-core.js');
 const shellCSS=script('apps/pc/pc-shell.css');
 const consultationCSS=script('apps/pc/consultation-survey.css');
+const sidebarBrand=script('apps/pc/index.html').match(/<div class="olliPcBrand">[\s\S]*?<\/div>\s*<\/div>/)[0];
 const html=[
  '<!doctype html><html lang="ko"><head><meta charset="utf-8">',
  '<style>:root{--pc-content-left:200px;--pc-topbar-h:78px;--pc-line:#e5e8eb}',
  'body{margin:0;font-family:Arial,sans-serif}.pageScreen{display:none}</style>',
  '</head><body class="olliPcApp">',
- '<div id="olliPcShell"><button data-pc-nav="academy">학생관리</button>',
+ '<div id="olliPcShell" class="olliPcShell">',sidebarBrand,'<button data-pc-nav="academy">학생관리</button>',
  '<button data-pc-nav="consultation">상담기록</button></div>',
  '<div id="olliPcTopbar" class="olliPcTopbar">',
  '<div id="olliPcTopbarTitle" class="olliPcTopbarTitle">학생관리</div>',
@@ -47,11 +48,16 @@ test('consultation tabs replace the white PC topbar title, not the page body',as
   // The production booking owner UI normally fills this panel. In this isolated
   // test mock only the card content, so visibility can be checked without API calls.
   await page.evaluate(()=>{
+    localStorage.setItem('olli_current_academy_name','별빛미술학원');
+    window.getOlliCurrentAcademyName=()=>localStorage.getItem('olli_current_academy_name');
     window.OlliBookingDashboard={open:()=>{
       document.getElementById('olliConsultationBookingPanel').textContent='예약 목록';
     }};
   });
   await page.evaluate(()=>window.pcOpenSection('consultation'));
+  const brand=page.locator('.olliPcBrand');
+  assert.equal(await brand.innerText(),'별빛미술학원');
+  assert.equal(await brand.locator(':scope > div').count(),1);
 
   const top='#olliPcTopbarTitle';
   const booking=page.locator(top+' [data-consultation-page-tab="booking"]');
@@ -87,7 +93,13 @@ test('consultation tabs replace the white PC topbar title, not the page body',as
   assert.equal(await booking.getAttribute('aria-selected'),'true');
   assert.equal(await page.locator('#olliConsultationBookingPanel').isVisible(),true);
 
-  await page.evaluate(()=>window.OlliPcCore.setChrome('academy'));
+  const nextAcademy='나무와색어린이미술창작교육전문학원';
+  await page.evaluate(name=>{
+    localStorage.setItem('olli_current_academy_name',name);
+    window.OlliPcCore.setChrome('academy');
+  },nextAcademy);
+  assert.equal(await brand.innerText(),nextAcademy);
+  assert.ok(await brand.locator('.olliPcBrandLogo').evaluate(el=>el.scrollWidth<=el.clientWidth));
   assert.equal(await page.locator('#olliPcTopbarTitle').innerText(),'학생관리');
   assert.equal(await page.locator(top+' [role=tab]').count(),0,
     'other PC sections must retain their ordinary white-bar heading');

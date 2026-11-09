@@ -47,7 +47,7 @@ test('choice screen precedes calendar; booking shows name and phone before calen
  // Calendar reads a whole month; per-day slot RPC remains server-side for compatibility.
  assert.match(guardian,/action:'month-slots',academy:slug,month/);
  assert.match(guardian,/monthCache\.get\(monthKey\(\)\)/);
- assert.match(guardian,/state.academyName/);
+ assert.match(guardian,/global\.document\.title=academyName/);
  assert.doesNotMatch(guardian,/ogbEyebrow">상담 예약/);
  assert.doesNotMatch(guardian,/학생 정보 확인|상담 예약하기를 누르면 올리에 등록된 학생 정보와 대조합니다/);
  assert.match(guardian,/slotStatus==='error'/);

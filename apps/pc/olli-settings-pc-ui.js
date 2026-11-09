@@ -170,6 +170,7 @@ const settingsSheetData = {
           const academy = await saveOlliAcademySettingsSecure(academyId, { academy_name: newName });
           if (olliSettingsState) olliSettingsState.academy = academy;
           localStorage.setItem('olli_current_academy_name', newName);
+          window.OlliPcCore?.renderAcademyBrand?.();
         } catch (err) {
           alert('학원명 저장 중 오류가 발생했습니다.\n' + (err.message || err));
         }
