@@ -45,8 +45,9 @@ test('phone observation growth request keeps the original student id across asyn
   assert.match(block, /studentId: requestStudentId,/);
   assert.match(block, /studentName: requestStudentName,/);
   const fetchIndex = block.indexOf("const res = await fetch('/api/chat'");
-  const saveIndex = block.indexOf('saveElementaryFeedbackDirectlyToArchive', fetchIndex);
-  const saveBlock = block.slice(saveIndex, block.indexOf('});', saveIndex) + 3);
-  assert.match(saveBlock, /studentId: requestStudentId,/);
-  assert.doesNotMatch(saveBlock, /currentMemoStudent\?\.id/);
+  const reviewIndex = block.indexOf('openMemoFeedbackReviewPopup', fetchIndex);
+  assert.ok(fetchIndex >= 0 && reviewIndex > fetchIndex);
+  const reviewBlock = block.slice(reviewIndex, block.indexOf('});', reviewIndex) + 3);
+  assert.match(reviewBlock, /studentId: requestStudentId,/);
+  assert.doesNotMatch(reviewBlock, /currentMemoStudent\?\.id/);
 });

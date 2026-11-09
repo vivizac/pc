@@ -507,7 +507,9 @@ async function saveMemoFeedbackReviewFromPopup(btn) {
 async function saveElementaryFeedbackDirectlyToArchive(text, options = {}) {
   const content = String(text || '').trim();
   if (!content) throw new Error('저장할 피드백 내용이 비어 있습니다.');
-  const studentDivision = options.studentDivision === 'kinder' || currentMemoStudent?.type === 'kinder' ? 'kinder' : 'elementary';
+  const studentDivision = ['elementary', 'kinder'].includes(options.studentDivision)
+    ? options.studentDivision
+    : (currentMemoStudent?.type === 'kinder' ? 'kinder' : 'elementary');
   const studentName = normalizeTodayFeedbackStudentName(options.studentName || currentMemoStudent?.name || '');
   if (!studentName) throw new Error('아이 이름을 찾지 못했습니다.');
   const selectedStudentId = options.studentId || currentMemoStudent?.id || '';
@@ -560,7 +562,9 @@ let observationFeedbackLoading = false;
 async function requestSceneCardFeedbackFromElementary(studentName, text, analysisPromptText, options = {}) {
   if (observationFeedbackLoading) return;
 
-  const studentDivision = options.studentDivision === 'kinder' || currentMemoStudent?.type === 'kinder' ? 'kinder' : 'elementary';
+  const studentDivision = ['elementary', 'kinder'].includes(options.studentDivision)
+    ? options.studentDivision
+    : (currentMemoStudent?.type === 'kinder' ? 'kinder' : 'elementary');
   const requestStudentId = String(options.studentId || currentMemoStudent?.id || '').trim();
   const requestStudentName = normalizeTodayFeedbackStudentName(studentName);
   const divisionLabel = studentDivision === 'kinder' ? '유치부' : '초등부';

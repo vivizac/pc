@@ -13,6 +13,11 @@ on:
       - 'packages/common/observation-memo-*.js'
       - 'apps/mobile/tests/kcf-live-local-session.test.cjs'
       - 'apps/mobile/kinder-feedback.js'
+      - 'tests/observation-feedback-student-binding.test.cjs'
+      - 'apps/pc/olli-record-feedback-generation.js'
+      - 'apps/pc/olli-data-feedback.js'
+      - 'apps/mobile/olli-observation-runtime.js'
+      - 'apps/mobile/olli-student-core.js'
       - 'apps/mobile/tests/olli-talk-mentions-tasks.test.cjs'
       - 'apps/mobile/tests/olli-talk-current-behavior.test.cjs'
       - 'apps/mobile/olli-talk-beta.js'
@@ -46,6 +51,8 @@ jobs:
           node --test --test-name-pattern='edit state contract' apps/pc/tests/observation-memo-safety-contract.test.cjs
       - name: QuickNote LIVE local session and background save
         run: node --test apps/mobile/tests/kcf-live-local-session.test.cjs
+      - name: Growth feedback preserves the requested student in PC and Mobile
+        run: node --test tests/observation-feedback-student-binding.test.cjs
       - name: Mobile Team Chat browser behavior and retained source contracts
         working-directory: apps/mobile
         run: node --test tests/olli-talk-current-behavior.test.cjs tests/olli-talk-mentions-tasks.test.cjs

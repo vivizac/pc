@@ -39,7 +39,6 @@ test('growth feedback uses the elementary prompt by purpose and saves actual div
   assert.match(core, /studentDivision,/);
   assert.match(core, /promptType: 'elementary'/);
   assert.match(core, /feedbackType: 'growth'/);
-  assert.match(generation, /const studentDivision = options\.studentDivision === 'kinder'/);
   assert.match(generation, /getOrCreateStudentForSupabaseSave\(studentName, studentDivision, selectedStudentId\)/);
   assert.match(generation, /const rawType = options\.feedbackType \|\| 'growth'/);
   assert.match(generation, /buildTodayFeedbackRequestContent\(userText, studentName, feedbackMonth, studentDivision\)/);
