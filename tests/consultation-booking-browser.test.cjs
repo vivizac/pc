@@ -6,7 +6,6 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {chromium}=require('playwright');
 const root=path.resolve(__dirname,'..');
-const html=fs.readFileSync(path.join(root,'apps/pc/consultation-booking.html'),'utf8');
 const js=fs.readFileSync(path.join(root,'packages/common/olli-booking-guardian.js'),'utf8');
 const css=fs.readFileSync(path.join(root,'packages/common/olli-booking-guardian.css'),'utf8');
 const slug='0123456789abcdef0123456789abcdef0123';
@@ -27,8 +26,12 @@ function validFutureDates(){
  }
  return found;
 }
-for(const width of [390,1280]){
+for(const {width,app,academyName} of [
+ {width:390,app:'mobile',academyName:'별빛미술학원'},
+ {width:1280,app:'pc',academyName:'나무 & 색 미술학원'}
+]){
  test('choice first at '+width+'px: book, reopen page, lookup by phone, change and cancel',async()=>{
+  const html=fs.readFileSync(path.join(root,'apps',app,'consultation-booking.html'),'utf8');
   const [date,date2]=validFutureDates();
   const first=date+'T11:00:00+09:00',second=date2+'T11:30:00+09:00';
   let current=null,requests=[],reservationSeq=0;
@@ -56,7 +59,7 @@ for(const width of [390,1280]){
        return route.fulfill({status:401,contentType:'text/html',body:'<html>Vercel Authentication</html>'});
      const body=req.postDataJSON();requests.push({endpoint:url.pathname,...body});
      if(url.pathname==='/api/olli-booking-public'){
-      if(body.action==='info')return route.fulfill({json:{ok:true,academy_name:'비비작아이성향미술학원',weeks:[2,3],weekdays:[1,2,3,4,5]}});
+      if(body.action==='info')return route.fulfill({json:{ok:true,academy_name:academyName,weeks:[2,3],weekdays:[1,2,3,4,5]}});
       if(body.action==='month-slots')return route.fulfill({json:monthSlots(body.month)});
       if(body.action==='slots')return route.fulfill({json:{ok:true,slots:[{start_at:body.date===date?first:second}]}});
       if(body.action==='lookup'){
@@ -85,6 +88,7 @@ for(const width of [390,1280]){
    });
    await page.goto('https://olli-booking.test/consultation-booking.html?academy='+slug);
    await page.getByRole('button',{name:'상담 예약하기',exact:true}).waitFor();
+   assert.equal(await page.title(),academyName);
    assert.equal(await page.locator('.ogbBrand').count(),0,'no academy-name header above the booking panel');
    assert.equal(await page.locator('input[name=student_name]').count(),0);
    assert.equal(await page.locator('.ogbCalendar').count(),0);
@@ -142,6 +146,7 @@ for(const width of [390,1280]){
    // must still allow them to find and change a previously saved booking.
    await page.reload();
    await page.getByRole('button',{name:'기존 예약 변경하기'}).click();
+   assert.equal(await page.title(),academyName);
    await page.locator('[name=student_name]').fill('김하늘');
    await page.locator('[name=guardian_phone]').fill('01099999999');
    await page.getByRole('button',{name:'기존 예약 확인하기'}).click();

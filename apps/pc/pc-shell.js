@@ -105,6 +105,11 @@
     body.innerHTML = '';
   }
 
+  function renderAcademyBrand() {
+    const brand = document.querySelector('#olliPcShell .olliPcBrandLogo');
+    if (brand) brand.textContent = (global.getOlliCurrentAcademyName?.() || '').trim();
+  }
+
   function setChrome(section) {
     const search = document.getElementById('olliPcSearch');
     if (search && Object.prototype.hasOwnProperty.call(state.searchValues, state.section)) {
@@ -114,6 +119,7 @@
     const shell = document.getElementById('olliPcShell');
     const topbar = document.getElementById('olliPcTopbar');
     if (shell) {
+      renderAcademyBrand();
       shell.classList.add('visible');
       shell.dataset.pcSection = state.section;
     }
@@ -417,7 +423,7 @@
     if (state.section === SECTION.PERSONALITY_RECORDS) personalityRecordsFeature()?.renderList?.();
   }
 
-  const core = { SECTION, state, activeStudents, sortedStudents, hideMainScreensExcept, showRecordRoomImmediately, updateRecordLayout, renderContext, setChrome, openSection, syncFromVisiblePage };
+  const core = { SECTION, state, activeStudents, sortedStudents, hideMainScreensExcept, showRecordRoomImmediately, updateRecordLayout, renderContext, renderAcademyBrand, setChrome, openSection, syncFromVisiblePage };
   global.OlliPcCore = core;
   global.__olliPcAcademySelectedStudentRef = '';
   global.pcSyncFromVisiblePage = syncFromVisiblePage;
@@ -434,8 +440,6 @@
     // 구버전 index 캐시와 섞여도 관찰노트 메뉴/레거시 하단 정렬 버튼이 다시 노출되지 않도록 안전망만 유지합니다.
     document.querySelectorAll('#olliPcShell [data-pc-nav="observation"]').forEach((button) => button.remove());
     document.getElementById('olliPcSortBtn')?.remove();
-    const brand = document.querySelector('#olliPcShell .olliPcBrandLogo');
-    if (brand) brand.textContent = 'olli';
     document.getElementById('olliPcTopArchiveBtn')?.remove();
   }
 
