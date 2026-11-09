@@ -36,7 +36,8 @@ create table private.olli_shared_chat_messages (
   room_id uuid not null references private.olli_shared_chat_rooms(id),
   seq bigint not null,
   academy_id uuid references public.academies(id),
-  sender_member_id uuid references public.academy_members(id),
+  -- A registration can be removed without deleting its sent messages.
+  sender_member_id uuid references public.academy_members(id) on delete set null,
   sender_account_id uuid,
   sender_name text not null,
   branch_name text not null,
@@ -51,7 +52,7 @@ create table private.olli_shared_chat_messages (
   unique(room_id, seq),
   unique(room_id, sender_account_id, client_message_id),
   check ((message_type = 'system' and sender_member_id is null and sender_account_id is null)
-    or (message_type <> 'system' and sender_member_id is not null and sender_account_id is not null and academy_id is not null))
+    or (message_type <> 'system' and sender_account_id is not null and academy_id is not null))
 );
 create table private.olli_shared_chat_mentions (
   message_id bigint not null references private.olli_shared_chat_messages(id),

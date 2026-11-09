@@ -149,6 +149,16 @@ test('restrictive storage rule denies the shared bucket even with a broad permis
   }finally{await db.exec('reset role');}
 });
 
+test('removing a member registration preserves sent messages and revokes access',async()=>{
+  const sent=await send('manager',1,'연결 해제 전에 보낸 메시지');
+  await sql('delete from public.academy_members where id=$1',[member(9)]);
+  await assert.rejects(list('manager',1),/멤버십/);
+  const message=(await list('owner',1)).messages.find(row=>row.id===sent.message_id);
+  assert.equal(message.body,'연결 해제 전에 보낸 메시지');
+  assert.equal(message.sender_name,'관리자');
+  assert.equal(message.sender_member_id,null);
+});
+
 test('shared Realtime emits only to current and newly removed academy topics',async t=>{
   const db=await require('./fixture.cjs').createDB();
   t.after(()=>db.close());
