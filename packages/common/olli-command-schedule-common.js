@@ -3154,7 +3154,7 @@
     const sourceEnrollmentId = clean(opts.sourceEnrollmentId);
     const targetWeekday = Number(opts.targetWeekday || 0);
     const targetTimeSlot = Number(opts.targetTimeSlot || 0);
-    const explicitTargetDate = localDateKey(opts.targetDate);
+    const explicitTargetDate = clean(opts.targetDate) ? localDateKey(opts.targetDate) : '';
 
     if (!studentId || !division) return { ok:false, message:'학생의 수업 구분을 확인하지 못했어요.' };
     if (!effectiveDate || !targetWeekday || !targetTimeSlot) {

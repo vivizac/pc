@@ -282,13 +282,25 @@ test('prepare move write finds one source enrollment and keeps its class group w
     effectiveDate:'2026-09-18'
   });
 
-  assert.equal(prepared.ok, true);
+  assert.equal(prepared.ok, true, prepared.message);
   assert.equal(prepared.command.intent, 'move_class');
   assert.equal(prepared.command.sourceEnrollmentId, 'source-1');
   assert.equal(prepared.command.targetClassGroup, 'B');
+  assert.equal(prepared.command.targetCheckDate, '2026-09-23');
   assert.equal(prepared.command.effectiveDate, '2026-09-18');
   assert.match(prepared.message, /월요일 4시/);
   assert.match(prepared.message, /수요일 4시 B반/);
+
+  const explicit = await schedule.prepareWriteCommand('move_class', {
+    studentName:'최민기',
+    sourceWeekday:1,
+    targetWeekday:3,
+    targetTimeSlot:4,
+    effectiveDate:'2026-09-18',
+    targetDate:'2026-09-30'
+  });
+  assert.equal(explicit.ok, true, explicit.message);
+  assert.equal(explicit.command.targetCheckDate, '2026-09-30');
 });
 
 test('move write rechecks the target and does not silently waitlist', async () => {

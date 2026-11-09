@@ -8,6 +8,11 @@ on:
       - 'tests/team-talk-avatar-picker.test.cjs'
       - 'apps/pc/tests/*schedule*common.test.cjs'
       - 'apps/pc/tests/observation-memo-safety-contract.test.cjs'
+      - 'apps/pc/tests/observation-growth-feedback-all-divisions.test.cjs'
+      - 'packages/common/olli-command-schedule-common.js'
+      - 'packages/common/observation-memo-*.js'
+      - 'apps/mobile/tests/kcf-live-local-session.test.cjs'
+      - 'apps/mobile/kinder-feedback.js'
       - 'apps/mobile/tests/olli-talk-mentions-tasks.test.cjs'
       - 'apps/mobile/tests/olli-talk-current-behavior.test.cjs'
       - 'apps/mobile/olli-talk-beta.js'
@@ -33,10 +38,14 @@ jobs:
         env:
           NODE_PATH: ${{ github.workspace }}/tests/shared-chat/node_modules
         run: node --test tests/regression/runner.test.cjs tests/consultation-summary-source-provenance.test.cjs tests/team-talk-avatar-picker.test.cjs tests/consultation-messages-ui.test.cjs
-      - name: Date-specific class groups and active observation editor isolation
+      - name: Date-specific schedule moves and observation editor isolation
         run: |
           node --test apps/pc/tests/schedule-class-layout-date-common.test.cjs
+          node --test --test-name-pattern='^prepare move write finds|^move write rechecks' apps/pc/tests/olli-command-schedule-common.test.cjs
+          node --test apps/pc/tests/observation-growth-feedback-all-divisions.test.cjs
           node --test --test-name-pattern='edit state contract' apps/pc/tests/observation-memo-safety-contract.test.cjs
+      - name: QuickNote LIVE local session and background save
+        run: node --test apps/mobile/tests/kcf-live-local-session.test.cjs
       - name: Mobile Team Chat browser behavior and retained source contracts
         working-directory: apps/mobile
         run: node --test tests/olli-talk-current-behavior.test.cjs tests/olli-talk-mentions-tasks.test.cjs
