@@ -148,3 +148,47 @@ test('restrictive storage rule denies the shared bucket even with a broad permis
     await assert.rejects(sql("insert into storage.objects values('olli_shared_chat_files')"),/row-level security/);
   }finally{await db.exec('reset role');}
 });
+
+test('shared Realtime emits only to current and newly removed academy topics',async t=>{
+  const db=await require('./fixture.cjs').createDB();
+  t.after(()=>db.close());
+  const sql=async(query,params=[])=>(await db.query(query,params)).rows;
+  const topics=new Map((await sql(
+    "select academy_id, 'olli:' || topic_token as topic from private.olli_realtime_topics"
+  )).map(row=>[row.academy_id,row.topic]));
+  async function assertSignals(schools){
+    const events=await sql('delete from private.test_signals returning *');
+    assert.deepEqual(events.map(event=>event.topic).sort(),schools.map(school=>topics.get(academy(school))).sort());
+    for(const event of events){
+      assert.equal(event.event,'changed');
+      assert.equal(event.is_private,false);
+      assert.deepEqual(event.payload,{protocol:1,domain:'chat',revision:0});
+    }
+  }
+  await db.exec('update private.olli_shared_chat_release set enabled=true');
+  const configure=async(room,revision,requestId,schools)=>(await sql(
+    'select public.olli_shared_chat_configure($1,$2,$3,$4,$5,$6) as result',
+    ['owner',academy(1),room,revision,schools,uid(requestId)]
+  ))[0].result.room;
+  const initial=await configure(null,null,700,chosen([1,2,3]));
+  await assertSignals([1,2,3]);
+  const removed=await configure(initial.id,initial.revision,701,chosen([1,2]));
+  await assertSignals([1,2,3]);
+  const renamed=await configure(initial.id,removed.revision,702,chosen([1,2]).replace('대천점','대천 새 이름'));
+  await assertSignals([1,2]);
+  const send=(body,requestId)=>sql("select public.olli_shared_chat_send($1,$2,$3,$4,$5,null,'{}',false)",
+    ['teacherA',academy(1),initial.id,body,uid(requestId)]);
+  await send('공동 대화',703);
+  await assertSignals([1,2]);
+  await db.exec(`create or replace function realtime.send(jsonb,text,text,boolean)
+    returns void language plpgsql as $$begin raise exception 'transport offline'; end;$$;`);
+  await send('신호 전송이 실패해도 보존',704);
+  const [saved]=await sql('select public.olli_shared_chat_list($1,$2,$3,null,20) as result',
+    ['teacherB',academy(2),initial.id]);
+  assert.equal(saved.result.messages.at(-1).body,'신호 전송이 실패해도 보존');
+  await db.exec(`create or replace function realtime.send(jsonb,text,text,boolean)
+    returns void language sql as $$insert into private.test_signals values($1,$2,$3,$4)$$;`);
+  await sql('select public.olli_shared_chat_leave($1,$2,$3,$4)',
+    ['owner',academy(2),initial.id,renamed.revision]);
+  await assertSignals([1,2]);
+});

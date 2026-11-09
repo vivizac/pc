@@ -111,7 +111,10 @@ node --test tests/shared-chat/*.test.cjs
 node --test tests/pc-self-contained-build.test.cjs tests/mobile-self-contained-build.test.cjs tests/pc-build-closure.test.cjs tests/mobile-entry-integrity.test.cjs tests/teacher-payroll-contract.test.cjs
 ```
 
-PGlite fixture는 실제 migration SQL을 실행하지만, 인증 토큰 확인·Realtime 발송·Storage의 주변 시스템은 합성 adapter다.
+PGlite fixture는 루트 Realtime migration과 공동 팀챗 migration을 실제로 실행한다.
+공동 팀챗은 기존 학원 채널에 본문과 메시지 ID가 없는 갱신 신호를 보낸다. 루트 migration의 공통 발송 함수가
+`chat`을 무시하는 경우에도 동작하며, 이번 변경에서 해제된 학원에만 철회 신호를 보낸다.
+인증 토큰 확인, `realtime.send` 전송 서비스와 Storage는 로컬 대역으로 검증한다.
 브라우저 검증은 공통 신규 UI + 로컬 HTTP RPC 서버 + PGlite를 연결한다. 기존 앱 전체 로그인 및 실기기 검증으로 간주하지 않는다.
 파일 broker와 Edge Function의 외부 제공자는 로컬 mock이다.
 향후 비운영 검증 시 Mobile broker의 `OLLI_SHARED_CHAT_SUPABASE_URL`, PC proxy의

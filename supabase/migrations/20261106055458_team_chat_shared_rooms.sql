@@ -144,13 +144,29 @@ returns boolean language sql stable security definer set search_path = '' as $$
     where m.account_id=p_account_id and p.room_id=p_room_id and p.left_at is null and p_seq>p.joined_after_seq);
 $$;
 
-create function private.olli_shared_chat_signal(p_room_id uuid, p_message_id bigint)
+-- The root Realtime migration only accepts observation/schedule in its sender.
+-- Use the same academy topic and protocol without replacing legacy senders.
+create function private.olli_shared_chat_notify_academy(p_academy_id uuid)
+returns void language plpgsql set search_path = '' as $$
+declare v_topic text;
+begin
+  v_topic := private.olli_realtime_topic_for_academy(p_academy_id);
+  if v_topic is not null then
+    perform realtime.send(
+      pg_catalog.jsonb_build_object('protocol',1,'domain','chat','revision',0),
+      'changed',v_topic,false
+    );
+  end if;
+exception when others then
+  raise warning 'OLLI shared chat refresh signal skipped: %', sqlerrm;
+end; $$;
+
+create function private.olli_shared_chat_signal(p_room_id uuid)
 returns void language plpgsql security definer set search_path = '' as $$
 declare v_academy uuid;
 begin
-  -- Fan out invalidation only. No body, sender, or private business data in Realtime.
   for v_academy in select academy_id from private.olli_shared_chat_academies where room_id=p_room_id and left_at is null loop
-    perform private.olli_realtime_send_signal(v_academy,'chat',p_message_id);
+    perform private.olli_shared_chat_notify_academy(v_academy);
   end loop;
 end; $$;
 
@@ -182,7 +198,7 @@ end; $$;
 create function public.olli_shared_chat_configure(p_session_token text, p_academy_id uuid,
   p_room_id uuid, p_expected_revision bigint, p_academies jsonb, p_request_id uuid)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare v_member public.academy_members; v_room private.olli_shared_chat_rooms; v_ids uuid[];
+declare v_member public.academy_members; v_room private.olli_shared_chat_rooms; v_ids uuid[]; v_removed_ids uuid[];
   v_id uuid; v_existing_room uuid; v_seq bigint; v_notice text; v_changed boolean;
 begin
   v_member := private.olli_shared_chat_member(p_session_token,p_academy_id);
@@ -239,8 +255,12 @@ begin
       return public.olli_shared_chat_status(p_session_token,p_academy_id);
     end if;
     -- Deferred name uniqueness permits an atomic branch-name swap without new epochs.
-    update private.olli_shared_chat_academies set left_at=clock_timestamp()
-      where room_id=v_room.id and left_at is null and not(academy_id=any(v_ids));
+    with removed as (
+      update private.olli_shared_chat_academies set left_at=clock_timestamp()
+        where room_id=v_room.id and left_at is null and not(academy_id=any(v_ids))
+        returning academy_id
+    )
+    select array_agg(academy_id) into v_removed_ids from removed;
     update private.olli_shared_chat_rooms set revision=revision+1 where id=v_room.id;
   end if;
   insert into private.olli_shared_chat_academies(room_id,academy_id,display_name,joined_after_seq)
@@ -255,9 +275,9 @@ begin
   insert into private.olli_shared_chat_messages(room_id,seq,sender_name,branch_name,message_type,body)
     values(v_room.id,v_seq,'시스템','','system',left(v_notice,5000));
   insert into private.olli_shared_chat_config_requests values(v_member.account_id,p_request_id,v_room.id);
-  -- Include removed academies in invalidation, as well as retained/new academies.
-  for v_id in select distinct academy_id from private.olli_shared_chat_academies where room_id=v_room.id loop
-    perform private.olli_realtime_send_signal(v_id,'chat',null);
+  -- Notify the desired set and academies removed by this change.
+  foreach v_id in array v_ids || coalesce(v_removed_ids,'{}'::uuid[]) loop
+    perform private.olli_shared_chat_notify_academy(v_id);
   end loop;
   return public.olli_shared_chat_status(p_session_token,p_academy_id);
 end; $$;
@@ -272,7 +292,7 @@ begin
   perform private.olli_shared_chat_participation(p_academy_id,p_room_id);
   if v_room.revision is distinct from p_expected_revision then raise exception '통합 설정이 변경되었습니다.' using errcode='40001'; end if;
   -- Signal the departing academy too, so open clients discard their room immediately.
-  perform private.olli_shared_chat_signal(p_room_id,null);
+  perform private.olli_shared_chat_signal(p_room_id);
   update private.olli_shared_chat_academies set left_at=clock_timestamp() where room_id=p_room_id and academy_id=p_academy_id and left_at is null;
   if (select count(*) from private.olli_shared_chat_academies where room_id=p_room_id and left_at is null)<2 then
     update private.olli_shared_chat_academies set left_at=clock_timestamp() where room_id=p_room_id and left_at is null;
@@ -337,7 +357,7 @@ begin
     where p.room_id=p_room_id and m.status='active' and m.account_id is not null and m.account_id<>v_member.account_id
       and (p_mention_all or m.id=any(coalesce(p_member_ids,'{}')))
     order by m.account_id,(m.academy_id=p_academy_id) desc,m.id;
-  perform private.olli_shared_chat_signal(p_room_id,v_msg.id);
+  perform private.olli_shared_chat_signal(p_room_id);
   return jsonb_build_object('ok',true,'message_id',v_msg.id);
 end; $$;
 
@@ -382,7 +402,7 @@ begin
     on conflict(room_id,account_id) do update set last_read_seq=excluded.last_read_seq,updated_at=clock_timestamp()
       where private.olli_shared_chat_reads.last_read_seq<excluded.last_read_seq;
   get diagnostics v_changed=row_count;
-  if v_changed>0 then perform private.olli_shared_chat_signal(p_room_id,null); end if;
+  if v_changed>0 then perform private.olli_shared_chat_signal(p_room_id); end if;
   return jsonb_build_object('ok',true);
 end; $$;
 
@@ -403,7 +423,7 @@ begin
     if v_msg.deleted_at is not null or char_length(btrim(coalesce(p_body,''))) not between 1 and 5000 then raise exception '수정할 메시지가 올바르지 않습니다.'; end if;
     update private.olli_shared_chat_messages set body=btrim(p_body),edited_at=clock_timestamp() where id=p_message_id;
   end if;
-  perform private.olli_shared_chat_signal(p_room_id,p_message_id);
+  perform private.olli_shared_chat_signal(p_room_id);
   return jsonb_build_object('ok',true);
 end; $$;
 
