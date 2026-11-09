@@ -13,7 +13,7 @@
  const state={phase:'choice',academyStatus:'loading',name:'',phone:'',
    session:'',month:'',day:'',start:'',slots:[],reservation:null,canReschedule:false,
    canCancel:false,loading:false,message:'',error:'',expiresAt:0,
-   academyName:'',weeks:[2,3],weekdays:[1,2,3,4,5],slotStatus:'idle',monthLoading:false,demo:false};
+   weeks:[2,3],weekdays:[1,2,3,4,5],slotStatus:'idle',monthLoading:false,demo:false};
  const monthCache=new Map();
  const monthPending=new Map();
  const MONTH_TTL_MS=30000;
@@ -218,7 +218,7 @@
     const r=await api('/api/olli-booking-public',{action:'info',academy:slug});
     const academyName=String(r.academy_name||'').trim();
     if(!academyName)throw new Error('ACADEMY_NOT_FOUND');
-    state.academyName=academyName;
+    global.document.title=academyName;
     state.weeks=Array.isArray(r.weeks)?r.weeks:[2,3];
     state.weekdays=Array.isArray(r.weekdays)?r.weekdays:[1,2,3,4,5];
     state.demo=r.demo===true;

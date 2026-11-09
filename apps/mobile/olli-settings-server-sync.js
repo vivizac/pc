@@ -232,45 +232,162 @@ function renderAcademyConsultationList(students){
   }).join('') + '</div>';
 }
 
+// 모바일 학원관리 통계만 보호된 Supabase 학생 조회를 기준으로 계산합니다.
+// 출석/상담/학생 카드용 로컬 캐시와 pending 저장 상태는 변경하지 않습니다.
+
+/* 학원관리 집계 숫자만 학원·계정별로 저장합니다.
+   학생 행/이름/상담 기록은 저장하지 않고 출석·학생 캐시를 변경하지 않습니다. */
+const OLLI_MOBILE_STATS_CACHE_PREFIX = 'olli_mobile_academy_stats_snapshot_v1:';
+const OLLI_MOBILE_STATS_FIELDS = [
+  'active', 'activeElementary', 'activeKinder', 'thisYearRegistered',
+  'thisMonthRegistered', 'thisMonthWithdrawn', 'thisYearWithdrawn', 'paused'
+];
+function getOlliMobileStatsMonthKey(){
+  const date = new Date();
+  return String(date.getFullYear()) + '-' + String(date.getMonth() + 1).padStart(2, '0');
+}
+function getOlliMobileStatsCacheKey(academyId){
+  if (!academyId) return '';
+  try {
+    const accountId = String(localStorage.getItem('olli_account_id_v1')
+      || localStorage.getItem('olli_current_member_id') || '').trim();
+    if (!accountId) return '';
+    return OLLI_MOBILE_STATS_CACHE_PREFIX + encodeURIComponent(accountId)
+      + ':' + encodeURIComponent(academyId);
+  } catch (_) { return ''; }
+}
+function summarizeOlliMobileAcademyStats(students){
+  const rows = Array.isArray(students) ? students : [];
+  const active = rows.filter(isAcademyManagementActiveStudent);
+  const thisYearRegistered = rows.filter(student => {
+    const date = getStudentEnrollmentDateForStats(student);
+    return isCurrentYearDate(date) && getStudentStatus(student) !== 'inactive';
+  });
+  const thisMonthRegistered = rows.filter(student => {
+    const date = getStudentEnrollmentDateForStats(student);
+    return isCurrentMonthYear(date) && getStudentStatus(student) !== 'inactive';
+  });
+  const thisMonthWithdrawn = rows.filter(student => {
+    if (getStudentStatus(student) !== 'withdrawn') return false;
+    const date = getStudentWithdrawalDateForStats(student);
+    return date ? isCurrentMonthYear(date) : false;
+  });
+  const thisYearWithdrawn = rows.filter(student => {
+    if (getStudentStatus(student) !== 'withdrawn') return false;
+    const date = getStudentWithdrawalDateForStats(student);
+    return date ? isCurrentYearDate(date) : true;
+  });
+  return {
+    active: active.length,
+    activeElementary: active.filter(student => student.type === 'elementary').length,
+    activeKinder: active.filter(student => student.type === 'kinder').length,
+    thisYearRegistered: thisYearRegistered.length,
+    thisMonthRegistered: thisMonthRegistered.length,
+    thisMonthWithdrawn: thisMonthWithdrawn.length,
+    thisYearWithdrawn: thisYearWithdrawn.length,
+    paused: rows.filter(student => getStudentStatus(student) === 'paused').length
+  };
+}
+function readOlliMobileAcademyStatsSnapshot(academyId){
+  const key = getOlliMobileStatsCacheKey(academyId);
+  if (!key) return null;
+  try {
+    const payload = JSON.parse(localStorage.getItem(key) || 'null');
+    if (payload?.version !== 1 || payload?.month !== getOlliMobileStatsMonthKey()) return null;
+    const summary = payload?.summary;
+    if (!summary || !OLLI_MOBILE_STATS_FIELDS.every(field =>
+      Number.isSafeInteger(summary[field]) && summary[field] >= 0
+    )) return null;
+    if (summary.active !== summary.activeElementary + summary.activeKinder) return null;
+    return summary;
+  } catch (_) { return null; }
+}
+function writeOlliMobileAcademyStatsSnapshot(academyId, summary){
+  const key = getOlliMobileStatsCacheKey(academyId);
+  if (!key || !summary) return;
+  try {
+    localStorage.setItem(key, JSON.stringify({
+      version: 1, month: getOlliMobileStatsMonthKey(),
+      verifiedAt: new Date().toISOString(),
+      summary: Object.fromEntries(OLLI_MOBILE_STATS_FIELDS.map(field => [field, summary[field]]))
+    }));
+  } catch (_) { /* 저장소 제한 시에도 서버 통계는 유지 */ }
+}
+
+let olliMobileAcademyServerStats = { academyId: '', scopeKey: '', students: null, error: '' };
+let olliMobileAcademyStatsRequestId = 0;
+
+async function refreshMobileAcademyStatsFromServer(){
+  const academyId = typeof getOlliCurrentAcademyId === 'function' ? String(getOlliCurrentAcademyId() || '') : '';
+  const requestId = ++olliMobileAcademyStatsRequestId;
+  const scopeKey = getOlliMobileStatsCacheKey(academyId);
+  if (!academyId) return { skipped: true };
+  const isCurrent = () => requestId === olliMobileAcademyStatsRequestId
+    && typeof getOlliCurrentAcademyId === 'function'
+    && String(getOlliCurrentAcademyId() || '') === academyId
+    && getOlliMobileStatsCacheKey(academyId) === scopeKey;
+  try {
+    const storage = window.OlliStorageCore;
+    if (!storage?.FeatureRegistry || !storage?.ServerAdapter) {
+      throw new Error('학생 통계 서버 모듈을 찾지 못했습니다.');
+    }
+    const spec = storage.FeatureRegistry.require('students_list');
+    const rows = await storage.ServerAdapter.read(spec, { academyId }, { limit: 5000 });
+    if (!isCurrent()) return { stale: true };
+    if (!Array.isArray(rows)) throw new Error('학생 통계 서버 응답이 올바르지 않습니다.');
+    const students = rows
+      .filter(row => row && (row.division === 'elementary' || row.division === 'kinder'))
+      .filter(row => !isOlliSoftDeletedRow(row))
+      .filter(row => !row.academy_id || String(row.academy_id) === academyId)
+      .map(row => normalizeStudentObject({
+        ...row,
+        academy_id: row.academy_id || academyId,
+        type: row.division
+      }, row.division));
+    olliMobileAcademyServerStats = { academyId, scopeKey, students, error: '' };
+    writeOlliMobileAcademyStatsSnapshot(academyId, summarizeOlliMobileAcademyStats(students));
+  } catch (error) {
+    if (!isCurrent()) return { stale: true };
+    const previous = olliMobileAcademyServerStats;
+    const students = previous.academyId === academyId && previous.scopeKey === scopeKey ? previous.students : null;
+    olliMobileAcademyServerStats = { academyId, scopeKey, students, error: String(error?.message || error) };
+    console.warn('모바일 학생관리 서버 통계 조회 실패:', error);
+  }
+  if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy'
+      && typeof renderRecordAcademyManagementDashboard === 'function') {
+    renderRecordAcademyManagementDashboard();
+  }
+  return { changed: true, error: olliMobileAcademyServerStats.error || null };
+}
+
 function renderRecordAcademyManagementDashboard(){
   const dashboard = document.getElementById('recordAcademyDashboard');
   if (!dashboard) return;
-  const students = getAcademyManagementStudentsForStats();
-  const active = students.filter(isAcademyManagementActiveStudent);
-  const thisYearRegistered = students.filter(s => {
-    const enrolled = getStudentEnrollmentDateForStats(s);
-    return isCurrentYearDate(enrolled) && getStudentStatus(s) !== 'inactive';
-  });
-  const thisMonthRegistered = students.filter(s => {
-    const enrolled = getStudentEnrollmentDateForStats(s);
-    return isCurrentMonthYear(enrolled) && getStudentStatus(s) !== 'inactive';
-  });
-  const thisMonthWithdrawn = students.filter(s => {
-    if (getStudentStatus(s) !== 'withdrawn') return false;
-    const withdrawnAt = getStudentWithdrawalDateForStats(s);
-    return withdrawnAt ? isCurrentMonthYear(withdrawnAt) : false;
-  });
-  const thisYearWithdrawn = students.filter(s => {
-    if (getStudentStatus(s) !== 'withdrawn') return false;
-    const withdrawnAt = getStudentWithdrawalDateForStats(s);
-    return withdrawnAt ? isCurrentYearDate(withdrawnAt) : true;
-  });
-  const pausedStudents = students.filter(s => getStudentStatus(s) === 'paused');
-  const consultationDue = getThisMonthConsultationDueStudents(students);
-  const activeElementary = active.filter(s => s.type === 'elementary').length;
-  const activeKinder = active.filter(s => s.type === 'kinder').length;
+  const localStudents = getAcademyManagementStudentsForStats();
+  const academyId = typeof getOlliCurrentAcademyId === 'function' ? String(getOlliCurrentAcademyId() || '') : '';
+  const statsScopeKey = getOlliMobileStatsCacheKey(academyId);
+  const serverStats = olliMobileAcademyServerStats.academyId === academyId
+    && olliMobileAcademyServerStats.scopeKey === statsScopeKey ? olliMobileAcademyServerStats : null;
+  const hasLiveServerStats = Array.isArray(serverStats?.students);
+  const cachedSummary = hasLiveServerStats ? null : readOlliMobileAcademyStatsSnapshot(academyId);
+  // 로컬에 서버 집계가 없으면 아직 확인하지 않은 숫자를 표시하지 않습니다.
+  const summary = hasLiveServerStats
+    ? summarizeOlliMobileAcademyStats(serverStats.students)
+    : (cachedSummary || (serverStats?.error ? summarizeOlliMobileAcademyStats(localStudents) : null));
+  // 실제 상담 대상은 기존 로컬 운영 학생만 사용합니다 (통계 전용 학생 제외).
+  const consultationDue = getThisMonthConsultationDueStudents(localStudents.filter(s => s.is_stat_only !== true));
   const consultationElementary = consultationDue.filter(s => s.type === 'elementary').length;
   const consultationKinder = consultationDue.filter(s => s.type === 'kinder').length;
   const now = new Date();
   const consultationCardLabel = `${now.getMonth()+1}월 상담`;
   dashboard.innerHTML = `
     <div class="recordAcademyStatGrid">
-      ${buildAcademyStatCard('원생수', active.length, 0, 'blue', { sub: `초등부 ${activeElementary}명 · 유치부 ${activeKinder}명` })}
+      ${buildAcademyStatCard('원생수', summary ? summary.active : '—', 0, 'blue', { sub: summary ? `초등부 ${summary.activeElementary}명 · 유치부 ${summary.activeKinder}명` : '초등부 — · 유치부 —' })}
       ${buildAcademyStatCard(consultationCardLabel, consultationDue.length, consultationDue.length, 'blue', { sub: `초등부 ${consultationElementary}명 · 유치부 ${consultationKinder}명` })}
-      ${buildAcademyStatCard('올해 등록', thisYearRegistered.length, thisYearRegistered.length, 'red', { sub: `이달 등록 ${thisMonthRegistered.length}명 · 이달 퇴원 ${thisMonthWithdrawn.length}명` })}
-      ${buildAcademyStatCard('올해 퇴원', thisYearWithdrawn.length, thisYearWithdrawn.length, 'red', { sub: `휴원 ${pausedStudents.length}명 · 퇴원 ${thisYearWithdrawn.length}명` })}
+      ${buildAcademyStatCard('올해 등록', summary ? summary.thisYearRegistered : '—', summary?.thisYearRegistered ?? 0, 'red', { sub: summary ? `이달 등록 ${summary.thisMonthRegistered}명 · 이달 퇴원 ${summary.thisMonthWithdrawn}명` : '이달 등록 — · 이달 퇴원 —' })}
+      ${buildAcademyStatCard('올해 퇴원', summary ? summary.thisYearWithdrawn : '—', summary?.thisYearWithdrawn ?? 0, 'red', { sub: summary ? `휴원 ${summary.paused}명 · 퇴원 ${summary.thisYearWithdrawn}명` : '휴원 — · 퇴원 —' })}
     </div>
-    <div class="recordAcademyConsultSection">${renderAcademyConsultationList(students)}</div>
+    <div class="recordAcademyConsultSection">${renderAcademyConsultationList(localStudents)}</div>
   `;
 }
 

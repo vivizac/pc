@@ -1,0 +1,43 @@
+name: Validate stats-only Olli students
+on:
+  pull_request:
+    paths:
+      - 'packages/common/olli-data-students.js'
+      - 'apps/pc/olli-data-student-operations.js'
+      - 'apps/mobile/olli-data-student-operations.js'
+      - 'apps/pc/olli-consultation-runtime.js'
+      - 'apps/mobile/olli-consultation-mobile-runtime.js'
+      - 'apps/pc/tests/stat-only-students.test.cjs'
+      - '.github/workflows/validate-stat-only-students.yml'
+  push:
+    branches:
+      - feat/stat-only-students-13-20261108
+      - main
+    paths:
+      - 'packages/common/olli-data-students.js'
+      - 'apps/pc/olli-data-student-operations.js'
+      - 'apps/mobile/olli-data-student-operations.js'
+      - 'apps/pc/olli-consultation-runtime.js'
+      - 'apps/mobile/olli-consultation-mobile-runtime.js'
+      - 'apps/pc/tests/stat-only-students.test.cjs'
+      - '.github/workflows/validate-stat-only-students.yml'
+permissions:
+  contents: read
+jobs:
+  student-count-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify scripts parse
+        run: |
+          node --check packages/common/olli-data-students.js
+          node --check apps/pc/olli-data-student-operations.js
+          node --check apps/mobile/olli-data-student-operations.js
+          node --check apps/pc/olli-consultation-runtime.js
+          node --check apps/mobile/olli-consultation-mobile-runtime.js
+      - name: Verify test-only student separation
+        run: node --test apps/pc/tests/stat-only-students.test.cjs

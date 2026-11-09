@@ -27,7 +27,7 @@ test('restore original cards with unchanged HTML/CSS and shared feedback-month s
   assert.match(legacy,/recordAcademyListItem recordAcademyConsultListItem/);
   assert.doesNotMatch(legacy,/consultationBtn|toggleAcademyConsultationCompleted/);
   assert.match(legacy,/function bindOlliGroupFeedbackMonthsSyncOnce\(\)/);
-  assert.match(html,/olli-settings-server-sync\.js\?v=20261024-remove-consultation-entry-1/);
+  assert.match(html,/olli-settings-server-sync\.js\?v=20261108-mobile-server-stats-snapshot-2/);
 });
 test('display original dashboard immediately without waiting for the server',()=>{
   const start=legacy.indexOf('function renderAcademyConsultationList(students){');
@@ -35,6 +35,7 @@ test('display original dashboard immediately without waiting for the server',()=
   const source=legacy.slice(start);
   const node={innerHTML:''};
   const sandbox={
+    olliMobileAcademyServerStats:{academyId:'',students:null,error:''},
     document:{getElementById:id=>id==='recordAcademyDashboard'?node:null},
     getAcademyManagementStudentsForStats:()=>[],
     isAcademyManagementActiveStudent:()=>false,
@@ -61,6 +62,7 @@ test('mobile academy dashboard has no consultation booking notice shortcut, incl
   const source=legacy.slice(start);
   const node={innerHTML:''};
   const sandbox={
+    olliMobileAcademyServerStats:{academyId:'',students:null,error:''},
     document:{getElementById:id=>id==='recordAcademyDashboard'?node:null},
     getAcademyManagementStudentsForStats:()=>[],
     isAcademyManagementActiveStudent:()=>false,

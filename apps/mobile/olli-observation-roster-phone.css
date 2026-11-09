@@ -51,7 +51,7 @@
   align-items:baseline;
   justify-content:space-between;
   gap:12px;
-  margin:2px 0 14px;
+  margin:2px 0 35px;
 }
 
 /* The title, sort value, and student names use the same 16px inset as the phone guide controls. */

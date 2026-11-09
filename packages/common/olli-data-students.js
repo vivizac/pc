@@ -82,7 +82,7 @@ function normalizeStudentObject(item, fallbackType = 'elementary') {
   if (typeof item === 'string') {
     return {
       id: uid(), type: fallbackType, name: item, year: getCurrentYear(), month: '', day: '',
-      enrolled_at: '', kindergarten: '', age: '', birth_year: '', school_entry_year: '', previous_division: '', division_changed_at: '', lesson_day: '', lesson_time: '', class_time: '', group: '', group_months: '', feedback_months: '', personality: '', school: '', grade: '', className: '', memoUpdatedAt: '', status: 'active'
+      enrolled_at: '', kindergarten: '', age: '', birth_year: '', school_entry_year: '', previous_division: '', division_changed_at: '', lesson_day: '', lesson_time: '', class_time: '', group: '', group_months: '', feedback_months: '', personality: '', school: '', grade: '', className: '', memoUpdatedAt: '', status: 'active', is_stat_only: false
     };
   }
   return {
@@ -112,6 +112,7 @@ function normalizeStudentObject(item, fallbackType = 'elementary') {
     className: item?.className || item?.class_no || '',
     memoUpdatedAt: item?.memoUpdatedAt || '',
     status: item?.status || 'active',
+    is_stat_only: item?.is_stat_only === true || String(item?.is_stat_only || '').toLowerCase() === 'true',
     is_deleted: item?.is_deleted === true || String(item?.is_deleted || '').toLowerCase() === 'true',
     deleted_at: item?.deleted_at || '',
     deleted_by: item?.deleted_by || '',
@@ -146,7 +147,7 @@ function getStudentsStorageKey() {
   return academyId ? `${STUDENTS_KEY}_${academyId}` : STUDENTS_KEY;
 }
 
-function getAllStudents() {
+function getAllStudents(options = {}) {
   try {
     const storageKey = getStudentsStorageKey();
     let raw = localStorage.getItem(storageKey);
@@ -167,19 +168,27 @@ function getAllStudents() {
     return list
       .map(item => normalizeStudentObject({ ...item, academy_id: item?.academy_id || academyId }, item?.type || 'elementary'))
       .filter(student => !academyId || !student.academy_id || student.academy_id === academyId)
-      .filter(student => !isOlliSoftDeletedRow(student));
+      .filter(student => !isOlliSoftDeletedRow(student))
+      .filter(student => options.includeStatOnly === true || student.is_stat_only !== true);
   } catch {
     return [];
   }
 }
 
-function setAllStudents(list) {
+function setAllStudents(list, options = {}) {
   const academyId = getOlliCurrentAcademyId ? getOlliCurrentAcademyId() : '';
-  const safeList = Array.isArray(list)
+  const normalized = Array.isArray(list)
     ? list
         .map(item => normalizeStudentObject({ ...item, academy_id: item?.academy_id || academyId }, item?.type || 'elementary'))
         .filter(student => !isOlliSoftDeletedRow(student))
     : [];
+  // 일반 학생 정보 수정으로 통계 전용 학생이 로컬 캐시에서 사라지지 않게 합니다.
+  // 서버 전체 목록을 다시 읽을 때는 replaceStatOnly로 서버 값을 최종 기준으로 사용합니다.
+  const preservedStatOnly = options.replaceStatOnly === true
+    ? []
+    : getAllStudents({ includeStatOnly: true }).filter(student => student.is_stat_only === true);
+  const existingIds = new Set(normalized.map(student => String(student.id || '')));
+  const safeList = normalized.concat(preservedStatOnly.filter(student => !existingIds.has(String(student.id || ''))));
   localStorage.setItem(getStudentsStorageKey(), JSON.stringify(safeList));
 }
 

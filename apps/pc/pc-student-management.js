@@ -12,6 +12,35 @@
   let materialOrderSessionToken = '';
   let materialOrderLoadPromise = null;
   let materialOrderError = false;
+  // 통계는 로컬 학생 캐시와 독립적으로 서버 응답을 사용합니다.
+  let serverStats = { academyId: '', students: null, error: '' };
+  let statsRequestSerial = 0;
+
+  async function refreshServerStats() {
+    const academyId = typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '';
+    const requestId = ++statsRequestSerial;
+    if (!academyId) return;
+    const storage = global.OlliStorageCore;
+    try {
+      if (!storage?.FeatureRegistry || !storage?.ServerAdapter) throw new Error('학생 통계 서버 모듈이 준비되지 않았습니다.');
+      const spec = storage.FeatureRegistry.require('students_list');
+      const rows = await storage.ServerAdapter.read(spec, { academyId }, { limit: 5000 });
+      if (requestId !== statsRequestSerial || getOlliCurrentAcademyId() !== academyId) return;
+      if (!Array.isArray(rows)) throw new Error('학생 통계 서버 응답 형식이 올바르지 않습니다.');
+      const normalized = rows
+        .filter(row => row && (row.division === 'elementary' || row.division === 'kinder'))
+        .filter(row => row.is_deleted !== true)
+        .map(row => normalizeStudentObject({
+          ...row, type: row.division, academy_id: row.academy_id || academyId
+        }, row.division));
+      serverStats = { academyId, students: normalized, error: '' };
+    } catch (error) {
+      if (requestId !== statsRequestSerial || getOlliCurrentAcademyId() !== academyId) return;
+      serverStats = { academyId, students: null, error: String(error?.message || error) };
+      console.warn('학생관리 서버 통계 조회 실패:', error);
+    }
+    if (core()?.state?.section === 'academy') renderDashboard();
+  }
 
   function core() { return global.OlliPcCore; }
   function escape(value) {
@@ -336,7 +365,9 @@
           end: Number.isInteger(activeElement.selectionEnd) ? activeElement.selectionEnd : null
         }
       : null;
-    const allStudents = students();
+    const academyId = typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '';
+    const currentServerStats = serverStats.academyId === academyId ? serverStats : null;
+    const allStudents = currentServerStats?.students || students();
     const active = allStudents.filter((student) => typeof isAcademyManagementActiveStudent !== 'function' || isAcademyManagementActiveStudent(student));
     const thisYearRegistered = allStudents.filter((student) => {
       const enrolled = typeof getStudentEnrollmentDateForStats === 'function' ? getStudentEnrollmentDateForStats(student) : null;
@@ -357,14 +388,18 @@
       return date && typeof isCurrentYearDate === 'function' ? isCurrentYearDate(date) : true;
     });
     const paused = allStudents.filter((student) => typeof getStudentStatus === 'function' && getStudentStatus(student) === 'paused');
-    const due = consultationStudents(allStudents);
+    // 상담 대상은 기존 운영 학생 목록을 사용해 통계 전용 학생이 상담에 나타나지 않도록 합니다.
+    const due = consultationStudents(students());
     const activeElementary = active.filter((student) => student.type === 'elementary').length;
     const activeKinder = active.filter((student) => student.type === 'kinder').length;
     const consultationElementary = due.filter((student) => student.type === 'elementary').length;
     const consultationKinder = due.filter((student) => student.type === 'kinder').length;
     const month = new Date().getMonth() + 1;
 
-    dashboard.innerHTML = '<div class="recordAcademyStatGrid">'
+    const statsNotice = !currentServerStats?.students
+      ? '<div class="recordAcademyStatNotice" role="status">'+escape(currentServerStats?.error ? '서버 통계 조회 실패 · 현재 로컬 수치를 표시 중입니다.' : '서버 통계 확인 중 · 현재 로컬 수치를 표시 중입니다.')+'</div>'
+      : '';
+    dashboard.innerHTML = statsNotice + '<div class="recordAcademyStatGrid">'
       + buildStatCard('원생수', active.length, '초등부 '+activeElementary+'명 · 유치부 '+activeKinder+'명')
       + buildStatCard(month+'월 상담', due.length, '초등부 '+consultationElementary+'명 · 유치부 '+consultationKinder+'명')
       + buildStatCard('올해 등록', thisYearRegistered.length, '이달 등록 '+thisMonthRegistered.length+'명 · 이달 퇴원 '+thisMonthWithdrawn.length+'명')
@@ -616,6 +651,8 @@
     app.updateRecordLayout();
     renderDashboard();
     loadServerTodos({ render:true }).catch(() => {});
+    // 통계는 서버를 직접 조회하며 학생 목록 로컬 캐시를 수정하지 않습니다.
+    refreshServerStats();
     if (typeof loadRecords === 'function') Promise.resolve(loadRecords('')).catch((error) => console.warn('학생관리 백그라운드 동기화 실패:', error));
     setTimeout(bindRows, 50);
   }
