@@ -1,7 +1,6 @@
 # 올리 공동 팀챗 개발 기록 — 2026-11-06
 
-상태: 작업 브랜치 구현 / 로컬 검증 중 / 출시 게이트 닫힘.
-**1~7단계 및 전체 회귀 완료로 판정하지 않는다. main 병합·운영 DB 변경·Production 배포 금지.**
+상태: 핵심 회귀 검증 완료 / 운영 DB 구조 적용 / 공동 팀챗 비활성 상태.
 
 원본 인수인계: https://docs.google.com/document/d/1eBiyMXqDtJmgbaw2qwimgjshFmCeSVbGRChtUTLp-IM/edit
 
@@ -132,17 +131,21 @@ Supabase 설정을 사용하므로 브랜치 UI에서 운영 푸시 URL을 별�
 - 실제 백업 복구 drill, 별도 환경에서 이전 앱 버전 + 신규 DB 호환성 확인.
 - 마지막으로 사용자의 명시적 출시 승인. 현재 승인은 개발 및 로컬 검증에 한정된다.
 
-## 향후 migration·rollback 계획 (이번 작업에서 실행하지 않음)
+## 2026-11-09 운영 반영과 복구 절차
+
+사용자 승인에 따라 학원 간 접근 차단, 기존 기능 호환성, 기능 비활성화 검증을 먼저 수행한다.
+iOS 실기기와 실제 푸시 수신은 운영 반영 후 확인할 항목이다. 로컬 전체 회귀 2,663건 중 2,248건이
+통과했고, 실패 415건은 모두 기준선 `b870b30`에서도 재현됐다. GitHub 검사 33개가 통과했다.
+선생님의 기존 등록을 삭제해도 작성한 공동 메시지가 보존되도록 수정했고, 삭제된 등록으로는 방에 접근할 수 없다.
 
 후속 테스트 복구 및 전체 재비교 결과는 [회귀 실패 분류 기록](olli-regression-triage-20261106.md)을 따른다.
 위 431개는 최초 비교 수치이며, 숨겨졌던 Mobile 검사 실행 후 463개가 기록됐다.
 11월 9일 전체 재실행에서는 기존 미해결 실패 418개와 로컬 HTTP 연결 차단 2개가 남았다.
 
-Migration은 Supabase CLI 2.81.3 `migration new team_chat_shared_rooms`로 생성했다.
-`supabase/migrations/20261106055458_team_chat_shared_rooms.sql`을 검토·테스트 환경 적용한 뒤에도
-`private.olli_shared_chat_release.enabled=false`를 유지한다. 새 함수·버킷 존재만으로 기능이 활성화되지 않는다.
-운영 활성화는 모든 출시 게이트 통과 및 승인 후 별도 기록된 release migration으로만 수행한다.
-새 푸시 함수는 해당 함수만 `verify_jwt=false`로 배포하고 Olli 세션 RPC로 인증한다.
+Supabase 운영 이력과 동일한 `supabase/migrations/20261109100845_team_chat_shared_rooms.sql`을 적용했다.
+비공개 첨부 버킷, 브라우저 직접 접근을 막는 RLS, 서버 전용 파일 RPC 권한, `enabled=false`를 읽기 전용으로 확인했다.
+새 푸시 함수 `olli-shared-chat-push`는 버전 1이며 Olli 세션 RPC로 인증한다.
+운영 PC·모바일 반영과 기본 접근 차단을 확인한 뒤 별도의 release migration으로 활성화한다.
 
 문제가 생기면 우선 release gate를 닫고 앱을 이전 커밋으로 되돌린다. 신규 테이블·메시지·객체를 DROP/DELETE하지 않는다.
 기존 운영 테이블의 데이터 이동이 없으므로 원래 학원 대화는 계속 사용할 수 있다.

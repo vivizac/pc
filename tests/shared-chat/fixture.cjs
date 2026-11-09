@@ -29,7 +29,7 @@ async function createDB(){
   }
   for(const [token,id] of [['owner',1],['teacherA',2],['teacherB',3],['teacherC',4],['outsider',5],['manager',6]])
     await db.query('insert into private.test_sessions(token,account_id) values($1,$2)',[token,uid(100+id)]);
-  for(const migration of ['20260911111500_olli_realtime_signal_channels.sql','20261106055458_team_chat_shared_rooms.sql']){
+  for(const migration of ['20260911111500_olli_realtime_signal_channels.sql','20261109100845_team_chat_shared_rooms.sql']){
     await db.exec(readFileSync(join(__dirname,'../../supabase/migrations',migration),'utf8'));
   }
   return db;

@@ -19,7 +19,7 @@ test('existing AI request context uses verified academy membership, not forged r
   assert.ok(calls.every(c=>!Object.keys(c.params).some(k=>/room|group/.test(k))));
 });
 test('shared RPC surface has no AI/action/payroll payload fields and never alters legacy visibility',()=>{
-  const sql=fs.readFileSync(path.join(root,'supabase/migrations/20261106055458_team_chat_shared_rooms.sql'),'utf8');
+  const sql=fs.readFileSync(path.join(root,'supabase/migrations/20261109100845_team_chat_shared_rooms.sql'),'utf8');
   assert.doesNotMatch(sql,/create(?: or replace)? function (?:public|private)\.olli_team_chat_/i);
   assert.doesNotMatch(sql,/alter table public\.(?:students|olli_team_chat_messages|academy_members)/i);
   assert.match(sql,/message_type in \('text','system','file'\)/);
