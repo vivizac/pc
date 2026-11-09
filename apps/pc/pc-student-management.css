@@ -26,7 +26,7 @@ body.olliPcApp #recordAcademyDashboard .recordAcademyConsultSection{
   border-radius:26px;padding:22px;box-sizing:border-box;box-shadow:0 8px 24px rgba(20,24,30,.035);
 }
 .pcAcademySectionHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
-.pcAcademySectionTitle,.pcAcademyDetailName{font-size:18px;font-weight:880;letter-spacing:-.045em;color:#15171a;}
+.pcAcademySectionTitle,.pcAcademyDetailName{font-size:18px;font-weight:650;letter-spacing:-.045em;color:#15171a;}
 .pcAcademySectionSub,.pcAcademyDetailSub{margin-top:7px;font-size:11.5px;font-weight:700;color:#9a9ea6;}
 .pcAcademySectionCount,#recordAcademyDashboard .pcAcademyRecurringManageBtn{display:inline-flex;align-items:center;justify-content:center;min-width:54px;height:30px;padding:0 11px;border-radius:999px;background:#f2f4f7;color:#747b85;font-size:11px;font-weight:820;box-sizing:border-box;white-space:nowrap;}
 
@@ -61,26 +61,13 @@ body.olliPcApp #recordAcademyDashboard .recordAcademyConsultSection{
 .pcAcademyTodoEmpty small{margin-top:8px;font-size:11.5px;color:#a4a9b0;}
 
 
-/* 학생관리 업무 · 재료주문: 2/3 + 1/3, 독립된 두 목록 */
+/* 학생관리 업무: 업무와 재료주문 카드를 한 목록에서 관리 */
 #recordAcademyDashboard .pcAcademyWorkOrderGrid{
-  display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);
-  grid-template-rows:minmax(0,1fr);gap:18px;align-items:stretch;
+  display:grid;grid-template-columns:minmax(0,1fr);
+  grid-template-rows:minmax(0,1fr);align-items:stretch;
   height:100%;min-height:0;
 }
 #recordAcademyDashboard .pcAcademyWorkOrderGrid > section{min-width:0;min-height:0;}
-#recordAcademyDashboard .pcAcademyMaterialsSection{min-height:0;}
-.pcAcademyMaterialsOpen{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;height:48px;min-height:48px;flex:0 0 48px;box-sizing:border-box;
-  margin-top:20px;padding:0 11px;background:#f8f9fa;border:1px solid #eaedf0;border-radius:12px;
-  color:#707780;font:750 11.5px 'Pretendard',sans-serif;cursor:pointer;
-}
-.pcAcademyMaterialsOpen:hover{background:#f1f4f7;}
-.pcAcademyMaterialsOpen span{font-size:18px;font-weight:500;line-height:1;}
-.pcAcademyMaterialsList{
-  display:grid;align-content:start;gap:9px;flex:1 1 auto;min-height:0;
-  margin-top:12px;padding-right:4px;overflow-y:auto;overflow-x:hidden;
-  scrollbar-width:none;
-}
 .pcAcademyMaterialRow{
   display:flex;align-items:center;justify-content:space-between;gap:7px;width:100%;min-width:0;
   min-height:62px;padding:10px 11px;border:1px solid #eceef1;border-radius:15px;background:#fff;
@@ -96,11 +83,7 @@ body.olliPcApp #recordAcademyDashboard .recordAcademyConsultSection{
 .pcAcademyMaterialStatus.on_hold{background:#f0f1f3;color:#777d85;}
 .pcAcademyMaterialStatus.ordered{background:#eaf2ff;color:#697f9e;}
 .pcAcademyMaterialStatus.arrived{background:#e7f7f1;color:#628d77;}
-.pcAcademyMaterialEmpty{display:flex;align-items:center;justify-content:center;min-height:150px;
-  padding:15px;color:#989ea7;text-align:center;font-size:11.5px;line-height:1.6;}
-@media(max-width:800px){
-  #recordAcademyDashboard .pcAcademyWorkOrderGrid{grid-template-columns:minmax(0,1fr);}
-}
+.pcAcademyMaterialLoadError{padding:12px;color:#989ea7;font-size:11.5px;line-height:1.6;}
 
 /* 상담예정 학생 */
 .pcAcademyDetailPanel{
@@ -117,7 +100,6 @@ body.olliPcApp #recordAcademyDashboard .recordAcademyConsultSection{
 /* Overflow is inside each list, not the card. Hidden bars never steal list width. */
 body.olliPcApp #recordAcademyDashboard .recordAcademyStatCard::-webkit-scrollbar,
 .pcAcademyTodoList::-webkit-scrollbar,
-.pcAcademyMaterialsList::-webkit-scrollbar,
 .pcAcademyConsultationList::-webkit-scrollbar{display:none;width:0;height:0;}
 .pcAcademyDetailPanel .recordAcademyConsultGroup{display:grid;gap:9px;}
 .pcAcademyDetailPanel .recordAcademyConsultGroupTitle{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;font-weight:800;color:#777e88;padding:0 3px;}

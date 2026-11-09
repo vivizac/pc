@@ -29,14 +29,14 @@ test('card height cannot increase from new rows and scroll controls live only in
  assert.match(section,/overflow:hidden/);
  assert.match(block(css,'body.olliPcApp #recordAcademyDashboard .recordAcademyStatCard'),/min-height:122px/);
  assert.doesNotMatch(block(css,'body.olliPcApp #recordAcademyDashboard .recordAcademyStatGrid'),/grid-auto-rows/);
- for(const selector of ['.pcAcademyTodoList','.pcAcademyMaterialsList','.pcAcademyConsultationList']){
+ for(const selector of ['.pcAcademyTodoList','.pcAcademyConsultationList']){
   const value=block(css,selector);
   assert.match(value,/min-height:0/);assert.match(value,/overflow-y:auto/);
   assert.match(value,/scrollbar-width:none/);
  }
  assert.match(css,/\.pcAcademyTodoList::-webkit-scrollbar,[\s\S]*?\.pcAcademyConsultationList::-webkit-scrollbar\{display:none;width:0;height:0;\}/);
  assert.match(block(css,'.pcAcademyTodoSection'),/min-height:0/);
- assert.match(block(css,'#recordAcademyDashboard .pcAcademyMaterialsSection'),/min-height:0/);
+ assert.doesNotMatch(css,/pcAcademyMaterialsSection/);
 });
 test('all four statistics restore the exact original title-above-value layout and font sizes',()=>{
  const start=js.indexOf('  function buildStatCard('),end=js.indexOf('  function renderDashboard()',start);
@@ -52,7 +52,7 @@ test('all four statistics restore the exact original title-above-value layout an
  assert.ok(block(html,'body[data-olli-text-size="large"] .recordAcademyStatValue').includes('font-size: calc(42px'));
  assert.ok(block(html,'.recordAcademyStatLabel').includes('transform: translateX(4px)'));
  assert.match(block(html,'.recordAcademyStatSub'),/width: 72px/);
- assert.ok(html.includes('pc-student-management.css?v=20261102-stat-card-original-3'));
+ assert.ok(html.includes('pc-student-management.css?v=20261109-merge-material-cards-1'));
 });
 test('no student save, synchronization, attendance, or mobile code is changed by this PC-only contract',()=>{
  assert.match(js,/function renderDashboard\(/);
@@ -62,15 +62,16 @@ test('no student save, synchronization, attendance, or mobile code is changed by
  assert.ok(!css.includes('@import'),'PC dashboard layout does not inject a second CSS file');
 });
 
-test('materials opener equals todo submit height; recurring manager shares existing count capsule style',()=>{
- const material=block(css,'.pcAcademyMaterialsOpen'),add=block(css,'.pcAcademyTodoForm button');
- assert.match(add,/height:48px/);assert.match(material,/height:48px/);
- assert.match(material,/min-height:48px/);assert.match(material,/box-sizing:border-box/);
+test('material cards appear inside the academy work list without a separate panel or opener',()=>{
+ assert.match(js,/const materialRows = materialOrderCardsHtml\(\)/);
+ assert.match(js,/const rows = todoRows \+ materialRows/);
+ assert.match(js,/class="pcAcademyMaterialRow" onclick="pcOpenAcademyMaterials\(\)"/);
+ assert.doesNotMatch(js,/pcAcademyMaterialsSection|pcAcademyMaterialsOpen|재료주문 화면 열기/);
+ assert.doesNotMatch(css,/pcAcademyMaterialsSection|pcAcademyMaterialsOpen|pcAcademyMaterialsList/);
+ assert.match(block(css,'#recordAcademyDashboard .pcAcademyWorkOrderGrid'),/grid-template-columns:minmax\(0,1fr\)/);
+ assert.match(block(css,'.pcAcademySectionTitle,.pcAcademyDetailName'),/font-weight:650/);
  const shared=block(css,'.pcAcademySectionCount,#recordAcademyDashboard .pcAcademyRecurringManageBtn');
  for(const snippet of ['height:30px','border-radius:999px','background:#f2f4f7','color:#747b85','font-size:11px','font-weight:820'])
   assert.ok(shared.includes(snippet),snippet);
- const repeat=css.split('\n#recordAcademyDashboard .pcAcademyRecurringManageBtn{')[1]?.split('}')[0];
- assert.ok(repeat,'button-only base rule exists');
- assert.doesNotMatch(repeat,/background:|border-radius:|color:|font-size:/);assert.match(repeat,/border:0/);
  assert.match(css,/#recordAcademyDashboard \.pcAcademyRecurringManageBtn svg\{[^}]*stroke:currentColor/);
 });
