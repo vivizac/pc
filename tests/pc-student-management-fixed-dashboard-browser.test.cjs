@@ -7,6 +7,7 @@ const style=html.match(/<style id="olliAcademyManagementConsultationStyle">([\s\
 assert.ok(style,'original PC statistics stylesheet');
 const attendance=fs.readFileSync(path.join(root,'apps/pc/pc-attendance.css'),'utf8');
 const management=fs.readFileSync(path.join(root,'apps/pc/pc-student-management.css'),'utf8');
+const shell=fs.readFileSync(path.join(root,'apps/pc/pc-shell.css'),'utf8');
 function stat(value,label,details){
  return `<div class="recordAcademyStatCard"><div class="recordAcademyStatLabel">${label}</div><div class="recordAcademyStatBody"><div class="recordAcademyStatValue">${value}</div><div class="recordAcademyStatSub">${details}</div></div></div>`;
 }
@@ -23,21 +24,17 @@ function fixture(){
  <div class="pcAcademyWorkOrderGrid">
  <section class="recordAcademyConsultSection pcAcademyTodoSection">
  <div class="pcAcademySectionHeader pcAcademyTodoHeader">
- <div class="pcAcademySectionTitle">학원 업무</div>
+ <div><div class="pcAcademySectionTitle">학원 업무</div><div class="pcAcademySectionSub">업무와 메모를 한곳에서 관리해요.</div></div>
  <div class="pcAcademyTodoHeaderActions">
  <button type="button" class="pcAcademyRecurringManageBtn">
  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7a8 8 0 0 0-14-2L4 7m0-4v4h4"></path></svg>반복 업무 관리</button>
  <span class="pcAcademySectionCount">8개 남음</span></div></div>
  <form class="pcAcademyTodoForm"><input placeholder="할 일 입력"><button type="button">추가</button></form>
- <div class="pcAcademyTodoList" id="todos"><div class="pcAcademyTodoItem">처리할 업무</div></div></section>
- <section class="recordAcademyConsultSection pcAcademyMaterialsSection">
- <div class="pcAcademySectionHeader"><div class="pcAcademySectionTitle">재료주문</div></div>
- <button class="pcAcademyMaterialsOpen">재료주문 화면 열기</button>
- <div class="pcAcademyMaterialsList" id="materials"><div class="pcAcademyMaterialRow">재료 주문</div></div></section>
+ <div class="pcAcademyTodoList" id="todos"><div class="pcAcademyTodoItem"><div class="pcAcademyTodoTextWrap"><div class="pcAcademyTodoText">처리할 업무</div><span class="pcAcademyTodoOrigin">올리톡</span></div></div><div class="pcAcademyMaterialRow"><button class="pcAcademyTodoCheck pcAcademyMaterialCheck" type="button" aria-pressed="false"><span></span></button><button class="pcAcademyMaterialOpen" type="button"><span class="pcAcademyMaterialMain"><strong>재료 주문</strong><small>3개 · 필요일 2026-11-12</small></span><span class="pcAcademyMaterialStatus requested">요청</span></button></div></div></section>
  </div></div>
  <aside class="pcAcademyDetailPanel" id="pcAcademyDetailPanel">
- <div class="pcAcademySectionHeader pcAcademyConsultHeader"><div class="pcAcademyDetailName">상담예정 학생</div></div>
- <div class="pcAcademyConsultationList" id="consultations"><div class="recordAcademyConsultListItem">상담 학생</div></div></aside>
+ <div class="pcAcademySectionHeader pcAcademyConsultHeader"><div><div class="pcAcademyDetailName">상담예정 학생</div><div class="pcAcademyDetailSub">이번 달 상담이 필요한 학생</div></div><span class="pcAcademySectionCount">3명</span></div>
+ <div class="pcAcademyConsultationList" id="consultations"><div class="recordAcademyConsultGroup"><div class="recordAcademyConsultGroupTitle">초등부</div><div class="recordAcademyConsultListItem"><div class="recordAcademyListName">상담 학생</div><div class="recordAcademyInfoChip recordAcademyRuleChip">3개월</div><span class="recordAcademyConsultStatusChip ready">상담 자료 준비</span></div></div></div></aside>
  </div></div></div></body></html>`;
 }
 test('PC page grid stays flush and only hidden-scroll inner lists move as data grows',async()=>{
@@ -48,20 +45,20 @@ test('PC page grid stays flush and only hidden-scroll inner lists move as data g
    await page.setContent(fixture());
    const initial=await page.evaluate(()=>{
     const rect=s=>{const r=document.querySelector(s).getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,height:r.height,width:r.width}};
-    return {consult:rect('#pcAcademyDetailPanel'),todo:rect('.pcAcademyTodoSection'),material:rect('.pcAcademyMaterialsSection'),stat:rect('.recordAcademyStatCard'),main:rect('.recordBodyNew.pcAcademyLayout'),listLeft:rect('.pcAcademyTodoItem').left};
+    return {consult:rect('#pcAcademyDetailPanel'),todo:rect('.pcAcademyTodoSection'),stat:rect('.recordAcademyStatCard'),main:rect('.recordBodyNew.pcAcademyLayout'),listLeft:rect('.pcAcademyTodoItem').left};
    });
    await page.evaluate(()=>{
     const add=(selector,count,cls)=>{const el=document.querySelector(selector);for(let i=0;i<count;i++){const item=document.createElement('div');item.className=cls;item.textContent='길게 작성한 항목 '+i+' 학생 관리 기록과 원장님 업무 내용';el.append(item)}};
-    add('#todos',90,'pcAcademyTodoItem');add('#materials',90,'pcAcademyMaterialRow');add('#consultations',120,'recordAcademyConsultListItem');
+    add('#todos',90,'pcAcademyTodoItem');add('#todos',90,'pcAcademyMaterialRow');add('#consultations',120,'recordAcademyConsultListItem');
    });
    const next=await page.evaluate(()=>{
     const rect=s=>{const r=document.querySelector(s).getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,height:r.height,width:r.width}};
-    const selectors=['#todos','#materials','#consultations'];
+    const selectors=['#todos','#consultations'];
     const scroll=selectors.map(selector=>{const el=document.querySelector(selector);const start=el.scrollTop;el.scrollTop=140;return {selector,scrollTop:el.scrollTop,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,scrollbarWidth:getComputedStyle(el).scrollbarWidth,pseudo:getComputedStyle(el,'::-webkit-scrollbar').display}});
     const body=document.querySelector('#recordRoomScreen .recordPageInner'),main=document.querySelector('.recordBodyNew.pcAcademyLayout');
-    return {consult:rect('#pcAcademyDetailPanel'),todo:rect('.pcAcademyTodoSection'),material:rect('.pcAcademyMaterialsSection'),stat:rect('.recordAcademyStatCard'),main:rect('.recordBodyNew.pcAcademyLayout'),listLeft:rect('.pcAcademyTodoItem').left,pageScroll:body.scrollHeight-body.clientHeight,mainScroll:main.scrollHeight-main.clientHeight,scroll};
+    return {consult:rect('#pcAcademyDetailPanel'),todo:rect('.pcAcademyTodoSection'),stat:rect('.recordAcademyStatCard'),main:rect('.recordBodyNew.pcAcademyLayout'),listLeft:rect('.pcAcademyTodoItem').left,pageScroll:body.scrollHeight-body.clientHeight,mainScroll:main.scrollHeight-main.clientHeight,scroll};
    });
-   for(const name of ['consult','todo','material','stat']){
+   for(const name of ['consult','todo','stat']){
     assert.ok(Math.abs(initial[name].height-next[name].height)<1.5,`${width}: ${name} grew because of child contents`);
    }
    assert.ok(next.pageScroll<=1,`${width}: page scrolls`);
@@ -70,7 +67,6 @@ test('PC page grid stays flush and only hidden-scroll inner lists move as data g
    if(width>900){
     assert.ok(Math.abs(next.consult.top-next.stat.top)<1.5,`${width}: top grid misaligned`);
     assert.ok(Math.abs(next.consult.bottom-next.todo.bottom)<1.5,`${width}: todo bottom misaligned`);
-    assert.ok(Math.abs(next.consult.bottom-next.material.bottom)<1.5,`${width}: materials bottom misaligned`);
    }
    for(const el of next.scroll){
     assert.ok(el.scrollHeight>el.clientHeight,`${width}: no overflowing child ${el.selector}`);
@@ -86,7 +82,7 @@ test('PC page grid stays flush and only hidden-scroll inner lists move as data g
  }finally{await browser.close()}
 });
 
-test('material opener matches add button; recurring manager matches sibling counter in Chromium',async()=>{
+test('material cards share the work list, headings are lighter, and the recurring manager styling remains unchanged',async()=>{
  const browser=await chromium.launch({headless:true});
  try{
   const page=await browser.newPage({viewport:{width:1600,height:900}});
@@ -96,15 +92,88 @@ test('material opener matches add button; recurring manager matches sibling coun
     const el=document.querySelector(selector),rect=el.getBoundingClientRect(),style=getComputedStyle(el);
     return {height:rect.height,backgroundColor:style.backgroundColor,color:style.color,borderRadius:style.borderRadius,fontSize:style.fontSize,fontWeight:style.fontWeight};
    }
-   return {add:metrics('.pcAcademyTodoForm button'),materials:metrics('.pcAcademyMaterialsOpen'),
-    repeat:metrics('.pcAcademyRecurringManageBtn'),count:metrics('.pcAcademySectionCount'),
-    repeatIcon:getComputedStyle(document.querySelector('.pcAcademyRecurringManageBtn svg')).stroke};
+   return {
+    cardParent:document.querySelector('.pcAcademyMaterialRow').parentElement.id,
+    title:metrics('.pcAcademySectionTitle'),
+    consultationTitle:metrics('.pcAcademyDetailName'),
+    repeat:metrics('.pcAcademyRecurringManageBtn'),
+    count:metrics('.pcAcademySectionCount'),
+    repeatIcon:getComputedStyle(document.querySelector('.pcAcademyRecurringManageBtn svg')).stroke
+   };
   });
-  assert.equal(measured.add.height,48);
-  assert.equal(measured.materials.height,measured.add.height);
+  assert.equal(measured.cardParent,'todos');
+  assert.equal(measured.title.fontWeight,'650');
+  assert.equal(measured.consultationTitle.fontWeight,'650');
   for(const property of ['height','backgroundColor','color','borderRadius','fontSize','fontWeight'])
    assert.equal(measured.repeat[property],measured.count[property],property+' capsule mismatch');
   assert.equal(measured.repeatIcon,measured.repeat.color,'icon should inherit capsule text color');
   await page.close();
+ }finally{await browser.close()}
+});
+
+test('approved typography uses consistent sizes in a desktop browser',async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+  const page=await browser.newPage({viewport:{width:1600,height:900}});
+  await page.setContent(fixture());
+  const expected={
+   '.recordAcademyStatLabel':['12px','600'],
+   '.recordAcademyStatValue':['42px','400'],
+   '.recordAcademyStatSub':['12px',null],
+   '.pcAcademySectionTitle':['18px','650'],
+   '.pcAcademyDetailName':['18px','650'],
+   '.pcAcademySectionSub':['12px','700'],
+   '.pcAcademyDetailSub':['12px','700'],
+   '.pcAcademySectionCount':['11px','820'],
+   '.pcAcademyRecurringManageBtn':['11px','820'],
+   '.pcAcademyTodoForm input':['14px',null],
+   '.pcAcademyTodoForm button':['14px','830'],
+   '.pcAcademyTodoText':['14px','600'],
+   '.pcAcademyTodoOrigin':['10px','800'],
+   '.pcAcademyDetailPanel .recordAcademyConsultGroupTitle':['12px','800'],
+   '.pcAcademyDetailPanel .recordAcademyListName':['14px','700'],
+   '.pcAcademyDetailPanel .recordAcademyInfoChip':['11px','400'],
+   '.pcAcademyDetailPanel .recordAcademyConsultStatusChip':['11px','700'],
+  };
+  const measured=await page.evaluate(selectors=>Object.fromEntries(selectors.map(selector=>{
+   const style=getComputedStyle(document.querySelector(selector));
+   return [selector,[style.fontSize,style.fontWeight]];
+  })),Object.keys(expected));
+  for(const [selector,[size,weight]] of Object.entries(expected)){
+   assert.equal(measured[selector][0],size,selector+' font-size');
+   if(weight!==null)assert.equal(measured[selector][1],weight,selector+' font-weight');
+  }
+  await page.close();
+ }finally{await browser.close()}
+});
+
+test('sidebar menu aligns at topbar bottom; material text stays on one line',async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+  for(const width of [1600,1250,980]){
+   const page=await browser.newPage({viewport:{width,height:900}});
+   await page.setContent('<!doctype html><html lang="ko"><head><style>'+shell+'</style></head><body class="olliPcApp">'
+    +'<div class="olliPcShell visible"><div class="olliPcBrand"><div class="olliPcBrandLogo">비비작아이성향미술학원</div></div>'
+    +'<nav class="olliPcNav"><button class="olliPcNavBtn" type="button">학생관리</button></nav></div>'
+    +'<div class="olliPcTopbar visible"><div class="olliPcTopbarTitle">학생관리</div></div></body></html>');
+   const a=await page.evaluate(()=>({
+    navTop:document.querySelector('.olliPcNavBtn').getBoundingClientRect().top,
+    barBottom:document.querySelector('.olliPcTopbar').getBoundingClientRect().bottom
+   }));
+   assert.ok(Math.abs(a.navTop-a.barBottom)<1,'sidebar grid mismatch '+width);
+   await page.setContent(fixture());
+   const v=await page.evaluate(()=>{
+    const main=document.querySelector('.pcAcademyMaterialMain');
+    const name=main.querySelector('strong'),guide=main.querySelector('small');
+    return {direction:getComputedStyle(main).flexDirection,
+     nameY:name.getBoundingClientRect().top,guideY:guide.getBoundingClientRect().top,
+     nameSize:getComputedStyle(name).fontSize,guideSize:getComputedStyle(guide).fontSize,
+     weight:getComputedStyle(name).fontWeight};
+   });
+   assert.equal(v.direction,'row');
+   assert.ok(Math.abs(v.nameY-v.guideY)<5);
+   assert.equal(v.nameSize,'14px');assert.equal(v.guideSize,'11px');assert.equal(v.weight,'600');
+   await page.close();
+  }
  }finally{await browser.close()}
 });

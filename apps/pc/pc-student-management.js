@@ -12,6 +12,8 @@
   let materialOrderSessionToken = '';
   let materialOrderLoadPromise = null;
   let materialOrderError = false;
+  let materialOrderCanProcess = false;
+  const pendingMaterialOrderIds = new Set();
   // 통계는 로컬 학생 캐시와 독립적으로 서버 응답을 사용합니다.
   let serverStats = { academyId: '', students: null, error: '' };
   let statsRequestSerial = 0;
@@ -151,6 +153,7 @@
       materialOrderAcademyId = '';
       materialOrderSessionToken = '';
       materialOrderError = false;
+      materialOrderCanProcess = false;
       if (opts.render && core()?.state?.section === 'academy') renderMaterialOrders();
       return false;
     }
@@ -171,6 +174,7 @@
       const current = todoServerContext();
       if (current.academyId !== academyId || current.sessionToken !== sessionToken) return false;
       materialOrderItems = Array.isArray(result.items) ? result.items : [];
+      materialOrderCanProcess = result.can_process === true;
       materialOrderError = false;
       if (opts.render && core()?.state?.section === 'academy') renderMaterialOrders();
       return true;
@@ -178,6 +182,7 @@
       const current = todoServerContext();
       if (current.academyId === academyId && current.sessionToken === sessionToken) {
         materialOrderError = true;
+        materialOrderCanProcess = false;
         if (opts.render && core()?.state?.section === 'academy') renderMaterialOrders();
       }
       console.warn('PC 학생관리 재료주문 조회 실패:', error?.message || error);
@@ -186,9 +191,7 @@
     return materialOrderLoadPromise;
   }
 
-  function renderMaterialOrders() {
-    const host = document.getElementById('pcAcademyMaterialsSection');
-    if (!host) return;
+  function materialOrderCardsHtml() {
     const ranking = { requested: 0, on_hold: 1, ordered: 2, arrived: 3 };
     const items = materialsForCurrentAcademy().slice().sort((a, b) => {
       const rankA = ranking[a?.status] ?? 4;
@@ -196,25 +199,73 @@
       return rankA - rankB || String(b?.created_at || '').localeCompare(String(a?.created_at || ''));
     });
     const statusLabels = { requested: '요청', on_hold: '보류', ordered: '주문완료', arrived: '도착' };
-    const count = items.filter((item) => item.status === 'requested' || item.status === 'on_hold').length;
     const rows = items.map((item) => {
       const status = String(item?.status || 'requested');
+      const id = String(item?.id || '');
+      const arrived = status === 'arrived';
+      const disabled = !materialOrderCanProcess || !id || pendingMaterialOrderIds.has(id);
       const date = String(item?.needed_on || '').trim();
       const neededText = date ? '필요일 ' + escape(date) : '필요일 미설정';
-      return '<button type="button" class="pcAcademyMaterialRow" onclick="pcOpenAcademyMaterials()" title="업무의 재료주문 화면에서 확인">'
-        + '<span class="pcAcademyMaterialMain"><strong>'+escape(item?.item_name || '재료')+'</strong>'
+      const name = escape(item?.item_name || '재료');
+      return '<div class="pcAcademyMaterialRow'+(arrived ? ' completed' : '')+'">'
+        + '<button type="button" class="pcAcademyTodoCheck pcAcademyMaterialCheck" aria-label="'+(arrived ? '도착 취소: ' : '도착 처리: ')+name+'"'
+        + ' aria-pressed="'+(arrived ? 'true' : 'false')+'"'
+        + ' title="'+(!materialOrderCanProcess ? '원장 또는 관리자만 변경할 수 있습니다.' : (arrived ? '도착 취소' : '도착 처리'))+'"'
+        + (disabled ? ' disabled' : '')+' onclick="pcToggleAcademyMaterial(\''+jsSingleQuote(id)+'\')"><span></span></button>'
+        + '<button type="button" class="pcAcademyMaterialOpen" onclick="pcOpenAcademyMaterials()" title="업무의 재료주문 화면에서 확인">'
+        + '<span class="pcAcademyMaterialMain"><strong>'+name+'</strong>'
         + '<small>'+escape(item?.quantity_text || '수량 미지정')+' · '+neededText+'</small></span>'
         + '<span class="pcAcademyMaterialStatus '+escape(status)+'">'+escape(statusLabels[status] || status)+'</span>'
-        + '</button>';
+        + '</button></div>';
     }).join('');
-    const empty = materialOrderError
-      ? '<div class="pcAcademyMaterialEmpty">재료주문을 불러오지 못했습니다. 재료주문 화면에서 확인해 주세요.</div>'
-      : '<div class="pcAcademyMaterialEmpty">현재 진행 중인 재료주문이 없습니다.</div>';
-    host.innerHTML = '<div class="pcAcademySectionHeader"><div><div class="pcAcademySectionTitle">재료주문</div>'
-      + '<div class="pcAcademySectionSub">기존 주문 목록과 실시간으로 연결됩니다.</div></div>'
-      + '<span class="pcAcademySectionCount">'+count+'건 대기</span></div>'
-      + '<button type="button" class="pcAcademyMaterialsOpen" onclick="pcOpenAcademyMaterials()">재료주문 화면 열기 <span aria-hidden="true">›</span></button>'
-      + '<div class="pcAcademyMaterialsList">'+(rows || empty)+'</div>';
+    return rows || (materialOrderError
+      ? '<div class="pcAcademyMaterialLoadError" role="status">재료주문을 불러오지 못했습니다.</div>'
+      : '');
+  }
+
+  async function toggleMaterialOrder(id) {
+    const key = String(id || '');
+    const context = todoServerContext();
+    const item = materialsForCurrentAcademy().find((entry) => String(entry?.id || '') === key);
+    if (!item || !materialOrderCanProcess || !context.academyId || !context.sessionToken
+        || pendingMaterialOrderIds.has(key)) return;
+    const nextStatus = String(item.status) === 'arrived' ? 'ordered' : 'arrived';
+    pendingMaterialOrderIds.add(key);
+    const check = [...document.querySelectorAll('.pcAcademyMaterialCheck')]
+      .find((button) => button.getAttribute('onclick')?.includes(key));
+    if (check) check.disabled = true;
+    try {
+      const payload = await callTodoRpc('olli_team_material_request_set_status', {
+        p_session_token: context.sessionToken,
+        p_academy_id: context.academyId,
+        p_request_id: key,
+        p_status: nextStatus,
+        p_expected_revision: Number(item.revision || 0),
+        p_hold_reason: null
+      });
+      if (payload?.ok !== true) throw new Error(payload?.message || '재료주문 상태 저장에 실패했습니다.');
+      const current = todoServerContext();
+      if (current.academyId === context.academyId && current.sessionToken === context.sessionToken) {
+        const refreshed = await loadMaterialOrders({ render: true });
+        if (!refreshed) global.alert?.('재료주문 상태는 저장되었지만 목록을 새로고침하지 못했습니다.');
+      }
+    } catch (error) {
+      console.warn('PC 재료주문 도착 상태 변경 실패:', error?.message || error);
+      const current = todoServerContext();
+      if (current.academyId === context.academyId && current.sessionToken === context.sessionToken) {
+        await loadMaterialOrders({ render: true }).catch(() => {});
+        global.alert?.('재료주문 상태를 변경하지 못했습니다. '+String(error?.message || error));
+      }
+    } finally {
+      pendingMaterialOrderIds.delete(key);
+      const current = todoServerContext();
+      if (current.academyId === context.academyId && current.sessionToken === context.sessionToken
+          && core()?.state?.section === 'academy') renderTodoCard();
+    }
+  }
+
+  function renderMaterialOrders() {
+    renderTodoCard();
   }
 
   async function openMaterials() {
@@ -404,10 +455,8 @@
       + buildStatCard(month+'월 상담', due.length, '초등부 '+consultationElementary+'명 · 유치부 '+consultationKinder+'명')
       + buildStatCard('올해 등록', thisYearRegistered.length, '이달 등록 '+thisMonthRegistered.length+'명 · 이달 퇴원 '+thisMonthWithdrawn.length+'명')
       + buildStatCard('올해 퇴원', thisYearWithdrawn.length, '휴원 '+paused.length+'명 · 퇴원 '+thisYearWithdrawn.length+'명')
-      + '</div><div class="pcAcademyWorkOrderGrid"><section class="recordAcademyConsultSection pcAcademyTodoSection" id="pcAcademyTodoSection"></section>'
-      + '<section class="recordAcademyConsultSection pcAcademyMaterialsSection" id="pcAcademyMaterialsSection"></section></div>';
+      + '</div><div class="pcAcademyWorkOrderGrid"><section class="recordAcademyConsultSection pcAcademyTodoSection" id="pcAcademyTodoSection"></section></div>';
     renderTodoCard();
-    renderMaterialOrders();
     loadServerTodos({ render:true }).catch(() => {});
     loadMaterialOrders({ render:true }).catch(() => {});
     renderConsultationPanel(due);
@@ -459,11 +508,17 @@
   function renderTodoCard() {
     const host = document.getElementById('pcAcademyTodoSection');
     if (!host) return;
+    const activeInput = document.activeElement?.id === 'pcAcademyTodoInput' ? document.activeElement : null;
+    const draft = activeInput ? {
+      value: activeInput.value,
+      start: activeInput.selectionStart,
+      end: activeInput.selectionEnd
+    } : null;
     const nowMs = Date.now();
     const items = todos().filter((item) => isVisibleTodo(item, nowMs)).sort((a, b) => Number(a.completed) - Number(b.completed) || String(b.created_at || '').localeCompare(String(a.created_at || '')));
     scheduleTodoExpiry(items, nowMs);
     const remaining = items.filter((item) => !item.completed).length;
-    const rows = items.length ? items.map((item) => {
+    const todoRows = items.map((item) => {
       const id = escape(item.id);
       const origin = item._source === 'server' && item.origin === 'chat'
         ? '<span class="pcAcademyTodoOrigin">올리톡</span>'
@@ -473,7 +528,9 @@
         + '<div class="pcAcademyTodoTextWrap"><div class="pcAcademyTodoText">'+escape(item.text)+'</div>'+origin+'</div>'
         + '<button type="button" class="pcAcademyTodoDelete" aria-label="할 일 삭제" title="삭제" onclick="pcDeleteAcademyTodo(\''+id+'\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>'
         + '</div>';
-    }).join('') : '<div class="pcAcademyTodoEmpty"><span>오늘 처리할 일을 적어보세요.</span><small>추가한 할 일은 학원 구성원에게 함께 표시됩니다.</small></div>';
+    }).join('');
+    const materialRows = materialOrderCardsHtml();
+    const rows = todoRows + materialRows || '<div class="pcAcademyTodoEmpty"><span>오늘 처리할 일을 적어보세요.</span><small>추가한 할 일은 학원 구성원에게 함께 표시됩니다.</small></div>';
     const canManageRecurringTasks = (typeof global.getOlliCurrentRole === 'function'
       ? global.getOlliCurrentRole() : String(global.localStorage?.getItem?.('olli_current_member_role') || '')) === 'owner';
     const recurringButton = canManageRecurringTasks
@@ -481,6 +538,16 @@
     host.innerHTML = '<div class="pcAcademySectionHeader pcAcademyTodoHeader"><div><div class="pcAcademySectionTitle">학원 업무</div><div class="pcAcademySectionSub">업무와 메모를 한곳에서 관리해요.</div></div><div class="pcAcademyTodoHeaderActions">'+recurringButton+'<span class="pcAcademySectionCount">'+remaining+'개 남음</span></div></div>'
       + '<form class="pcAcademyTodoForm" onsubmit="pcAddAcademyTodo(event)"><input id="pcAcademyTodoInput" type="text" maxlength="80" autocomplete="off" placeholder="할 일을 입력해 주세요"><button type="submit">추가</button></form>'
       + '<div class="pcAcademyTodoList">'+rows+'</div>';
+    if (draft) {
+      const input = document.getElementById('pcAcademyTodoInput');
+      if (input) {
+        input.value = draft.value;
+        try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
+        if (Number.isInteger(draft.start) && Number.isInteger(draft.end)) {
+          try { input.setSelectionRange(draft.start, draft.end); } catch (_) {}
+        }
+      }
+    }
   }
 
   // 상담 대상 여부와 상담 피드백 범위는 규칙을 따르되, 학생 카드에는 실제 재원 개월 수를 표시합니다.
@@ -716,6 +783,7 @@
 
   global.OlliPcStudentManagement = { renderContext, renderDashboard, renderTodoCard, renderMaterialOrders, renderConsultationPanel, openLegacyReview, loadServerTodos, loadMaterialOrders, open, filter, handleSearch, resolveStudent, bindRows, start };
   global.pcOpenAcademyMaterials = openMaterials;
+  global.pcToggleAcademyMaterial = toggleMaterialOrder;
   global.pcAddAcademyTodo = addTodo;
   global.pcToggleAcademyTodo = toggleTodo;
   global.pcDeleteAcademyTodo = deleteTodo;
