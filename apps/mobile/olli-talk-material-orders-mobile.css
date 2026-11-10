@@ -60,6 +60,9 @@
 :is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSecondaryBtn:disabled,:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatDarkBtn:disabled,:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatPrimaryBtn:disabled{opacity:.55}
 :is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatReadOnlyNote,:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatDoneNote{width:100%;padding:11px 12px;border-radius:12px;background:#f3f4f5;color:#8b9199;font-size:10.8px;font-weight:560;text-align:center}
 :is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatDoneNote{background:#eef7f1;color:#638372}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatActions button.olliMobileMatDoneNote{appearance:none;border:0;font-family:'Pretendard',sans-serif;cursor:pointer}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatActions button.olliMobileMatDoneNote:hover{background:#e3f1e7}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatActions button.olliMobileMatDoneNote:focus-visible{outline:2px solid #638372;outline-offset:2px}
 :is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatEmpty{min-height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:24px;text-align:center}
 :is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatEmpty strong{color:#777d85;font-size:12.5px;font-weight:720}
 :is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatEmpty span{max-width:260px;color:#a1a6ad;font-size:10.8px;font-weight:510;line-height:1.55}
