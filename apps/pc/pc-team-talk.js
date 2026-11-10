@@ -422,10 +422,10 @@
         const members = new Map(state.members.map(member => [String(member.member_id), member]));
         for (const member of extension.members) members.set(String(member.member_id), member);
         state.members = [...members.values()];
-        state.members.unshift({member_id:'all',display_name:'전체',branch_name:'참여 학원 전체'});
+        // No @all participating-academies shortcut; individual member mentions only.
       }
       hydrateMemberAvatars();
-      if (count) count.textContent = state.members.length ? `선생님 ${state.members.filter(member=>member.member_id!=='all').length}명` : '';
+      if (count) count.textContent = state.members.length ? `선생님 ${state.members.length}명` : '';
       renderMentionMenu();
       return state.members;
     } catch (error) {
@@ -1643,10 +1643,15 @@
       } catch (error) { console.warn('통합 팀챗 조회 실패:',error?.message||error); }
       if (sequence !== state.messageLoadSequence) return false;
       state.sharedJoined=!!extension.joined;
+      // Olli materials, coffee orders, confirmations and actions belong only to
+      // the academy whose authenticated session requested the message.
+      const privateMessages=(Array.isArray(payload.messages)?payload.messages:[])
+        .filter(item=>!item?.academy_id || String(item.academy_id)===String(current.academyId));
+      const scopedPayload={...payload,messages:privateMessages};
       const combined = extension.joined
-        ? {...payload,messages:[...(payload.messages||[]),...extension.messages]
+        ? {...scopedPayload,messages:[...privateMessages,...extension.messages]
           .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))}
-        : payload;
+        : scopedPayload;
       if (options.render === false) state.messages = Array.isArray(combined.messages) ? combined.messages : [];
       else renderMessages(combined, { followBottom: options.followBottom });
       if (extension.joined && isVisible() && extension.latestSeq) {

@@ -70,7 +70,7 @@ for(const width of [390,1280]) test('existing Team Chat hosts the unified conver
     const teacher=await page('teacherB',2,5);
     assert.equal(await teacher.evaluate(()=>renderNative()),true);
     await teacher.locator('#chat-list article').filter({hasText:'대천점'}).waitFor();
-    await teacher.getByRole('textbox',{name:'메시지 입력'}).fill('@전체 상인점 답장');
+    await teacher.getByRole('textbox',{name:'메시지 입력'}).fill('@원장 상인점 답장');
     await teacher.getByRole('button',{name:'전송'}).click();
     await teacher.locator('#chat-list article').filter({hasText:'상인점 답장'}).waitFor();
     await owner.evaluate(()=>renderNative());

@@ -7855,11 +7855,11 @@
         if(extension?.joined){
           const members=new Map(olliTalkMembers.map(member=>[String(member.member_id),member]));
           extension.members.forEach(member=>members.set(String(member.member_id),member));
-          olliTalkMembers=[{member_id:'all',display_name:'전체',branch_name:'참여 학원 전체'},...members.values()];
+          olliTalkMembers=[...members.values()];
         }
       }catch(error){console.warn('공동 팀챗 선생님 조회 실패:',error?.message||error);}
       hydrateOlliTalkMemberAvatars();
-      const memberCount=applyOlliTalkMemberCount(olliTalkMembers.filter(member=>member.member_id!=='all').length);
+      const memberCount=applyOlliTalkMemberCount(olliTalkMembers.length);
       const cacheBase = olliTalkCurrentPayload || cached || {
         ok:true,
         academy_id:context.academyId,
@@ -8172,8 +8172,14 @@
         throw new Error(payload?.message || '대화를 불러오지 못했습니다.');
       }
 
-      const pageMessages=Array.isArray(payload.messages)?payload.messages:[];
-      const mergedPayload=basePayload?mergeOlliTalkMessagePayloads(basePayload,payload):payload;
+      // Academy-private bot, material and coffee order messages must never be
+      // mixed from a previous academy cache or another school into this view.
+      const privateOnly=messages=>(Array.isArray(messages)?messages:[])
+        .filter(item=>!item?.academy_id || String(item.academy_id)===String(context.academyId));
+      const scopedPayload={...payload,messages:privateOnly(payload.messages)};
+      const scopedBase=basePayload?{...basePayload,messages:privateOnly(basePayload.messages)}:null;
+      const pageMessages=scopedPayload.messages;
+      const mergedPayload=scopedBase?mergeOlliTalkMessagePayloads(scopedBase,scopedPayload):scopedPayload;
       const changed=!basePayload||!areOlliTalkMessagePayloadsEquivalent(basePayload,mergedPayload);
       let extension={joined:false,messages:[]};
       try { extension=await window.OlliSharedTeamChat?.unifiedExtension?.({messages:true})||extension; }

@@ -261,13 +261,14 @@ async function resetSettingsMemberDevice(memberId) {
   try {
     if (accountMembership) {
       const result = await callOlliTeacherAdminRpc('olli_remove_account_membership', { p_member_id: id });
-      if (!result || result.ok !== true) {
+      if (!result || result.ok !== true || result.removed !== true || result.status !== 'disabled') {
         throw new Error((result && result.message) || '학원 계정 연결 해제 결과를 확인하지 못했습니다.');
       }
     } else {
       await olliRemoveMemberRegistration(id);
     }
-    olliSettingsState.members = (olliSettingsState.members || []).filter(item => getSettingsMemberId(item) !== id);
+    // Rebuild from the server after the revocation succeeds; never remove a
+    // visible teacher based only on the optimistic local state.
     await settingsLoadTeacherManagementMembers();
     if (findSettingsMember(id)) throw new Error('연결 해제 후에도 선생님 계정이 서버에 남아 있습니다.');
   } catch (err) {

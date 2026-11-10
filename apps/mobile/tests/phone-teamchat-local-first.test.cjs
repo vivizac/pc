@@ -82,9 +82,9 @@ test('link preview image proxy is bounded and only accepts raster image content 
 });
 
 test('server result only replaces the visible message list when the merged payload changed', () => {
-  assert.match(talk, /const mergedPayload=basePayload\?mergeOlliTalkMessagePayloads\(basePayload,payload\):payload;/);
+  assert.match(talk, /const mergedPayload=scopedBase\?mergeOlliTalkMessagePayloads\(scopedBase,scopedPayload\):scopedPayload;/);
   assert.match(talk, /const changed=!basePayload\|\|!areOlliTalkMessagePayloadsEquivalent\(basePayload,mergedPayload\);/);
-  assert.match(talk, /if\(options\.render!==false&&changed\)/);
+  assert.match(talk, /if\(options\.render!==false&&renderChanged\)/);
 });
 
 test('Team Chat bundle is cache-busted', () => {

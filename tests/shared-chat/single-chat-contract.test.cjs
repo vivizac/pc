@@ -15,7 +15,7 @@ test('one visible Team Chat: no second room entry or independent shared dialog',
   for(const html of [pcHtml,mobileHtml]){
     assert.doesNotMatch(html,/data-shared-chat-entry/);
     assert.match(html,/Team Chat/);
-    assert.match(html,/olli-shared-team-chat\.js\?v=20261110-single-conversation-1/);
+    assert.match(html,/olli-shared-team-chat\.js\?v=20261110-order-privacy-unlink-1/);
   }
   assert.doesNotMatch(service,/createDialog\('공동 팀챗'\)/);
   assert.match(service,/async function open\(\)\{[\s\S]*OlliPcTeamTalk\?\.open/);
@@ -38,7 +38,19 @@ test('shared normal messages join existing renderer, Olli AI stays on original a
   assert.match(mobile,/pendingPrivateWorkflow=hasOlliTalkPendingCommand\(\)/);
   assert.match(pc,/rpc\('olli_team_chat_send'/);
   assert.match(mobile,/callOlliTalkRpc\('olli_team_chat_send'/);
-  assert.match(service,/p_mention_all:mentionAll/);
+  assert.match(service,/p_mention_all:false/);
+  assert.doesNotMatch(service,/p_mention_all:mentionAll/);
+  assert.doesNotMatch(pc,/member_id:'all',display_name:'전체'/);
+  assert.doesNotMatch(mobile,/member_id:'all',display_name:'전체'/);
+});
+test('coffee, material orders and Olli confirmations stay within originating academy',()=>{
+  assert.match(pc,/privateMessages=.*payload\.messages/);
+  assert.match(pc,/!item\?\.academy_id \|\| String\(item\.academy_id\)===String\(current\.academyId\)/);
+  assert.match(mobile,/const privateOnly=messages=>/);
+  assert.match(mobile,/!item\?\.academy_id \|\| String\(item\.academy_id\)===String\(context\.academyId\)/);
+  assert.match(service,/!msg\?\.material_request_id && !msg\?\.material_event_id && !msg\?\.action/);
+  const listSql=read('apps/mobile/supabase/migrations/20260920020408_add_team_chat_send_list_rpc.sql');
+  assert.match(listSql,/where m\.academy_id\s*=\s*p_academy_id/);
 });
 test('shared records never enter persistent academy message cache',()=>{
   assert.match(mobile,/writeOlliTalkMessageCache\(context,mergedPayload\)/);

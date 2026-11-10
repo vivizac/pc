@@ -150,12 +150,12 @@ function renderMembers(){
   const picker=dialog?.querySelector('[data-shared-members]');if(!picker)return;
   const checked=new Set([...picker.querySelectorAll('input:checked')].map(el=>el.value));
   picker.replaceChildren();
-  for(const item of [{member_id:'all',display_name:'전체',branch_name:'모든 참여 지점'},...state.members.filter(m=>!m.is_current_member)]){
+  for(const item of state.members.filter(m=>!m.is_current_member)){
     const label=node('label');const input=node('input');input.type='checkbox';input.value=item.member_id;input.checked=checked.has(item.member_id);
     label.append(input,node('span',item.display_name),node('span',item.branch_name,'olliSharedChatBranch'));picker.append(label);
   }
 }
-function mentionParams(){const ids=[...dialog.querySelectorAll('[data-shared-members] input:checked')].map(el=>el.value);return {p_member_ids:ids.filter(id=>id!=='all'),p_mention_all:ids.includes('all')};}
+function mentionParams(){const ids=[...dialog.querySelectorAll('[data-shared-members] input:checked')].map(el=>el.value);return {p_member_ids:ids,p_mention_all:false};}
 async function submit(event){
   event?.preventDefault();if(state.busy||!state.ready)return;
   let ctx;try{ctx=chatContext();}catch(_){return;}
@@ -360,7 +360,11 @@ async function unifiedExtension(options={}){
   const list=options.messages?responses[cursor++]:null;
   const memberPayload=options.members?responses[cursor++]:null;
   if(list&&(list.room_id!==room.id||list.participation_id!==room.participation_id))throw new Error('팀챗 참여 상태가 변경되었습니다.');
-  const messages=(list?.messages||[]).map(msg=>({
+  // Shared storage is for ordinary conversation and files, never Olli work actions.
+  const messages=(list?.messages||[]).filter(msg=>
+    ['text','system','file'].includes(String(msg?.message_type||''))
+    && !msg?.material_request_id && !msg?.material_event_id && !msg?.action
+  ).map(msg=>({
     ...msg,
     id:'shared:'+msg.id,
     shared_message_id:msg.id,
@@ -380,10 +384,10 @@ async function sendUnified(body,clientId){
   const memberResult=await rpc('members',params(ctx,room),ctx);
   const memberIds=(memberResult.members||[]).filter(m=>!m.is_current_member&&
     (String(body).includes('@'+String(m.display_name||''))&&String(m.display_name||'').trim())).map(m=>m.member_id);
-  const mentionAll=/(^|\s)@전체(?=\s|$|[,.!?，。！？])/u.test(String(body));
+  // No cross-academy @all target. Direct @teacher mentions remain available.
   const result=await rpc('send',{...params(ctx,room),p_body:String(body),
     p_client_message_id:clientId||crypto.randomUUID(),p_reply_to_message_id:null,
-    p_member_ids:[...new Set(memberIds)],p_mention_all:mentionAll},ctx);
+    p_member_ids:[...new Set(memberIds)],p_mention_all:false},ctx);
   assertCurrent(ctx);
   dispatchPush(ctx,room,result.message_id);
   return {joined:true,message_id:result.message_id};
