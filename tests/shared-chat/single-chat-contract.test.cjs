@@ -34,7 +34,8 @@ test('shared normal messages join existing renderer, Olli AI stays on original a
   assert.match(pc,/unifiedExtension\?\.\(\{messages:true\}\)/);
   assert.match(mobile,/unifiedExtension\?\.\(\{messages:true\}\)/);
   assert.match(pc,/if \(!olliRequested && global\.OlliSharedTeamChat\?\.sendUnified\)/);
-  assert.match(mobile,/if\(!olliRequested && window\.OlliSharedTeamChat\?\.sendUnified\)/);
+  assert.match(mobile,/if\(!olliRequested && !pendingPrivateWorkflow && window\.OlliSharedTeamChat\?\.sendUnified\)/);
+  assert.match(mobile,/pendingPrivateWorkflow=hasOlliTalkPendingCommand\(\)/);
   assert.match(pc,/rpc\('olli_team_chat_send'/);
   assert.match(mobile,/callOlliTalkRpc\('olli_team_chat_send'/);
   assert.match(service,/p_mention_all:mentionAll/);

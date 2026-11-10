@@ -8355,7 +8355,10 @@
     const clientMessageId = createOlliTalkClientMessageId();
 
     try {
-      if(!olliRequested && window.OlliSharedTeamChat?.sendUnified){
+      // A pending Olli workflow reply must remain in the original academy's private chat route.
+      const pendingPrivateWorkflow=hasOlliTalkPendingCommand()
+        || !!olliTalkPendingActionReason || !!olliTalkPendingMakeupDialogue;
+      if(!olliRequested && !pendingPrivateWorkflow && window.OlliSharedTeamChat?.sendUnified){
         const sharedSent=await window.OlliSharedTeamChat.sendUnified(body,clientMessageId);
         if(sharedSent.joined){
           input.value='';
