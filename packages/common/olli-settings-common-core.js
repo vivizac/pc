@@ -374,6 +374,9 @@ function mergeSettingsTeacherManagementRows(legacyRows, accountRows) {
   return Array.from(map.values()).filter(row => {
     const role = getSettingsMemberRole(row);
     const status = String((row && (row.status || row.membership_status || row.member_status || 'active')) || 'active').trim().toLowerCase();
+    // Account-linked teachers marked disabled by unlink retain their historical
+    // member ID for chat, material orders and payroll, but are no longer connected.
+    if (isSettingsAccountMembershipMember(row) && status === 'disabled') return false;
     return role && !['deleted', 'removed', 'rejected', 'pending', 'waiting', 'approval_pending', '승인대기', '승인 대기', '거절됨'].includes(status);
   });
 }
@@ -800,7 +803,9 @@ async function loadOlliAcademyAccountMemberships() {
     p_academy_id: academyId
   });
   if (!result || result.ok !== true) throw new Error((result && result.message) || '학원 계정 권한을 불러오지 못했습니다.');
-  olliSettingsState.academyAccountMemberships = Array.isArray(result.members) ? result.members : [];
+  // Disabled account memberships are history, not active academy connections.
+  olliSettingsState.academyAccountMemberships = (Array.isArray(result.members) ? result.members : [])
+    .filter(member=>String(member?.status||'active').trim().toLowerCase()==='active');
   return olliSettingsState.academyAccountMemberships;
 }
 
