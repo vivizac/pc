@@ -2,8 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const path = require('node:path');
 
-const source = fs.readFileSync('olli-command-schedule-common.js', 'utf8');
+const source = fs.readFileSync(path.resolve(__dirname, '../../../packages/common/olli-command-schedule-common.js'), 'utf8');
 
 function loadSchedule(weekData, calendarDays = [], options = {}) {
   const calls = options.calls || {};
@@ -281,13 +282,25 @@ test('prepare move write finds one source enrollment and keeps its class group w
     effectiveDate:'2026-09-18'
   });
 
-  assert.equal(prepared.ok, true);
+  assert.equal(prepared.ok, true, prepared.message);
   assert.equal(prepared.command.intent, 'move_class');
   assert.equal(prepared.command.sourceEnrollmentId, 'source-1');
   assert.equal(prepared.command.targetClassGroup, 'B');
+  assert.equal(prepared.command.targetCheckDate, '2026-09-23');
   assert.equal(prepared.command.effectiveDate, '2026-09-18');
   assert.match(prepared.message, /월요일 4시/);
   assert.match(prepared.message, /수요일 4시 B반/);
+
+  const explicit = await schedule.prepareWriteCommand('move_class', {
+    studentName:'최민기',
+    sourceWeekday:1,
+    targetWeekday:3,
+    targetTimeSlot:4,
+    effectiveDate:'2026-09-18',
+    targetDate:'2026-09-30'
+  });
+  assert.equal(explicit.ok, true, explicit.message);
+  assert.equal(explicit.command.targetCheckDate, '2026-09-30');
 });
 
 test('move write rechecks the target and does not silently waitlist', async () => {
@@ -953,7 +966,7 @@ test('absence command marks the regular session absent and stores the reason mem
   assert.equal(prepared.command.reason, '감기');
 
   await schedule.executePreparedWrite(prepared.command);
-  assert.deepEqual(calls.setAttendanceSessionStatus, {
+  assert.deepEqual(structuredClone(calls.setAttendanceSessionStatus), {
     studentId:'student-1',
     sessionDate:'2026-09-18',
     sessionKind:'regular',

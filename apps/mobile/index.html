@@ -504,7 +504,7 @@
 
 <script src="olli-data-foundation.js"></script>
 <script src="olli-realtime-common.js?v=20261103-booking-domain-1"></script>
-<script src="olli-student-core.js?v=20261024-exact-task-2"></script>
+<script src="olli-student-core.js?v=20261109-feedback-student-binding-1"></script>
 <script src="olli-operations-feedback-policy.js"></script>
 <script src="olli-data-students.js?v=20261108-stat-only-dashboard-2"></script>
 <script src="olli-student-weekend-badge.js?v=20261102-group-unset-blue-star-1"></script>
@@ -536,7 +536,7 @@
 <script src="olli-observation-memo-storage-phone-adapter.js?v=20260920-growth-all-divisions-1"></script>
 <script src="observation-memo-session-common.js?v=20260929-memo-page-owner-1"></script>
 <script src="observation-memo-save-common.js?v=20260909-2143-1"></script>
-<script src="olli-observation-runtime.js?v=20261021-guardian-contact-1"></script>
+<script src="olli-observation-runtime.js?v=20261109-feedback-student-binding-1"></script>
 <script src="olli-observation-roster-phone.js?v=20261028-sort-guide-right-1"></script>
 <script src="olli-record-list-view.js?v=20261012-student-row-stage5-1"></script>
 <script src="olli-record-board-actions-phone-adapter.js"></script>
@@ -824,7 +824,7 @@
 <script src="olli-settings-detail-data.js?v=20261012-settings-groups-clean-1"></script>
 <script src="olli-settings-detail-phone.js?v=20260927-team-talk-phone-only-1"></script>
 <script src="olli-team-talk-avatar-catalog.js?v=20261011-avatars-06-09-1"></script>
-<script src="olli-settings-team-talk-phone.js?v=20261010-olli-integrated-1"></script>
+<script src="olli-settings-team-talk-phone.js?v=20261106-shared-chat-1"></script>
 <link rel="stylesheet" href="olli-teacher-payroll-common.css?v=20261027-student-info-bluegray-1">
 <link rel="stylesheet" href="olli-tuition-common.css?v=20261027-student-info-bluegray-1">
 <script src="olli-tuition-common.js?v=20261019-tuition-monthly-2"></script>
@@ -967,6 +967,7 @@
 <div class="olliTalkBetaTitleRow"><span class="olliTalkBetaTitle">Team Chat</span><span class="olliTalkBetaMemberCount" id="olliTalkBetaMemberCount"></span></div>
 </div>
 <div class="olliTalkHeaderTools">
+<button type="button" data-shared-chat-entry hidden>공동 대화</button>
 <button aria-label="Work Hub" class="olliTalkHeaderToolBtn olliTalkArchiveBtn olliWorkTabWithBadge" id="olliTalkArchiveBtn" title="Work Hub" type="button">
 <svg aria-hidden="true" class="olliTalkArchiveIcon" viewbox="0 0 24 24">
 <path d="M12 3.5l2.63 5.33 5.88.85-4.25 4.14 1 5.85L12 16.9l-5.26 2.77 1-5.85-4.25-4.14 5.88-.85L12 3.5Z"></path>
@@ -1174,11 +1175,13 @@
 <script src="olli-talk-material-orders-mobile.js?v=20261012-needed-date-archive-1"></script>
 <script src="olli-talk-attachment-cache-phone.js?v=20260929-link-preview-local-first-1"></script>
 <script src="olli-talk-image-thumbnail-phone.js?v=20260924-client-thumbnail-1"></script>
-<script src="olli-command-schedule-common.js?v=20261003-rule-student-schedule-1"></script>
+<script src="olli-command-schedule-common.js?v=20261109-move-target-date-1"></script>
 <script src="olli-command-router-common.js?v=20261003-rule-student-schedule-1"></script>
 <script src="olli-team-talk-agent-route-common.js?v=20261002-agent-route-sot-1"></script>
-<script src="olli-talk-beta.js?v=20261013-work-return-prepared-rear-1"></script>
-<script src="olli-talk-push.js?v=20261102-10am-badge-1"></script>
+<link rel="stylesheet" href="olli-shared-team-chat.css?v=20261106-shared-chat-1">
+<script src="olli-shared-team-chat.js?v=20261106-shared-chat-1"></script>
+<script src="olli-talk-beta.js?v=20261109-reply-error-1"></script>
+<script src="olli-talk-push.js?v=20261106-shared-chat-1"></script>
 <script src="kcf-voice-text-normalizer.js?v=20260918-time-normalize-1"></script>
 <script src="kcf-voice-transcription.js?v=20261002-sheet-controls-1"></script>
 <script src="olli-feedback-registration-runtime.js?v=20261009-missing-student-guide-1"></script>

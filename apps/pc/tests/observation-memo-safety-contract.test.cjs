@@ -6,17 +6,18 @@ const vm = require('node:vm');
 const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
+const shared = path.resolve(root, '../../packages/common');
 const files = {
-  editStateCore: path.join(root, 'observation-memo-edit-state-core.js'),
-  common: path.join(root, 'observation-memo-common.js'),
+  editStateCore: path.join(shared, 'observation-memo-edit-state-core.js'),
+  common: path.join(shared, 'observation-memo-common.js'),
   pcCore: path.join(root, 'observation-memo-core.js'),
-  storage: path.join(root, 'observation-memo-storage-common.js'),
-  save: path.join(root, 'observation-memo-save-common.js'),
-  session: path.join(root, 'observation-memo-session-common.js'),
-  feedbackClear: path.join(root, 'observation-memo-feedback-clear-common.js'),
+  storage: path.join(shared, 'observation-memo-storage-common.js'),
+  save: path.join(shared, 'observation-memo-save-common.js'),
+  session: path.join(shared, 'observation-memo-session-common.js'),
+  feedbackClear: path.join(shared, 'observation-memo-feedback-clear-common.js'),
   feedbackGeneration: path.join(root, 'olli-record-feedback-generation.js'),
-  historyCore: path.join(root, 'observation-memo-version-history-core.js'),
-  history: path.join(root, 'observation-memo-version-history-common.js')
+  historyCore: path.join(shared, 'observation-memo-version-history-core.js'),
+  history: path.join(shared, 'observation-memo-version-history-common.js')
 };
 
 const read = file => fs.readFileSync(file, 'utf8');
@@ -56,7 +57,8 @@ test('edit state contract preserves baseline dirty and clean behavior for the ac
     getElementById(id) { return id === 'memoEditor' ? editor : null; },
     querySelector() { return null; },
     createElement() { return { classList:{ add(){}, remove(){} }, style:{}, appendChild(){} }; },
-    body: { appendChild(){}, classList:{ add(){}, remove(){} } }
+    body: { appendChild(){}, classList:{ add(){}, remove(){} } },
+    head: { appendChild() {} }
   };
   const sandbox = {
     window: null,
@@ -75,6 +77,7 @@ test('edit state contract preserves baseline dirty and clean behavior for the ac
   vm.createContext(sandbox);
   vm.runInContext(editStateCoreSource, sandbox, { filename:'observation-memo-edit-state-core.js' });
   vm.runInContext(commonSource, sandbox, { filename:'observation-memo-common.js' });
+  vm.runInContext(read(files.pcCore), sandbox, { filename:'observation-memo-core.js' });
 
   const state = sandbox.beginObservationMemoEditSession(
     sandbox.currentMemoStudent,

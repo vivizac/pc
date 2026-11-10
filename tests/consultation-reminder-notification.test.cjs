@@ -50,9 +50,9 @@ test('mobile service worker, app badge and visible consultation shortcut share e
  assert.match(client,/olli_consultation_today_count/);
  assert.match(client,/consultationCount:state\.consultationCount/);
  assert.match(work,/OlliConsultationReminders\?\.combineWorkCount/);
- assert.match(work,/olli-push-sw\.js\?v=20261102-consultation-10am-1/);
+ assert.match(work,/olli-push-sw\.js\?v=20261106-shared-chat-1/);
  assert.match(ui,/enable-consultation-reminder/);
  assert.match(html,/olli-consultation-reminders\.js\?v=20261102-10am-badge-1/);
- assert.match(html,/olli-talk-push\.js\?v=20261102-10am-badge-1/);
+ assert.match(html,/olli-talk-push\.js\?v=20261106-shared-chat-1/);
  assert.match(html,/olli-booking-owner-ui\.js\?v=20261103-local-first-realtime-1/);
 });

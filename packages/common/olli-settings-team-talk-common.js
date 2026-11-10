@@ -267,6 +267,7 @@ function detailHtml(){
   return '<div class="olliTeamTalkSettingsPage">'
     + '<div class="settingsDetailIntro"><div class="settingsDetailTitle">팀챗을<br>내 스타일로 설정합니다.</div></div>'
     + avatarSettingsHtml()
+    + (currentRole()==='owner' ? '<section class="olliTeamTalkSettingsCard"><button type="button" onclick="OlliSharedTeamChat.manage()">팀챗 통합 관리</button><p>같은 원장의 참여 학원과 팀챗 표시 이름을 관리합니다.</p></section>' : '')
     + '<section class="olliTeamTalkSettingsCard">'
     + '<div class="olliTeamTalkSettingsHead"><div><strong>배경 스타일</strong><small>PC와 핸드폰은 서로 연동하지 않고 각각 따로 저장됩니다. 배경에 맞춰 날짜·시간·시스템 글자색도 자동으로 바뀝니다.</small></div></div>'
     + '<div class="olliTeamTalkThemeGroupLabel olli">올리 스타일</div>'

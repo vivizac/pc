@@ -1,0 +1,32 @@
+name: Validate shared Team Chat
+on:
+  pull_request:
+    paths:
+      - 'packages/common/olli-shared-*'
+      - 'apps/**/api/**shared-team-chat*'
+      - 'apps/**/api/_lib/shared-team-chat-files.cjs'
+      - 'apps/**/olli*team-talk*'
+      - 'apps/**/olli-talk-*.js'
+      - 'apps/**/pc-team-talk.js'
+      - 'apps/**/index.html'
+      - 'supabase/migrations/20260911111500_olli_realtime_signal_channels.sql'
+      - 'supabase/migrations/*shared_rooms.sql'
+      - 'supabase/functions/olli-shared-chat-push/**'
+      - 'tests/shared-chat/**'
+      - '.github/workflows/validate-shared-team-chat.yml'
+permissions:
+  contents: read
+jobs:
+  isolated-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix tests/shared-chat --ignore-scripts
+      - run: npx --prefix tests/shared-chat playwright install --with-deps chromium
+      - name: SQL, browser, file broker, AI and push isolation
+        run: node --test tests/shared-chat/*.test.cjs
+      - name: Canonical common sources and app build closure
+        run: node --test tests/pc-self-contained-build.test.cjs tests/mobile-self-contained-build.test.cjs tests/pc-build-closure.test.cjs tests/mobile-entry-integrity.test.cjs tests/teacher-payroll-contract.test.cjs

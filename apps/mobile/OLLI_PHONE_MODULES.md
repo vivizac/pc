@@ -18,6 +18,7 @@
 
 | 수정 대상 | JavaScript | CSS |
 |---|---|---|
+| 공동 팀챗 통합 관리·일반 공동 대화 (작업 브랜치, 서버 gate 기본 꺼짐) | `packages/common/olli-shared-team-chat.js` | `packages/common/olli-shared-team-chat.css` |
 | 출석부/기록실 검색, 실시간 이름 검색, iOS 키보드 위치 처리 | `olli-record-search-controls.js` | `olli-record-search-controls.css`, `olli-record-search-keyboard.css` |
 | 공통 저장 컨텍스트·FeatureRegistry·로컬/서버 동기화 기반 | `olli-storage-core.js` | - |
 | Supabase REST·저장 진단·피드백 공통 저장 기반 | `olli-data-foundation.js` | - |

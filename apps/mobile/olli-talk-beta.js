@@ -8392,7 +8392,7 @@
           recordOlliTalkAiConversationTurn(commandText, turn.replyText);
         } catch(error) {
           console.warn('올리톡 응답 실패:', error);
-          followupErrors.push(usingAi ? 'AI 응답' : '올리봇 응답');
+          followupErrors.push('올리 응답');
         } finally {
           if (olliTalkAssistantReplyPending) {
             olliTalkAssistantReplyPending = false;
@@ -8634,6 +8634,7 @@
 
         hydrateOlliTalkDeferredFirstPaintAssets();
         bindOlliTalkRealtime();
+        window.OlliSharedTeamChat?.refreshEntry?.();
         loadOlliTalkMembers()
           .then(members=>{
             renderOlliTalkMentionMenu();

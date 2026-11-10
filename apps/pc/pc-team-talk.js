@@ -4893,6 +4893,7 @@
     resizeComposer();
     updateComposerState();
     setWorkspaceTab(state.workspaceTab);
+    global.OlliSharedTeamChat?.refreshEntry?.();
 
     await Promise.all([
       loadMembers(),

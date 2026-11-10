@@ -1,0 +1,65 @@
+name: Validate regression harness repairs
+on:
+  pull_request:
+    paths:
+      - 'tests/regression/**'
+      - 'tests/consultation-messages-ui.test.cjs'
+      - 'tests/consultation-summary-source-provenance.test.cjs'
+      - 'tests/team-talk-avatar-picker.test.cjs'
+      - 'apps/pc/tests/*schedule*common.test.cjs'
+      - 'apps/pc/tests/observation-memo-safety-contract.test.cjs'
+      - 'apps/pc/tests/observation-growth-feedback-all-divisions.test.cjs'
+      - 'packages/common/olli-command-schedule-common.js'
+      - 'packages/common/observation-memo-*.js'
+      - 'apps/mobile/tests/kcf-live-local-session.test.cjs'
+      - 'apps/mobile/kinder-feedback.js'
+      - 'tests/observation-feedback-student-binding.test.cjs'
+      - 'apps/pc/olli-record-feedback-generation.js'
+      - 'apps/pc/olli-data-feedback.js'
+      - 'apps/mobile/olli-observation-runtime.js'
+      - 'apps/mobile/olli-student-core.js'
+      - 'apps/mobile/tests/olli-talk-mentions-tasks.test.cjs'
+      - 'apps/mobile/tests/olli-talk-current-behavior.test.cjs'
+      - 'apps/mobile/olli-talk-beta.js'
+      - 'apps/mobile/olli-talk-beta.css'
+      - 'apps/mobile/olli-mobile-keyboard-activation.js'
+      - 'apps/mobile/index.html'
+      - 'apps/mobile/tests/olli-talk-keyboard-close-return.test.cjs'
+      - 'apps/mobile/tests/phone-drawer-rear-search-state.test.cjs'
+      - '.github/workflows/validate-regression-harness.yml'
+permissions:
+  contents: read
+jobs:
+  repaired-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix tests/shared-chat --ignore-scripts
+      - run: npx --prefix tests/shared-chat playwright install --with-deps chromium
+      - name: Reporter failure handling and current root contracts
+        env:
+          NODE_PATH: ${{ github.workspace }}/tests/shared-chat/node_modules
+        run: node --test tests/regression/runner.test.cjs tests/consultation-summary-source-provenance.test.cjs tests/team-talk-avatar-picker.test.cjs tests/consultation-messages-ui.test.cjs
+      - name: Date-specific schedule moves and observation editor isolation
+        run: |
+          node --test apps/pc/tests/schedule-class-layout-date-common.test.cjs
+          node --test --test-name-pattern='^prepare move write finds|^move write rechecks' apps/pc/tests/olli-command-schedule-common.test.cjs
+          node --test apps/pc/tests/observation-growth-feedback-all-divisions.test.cjs
+          node --test --test-name-pattern='edit state contract' apps/pc/tests/observation-memo-safety-contract.test.cjs
+      - name: QuickNote LIVE local session and background save
+        run: node --test apps/mobile/tests/kcf-live-local-session.test.cjs
+      - name: Growth feedback preserves the requested student in PC and Mobile
+        run: node --test tests/observation-feedback-student-binding.test.cjs
+      - name: Mobile Team Chat browser behavior and retained source contracts
+        working-directory: apps/mobile
+        run: node --test tests/olli-talk-current-behavior.test.cjs tests/olli-talk-mentions-tasks.test.cjs
+      - name: Drawer search and keyboard blur fixtures
+        working-directory: apps/mobile
+        run: |
+          node --test tests/phone-drawer-rear-search-state.test.cjs
+          node --test --test-name-pattern='blur remembers' tests/olli-talk-keyboard-close-return.test.cjs
+      # This job checks the named repairs. The unfiltered local audit includes
+      # all remaining test files and must also pass before release.

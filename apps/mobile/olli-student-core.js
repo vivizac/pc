@@ -222,11 +222,12 @@ async function getOrCreateStudentForSupabaseSave(studentName, preferredType = 'e
     throw new Error('학생코드가 없는 학생은 피드백을 저장할 수 없습니다. 학생정보를 먼저 확인해 주세요.');
   }
 
+  const registeredType = student.type || student.division;
   const savedStudent = await ensureStudentSavedToSupabase({
     ...student,
     id: student.id || uid(),
     name: student.name || name,
-    type,
+    type: ['elementary', 'kinder'].includes(registeredType) ? registeredType : type,
     status: 'active'
   });
 
