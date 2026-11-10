@@ -43,7 +43,7 @@ test('shared records never enter persistent academy message cache',()=>{
   assert.match(mobile,/writeOlliTalkMessageCache\(context,mergedPayload\)/);
   assert.match(mobile,/__academyLocal:mergedPayload/);
   assert.match(mobile,/olliTalkCurrentPayload=payload\?\.__academyLocal \|\| payload \|\| null/);
-  assert.match(service,/function key\(ctx\)/);
+  assert.match(service,/const key=ctx=>/);
   assert.match(service,/assertCurrent\(ctx\)/);
   assert.match(service,/p_room_id/);
 });
