@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const root=path.resolve(__dirname,'../..');
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
-const migration=read('supabase/migrations/20261110161500_preserve_teacher_membership_history_on_unlink.sql');
+const migration=read('supabase/migrations/20261110073449_preserve_teacher_membership_history_on_unlink.sql');
 const core=read('packages/common/olli-settings-common-core.js');
 const members=read('packages/common/olli-settings-members.js');
 
