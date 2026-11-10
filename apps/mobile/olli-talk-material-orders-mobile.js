@@ -418,7 +418,7 @@
     }
     const months=new Map();
     state.archiveItems.forEach(item=>{
-      const key=clean(item?.needed_on).slice(0,7);
+      const key=clean(item?.archive_date||item?.needed_on).slice(0,7);
       if(!/^\d{4}-\d{2}$/.test(key))return;
       if(!months.has(key))months.set(key,[]);
       months.get(key).push(item);
@@ -569,12 +569,7 @@
 
     const actions=create('div','olliMobileMatActions');
     const id=clean(item.id);
-    if(item.status==='arrived'){
-      const archiveButton=create('button','olliMobileMatDoneNote','지난 주문 내역으로 이동');
-      archiveButton.type='button';
-      archiveButton.dataset.materialAction='open-archive';
-      actions.appendChild(archiveButton);
-    }else if(!state.canProcess){
+    if(!state.canProcess){
       actions.appendChild(create('div','olliMobileMatReadOnlyNote','주문 상태는 원장 또는 관리자가 변경합니다.'));
     }else if(item.status==='requested'){
       actions.append(
@@ -590,8 +585,13 @@
       );
     }else if(item.status==='ordered'){
       actions.appendChild(actionButton('도착처리','arrived','olliMobileMatPrimaryBtn',id));
-    }else{
-      actions.appendChild(create('div','olliMobileMatReadOnlyNote','주문 상태를 확인할 수 없습니다.'));
+    }else if(item.status==='arrived'){
+      const archiveButton=create('button','olliMobileMatDoneNote',state.processing?'보관 중...':'지난 주문 내역으로 이동');
+      archiveButton.type='button';
+      archiveButton.dataset.materialAction='archive-item';
+      archiveButton.dataset.materialId=id;
+      archiveButton.disabled=state.processing;
+      actions.appendChild(archiveButton);
     }
     wrap.appendChild(actions);
     return wrap;
@@ -878,6 +878,40 @@
     }
   }
 
+  async function archiveRequest(itemId){
+    if(state.processing||!state.canProcess)return;
+    const item=state.items.find(entry=>clean(entry?.id)===clean(itemId));
+    if(!item||item.status!=='arrived')return;
+    const current=context();
+    if(!current.sessionToken||!current.academyId)return;
+
+    state.processing=true;
+    renderList();
+    try{
+      const payload=await rpc('olli_team_material_request_archive',{
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_request_id:item.id,
+        p_expected_revision:Number(item.revision||0)
+      });
+      if(!payload?.ok)throw new Error(payload?.message||'주문내역 보관에 실패했습니다.');
+      // 서버에 보관이 확정된 뒤에만 화면에서 카드를 제거합니다.
+      state.items=state.items.filter(entry=>clean(entry?.id)!==clean(item.id));
+      state.summary.arrived=Math.max(0,Number(state.summary.arrived||0)-1);
+      if(state.expandedId===clean(item.id))state.expandedId='';
+      renderSummary();
+      renderList();
+      await refresh({showLoading:false});
+      showToast('지난 주문내역에 보관했습니다.','ok');
+    }catch(error){
+      await refresh({showLoading:false});
+      showToast(error?.message||'주문내역 보관에 실패했습니다.','error');
+    }finally{
+      state.processing=false;
+      renderList();
+    }
+  }
+
   async function deleteRequest(itemId){
     if(state.processing||!state.canProcess)return;
     const item=state.items.find(entry=>clean(entry?.id)===clean(itemId));
@@ -931,6 +965,7 @@
       const action=event.target.closest('[data-material-action]')?.dataset.materialAction;
       if(action==='close-create'){closeCreate();return}
       if(action==='open-archive'){openArchive().catch(()=>{});return}
+      if(action==='archive-item'){archiveRequest(clean(event.target.closest('[data-material-action]')?.dataset.materialId)).catch(()=>{});return}
       if(action==='close-archive'){closeArchive();return}
       const yearButton=event.target.closest('[data-material-archive-year]');
       if(yearButton){loadArchive(Number(yearButton.dataset.materialArchiveYear)).catch(()=>{});return}
