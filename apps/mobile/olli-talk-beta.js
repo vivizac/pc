@@ -8175,7 +8175,7 @@
       // Academy-private bot, material and coffee order messages must never be
       // mixed from a previous academy cache or another school into this view.
       const privateOnly=messages=>(Array.isArray(messages)?messages:[])
-        .filter(item=>String(item?.academy_id||'')===String(context.academyId));
+        .filter(item=>!item?.academy_id || String(item.academy_id)===String(context.academyId));
       const scopedPayload={...payload,messages:privateOnly(payload.messages)};
       const scopedBase=basePayload?{...basePayload,messages:privateOnly(basePayload.messages)}:null;
       const pageMessages=scopedPayload.messages;

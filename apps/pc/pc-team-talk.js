@@ -1646,7 +1646,7 @@
       // Olli materials, coffee orders, confirmations and actions belong only to
       // the academy whose authenticated session requested the message.
       const privateMessages=(Array.isArray(payload.messages)?payload.messages:[])
-        .filter(item=>String(item?.academy_id||'')===String(current.academyId));
+        .filter(item=>!item?.academy_id || String(item.academy_id)===String(current.academyId));
       const scopedPayload={...payload,messages:privateMessages};
       const combined = extension.joined
         ? {...scopedPayload,messages:[...privateMessages,...extension.messages]

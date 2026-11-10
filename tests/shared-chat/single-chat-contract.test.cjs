@@ -45,9 +45,9 @@ test('shared normal messages join existing renderer, Olli AI stays on original a
 });
 test('coffee, material orders and Olli confirmations stay within originating academy',()=>{
   assert.match(pc,/privateMessages=.*payload\.messages/);
-  assert.match(pc,/item\?\.academy_id\|\|''\)===String\(current\.academyId\)/);
+  assert.match(pc,/!item\?\.academy_id \|\| String\(item\.academy_id\)===String\(current\.academyId\)/);
   assert.match(mobile,/const privateOnly=messages=>/);
-  assert.match(mobile,/item\?\.academy_id\|\|''\)===String\(context\.academyId\)/);
+  assert.match(mobile,/!item\?\.academy_id \|\| String\(item\.academy_id\)===String\(context\.academyId\)/);
   assert.match(service,/!msg\?\.material_request_id && !msg\?\.material_event_id && !msg\?\.action/);
   const listSql=read('apps/mobile/supabase/migrations/20260920020408_add_team_chat_send_list_rpc.sql');
   assert.match(listSql,/where m\.academy_id\s*=\s*p_academy_id/);
