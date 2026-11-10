@@ -124,7 +124,7 @@ test('academy work, consultations and statistics use approved type scale and wei
  for(const className of ['recordAcademyStatLabel','recordAcademyStatSub','recordAcademyConsultGroupTitle','recordAcademyListName','recordAcademyInfoChip','recordAcademyConsultStatusChip','recordAcademyConsultGroupEmpty']){
   assert.ok(!largeRules.some(rule=>rule.includes('.'+className)),className+' overridden in large mode');
  }
- assert.match(html,/pc-student-management\.css\?v=20261110-academy-typography-1/);
+ assert.match(html,/pc-student-management\.css\?v=20261110-material-checkbox-1/);
 });
 
 test('material checkbox saves arrived status with CAS revision and keeps name and guide inline',()=>{
