@@ -267,7 +267,7 @@ function detailHtml(){
   return '<div class="olliTeamTalkSettingsPage">'
     + '<div class="settingsDetailIntro"><div class="settingsDetailTitle">팀챗을<br>내 스타일로 설정합니다.</div></div>'
     + avatarSettingsHtml()
-    + (currentRole()==='owner' ? '<section class="olliTeamTalkSettingsCard"><button type="button" onclick="OlliSharedTeamChat.manage()">팀챗 통합 관리</button><p>같은 원장의 참여 학원과 팀챗 표시 이름을 관리합니다.</p></section>' : '')
+    + (currentRole()==='owner' ? '<section class="olliTeamTalkSettingsCard" data-olli-shared-inline-settings></section>' : '')
     + '<section class="olliTeamTalkSettingsCard">'
     + '<div class="olliTeamTalkSettingsHead"><div><strong>배경 스타일</strong><small>PC와 핸드폰은 서로 연동하지 않고 각각 따로 저장됩니다. 배경에 맞춰 날짜·시간·시스템 글자색도 자동으로 바뀝니다.</small></div></div>'
     + '<div class="olliTeamTalkThemeGroupLabel olli">올리 스타일</div>'
@@ -296,10 +296,15 @@ function detailHtml(){
     + '</div>';
 }
 
+function mountTeamTalkInlineSettings(){
+  const target=document.querySelector('#settingsDetailBody [data-olli-shared-inline-settings]');
+  if(target)global.OlliSharedTeamChat?.mountSettings?.(target);
+}
 function renderDetail(){
   const body = document.getElementById('settingsDetailBody');
   if (!body) return;
   body.innerHTML = detailHtml();
+  mountTeamTalkInlineSettings();
 }
 
 async function loadRemote(force){
@@ -489,7 +494,7 @@ function registerSettingsDetail(){
       title:'팀챗 설정',
       html:detailHtml,
       instantRender:true,
-      beforeOpen:async function(){ await loadRemote(true); }
+      beforeOpen:async function(){ await loadRemote(true);setTimeout(mountTeamTalkInlineSettings,0); }
     };
     return true;
   } catch (_) {
@@ -556,6 +561,7 @@ function openDetailFallback(){
   if (settings) settings.style.display = 'flex';
   if (titlePill) titlePill.textContent = '팀챗 설정';
   body.innerHTML = detailHtml();
+  mountTeamTalkInlineSettings();
 
   detail.style.display = 'flex';
   detail.style.position = 'fixed';

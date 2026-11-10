@@ -223,7 +223,7 @@ function themeOption(mode,label,detail){
 function detailHtml(){
   const disabled=(!canEdit()||state.saving)?' disabled':'';
   return '<div class="olliTeamTalkSettingsPage">'
-    +(currentRole()==='owner'?'<section class="olliTeamTalkSettingsCard"><button type="button" onclick="OlliSharedTeamChat.manage()">팀챗 통합 관리</button><p>같은 원장의 참여 학원과 팀챗 표시 이름을 관리합니다.</p></section>':'')
+    +(currentRole()==='owner'?'<section class="olliTeamTalkSettingsCard" data-olli-shared-inline-settings></section>':'')
     +'<div class="settingsDetailIntro"><div class="settingsDetailTitle">팀챗을<br>내 스타일로 설정합니다.</div></div>'
     +avatarSettingsHtml()
     +'<section class="olliTeamTalkSettingsCard">'
@@ -253,9 +253,13 @@ function detailHtml(){
     +statusHtml()
     +'</div>';
 }
+function mountTeamTalkInlineSettings(){
+  const target=document.querySelector('#settingsDetailBody [data-olli-shared-inline-settings]');
+  if(target)global.OlliSharedTeamChat?.mountSettings?.(target);
+}
 function renderDetail(){
   const body=document.getElementById('settingsDetailBody');
-  if(body)body.innerHTML=detailHtml();
+  if(body){body.innerHTML=detailHtml();mountTeamTalkInlineSettings();}
 }
 function renderDetailIfOpen(){
   const detail=document.getElementById('settingsDetailScreen');
@@ -444,7 +448,7 @@ function registerSettingsDetail(){
     title:'팀챗 설정',
     html:detailHtml,
     instantRender:true,
-    beforeOpen:async function(){await loadRemote(true)}
+    beforeOpen:async function(){await loadRemote(true);setTimeout(mountTeamTalkInlineSettings,0)}
   };
   return true;
 }
