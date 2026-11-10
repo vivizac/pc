@@ -7,6 +7,7 @@ const style=html.match(/<style id="olliAcademyManagementConsultationStyle">([\s\
 assert.ok(style,'original PC statistics stylesheet');
 const attendance=fs.readFileSync(path.join(root,'apps/pc/pc-attendance.css'),'utf8');
 const management=fs.readFileSync(path.join(root,'apps/pc/pc-student-management.css'),'utf8');
+const shell=fs.readFileSync(path.join(root,'apps/pc/pc-shell.css'),'utf8');
 function stat(value,label,details){
  return `<div class="recordAcademyStatCard"><div class="recordAcademyStatLabel">${label}</div><div class="recordAcademyStatBody"><div class="recordAcademyStatValue">${value}</div><div class="recordAcademyStatSub">${details}</div></div></div>`;
 }
@@ -29,7 +30,7 @@ function fixture(){
  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7a8 8 0 0 0-14-2L4 7m0-4v4h4"></path></svg>반복 업무 관리</button>
  <span class="pcAcademySectionCount">8개 남음</span></div></div>
  <form class="pcAcademyTodoForm"><input placeholder="할 일 입력"><button type="button">추가</button></form>
- <div class="pcAcademyTodoList" id="todos"><div class="pcAcademyTodoItem"><div class="pcAcademyTodoTextWrap"><div class="pcAcademyTodoText">처리할 업무</div><span class="pcAcademyTodoOrigin">올리톡</span></div></div><button class="pcAcademyMaterialRow" type="button">재료 주문</button></div></section>
+ <div class="pcAcademyTodoList" id="todos"><div class="pcAcademyTodoItem"><div class="pcAcademyTodoTextWrap"><div class="pcAcademyTodoText">처리할 업무</div><span class="pcAcademyTodoOrigin">올리톡</span></div></div><div class="pcAcademyMaterialRow"><button class="pcAcademyTodoCheck pcAcademyMaterialCheck" type="button" aria-pressed="false"><span></span></button><button class="pcAcademyMaterialOpen" type="button"><span class="pcAcademyMaterialMain"><strong>재료 주문</strong><small>3개 · 필요일 2026-11-12</small></span><span class="pcAcademyMaterialStatus requested">요청</span></button></div></div></section>
  </div></div>
  <aside class="pcAcademyDetailPanel" id="pcAcademyDetailPanel">
  <div class="pcAcademySectionHeader pcAcademyConsultHeader"><div><div class="pcAcademyDetailName">상담예정 학생</div><div class="pcAcademyDetailSub">이번 달 상담이 필요한 학생</div></div><span class="pcAcademySectionCount">3명</span></div>
@@ -119,15 +120,15 @@ test('approved typography uses consistent sizes in a desktop browser',async()=>{
    '.recordAcademyStatLabel':['12px','600'],
    '.recordAcademyStatValue':['42px','400'],
    '.recordAcademyStatSub':['12px',null],
-   '.pcAcademySectionTitle':['21px','650'],
-   '.pcAcademyDetailName':['21px','650'],
+   '.pcAcademySectionTitle':['18px','650'],
+   '.pcAcademyDetailName':['18px','650'],
    '.pcAcademySectionSub':['12px','700'],
    '.pcAcademyDetailSub':['12px','700'],
    '.pcAcademySectionCount':['11px','820'],
    '.pcAcademyRecurringManageBtn':['11px','820'],
    '.pcAcademyTodoForm input':['14px',null],
    '.pcAcademyTodoForm button':['14px','830'],
-   '.pcAcademyTodoText':['14px','650'],
+   '.pcAcademyTodoText':['14px','600'],
    '.pcAcademyTodoOrigin':['10px','800'],
    '.pcAcademyDetailPanel .recordAcademyConsultGroupTitle':['12px','800'],
    '.pcAcademyDetailPanel .recordAcademyListName':['14px','700'],
@@ -143,5 +144,36 @@ test('approved typography uses consistent sizes in a desktop browser',async()=>{
    if(weight!==null)assert.equal(measured[selector][1],weight,selector+' font-weight');
   }
   await page.close();
+ }finally{await browser.close()}
+});
+
+test('sidebar menu aligns at topbar bottom; material text stays on one line',async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+  for(const width of [1600,1250,980]){
+   const page=await browser.newPage({viewport:{width,height:900}});
+   await page.setContent('<!doctype html><html lang="ko"><head><style>'+shell+'</style></head><body class="olliPcApp">'
+    +'<div class="olliPcShell visible"><div class="olliPcBrand"><div class="olliPcBrandLogo">비비작아이성향미술학원</div></div>'
+    +'<nav class="olliPcNav"><button class="olliPcNavBtn" type="button">학생관리</button></nav></div>'
+    +'<div class="olliPcTopbar visible"><div class="olliPcTopbarTitle">학생관리</div></div></body></html>');
+   const a=await page.evaluate(()=>({
+    navTop:document.querySelector('.olliPcNavBtn').getBoundingClientRect().top,
+    barBottom:document.querySelector('.olliPcTopbar').getBoundingClientRect().bottom
+   }));
+   assert.ok(Math.abs(a.navTop-a.barBottom)<1,'sidebar grid mismatch '+width);
+   await page.setContent(fixture());
+   const v=await page.evaluate(()=>{
+    const main=document.querySelector('.pcAcademyMaterialMain');
+    const name=main.querySelector('strong'),guide=main.querySelector('small');
+    return {direction:getComputedStyle(main).flexDirection,
+     nameY:name.getBoundingClientRect().top,guideY:guide.getBoundingClientRect().top,
+     nameSize:getComputedStyle(name).fontSize,guideSize:getComputedStyle(guide).fontSize,
+     weight:getComputedStyle(name).fontWeight};
+   });
+   assert.equal(v.direction,'row');
+   assert.ok(Math.abs(v.nameY-v.guideY)<5);
+   assert.equal(v.nameSize,'14px');assert.equal(v.guideSize,'11px');assert.equal(v.weight,'600');
+   await page.close();
+  }
  }finally{await browser.close()}
 });

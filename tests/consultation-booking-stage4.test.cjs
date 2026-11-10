@@ -142,12 +142,28 @@ test('public info returns academy_name and booking weekdays, never student data'
  const sql=fs.readFileSync(path.join(base,'supabase/migrations/20261026140000_olli_booking_public_academy_stage4.sql'),'utf8');
  assert.match(sql,/a\.academy_name/);
 });
+// Choose a future 2nd/3rd-week weekday so elapsed times do not reduce QA sample slots.
+function futureQaPreviewDate(){
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Seoul',
+  year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+ const local=Object.fromEntries(parts.map(part=>[part.type,part.value]));
+ const today=Date.UTC(Number(local.year),Number(local.month)-1,Number(local.day));
+ for(let days=1;days<=120;days++){
+  const date=new Date(today+days*86400000);
+  const dow=date.getUTCDay(),day=date.getUTCDate();
+  const firstDow=new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),1)).getUTCDay();
+  const week=Math.floor((day-1+firstDow)/7)+1;
+  if(dow>=1&&dow<=5&&(week===2||week===3))return date.toISOString().slice(0,10);
+ }
+ throw new Error('No future QA preview weekday within 120 days');
+}
+
 test('QA-only preview supplies visibly marked sample slots, never accepts booking',async()=>{
  const fake=makeApi(async()=>{throw Error('Preview must never reach the real database');},
   {VERCEL_ENV:'preview',OLLI_BOOKING_QA_DEMO:'1',OLLI_BOOKING_QA_ACADEMY_NAME:'비비작아이성향미술학원'});
  const info=await fake({action:'info',academy:slug});
  assert.equal(info.body.demo,true);assert.equal(info.body.academy_name,'비비작아이성향미술학원');
- const date='2026-11-10';
+ const date=futureQaPreviewDate();
  const slots=await fake({action:'slots',academy:slug,date});
  assert.equal(slots.statusCode,200);assert.equal(slots.body.demo,true);
  assert.equal(slots.body.slots.length,12);
@@ -167,7 +183,7 @@ test('QA health probe verifies real preview mode, without DB access or productio
   env:{...env,VERCEL_ENV:'preview',OLLI_BOOKING_QA_DEMO:'1',OLLI_BOOKING_QA_ACADEMY_NAME:'비비작아이성향미술학원'}
  });
  const req={method:'GET',headers:{host:'qa.example.org'},
-  url:'/api/olli-booking-public?qa_health=1&academy='+slug+'&date=2026-11-10'};
+  url:'/api/olli-booking-public?qa_health=1&academy='+slug+'&date='+futureQaPreviewDate()};
  const result=mock();await handler(req,result);
  assert.equal(result.statusCode,200);assert.equal(result.body.demo,true);
  assert.equal(result.body.sample_slot_count,12);

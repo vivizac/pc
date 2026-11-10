@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
-const css=read('apps/pc/pc-student-management.css'),html=read('apps/pc/index.html'),js=read('apps/pc/pc-student-management.js');
+const css=read('apps/pc/pc-student-management.css'),html=read('apps/pc/index.html'),js=read('apps/pc/pc-student-management.js'),shellCss=read('apps/pc/pc-shell.css');
 function block(source,selector){
  const start=source.indexOf(selector);assert.ok(start>=0,'missing original rule '+selector);
  const open=source.indexOf('{',start+selector.length);
@@ -52,7 +52,7 @@ test('all four statistics preserve label-above-number layout and 42px values',()
  assert.ok(block(html,'body[data-olli-text-size="large"] .recordAcademyStatValue').includes('font-size: calc(42px'));
  assert.ok(block(html,'.recordAcademyStatLabel').includes('transform: translateX(4px)'));
  assert.match(block(html,'.recordAcademyStatSub'),/width: 72px/);
- assert.ok(html.includes('pc-student-management.css?v=20261110-academy-typography-1'));
+ assert.ok(html.includes('pc-student-management.css?v=20261110-material-checkbox-1'));
 });
 test('no student save, synchronization, attendance, or mobile code is changed by this PC-only contract',()=>{
  assert.match(js,/function renderDashboard\(/);
@@ -65,7 +65,9 @@ test('no student save, synchronization, attendance, or mobile code is changed by
 test('material cards appear inside the academy work list without a separate panel or opener',()=>{
  assert.match(js,/const materialRows = materialOrderCardsHtml\(\)/);
  assert.match(js,/const rows = todoRows \+ materialRows/);
- assert.match(js,/class="pcAcademyMaterialRow" onclick="pcOpenAcademyMaterials\(\)"/);
+ assert.match(js,/class="pcAcademyMaterialRow/);
+ assert.match(js,/class="pcAcademyMaterialOpen" onclick="pcOpenAcademyMaterials\(\)"/);
+ assert.match(js,/class="pcAcademyTodoCheck pcAcademyMaterialCheck"/);
  assert.doesNotMatch(js,/pcAcademyMaterialsSection|pcAcademyMaterialsOpen|재료주문 화면 열기/);
  assert.doesNotMatch(css,/pcAcademyMaterialsSection|pcAcademyMaterialsOpen|pcAcademyMaterialsList/);
  assert.match(block(css,'#recordAcademyDashboard .pcAcademyWorkOrderGrid'),/grid-template-columns:minmax\(0,1fr\)/);
@@ -88,11 +90,11 @@ test('academy work, consultations and statistics use approved type scale and wei
   assert.match(body,new RegExp('font-weight:\\s*'+value+'(?:;|\\s)'),sel+' font-weight '+value);
  };
  const items=[
-  ['.pcAcademySectionTitle,.pcAcademyDetailName',21,650],
+  ['.pcAcademySectionTitle,.pcAcademyDetailName',18,650],
   ['.pcAcademySectionSub,.pcAcademyDetailSub',12,700],
   ['.pcAcademyTodoForm input',14,null],
   ['.pcAcademyTodoForm button',14,830],
-  ['.pcAcademyTodoText',14,650],
+  ['.pcAcademyTodoText',14,600],
   ['.pcAcademyTodoOrigin',10,800],
   ['.pcAcademyTodoEmpty span',14,780],
   ['.pcAcademyTodoEmpty small',12,null],
@@ -122,5 +124,27 @@ test('academy work, consultations and statistics use approved type scale and wei
  for(const className of ['recordAcademyStatLabel','recordAcademyStatSub','recordAcademyConsultGroupTitle','recordAcademyListName','recordAcademyInfoChip','recordAcademyConsultStatusChip','recordAcademyConsultGroupEmpty']){
   assert.ok(!largeRules.some(rule=>rule.includes('.'+className)),className+' overridden in large mode');
  }
- assert.match(html,/pc-student-management\.css\?v=20261110-academy-typography-1/);
+ assert.match(html,/pc-student-management\.css\?v=20261110-material-checkbox-1/);
+});
+
+test('material checkbox saves arrived status with CAS revision and keeps name and guide inline',()=>{
+ assert.match(js,/materialOrderCanProcess = result\.can_process === true/);
+ assert.match(js,/function toggleMaterialOrder\(id\)/);
+ assert.match(js,/p_expected_revision: Number\(item\.revision \|\| 0\)/);
+ assert.match(js,/const nextStatus = String\(item\.status\) === 'arrived' \? 'ordered' : 'arrived'/);
+ assert.match(js,/if \(payload\?\.ok !== true\) throw/);
+ assert.match(js,/global\.pcToggleAcademyMaterial = toggleMaterialOrder/);
+ assert.match(block(css,'.pcAcademyMaterialRow'),/grid-template-columns:28px minmax\(0,1fr\)/);
+ assert.match(block(css,'.pcAcademyMaterialMain'),/flex-direction:row/);
+ assert.match(block(css,'.pcAcademyMaterialMain'),/white-space:nowrap/);
+ assert.match(block(css,'.pcAcademyMaterialMain strong'),/font-size:calc\(14px \* var\(--olli-text-scale\)\)/);
+ assert.match(block(css,'.pcAcademyMaterialMain strong'),/font-weight:600/);
+ assert.match(block(css,'.pcAcademyMaterialMain small'),/font-size:calc\(11px \* var\(--olli-text-scale\)\)/);
+ assert.match(html,/pc-student-management\.js\?v=20261110-material-checkbox-1/);
+});
+test('sidebar grid starts navigation at topbar baseline',()=>{
+ assert.match(block(shellCss,'.olliPcBrand'),/height:var\(--pc-topbar-h\)/);
+ assert.match(block(shellCss,'.olliPcBrand'),/flex:0 0 var\(--pc-topbar-h\)/);
+ assert.match(block(shellCss,'.olliPcNav'),/padding:0 10px/);
+ assert.match(html,/pc-shell\.css\?v=20261110-nav-grid-1/);
 });
