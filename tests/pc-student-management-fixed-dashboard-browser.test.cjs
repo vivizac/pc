@@ -23,17 +23,17 @@ function fixture(){
  <div class="pcAcademyWorkOrderGrid">
  <section class="recordAcademyConsultSection pcAcademyTodoSection">
  <div class="pcAcademySectionHeader pcAcademyTodoHeader">
- <div class="pcAcademySectionTitle">학원 업무</div>
+ <div><div class="pcAcademySectionTitle">학원 업무</div><div class="pcAcademySectionSub">업무와 메모를 한곳에서 관리해요.</div></div>
  <div class="pcAcademyTodoHeaderActions">
  <button type="button" class="pcAcademyRecurringManageBtn">
  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7a8 8 0 0 0-14-2L4 7m0-4v4h4"></path></svg>반복 업무 관리</button>
  <span class="pcAcademySectionCount">8개 남음</span></div></div>
  <form class="pcAcademyTodoForm"><input placeholder="할 일 입력"><button type="button">추가</button></form>
- <div class="pcAcademyTodoList" id="todos"><div class="pcAcademyTodoItem">처리할 업무</div><button class="pcAcademyMaterialRow" type="button">재료 주문</button></div></section>
+ <div class="pcAcademyTodoList" id="todos"><div class="pcAcademyTodoItem"><div class="pcAcademyTodoTextWrap"><div class="pcAcademyTodoText">처리할 업무</div><span class="pcAcademyTodoOrigin">올리톡</span></div></div><button class="pcAcademyMaterialRow" type="button">재료 주문</button></div></section>
  </div></div>
  <aside class="pcAcademyDetailPanel" id="pcAcademyDetailPanel">
- <div class="pcAcademySectionHeader pcAcademyConsultHeader"><div class="pcAcademyDetailName">상담예정 학생</div></div>
- <div class="pcAcademyConsultationList" id="consultations"><div class="recordAcademyConsultListItem">상담 학생</div></div></aside>
+ <div class="pcAcademySectionHeader pcAcademyConsultHeader"><div><div class="pcAcademyDetailName">상담예정 학생</div><div class="pcAcademyDetailSub">이번 달 상담이 필요한 학생</div></div><span class="pcAcademySectionCount">3명</span></div>
+ <div class="pcAcademyConsultationList" id="consultations"><div class="recordAcademyConsultGroup"><div class="recordAcademyConsultGroupTitle">초등부</div><div class="recordAcademyConsultListItem"><div class="recordAcademyListName">상담 학생</div><div class="recordAcademyInfoChip recordAcademyRuleChip">3개월</div><span class="recordAcademyConsultStatusChip ready">상담 자료 준비</span></div></div></div></aside>
  </div></div></div></body></html>`;
 }
 test('PC page grid stays flush and only hidden-scroll inner lists move as data grows',async()=>{
@@ -106,6 +106,42 @@ test('material cards share the work list, headings are lighter, and the recurrin
   for(const property of ['height','backgroundColor','color','borderRadius','fontSize','fontWeight'])
    assert.equal(measured.repeat[property],measured.count[property],property+' capsule mismatch');
   assert.equal(measured.repeatIcon,measured.repeat.color,'icon should inherit capsule text color');
+  await page.close();
+ }finally{await browser.close()}
+});
+
+test('approved typography uses consistent sizes in a desktop browser',async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+  const page=await browser.newPage({viewport:{width:1600,height:900}});
+  await page.setContent(fixture());
+  const expected={
+   '.recordAcademyStatLabel':['12px','600'],
+   '.recordAcademyStatValue':['42px','400'],
+   '.recordAcademyStatSub':['12px',null],
+   '.pcAcademySectionTitle':['21px','650'],
+   '.pcAcademyDetailName':['21px','650'],
+   '.pcAcademySectionSub':['12px','700'],
+   '.pcAcademyDetailSub':['12px','700'],
+   '.pcAcademySectionCount':['11px','820'],
+   '.pcAcademyRecurringManageBtn':['11px','820'],
+   '.pcAcademyTodoForm input':['14px',null],
+   '.pcAcademyTodoForm button':['14px','830'],
+   '.pcAcademyTodoText':['14px','650'],
+   '.pcAcademyTodoOrigin':['10px','800'],
+   '.pcAcademyDetailPanel .recordAcademyConsultGroupTitle':['12px','800'],
+   '.pcAcademyDetailPanel .recordAcademyListName':['14px','700'],
+   '.pcAcademyDetailPanel .recordAcademyInfoChip':['11px','400'],
+   '.pcAcademyDetailPanel .recordAcademyConsultStatusChip':['11px','700'],
+  };
+  const measured=await page.evaluate(selectors=>Object.fromEntries(selectors.map(selector=>{
+   const style=getComputedStyle(document.querySelector(selector));
+   return [selector,[style.fontSize,style.fontWeight]];
+  })),Object.keys(expected));
+  for(const [selector,[size,weight]] of Object.entries(expected)){
+   assert.equal(measured[selector][0],size,selector+' font-size');
+   if(weight!==null)assert.equal(measured[selector][1],weight,selector+' font-weight');
+  }
   await page.close();
  }finally{await browser.close()}
 });

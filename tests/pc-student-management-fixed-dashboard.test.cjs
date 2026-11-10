@@ -38,7 +38,7 @@ test('card height cannot increase from new rows and scroll controls live only in
  assert.match(block(css,'.pcAcademyTodoSection'),/min-height:0/);
  assert.doesNotMatch(css,/pcAcademyMaterialsSection/);
 });
-test('all four statistics restore the exact original title-above-value layout and font sizes',()=>{
+test('all four statistics preserve label-above-number layout and 42px values',()=>{
  const start=js.indexOf('  function buildStatCard('),end=js.indexOf('  function renderDashboard()',start);
  assert.ok(start>=0&&end>start);
  const build=vm.runInNewContext(js.slice(start,end)+';buildStatCard',{escape:x=>String(x)});
@@ -52,7 +52,7 @@ test('all four statistics restore the exact original title-above-value layout an
  assert.ok(block(html,'body[data-olli-text-size="large"] .recordAcademyStatValue').includes('font-size: calc(42px'));
  assert.ok(block(html,'.recordAcademyStatLabel').includes('transform: translateX(4px)'));
  assert.match(block(html,'.recordAcademyStatSub'),/width: 72px/);
- assert.ok(html.includes('pc-student-management.css?v=20261109-merge-material-cards-1'));
+ assert.ok(html.includes('pc-student-management.css?v=20261110-academy-typography-1'));
 });
 test('no student save, synchronization, attendance, or mobile code is changed by this PC-only contract',()=>{
  assert.match(js,/function renderDashboard\(/);
@@ -74,4 +74,42 @@ test('material cards appear inside the academy work list without a separate pane
  for(const snippet of ['height:30px','border-radius:999px','background:#f2f4f7','color:#747b85','font-size:11px','font-weight:820'])
   assert.ok(shared.includes(snippet),snippet);
  assert.match(css,/#recordAcademyDashboard \.pcAcademyRecurringManageBtn svg\{[^}]*stroke:currentColor/);
+});
+
+test('academy work, consultations and statistics use approved type scale and weights',()=>{
+ const size=(sel,value,source=css)=>assert.match(block(source,sel),new RegExp('font-size:\\s*calc\\('+value+'px \\* var\\(--olli-text-scale\\)\\)'));
+ const weight=(sel,value,source=css)=>assert.match(block(source,sel),new RegExp('font-weight:\\s*'+value+'(?:;|\\s)'));
+ const items=[
+  ['.pcAcademySectionTitle,.pcAcademyDetailName',21,650],
+  ['.pcAcademySectionSub,.pcAcademyDetailSub',12,700],
+  ['.pcAcademyTodoForm input',14,null],
+  ['.pcAcademyTodoForm button',14,830],
+  ['.pcAcademyTodoText',14,650],
+  ['.pcAcademyTodoOrigin',10,800],
+  ['.pcAcademyTodoEmpty span',14,780],
+  ['.pcAcademyTodoEmpty small',12,null],
+  ['.pcAcademyDetailPanel .recordAcademyConsultGroupTitle',12,800],
+  ['.pcAcademyDetailPanel .recordAcademyListName',14,700],
+  ['.pcAcademyDetailPanel .recordAcademyInfoChip',11,null],
+  ['.pcAcademyDetailPanel .recordAcademyConsultGroupEmpty,.pcAcademyConsultEmpty',12,700],
+  ['.recordAcademyStatLabel',12,600,'html'],
+  ['.recordAcademyStatValue',42,400,'html'],
+  ['.recordAcademyStatSub',12,null,'html'],
+ ];
+ for(const [sel,sz,w,src] of items){
+  const source=src==='html'?html:css;
+  size(sel,sz,source);
+  if(w!==null)weight(sel,w,source);
+ }
+ const statusStyles=[...html.matchAll(/\\.recordAcademyConsultStatusChip\\s*\\{([^}]+)\\}/g)];
+ assert.equal(statusStyles.length,2);
+ for(const match of statusStyles){
+  assert.match(match[1],/font-size: calc\\(11px \\* var\\(--olli-text-scale\\)\\)/);
+  assert.match(match[1],/font-weight: 700/);
+ }
+ assert.match(css, /\\.pcAcademySectionCount,#recordAcademyDashboard \\.pcAcademyRecurringManageBtn\\{[^}]*font-size:11px;[^}]*font-weight:820/);
+ assert.doesNotMatch(html,/body\\[data-olli-text-size="large"\\] \\.recordAcademyStatLabel/);
+ assert.doesNotMatch(html,/body\\[data-olli-text-size="large"\\] \\.recordAcademyConsultGroupTitle/);
+ assert.doesNotMatch(html,/body\\[data-olli-text-size="large"\\] \\.recordAcademyInfoChip/);
+ assert.match(html,/pc-student-management\\.css\\?v=20261110-academy-typography-1/);
 });
