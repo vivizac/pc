@@ -210,7 +210,7 @@ test('PC timetable cache-busts only the modified stylesheet and scripts', () => 
 test('new calendar metadata RPC preserves authorization and move guards without filtering student N by the current day', () => {
   const sql = fs.readFileSync('../../supabase/migrations/20261110100000_pc_timetable_new_cards_by_session_date.sql', 'utf8');
   const enrollment = sql.slice(sql.indexOf('  into v_enrollments'), sql.indexOf('  into v_pickups'));
-  const pickup = sql.slice(sql.indexOf('  into v_pickups'), sql.indexOf('  return jsonb_build_object('));
+  const pickup = sql.slice(sql.indexOf('  into v_pickups'), sql.indexOf('  return jsonb_build_object(', sql.indexOf('  into v_pickups')));
   assert.match(sql, /private\.olli_schedule_can_access\(p_session_token, p_academy_id\)/);
   assert.match(sql, /'effective_from', e\.effective_from/);
   assert.match(sql, /'weekday', e\.weekday/);
