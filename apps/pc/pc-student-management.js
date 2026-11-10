@@ -186,9 +186,7 @@
     return materialOrderLoadPromise;
   }
 
-  function renderMaterialOrders() {
-    const host = document.getElementById('pcAcademyMaterialsSection');
-    if (!host) return;
+  function materialOrderCardsHtml() {
     const ranking = { requested: 0, on_hold: 1, ordered: 2, arrived: 3 };
     const items = materialsForCurrentAcademy().slice().sort((a, b) => {
       const rankA = ranking[a?.status] ?? 4;
@@ -196,7 +194,6 @@
       return rankA - rankB || String(b?.created_at || '').localeCompare(String(a?.created_at || ''));
     });
     const statusLabels = { requested: '요청', on_hold: '보류', ordered: '주문완료', arrived: '도착' };
-    const count = items.filter((item) => item.status === 'requested' || item.status === 'on_hold').length;
     const rows = items.map((item) => {
       const status = String(item?.status || 'requested');
       const date = String(item?.needed_on || '').trim();
@@ -207,14 +204,14 @@
         + '<span class="pcAcademyMaterialStatus '+escape(status)+'">'+escape(statusLabels[status] || status)+'</span>'
         + '</button>';
     }).join('');
-    const empty = materialOrderError
-      ? '<div class="pcAcademyMaterialEmpty">재료주문을 불러오지 못했습니다. 재료주문 화면에서 확인해 주세요.</div>'
-      : '<div class="pcAcademyMaterialEmpty">현재 진행 중인 재료주문이 없습니다.</div>';
-    host.innerHTML = '<div class="pcAcademySectionHeader"><div><div class="pcAcademySectionTitle">재료주문</div>'
-      + '<div class="pcAcademySectionSub">기존 주문 목록과 실시간으로 연결됩니다.</div></div>'
-      + '<span class="pcAcademySectionCount">'+count+'건 대기</span></div>'
-      + '<button type="button" class="pcAcademyMaterialsOpen" onclick="pcOpenAcademyMaterials()">재료주문 화면 열기 <span aria-hidden="true">›</span></button>'
-      + '<div class="pcAcademyMaterialsList">'+(rows || empty)+'</div>';
+    // Only material cards join the existing work list; no separate panel, title, or opener.
+    return rows || (materialOrderError
+      ? '<div class="pcAcademyMaterialLoadError" role="status">재료주문을 불러오지 못했습니다.</div>'
+      : '');
+  }
+
+  function renderMaterialOrders() {
+    renderTodoCard();
   }
 
   async function openMaterials() {
@@ -404,10 +401,8 @@
       + buildStatCard(month+'월 상담', due.length, '초등부 '+consultationElementary+'명 · 유치부 '+consultationKinder+'명')
       + buildStatCard('올해 등록', thisYearRegistered.length, '이달 등록 '+thisMonthRegistered.length+'명 · 이달 퇴원 '+thisMonthWithdrawn.length+'명')
       + buildStatCard('올해 퇴원', thisYearWithdrawn.length, '휴원 '+paused.length+'명 · 퇴원 '+thisYearWithdrawn.length+'명')
-      + '</div><div class="pcAcademyWorkOrderGrid"><section class="recordAcademyConsultSection pcAcademyTodoSection" id="pcAcademyTodoSection"></section>'
-      + '<section class="recordAcademyConsultSection pcAcademyMaterialsSection" id="pcAcademyMaterialsSection"></section></div>';
+      + '</div><div class="pcAcademyWorkOrderGrid"><section class="recordAcademyConsultSection pcAcademyTodoSection" id="pcAcademyTodoSection"></section></div>';
     renderTodoCard();
-    renderMaterialOrders();
     loadServerTodos({ render:true }).catch(() => {});
     loadMaterialOrders({ render:true }).catch(() => {});
     renderConsultationPanel(due);
@@ -459,11 +454,17 @@
   function renderTodoCard() {
     const host = document.getElementById('pcAcademyTodoSection');
     if (!host) return;
+    const activeInput = document.activeElement?.id === 'pcAcademyTodoInput' ? document.activeElement : null;
+    const draft = activeInput ? {
+      value: activeInput.value,
+      start: activeInput.selectionStart,
+      end: activeInput.selectionEnd
+    } : null;
     const nowMs = Date.now();
     const items = todos().filter((item) => isVisibleTodo(item, nowMs)).sort((a, b) => Number(a.completed) - Number(b.completed) || String(b.created_at || '').localeCompare(String(a.created_at || '')));
     scheduleTodoExpiry(items, nowMs);
     const remaining = items.filter((item) => !item.completed).length;
-    const rows = items.length ? items.map((item) => {
+    const todoRows = items.map((item) => {
       const id = escape(item.id);
       const origin = item._source === 'server' && item.origin === 'chat'
         ? '<span class="pcAcademyTodoOrigin">올리톡</span>'
@@ -473,7 +474,9 @@
         + '<div class="pcAcademyTodoTextWrap"><div class="pcAcademyTodoText">'+escape(item.text)+'</div>'+origin+'</div>'
         + '<button type="button" class="pcAcademyTodoDelete" aria-label="할 일 삭제" title="삭제" onclick="pcDeleteAcademyTodo(\''+id+'\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>'
         + '</div>';
-    }).join('') : '<div class="pcAcademyTodoEmpty"><span>오늘 처리할 일을 적어보세요.</span><small>추가한 할 일은 학원 구성원에게 함께 표시됩니다.</small></div>';
+    }).join('');
+    const materialRows = materialOrderCardsHtml();
+    const rows = todoRows + materialRows || '<div class="pcAcademyTodoEmpty"><span>오늘 처리할 일을 적어보세요.</span><small>추가한 할 일은 학원 구성원에게 함께 표시됩니다.</small></div>';
     const canManageRecurringTasks = (typeof global.getOlliCurrentRole === 'function'
       ? global.getOlliCurrentRole() : String(global.localStorage?.getItem?.('olli_current_member_role') || '')) === 'owner';
     const recurringButton = canManageRecurringTasks
@@ -481,6 +484,16 @@
     host.innerHTML = '<div class="pcAcademySectionHeader pcAcademyTodoHeader"><div><div class="pcAcademySectionTitle">학원 업무</div><div class="pcAcademySectionSub">업무와 메모를 한곳에서 관리해요.</div></div><div class="pcAcademyTodoHeaderActions">'+recurringButton+'<span class="pcAcademySectionCount">'+remaining+'개 남음</span></div></div>'
       + '<form class="pcAcademyTodoForm" onsubmit="pcAddAcademyTodo(event)"><input id="pcAcademyTodoInput" type="text" maxlength="80" autocomplete="off" placeholder="할 일을 입력해 주세요"><button type="submit">추가</button></form>'
       + '<div class="pcAcademyTodoList">'+rows+'</div>';
+    if (draft) {
+      const input = document.getElementById('pcAcademyTodoInput');
+      if (input) {
+        input.value = draft.value;
+        try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
+        if (Number.isInteger(draft.start) && Number.isInteger(draft.end)) {
+          try { input.setSelectionRange(draft.start, draft.end); } catch (_) {}
+        }
+      }
+    }
   }
 
   // 상담 대상 여부와 상담 피드백 범위는 규칙을 따르되, 학생 카드에는 실제 재원 개월 수를 표시합니다.
