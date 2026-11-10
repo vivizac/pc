@@ -6047,8 +6047,12 @@
     syncOlliTalkMemberAvatarElement(avatar,senderName,senderMemberId);
 
     sender.appendChild(avatar);
-    sender.appendChild(createMessageText('span','olliTalkBetaSenderName',profile.displayName));
-    if(branchName)sender.appendChild(createMessageText('span','olliTalkBetaBranchBadge',branchName));
+    // Keep the sender name and academy badge in the same grid cell and line.
+    const identity=document.createElement('span');
+    identity.className='olliTalkBetaSenderIdentity';
+    identity.appendChild(createMessageText('span','olliTalkBetaSenderName',profile.displayName));
+    if(branchName)identity.appendChild(createMessageText('span','olliTalkBetaBranchBadge',branchName));
+    sender.appendChild(identity);
     return sender;
   }
 
