@@ -895,7 +895,12 @@
         p_expected_revision:Number(item.revision||0)
       });
       if(!payload?.ok)throw new Error(payload?.message||'주문내역 보관에 실패했습니다.');
+      // 서버에 보관이 확정된 뒤에만 화면에서 카드를 제거합니다.
+      state.items=state.items.filter(entry=>clean(entry?.id)!==clean(item.id));
+      state.summary.arrived=Math.max(0,Number(state.summary.arrived||0)-1);
       if(state.expandedId===clean(item.id))state.expandedId='';
+      renderSummary();
+      renderList();
       await refresh({showLoading:false});
       showToast('지난 주문내역에 보관했습니다.','ok');
     }catch(error){
