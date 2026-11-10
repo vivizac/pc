@@ -213,6 +213,9 @@
   font-size:10.8px;font-weight:560;text-align:center
 }
 .olliMatDoneNote{background:#eef7f1;color:#638372}
+.olliMatActions button.olliMatDoneNote{appearance:none;border:0;font-family:'Pretendard',sans-serif;cursor:pointer}
+.olliMatActions button.olliMatDoneNote:hover{background:#e3f1e7}
+.olliMatActions button.olliMatDoneNote:focus-visible{outline:2px solid #638372;outline-offset:2px}
 
 .olliMatEmpty,.olliMatDetailEmpty{
   min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;

@@ -569,7 +569,12 @@
 
     const actions=create('div','olliMobileMatActions');
     const id=clean(item.id);
-    if(!state.canProcess){
+    if(item.status==='arrived'){
+      const archiveButton=create('button','olliMobileMatDoneNote','지난 주문 내역으로 이동');
+      archiveButton.type='button';
+      archiveButton.dataset.materialAction='open-archive';
+      actions.appendChild(archiveButton);
+    }else if(!state.canProcess){
       actions.appendChild(create('div','olliMobileMatReadOnlyNote','주문 상태는 원장 또는 관리자가 변경합니다.'));
     }else if(item.status==='requested'){
       actions.append(
@@ -586,7 +591,7 @@
     }else if(item.status==='ordered'){
       actions.appendChild(actionButton('도착처리','arrived','olliMobileMatPrimaryBtn',id));
     }else{
-      actions.appendChild(create('div','olliMobileMatDoneNote','도착 처리가 완료된 요청입니다.'));
+      actions.appendChild(create('div','olliMobileMatReadOnlyNote','주문 상태를 확인할 수 없습니다.'));
     }
     wrap.appendChild(actions);
     return wrap;
