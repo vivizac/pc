@@ -77,8 +77,16 @@ test('material cards appear inside the academy work list without a separate pane
 });
 
 test('academy work, consultations and statistics use approved type scale and weights',()=>{
- const size=(sel,value,source=css)=>assert.match(block(source,sel),new RegExp('font-size:\\s*calc\\('+value+'px \\* var\\(--olli-text-scale\\)\\)'));
- const weight=(sel,value,source=css)=>assert.match(block(source,sel),new RegExp('font-weight:\\s*'+value+'(?:;|\\s)'));
+ const rule=(sel,source=css)=>block(source,sel);
+ const size=(sel,value,source=css)=>{
+  const target='font-size:calc('+value+'px * var(--olli-text-scale))';
+  const normalized=rule(sel,source).replace(/\s/g,'');
+  assert.ok(normalized.includes(target.replace(/\s/g,'')),sel+' font-size '+value);
+ };
+ const weight=(sel,value,source=css)=>{
+  const body=rule(sel,source);
+  assert.match(body,new RegExp('font-weight:\\s*'+value+'(?:;|\\s)'),sel+' font-weight '+value);
+ };
  const items=[
   ['.pcAcademySectionTitle,.pcAcademyDetailName',21,650],
   ['.pcAcademySectionSub,.pcAcademyDetailSub',12,700],
@@ -101,15 +109,18 @@ test('academy work, consultations and statistics use approved type scale and wei
   size(sel,sz,source);
   if(w!==null)weight(sel,w,source);
  }
- const statusStyles=[...html.matchAll(/\\.recordAcademyConsultStatusChip\\s*\\{([^}]+)\\}/g)];
+ const statusStyles=[...html.matchAll(/\.recordAcademyConsultStatusChip\s*\{([^}]+)\}/g)];
  assert.equal(statusStyles.length,2);
  for(const match of statusStyles){
-  assert.match(match[1],/font-size: calc\\(11px \\* var\\(--olli-text-scale\\)\\)/);
+  assert.match(match[1],/font-size: calc\(11px \* var\(--olli-text-scale\)\)/);
   assert.match(match[1],/font-weight: 700/);
  }
- assert.match(css, /\\.pcAcademySectionCount,#recordAcademyDashboard \\.pcAcademyRecurringManageBtn\\{[^}]*font-size:11px;[^}]*font-weight:820/);
- assert.doesNotMatch(html,/body\\[data-olli-text-size="large"\\] \\.recordAcademyStatLabel/);
- assert.doesNotMatch(html,/body\\[data-olli-text-size="large"\\] \\.recordAcademyConsultGroupTitle/);
- assert.doesNotMatch(html,/body\\[data-olli-text-size="large"\\] \\.recordAcademyInfoChip/);
- assert.match(html,/pc-student-management\\.css\\?v=20261110-academy-typography-1/);
+ const taskCountRule=rule('.pcAcademySectionCount,#recordAcademyDashboard .pcAcademyRecurringManageBtn');
+ assert.ok(taskCountRule.includes('font-size:11px'));
+ assert.ok(taskCountRule.includes('font-weight:820'));
+ const largeRules=html.match(/body\[data-olli-text-size="large"\][^{}]+\{[^{}]*\}/g)||[];
+ for(const className of ['recordAcademyStatLabel','recordAcademyStatSub','recordAcademyConsultGroupTitle','recordAcademyListName','recordAcademyInfoChip','recordAcademyConsultStatusChip','recordAcademyConsultGroupEmpty']){
+  assert.ok(!largeRules.some(rule=>rule.includes('.'+className)),className+' overridden in large mode');
+ }
+ assert.match(html,/pc-student-management\.css\?v=20261110-academy-typography-1/);
 });
