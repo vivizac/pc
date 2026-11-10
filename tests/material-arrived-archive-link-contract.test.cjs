@@ -31,7 +31,7 @@ test('arrived material cards are manually archived in place, without opening the
 });
 
 test('server keeps original needed date and excludes only manually archived rows from current list', () => {
-  const sql = read('supabase/migrations/20261110090100_material_order_manual_archive.sql');
+  const sql = read('supabase/migrations/20261110091005_material_order_manual_archive.sql');
   assert.match(sql, /add column if not exists manually_archived_at timestamptz/i);
   assert.match(sql, /and r\.manually_archived_at is null/i);
   assert.match(sql, /r\.manually_archived_at is not null/i);
