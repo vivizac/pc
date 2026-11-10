@@ -12,6 +12,7 @@
     workspaceTab: 'materials',
     messages: [],
     members: [],
+    sharedJoined: false,
     archivePayload: null,
     messageLoadSequence: 0,
     archiveLoadSequence: 0,
@@ -413,8 +414,18 @@
         p_academy_id: current.academyId
       });
       state.members = Array.isArray(payload?.members) ? payload.members : [];
+      let extension=null;
+      try { extension=await global.OlliSharedTeamChat?.unifiedExtension?.({members:true}); }
+      catch(error){console.warn('공동 팀챗 선생님 조회 실패:',error?.message||error);}
+      state.sharedJoined = !!extension?.joined;
+      if (extension?.joined) {
+        const members = new Map(state.members.map(member => [String(member.member_id), member]));
+        for (const member of extension.members) members.set(String(member.member_id), member);
+        state.members = [...members.values()];
+        state.members.unshift({member_id:'all',display_name:'전체',branch_name:'참여 학원 전체'});
+      }
       hydrateMemberAvatars();
-      if (count) count.textContent = state.members.length ? `선생님 ${state.members.length}명` : '';
+      if (count) count.textContent = state.members.length ? `선생님 ${state.members.filter(member=>member.member_id!=='all').length}명` : '';
       renderMentionMenu();
       return state.members;
     } catch (error) {
@@ -480,7 +491,11 @@
     const card = document.createElement('button');
     card.type = 'button';
     card.className = 'olliPcTeamTalkAttachment';
-    card.addEventListener('click', () => downloadAttachment(attachment));
+    card.addEventListener('click', () => {
+      if (attachment.is_shared) {
+        global.OlliSharedTeamChat.downloadUnified(attachment).catch(error => alert(error.message || '파일을 열 수 없습니다.'));
+      } else downloadAttachment(attachment);
+    });
 
     if (attachment.kind === 'media' && /^image\//i.test(clean(attachment.mime_type))) {
       const thumb = create('span', 'olliPcTeamTalkAttachmentThumb');
@@ -1322,7 +1337,7 @@
     const messageId = String(Number(item?.id || 0) || '');
     const body = clean(item?.body);
     const router = global.OlliCommandRouter;
-    if (!own || clean(item?.message_type || 'text') !== 'text' || item?.attachment) return false;
+    if (item?.is_shared || !own || clean(item?.message_type || 'text') !== 'text' || item?.attachment) return false;
     if (!messageId || !body || /^\s*@올리(?:\s|$)/.test(body)) return false;
     if (replyTargets?.has?.(messageId)) return false;
     return !!router && typeof router.isOlliReplyCandidate === 'function' && router.isOlliReplyCandidate(body);
@@ -1432,6 +1447,7 @@
         row.appendChild(avatar);
         const sender = create('div', 'olliPcTeamTalkSender');
         sender.appendChild(create('span', 'olliPcTeamTalkSenderName', senderName));
+        if (item?.is_shared && item?.branch_name) sender.appendChild(create('span','olliPcTeamTalkBranchBadge',String(item.branch_name)));
         content.appendChild(sender);
       } else {
         row.appendChild(create('span', 'olliPcTeamTalkAvatarSpacer'));
@@ -1621,8 +1637,21 @@
       });
       if (sequence !== state.messageLoadSequence) return false;
       if (!payload?.ok) throw new Error(payload?.message || '대화를 불러오지 못했습니다.');
-      if (options.render === false) state.messages = Array.isArray(payload.messages) ? payload.messages : [];
-      else renderMessages(payload, { followBottom: options.followBottom });
+      let extension = {joined:false,messages:[]};
+      try {
+        extension = await global.OlliSharedTeamChat?.unifiedExtension?.({messages:true}) || extension;
+      } catch (error) { console.warn('통합 팀챗 조회 실패:',error?.message||error); }
+      if (sequence !== state.messageLoadSequence) return false;
+      state.sharedJoined=!!extension.joined;
+      const combined = extension.joined
+        ? {...payload,messages:[...(payload.messages||[]),...extension.messages]
+          .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))}
+        : payload;
+      if (options.render === false) state.messages = Array.isArray(combined.messages) ? combined.messages : [];
+      else renderMessages(combined, { followBottom: options.followBottom });
+      if (extension.joined && isVisible() && extension.latestSeq) {
+        global.OlliSharedTeamChat.markUnifiedRead(extension.room.id,extension.latestSeq).catch(()=>{});
+      }
       const latest = Array.isArray(payload.messages) && payload.messages.length
         ? Number(payload.messages[payload.messages.length - 1]?.id || 0)
         : 0;
@@ -4506,7 +4535,7 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'olliPcTeamTalkMentionOption';
-        button.append(create('span', 'olliPcTeamTalkMentionAvatar', name.slice(0, 1)), create('span', '', name));
+        button.append(create('span', 'olliPcTeamTalkMentionAvatar', name.slice(0, 1)), create('span', '', name + (member.branch_name ? ' · '+member.branch_name : '')));
         button.addEventListener('click', () => {
           const input = byId('olliPcTeamTalkInput');
           if (!input) return;
@@ -4589,6 +4618,18 @@
     updateComposerState();
 
     try {
+      if (!olliRequested && global.OlliSharedTeamChat?.sendUnified) {
+        const sharedSent = await global.OlliSharedTeamChat.sendUnified(body,clientMessageId());
+        if (sharedSent.joined) {
+          input.value='';
+          state.olliAiMentionSelected=false;
+          state.aiConversationMessages=[];
+          resizeComposer();updateComposerState();
+          await loadMessages({showLoading:false,followBottom:true});
+          input.focus();
+          return;
+        }
+      }
       const payload = await rpc('olli_team_chat_send', {
         p_session_token: current.sessionToken,
         p_academy_id: current.academyId,
@@ -4800,7 +4841,13 @@
       composerFile.addEventListener('change', async () => {
         const file = composerFile.files?.[0] || null;
         composerFile.value = '';
-        if (file) await uploadFile(file);
+        if (file) {
+          try {
+            const sharedUpload=await global.OlliSharedTeamChat?.uploadUnified?.(file);
+            if (sharedUpload?.joined) await loadMessages({showLoading:false,followBottom:true});
+            else await uploadFile(file);
+          } catch(error) { alert(error.message || '공동 첨부파일을 올리지 못했습니다.'); }
+        }
       });
     }
     if (archiveUpload && !archiveUpload.dataset.bound) {
@@ -4915,6 +4962,9 @@
         refreshBadge();
         primeDesktopNotificationState();
       }
+    });
+    global.addEventListener('olli:shared-team-chat-changed', () => {
+      if (isVisible()) Promise.all([loadMembers(),loadMessages({showLoading:false,followBottom:false})]);
     });
     global.addEventListener('olli:realtime-status', (event) => {
       if (event?.detail?.status === 'SUBSCRIBED' && !state.desktopNotificationContextKey) {

@@ -261,20 +261,9 @@ async function older(){
   }catch(error){errorState(error);}
 }
 async function open(){
-  createDialog('공동 팀챗');mode='chat';
-  const toolbar=node('nav');toolbar.append(button('새로고침',refresh),button('이전 대화',older),button('알림 켜기',()=>enablePush(true)),
-    button('올리에게 비공개로 질문',privateQuestion));dialog.append(toolbar);
-  const list=node('section',null,'olliSharedChatMessages');list.dataset.sharedMessages='';list.setAttribute('aria-label','공동 메시지');dialog.append(list);
-  const form=node('form');form.addEventListener('submit',submit);
-  form.append(node('p','참여 지점 모두에게 공개됩니다. 학생·급여·업무 정보와 올리 AI 질문은 내 학원 대화를 이용해 주세요.','olliSharedChatPrivacy'));
-  const reply=node('div');reply.dataset.sharedReply='';form.append(reply,button('답장·수정 취소',()=>{state.reply=null;state.edit=null;updateComposer();}));
-  const input=node('textarea');input.maxLength=5000;input.rows=2;input.setAttribute('aria-label','공동 메시지 입력');
-  input.addEventListener('input',()=>{delete input.dataset.clientId;});form.append(input);
-  const mentions=node('details');mentions.append(node('summary','@멘션 선택'));const members=node('div',null,'olliSharedChatMembers');members.dataset.sharedMembers='';mentions.append(members);form.append(mentions);
-  const file=node('input');file.type='file';file.setAttribute('aria-label','공동 첨부파일 선택');file.addEventListener('change',uploadFile);form.append(file);
-  const send=node('button','전송');send.type='submit';send.dataset.sharedSend='';send.disabled=true;form.append(send);dialog.append(form);
-  await refresh();
-  if(state.ready&&!global.OlliTalkPush)enablePush(false);
+  if(global.OlliPcTeamTalk?.open)return global.OlliPcTeamTalk.open();
+  if(typeof global.openOlliTalkBetaPage==='function')return global.openOlliTalkBetaPage();
+  return false;
 }
 async function privateQuestion(){
   if(!state.ready||state.busy)return;
@@ -328,13 +317,13 @@ async function saveManagement(){
     p_expected_revision:state.room?.revision||null,p_academies:academies,p_request_id:configRequest.id},ctx));
 }
 async function manage(){
-  createDialog('팀챗 통합 관리');mode='manage';const body=node('section');body.dataset.sharedManagement='';dialog.append(body);
-  const ctx=context(),active=dialog;
-  try{const status=await rpc('status',params(ctx),ctx);if(dialog!==active)return;state.status=status;state.room=status.room;state.epoch=key(ctx);renderManagement(status);}
-  catch(error){if(dialog===active)announce(error.message);}
+  const root=document.querySelector('#settingsDetailBody [data-olli-shared-inline-settings]');
+  if(!root)return false;
+  root.scrollIntoView({block:'nearest',behavior:'smooth'});
+  mountSettings(root);
+  return true;
 }
 function start(){
-  document.querySelectorAll('[data-shared-chat-entry]').forEach(el=>el.addEventListener('click',open));
   global.OlliStorageCore?.AcademyContext?.registerRuntimeCleaner?.(reset);
   global.addEventListener('olli:account-session-invalidated',reset);
   global.addEventListener('storage',event=>{if(!event.key||['olli_account_session_token_v1','olli_current_academy_id','olli_current_member_id'].includes(event.key))reset();});
@@ -351,8 +340,165 @@ function start(){
 async function openNotification(roomId){
   // A notification never switches academy or grants a room. Verify the selected academy.
   const status=await refreshEntry();if(status?.room?.id===roomId)await open();
-  else if(status?.enabled){createDialog('공동 팀챗 알림');announce('알림을 보려면 참여 중인 학원을 먼저 선택해 주세요.');}
+  else if(status?.enabled){global.alert?.('현재 선택한 학원은 해당 팀챗 통합에 참여하지 않습니다.');}
 }
-global.OlliSharedTeamChat=Object.freeze({version:'1.0.0',open,manage,close,refreshEntry,reset,context});
+
+/* Single Team Chat integration: use the existing PC / mobile message surface.
+ * Shared messages are never written to the legacy academy cache. */
+async function unifiedExtension(options={}){
+  const ctx=context();
+  if(!ctx.academyId||!ctx.sessionToken)return {joined:false,messages:[],members:[]};
+  const status=await rpc('status',params(ctx),ctx);
+  if(!status.enabled||!status.room)return {joined:false,messages:[],members:[],status};
+  const room=status.room,epoch=key(ctx);
+  const requests=[];
+  if(options.messages)requests.push(rpc('list',{...params(ctx,room),p_limit:100},ctx));
+  if(options.members)requests.push(rpc('members',params(ctx,room),ctx));
+  const responses=await Promise.all(requests);
+  assertCurrent(ctx);
+  let cursor=0;
+  const list=options.messages?responses[cursor++]:null;
+  const memberPayload=options.members?responses[cursor++]:null;
+  if(list&&(list.room_id!==room.id||list.participation_id!==room.participation_id))throw new Error('팀챗 참여 상태가 변경되었습니다.');
+  const messages=(list?.messages||[]).map(msg=>({
+    ...msg,
+    id:'shared:'+msg.id,
+    shared_message_id:msg.id,
+    shared_seq:msg.seq,
+    is_shared:true,
+    sender_member_id:msg.is_mine?ctx.memberId:msg.sender_member_id,
+    body:msg.body,
+    attachment:msg.attachment?{...msg.attachment,is_shared:true}:null,
+    reply_to_message_id:null
+  }));
+  return {joined:true,room,status,epoch,messages,members:memberPayload?.members||[],latestSeq:(list?.messages||[]).at(-1)?.seq||0};
+}
+async function sendUnified(body,clientId){
+  const ctx=context(),status=await rpc('status',params(ctx),ctx);
+  if(!status.enabled||!status.room)return {joined:false};
+  const room=status.room;
+  const memberResult=await rpc('members',params(ctx,room),ctx);
+  const memberIds=(memberResult.members||[]).filter(m=>!m.is_current_member&&
+    (String(body).includes('@'+String(m.display_name||''))&&String(m.display_name||'').trim())).map(m=>m.member_id);
+  const mentionAll=/(^|\s)@전체(?=\s|$|[,.!?，。！？])/u.test(String(body));
+  const result=await rpc('send',{...params(ctx,room),p_body:String(body),
+    p_client_message_id:clientId||crypto.randomUUID(),p_reply_to_message_id:null,
+    p_member_ids:[...new Set(memberIds)],p_mention_all:mentionAll},ctx);
+  assertCurrent(ctx);
+  dispatchPush(ctx,room,result.message_id);
+  return {joined:true,message_id:result.message_id};
+}
+async function markUnifiedRead(roomId,seq){
+  if(!roomId||!Number(seq))return false;
+  const ctx=context(),status=await rpc('status',params(ctx),ctx);
+  if(!status.room||status.room.id!==roomId)return false;
+  await rpc('mark_read',{...params(ctx,status.room),p_up_to_seq:Number(seq)},ctx);
+  return true;
+}
+async function uploadUnified(file){
+  if(!file||file.size<1||file.size>20*1024*1024)throw new Error('첨부파일은 20MB 이하만 올릴 수 있습니다.');
+  const ctx=context(),status=await rpc('status',params(ctx),ctx);
+  if(!status.enabled||!status.room)return {joined:false};
+  const room=status.room;
+  const prepared=await (await fileRequest(ctx,room,{action:'prepare',file_name:file.name,mime_type:file.type||'application/octet-stream',file_size:file.size})).json();
+  if(!prepared.ok||!prepared.upload_url||!prepared.attachment_id)throw new Error('공동 첨부파일 업로드를 준비하지 못했습니다.');
+  const uploaded=await fetch(prepared.upload_url,{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream'},body:file});
+  if(!uploaded.ok)throw new Error('공동 첨부파일 업로드에 실패했습니다.');
+  assertCurrent(ctx);
+  const result=await (await fileRequest(ctx,room,{action:'commit',attachment_id:prepared.attachment_id})).json();
+  if(!result.ok)throw new Error('공동 첨부파일 저장에 실패했습니다.');
+  dispatchPush(ctx,room,result.message_id);
+  return {joined:true,message_id:result.message_id};
+}
+async function downloadUnified(attachment){
+  const id=String(attachment?.id||'');
+  if(!id)throw new Error('파일 정보를 찾을 수 없습니다.');
+  const ctx=context(),status=await rpc('status',params(ctx),ctx);
+  if(!status.room)throw new Error('현재 팀챗에 참여하지 않습니다.');
+  const result=await fileRequest(ctx,status.room,null,id);
+  const blob=await result.blob();
+  assertCurrent(ctx);
+  const url=URL.createObjectURL(blob),a=node('a');
+  a.href=url;a.download=attachment.file_name||'파일';document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+  return true;
+}
+let inlineSettingsSequence=0;
+function mountSettings(root){
+  if(!root)return;
+  const renderSequence=++inlineSettingsSequence,ctx=context();
+  root.replaceChildren();
+  const heading=node('div',null,'olliTeamTalkSettingsHead');
+  const copy=node('div');
+  copy.append(node('strong','학원 팀챗 통합'),node('small','통합 학원을 선택하면 기존 Team Chat 한 곳에서 함께 대화합니다.'));
+  heading.append(copy);root.append(heading);
+  const message=node('p','통합 상태 확인 중…','olliSharedInlineStatus');
+  message.setAttribute('role','status');root.append(message);
+  rpc('status',params(ctx),ctx).then(status=>{
+    if(renderSequence!==inlineSettingsSequence||!root.isConnected)return;
+    assertCurrent(ctx);
+    renderInlineSettings(root,status,ctx,message);
+  }).catch(error=>{
+    if(renderSequence!==inlineSettingsSequence||!root.isConnected)return;
+    message.textContent=error.message||'팀챗 연결 상태를 불러오지 못했습니다.';
+  });
+}
+function renderInlineSettings(root,status,ctx,message){
+  if(!status.enabled){message.textContent='현재 통합 기능이 비활성화되어 있습니다.';return;}
+  if(!status.can_manage){message.textContent='원장 계정에서만 통합 설정을 변경할 수 있습니다.';return;}
+  message.textContent=status.room?'통합 중 · 참여 학원 '+(status.room.academies||[]).length+'곳':'통합할 학원을 선택해 주세요.';
+  const selected=new Map((status.room?.academies||[]).map(item=>[item.academy_id,item]));
+  const body=node('div',null,'olliSharedInlineAcademies');
+  for(const academy of status.academies||[]){
+    const row=node('div',null,'olliSharedInlineAcademy');
+    row.dataset.academyId=academy.academy_id;
+    const check=node('input');check.type='checkbox';check.checked=selected.has(academy.academy_id)||academy.academy_id===ctx.academyId;
+    check.disabled=academy.academy_id===ctx.academyId||!!(academy.room_id&&academy.room_id!==status.room?.id);
+    check.setAttribute('aria-label',academy.academy_name+' 참여');
+    const nameLabel=node('span',academy.academy_name,'olliSharedInlineAcademyName');
+    const display=node('input');display.type='text';display.maxLength=20;
+    display.value=selected.get(academy.academy_id)?.display_name||'';
+    display.placeholder='팀챗 표시 이름 (예: 대천점)';
+    display.setAttribute('aria-label',academy.academy_name+' 팀챗 표시 이름');
+    display.disabled=!check.checked;
+    check.addEventListener('change',()=>{display.disabled=!check.checked;});
+    row.append(check,nameLabel,display);body.append(row);
+  }
+  root.append(body);
+  root.append(node('p','기존 학원 대화·개인 업무·급여 기록은 다른 학원에 공개되지 않습니다.','olliSharedInlineHint'));
+  const controls=node('div',null,'olliSharedInlineActions');
+  const save=button('변경사항 저장',async()=>{
+    const academies=[...body.querySelectorAll('[data-academy-id]')].filter(row=>row.querySelector('input[type=checkbox]').checked)
+      .map(row=>({academy_id:row.dataset.academyId,display_name:row.querySelector('input[type=text]').value.trim()}));
+    if(academies.length<2){message.textContent='통합하려면 학원을 두 곳 이상 선택해 주세요.';return;}
+    if(academies.some(item=>!item.display_name)){message.textContent='선택한 학원의 표시 이름을 입력해 주세요.';return;}
+    controls.querySelectorAll('button').forEach(btn=>{btn.disabled=true;});
+    message.textContent='서버에 저장하는 중…';
+    try{
+      const saved=await rpc('configure',{...params(ctx),p_room_id:status.room?.id||null,
+        p_expected_revision:status.room?.revision||null,p_academies:academies,p_request_id:crypto.randomUUID()},ctx);
+      if(!root.isConnected||key(ctx)!==key(context()))return;
+      mountSettings(root);
+      global.dispatchEvent(new CustomEvent('olli:shared-team-chat-changed'));
+      return saved;
+    }catch(error){message.textContent=error.message||'통합 설정 저장에 실패했습니다.';controls.querySelectorAll('button').forEach(btn=>{btn.disabled=false;});}
+  },'olliSharedInlinePrimary');
+  if(status.room){
+    const leave=button('현재 학원 통합 해제',async()=>{
+      if(!global.confirm('이 학원의 공동 대화 참여를 해제할까요? 기존 메시지는 삭제되지 않습니다.'))return;
+      controls.querySelectorAll('button').forEach(btn=>{btn.disabled=true;});
+      message.textContent='통합을 해제하는 중…';
+      try{
+        await rpc('leave',{...params(ctx,status.room),p_expected_revision:status.room.revision},ctx);
+        if(!root.isConnected||key(ctx)!==key(context()))return;
+        mountSettings(root);global.dispatchEvent(new CustomEvent('olli:shared-team-chat-changed'));
+      }catch(error){message.textContent=error.message||'통합 해제에 실패했습니다.';controls.querySelectorAll('button').forEach(btn=>{btn.disabled=false;});}
+    },'olliSharedInlineSecondary');
+    controls.append(leave);
+  }
+  controls.append(save);root.append(controls);
+}
+
+global.OlliSharedTeamChat=Object.freeze({version:'2.0.0',open,manage,close,refreshEntry,reset,context,unifiedExtension,sendUnified,markUnifiedRead,uploadUnified,downloadUnified,mountSettings});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })(window);

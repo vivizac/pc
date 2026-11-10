@@ -16,6 +16,7 @@
   let olliTalkArchivePayload = null;
   let olliTalkArchiveLoadSequence = 0;
   let olliTalkCurrentPayload = null;
+  let olliTalkSharedViewSignature = '';
   let olliTalkHistoryLoading = false;
   let olliTalkHistoryExhausted = false;
   let olliTalkHistoryScrollRaf = 0;
@@ -5812,6 +5813,14 @@
   async function uploadOlliTalkComposerFiles(files){
     const list=Array.from(files||[]).filter(Boolean);
     if(!list.length)return false;
+    try{
+      const extension=await window.OlliSharedTeamChat?.unifiedExtension?.();
+      if(extension?.joined){
+        for(const file of list)await window.OlliSharedTeamChat.uploadUnified(file);
+        await loadOlliTalkBetaMessages({showLoading:false,localFirst:false,scrollMode:'bottom'});
+        return true;
+      }
+    }catch(error){alert(error.message||'공동 첨부파일 업로드에 실패했습니다.');return false;}
     let changed=false;
     for(const file of list){
       const ok=await uploadOlliTalkArchiveFile(file,{refresh:false,manageArchiveButton:false});
@@ -5878,6 +5887,16 @@
 
   function createOlliTalkMessageBubble(input, options = {}){
     const item=input&&typeof input==='object'?input:null;
+    if(item?.attachment?.is_shared){
+      const wrap=document.createElement('div');wrap.className='olliTalkBetaBubble olliTalkBetaAttachmentBubble';
+      const card=document.createElement('button');card.type='button';card.className='olliTalkBetaAttachmentCard';
+      card.appendChild(createMessageText('span','olliTalkBetaAttachmentIcon','파일'));
+      const info=createMessageText('span','olliTalkBetaAttachmentName',String(item.attachment.file_name||'첨부파일'));
+      card.appendChild(info);
+      card.addEventListener('click',()=>window.OlliSharedTeamChat.downloadUnified(item.attachment)
+        .catch(error=>alert(error.message||'첨부파일을 열 수 없습니다.')));
+      wrap.append(card);return wrap;
+    }
     if(item?.attachment)return createOlliTalkAttachmentMessageBubble(item, options);
     const bubble=document.createElement('div');
     bubble.className='olliTalkBetaBubble';
@@ -6018,7 +6037,7 @@
     });
   }
 
-  function createOlliTalkSenderProfile(senderName,senderMemberId){
+  function createOlliTalkSenderProfile(senderName,senderMemberId,branchName){
     const profile=getOlliTalkProfile(senderName,senderMemberId);
     const sender=document.createElement('div');
     sender.className='olliTalkBetaSender';
@@ -6029,6 +6048,7 @@
 
     sender.appendChild(avatar);
     sender.appendChild(createMessageText('span','olliTalkBetaSenderName',profile.displayName));
+    if(branchName)sender.appendChild(createMessageText('span','olliTalkBetaBranchBadge',branchName));
     return sender;
   }
 
@@ -6926,7 +6946,7 @@
     const messageId=String(Number(item?.id || 0) || '');
     const body=String(item?.body || '').trim();
     const router=window.OlliCommandRouter;
-    if(!own || String(item?.message_type || 'text').trim()!=='text' || item?.attachment) return false;
+    if(item?.is_shared || !own || String(item?.message_type || 'text').trim()!=='text' || item?.attachment) return false;
     if(!messageId || !body || /^\s*@올리(?:\s|$)/.test(body)) return false;
     if(replyTargets?.has?.(messageId)) return false;
     return !!router && typeof router.isOlliReplyCandidate==='function' && router.isOlliReplyCandidate(body);
@@ -7111,7 +7131,7 @@
         incomingLayout.appendChild(sender);
       }else{
         const senderName=String(item?.sender_name || '선생님').trim() || '선생님';
-        incomingLayout.appendChild(createOlliTalkSenderProfile(senderName,item?.sender_member_id));
+        incomingLayout.appendChild(createOlliTalkSenderProfile(senderName,item?.sender_member_id,item?.is_shared?String(item?.branch_name||''):''));
       }
 
       incomingLayout.appendChild(stack);
@@ -7438,7 +7458,7 @@
     const previousScrollHeight=Math.max(0,Number(chatArea.scrollHeight || 0));
     const wasNearBottom=isOlliTalkChatNearBottom(chatArea);
 
-    olliTalkCurrentPayload=payload || null;
+    olliTalkCurrentPayload=payload?.__academyLocal || payload || null;
     const allMessages=Array.isArray(payload?.messages) ? payload.messages : [];
     const requestedMessageLimit=Math.max(0,Math.floor(Number(options.messageLimit) || 0));
     const messages=requestedMessageLimit>0 && allMessages.length>requestedMessageLimit
@@ -7830,8 +7850,16 @@
         p_academy_id: context.academyId
       });
       olliTalkMembers = Array.isArray(payload?.members) ? payload.members : [];
+      try {
+        const extension=await window.OlliSharedTeamChat?.unifiedExtension?.({members:true});
+        if(extension?.joined){
+          const members=new Map(olliTalkMembers.map(member=>[String(member.member_id),member]));
+          extension.members.forEach(member=>members.set(String(member.member_id),member));
+          olliTalkMembers=[{member_id:'all',display_name:'전체',branch_name:'참여 학원 전체'},...members.values()];
+        }
+      }catch(error){console.warn('공동 팀챗 선생님 조회 실패:',error?.message||error);}
       hydrateOlliTalkMemberAvatars();
-      const memberCount=applyOlliTalkMemberCount(olliTalkMembers.length);
+      const memberCount=applyOlliTalkMemberCount(olliTalkMembers.filter(member=>member.member_id!=='all').length);
       const cacheBase = olliTalkCurrentPayload || cached || {
         ok:true,
         academy_id:context.academyId,
@@ -7923,7 +7951,7 @@
       button.type = 'button';
       button.className = 'olliTalkMentionOption';
       const displayName = String(member.display_name || '').trim() || '이름 없음';
-      const mentionLabel = member?.is_olli_ai === true ? '@올리 · AI' : '@' + displayName;
+      const mentionLabel = member?.is_olli_ai === true ? '@올리 · AI' : '@' + displayName + (member?.branch_name?' · '+member.branch_name:'');
       const name = createMessageText('span', 'olliTalkMentionName', mentionLabel);
       button.append(name);
       button.addEventListener('pointerdown', event => event.preventDefault());
@@ -8147,18 +8175,35 @@
       const pageMessages=Array.isArray(payload.messages)?payload.messages:[];
       const mergedPayload=basePayload?mergeOlliTalkMessagePayloads(basePayload,payload):payload;
       const changed=!basePayload||!areOlliTalkMessagePayloadsEquivalent(basePayload,mergedPayload);
-      const renderChanged=!basePayload||!areOlliTalkMessagePayloadsRenderEquivalent(basePayload,mergedPayload);
+      let extension={joined:false,messages:[]};
+      try { extension=await window.OlliSharedTeamChat?.unifiedExtension?.({messages:true})||extension; }
+      catch(error){console.warn('공동 팀챗 조회 실패:',error?.message||error);}
+      if(sequence!==olliTalkLoadSequence)return false;
+      const nextSharedSignature=extension.joined
+        ? extension.room.id+':'+extension.room.participation_id+':'+JSON.stringify(extension.messages.map(item=>[item.id,item.edited_at,item.unread_count]))
+        : '';
+      const sharedChanged=olliTalkSharedViewSignature!==nextSharedSignature;
+      olliTalkSharedViewSignature=nextSharedSignature;
+      const renderChanged=sharedChanged||!basePayload||!areOlliTalkMessagePayloadsRenderEquivalent(basePayload,mergedPayload);
+      const presentation=extension.joined
+        ? {...mergedPayload,__academyLocal:mergedPayload,messages:[...(mergedPayload.messages||[]),...extension.messages]
+          .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))}
+        : mergedPayload;
       olliTalkHistoryExhausted=pageMessages.length<100;
+      // Never persist the joined academies' messages into the academy's local cache.
       writeOlliTalkMessageCache(context,mergedPayload);
       if(options.render!==false&&renderChanged){
         const activeRenderLimit=Math.max(0,Math.floor(Math.max(Number(options.messageLimit)||0,Number(olliTalkRenderedMessageLimit)||0)));
-        renderOlliTalkServerMessages(mergedPayload,{
+        renderOlliTalkServerMessages(presentation,{
           scrollMode:options.scrollMode||'bottom',
           ...(activeRenderLimit>0?{messageLimit:activeRenderLimit}:{})
         });
       }else{
         olliTalkCurrentPayload=mergedPayload;
-        if(options.render!==false&&changed)syncOlliTalkRenderedUnreadCounts(mergedPayload);
+        if(options.render!==false&&changed)syncOlliTalkRenderedUnreadCounts(presentation);
+      }
+      if(extension.joined&&isOlliTalkBetaVisible()&&extension.latestSeq){
+        window.OlliSharedTeamChat.markUnifiedRead(extension.room.id,extension.latestSeq).catch(()=>{});
       }
       const latestMessageId = pageMessages.length
         ? Number(pageMessages[pageMessages.length - 1]?.id || 0)
@@ -8310,6 +8355,18 @@
     const clientMessageId = createOlliTalkClientMessageId();
 
     try {
+      if(!olliRequested && window.OlliSharedTeamChat?.sendUnified){
+        const sharedSent=await window.OlliSharedTeamChat.sendUnified(body,clientMessageId);
+        if(sharedSent.joined){
+          input.value='';
+          if(!persistentMentionPrefix){olliTalkMentionSelections.clear();olliTalkMentionModeActive=false;resetOlliTalkAiConversation();}
+          syncOlliTalkSelectedMentionPrefix();
+          hideOlliTalkMentionMenu();resizeInput();updateOlliTalkBetaComposerState();
+          await loadOlliTalkBetaMessages({showLoading:false,localFirst:false,scrollMode:'bottom'});
+          window.OlliMobileKeyboardActivation?.focus(input);
+          return;
+        }
+      }
       const payload = await callOlliTalkRpc('olli_team_chat_send', {
         p_session_token: context.sessionToken,
         p_academy_id: context.academyId,
@@ -8578,6 +8635,7 @@
     olliTalkHistoryExhausted=false;
     olliTalkHistoryLoading=false;
     olliTalkCurrentPayload=null;
+    olliTalkSharedViewSignature='';
     olliTalkRenderedMessageLimit=OLLI_TALK_INITIAL_RENDER_LIMIT;
 
     // 단일 500개 캐시를 그대로 원본으로 두고, 최근 100개만 첫 화면에 그립니다.
