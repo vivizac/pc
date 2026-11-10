@@ -4,7 +4,6 @@ on:
     branches:
       - fix/pc-student-management-fixed-dashboard-grid-20261102
       - fix/pc-restore-original-stat-cards-20261102
-      - feat/pc-academy-material-check-and-sidebar-grid-20261110
     paths:
       - 'apps/pc/pc-student-management.css'
       - 'apps/pc/pc-student-management.js'
@@ -18,7 +17,7 @@ permissions:
   contents: read
 jobs:
   dashboard:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
