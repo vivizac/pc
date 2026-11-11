@@ -4810,6 +4810,7 @@
   function clearOlliTalkPhotoViewerImage(){
     const preview=document.getElementById('olliTalkPhotoViewerPreview');
     const image=document.getElementById('olliTalkPhotoViewerImage');
+    const video=document.getElementById('olliTalkPhotoViewerVideo');
     const loading=document.getElementById('olliTalkPhotoViewerLoading');
     if(preview){
       preview.removeAttribute('src');
@@ -4818,6 +4819,10 @@
     if(image){
       image.removeAttribute('src');
       image.hidden=true;
+    }
+    if(video){
+      video.pause();video.removeAttribute('src');video.onerror=null;video.hidden=true;
+      video.load();
     }
     if(loading)loading.hidden=false;
     setOlliTalkPhotoViewerProgress({phase:'waiting',loaded:0,total:0});
@@ -4849,6 +4854,7 @@
     olliTalkPhotoViewerLoadSequence+=1;
     olliTalkPhotoViewerState=null;
     clearOlliTalkPhotoViewerImage();
+    if(activeState?.objectUrl)URL.revokeObjectURL(activeState.objectUrl);
     if(screen){
       screen.style.display='none';
       screen.setAttribute('aria-hidden','true');
@@ -4862,6 +4868,7 @@
     const loading=document.getElementById('olliTalkPhotoViewerLoading');
     const preview=document.getElementById('olliTalkPhotoViewerPreview');
     const image=document.getElementById('olliTalkPhotoViewerImage');
+    const video=document.getElementById('olliTalkPhotoViewerVideo');
     const state=olliTalkPhotoViewerState;
     if(!state||state.sequence!==sequence)return false;
 
@@ -4873,7 +4880,9 @@
       total:Math.max(0,Number(attachment?.file_size||0))
     });
 
-    const hasThumbnail=!!String(attachment?.thumbnail_storage_path||'').trim()||Number(attachment?.thumbnail_size||0)>0;
+    const shared=attachment?.is_shared===true;
+    const isVideo=isOlliTalkVideoAttachment(attachment);
+    const hasThumbnail=!shared&&(!!String(attachment?.thumbnail_storage_path||'').trim()||Number(attachment?.thumbnail_size||0)>0);
     if(hasThumbnail&&preview){
       getOlliTalkAttachmentPreviewBlobUrl(attachment).then(url=>{
         if(
@@ -4888,16 +4897,26 @@
     }
 
     try{
-      const url=await getOlliTalkAttachmentBlobUrl(attachment,{
-        signal:controller.signal,
-        onProgress:progress=>{
-          if(
-            sequence!==olliTalkPhotoViewerLoadSequence
-            || olliTalkPhotoViewerState?.sequence!==sequence
-          )return;
-          setOlliTalkPhotoViewerProgress(progress);
-        }
-      });
+      let url='';
+      if(shared){
+        const blob=await window.OlliSharedTeamChat.fetchUnifiedBlob(attachment);
+        if(
+          sequence!==olliTalkPhotoViewerLoadSequence
+          || olliTalkPhotoViewerState?.item!==item
+          || !getOlliTalkPhotoViewerScreen()?.isConnected
+        )return false;
+        url=URL.createObjectURL(blob);
+        olliTalkPhotoViewerState.objectUrl=url;
+        setOlliTalkPhotoViewerProgress({phase:'done',loaded:blob.size,total:blob.size});
+      }else{
+        url=await getOlliTalkAttachmentBlobUrl(attachment,{
+          signal:controller.signal,
+          onProgress:progress=>{
+            if(sequence!==olliTalkPhotoViewerLoadSequence||olliTalkPhotoViewerState?.sequence!==sequence)return;
+            setOlliTalkPhotoViewerProgress(progress);
+          }
+        });
+      }
       if(
         sequence!==olliTalkPhotoViewerLoadSequence
         || olliTalkPhotoViewerState?.item!==item
@@ -4905,13 +4924,19 @@
       )return false;
 
       olliTalkPhotoViewerState.originalReady=true;
-      if(image){
+      if(isVideo&&video){
+        video.src=url;video.hidden=false;video.load();
+        video.onerror=()=>{
+          if(olliTalkPhotoViewerState?.sequence!==sequence)return;
+          if(loading)loading.hidden=false;
+          const status=document.getElementById('olliTalkPhotoViewerProgressText');
+          if(status)status.textContent='이 기기에서 재생할 수 없는 형식입니다. 저장 버튼으로 원본 영상을 받으세요.';
+        };
+      }else if(image){
         image.src=url;
         image.alt=String(attachment.file_name||'원본 사진');
         image.hidden=false;
-        try{
-          if(typeof image.decode==='function')await image.decode();
-        }catch(_){}
+        try{if(typeof image.decode==='function')await image.decode();}catch(_){}
       }
 
       if(
@@ -4939,7 +4964,7 @@
 
   function openOlliTalkPhotoViewer(item,options={}){
     const attachment=item?.attachment||{};
-    if(!isOlliTalkImageAttachment(attachment))return false;
+    if(!isOlliTalkImageAttachment(attachment)&&!isOlliTalkVideoAttachment(attachment))return false;
 
     const screen=getOlliTalkPhotoViewerScreen();
     if(!screen)return false;
@@ -4949,6 +4974,7 @@
     const sender=document.getElementById('olliTalkPhotoViewerSender');
     const date=document.getElementById('olliTalkPhotoViewerDate');
     const deleteItem=document.getElementById('olliTalkPhotoViewerDeleteItem');
+    const archiveButton=document.getElementById('olliTalkPhotoViewerArchiveBtn');
 
     getOlliTalkBetaInput()?.blur();
     closeOlliTalkSearch({blur:false});
@@ -4956,7 +4982,8 @@
 
     if(sender)sender.textContent=String(item?.sender_name||'선생님').trim()||'선생님';
     if(date)date.textContent=formatOlliTalkPhotoViewerDate(item?.created_at);
-    if(deleteItem)deleteItem.hidden=!canDeleteOlliTalkImageItem(item);
+    if(deleteItem)deleteItem.hidden=!!attachment.is_shared||!canDeleteOlliTalkImageItem(item);
+    if(archiveButton)archiveButton.hidden=!!attachment.is_shared;
 
     if(talk){talk.style.display='none';talk.setAttribute('aria-hidden','true')}
     if(archive){archive.style.display='none';archive.setAttribute('aria-hidden','true')}
@@ -4964,7 +4991,7 @@
     screen.setAttribute('aria-hidden','false');
 
     const sequence=++olliTalkPhotoViewerLoadSequence;
-    olliTalkPhotoViewerState={item,source,sequence,abortController:null,originalReady:false};
+    olliTalkPhotoViewerState={item,source,sequence,abortController:null,originalReady:false,objectUrl:null};
     setOlliTalkPhotoViewerProgress({
       phase:'waiting',
       loaded:0,
@@ -4978,6 +5005,10 @@
     if(event){event.preventDefault();event.stopPropagation()}
     const attachment=olliTalkPhotoViewerState?.item?.attachment;
     if(!attachment)return false;
+    if(attachment.is_shared){
+      try{return await window.OlliSharedTeamChat.downloadUnified(attachment)}
+      catch(error){alert(error?.message||'원본 파일을 저장하지 못했습니다.');return false}
+    }
     return downloadOlliTalkAttachment(attachment);
   }
 
@@ -5009,6 +5040,10 @@
     if(talk){talk.style.display='flex';talk.setAttribute('aria-hidden','false')}
     if(archive){archive.style.display='none';archive.setAttribute('aria-hidden','true')}
     return openOlliTalkArchivePage(null,{tab:'media'});
+  }
+
+  function isOlliTalkVideoAttachment(attachment){
+    return /^video\\//i.test(String(attachment?.mime_type||''))||/\\.(mov|mp4|m4v|webm|ogv)$/i.test(String(attachment?.file_name||''));
   }
 
   function isOlliTalkImageAttachment(attachment){
@@ -5902,8 +5937,7 @@
         frame.setAttribute('aria-label',isVideo?'원본 동영상 보기':'원본 사진 보기');
         frame.appendChild(createMessageText('span','olliTalkBetaAttachmentImageFallback',isVideo?'▶ 동영상':'사진 불러오는 중…'));
         window.OlliSharedTeamChat?.mountUnifiedThumbnail?.(attachment,frame);
-        const open=()=>Promise.resolve(window.OlliSharedTeamChat.openUnifiedMedia(attachment))
-          .catch(error=>alert(error.message||'원본 미디어를 열 수 없습니다.'));
+        const open=()=>openOlliTalkPhotoViewer(item,{source:'chat'});
         frame.addEventListener('click',open);
         frame.addEventListener('keydown',event=>{
           if(event.key!=='Enter'&&event.key!==' ')return;

@@ -486,6 +486,26 @@
     }
   }
 
+  // Reuse the browser's native original-image/video viewer, not a second in-app viewer.
+  // The private shared-chat broker is still the only authorized file read path.
+  function openSharedOriginalInBrowser(attachment) {
+    const tab = global.open('about:blank', '_blank');
+    if (!tab) {
+      alert('원본 보기 창을 열 수 없습니다. 브라우저의 팝업 차단을 확인해 주세요.');
+      return;
+    }
+    global.OlliSharedTeamChat.fetchUnifiedBlob(attachment).then(blob => {
+      if (tab.closed) return;
+      const url = URL.createObjectURL(blob);
+      tab.location.replace(url);
+      // Keep the blob alive while the native viewer initializes, including video metadata.
+      setTimeout(() => URL.revokeObjectURL(url), 10 * 60 * 1000);
+    }).catch(error => {
+      try { tab.close(); } catch (_) {}
+      alert(error?.message || '원본 미디어를 열 수 없습니다.');
+    });
+  }
+
   function makeAttachmentCard(item) {
     const attachment = item?.attachment || {};
     const card = document.createElement('button');
@@ -494,8 +514,7 @@
     card.addEventListener('click', () => {
       if (attachment.is_shared) {
         if (/^(image|video)\//i.test(clean(attachment.mime_type))) {
-          Promise.resolve(global.OlliSharedTeamChat.openUnifiedMedia(attachment))
-            .catch(error => alert(error.message || '원본 미디어를 열 수 없습니다.'));
+          openSharedOriginalInBrowser(attachment);
         } else {
           global.OlliSharedTeamChat.downloadUnified(attachment)
             .catch(error => alert(error.message || '파일을 열 수 없습니다.'));

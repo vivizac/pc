@@ -20,5 +20,5 @@ test('mobile team chat sender name and academy badge share a single grid cell',(
 test('mobile team chat sender name is subtly larger and assets are cache-busted',()=>{
   assert.match(css,/#olliTalkBetaScreen \.olliTalkBetaIncomingLayout \.olliTalkBetaSenderName\s*\{[^}]*font-size:calc\(11\.5px \* var\(--olli-text-scale, 1\)\)/);
   assert.match(html,/olli-talk-beta\.css\?v=20261110-sender-identity-inline-1/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261111-media-preview-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261111-original-viewer-restore-1/);
 });
