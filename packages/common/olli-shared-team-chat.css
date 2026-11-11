@@ -29,5 +29,5 @@
 @media(max-width:600px){.olliSharedChatDialog{width:100vw;height:100dvh;border-radius:0;border:0;padding:14px;padding-bottom:max(14px,env(safe-area-inset-bottom))}.olliSharedChatDialog header strong{font-size:17px}.olliSharedChatDialog header button{font-size:12px}.olliSharedChatMessage{width:95%}}
 
 /* Shared Team Chat thumbnail presentation. The original media viewer is owned by each app. */
-.olliPcTeamTalkAttachmentThumb,.olliTalkBetaAttachmentImageFrame{position:relative;overflow:hidden}
+.olliPcTeamTalkAttachmentThumb,.olliTalkBetaAttachmentImageFrame,.olliPcTeamTalkMediaItem,.olliTalkArchiveMediaItem{position:relative;overflow:hidden}
 .olliUnifiedThumbnailImage{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
