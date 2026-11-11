@@ -104,3 +104,19 @@ test('local legacy photo deletion never persists unified-room records into an ac
   const mobile=load('apps/mobile/olli-talk-beta.js');
   assert.ok(mobile.includes('messages:nextArchive.messages.filter(message=>!message?.is_shared&&!message?.attachment?.is_shared)'));
 });
+
+test('video cards in PC and mobile Team Chat and Work Hub retain a visible central play overlay',()=>{
+  const service=load('packages/common/olli-shared-team-chat.js');
+  const style=load('packages/common/olli-shared-team-chat.css');
+  const pc=load('apps/pc/pc-team-talk.js'),mobile=load('apps/mobile/olli-talk-beta.js');
+  assert.ok(service.includes("mime.startsWith('video/')&&!target.querySelector('.olliUnifiedVideoPlay')"));
+  assert.ok(service.includes("play.setAttribute('aria-hidden','true')"));
+  assert.ok(service.includes('target.append(play)'));
+  assert.ok(style.includes('.olliUnifiedVideoPlay{position:absolute;left:50%;top:50%;'));
+  assert.ok(style.includes('z-index:3'));
+  assert.ok(style.includes('pointer-events:none'));
+  assert.ok(pc.includes('mountUnifiedThumbnail?.(attachment, thumb)'));
+  assert.ok(pc.includes('mountUnifiedThumbnail?.(attachment,button)'));
+  assert.ok(mobile.includes('mountUnifiedThumbnail?.(attachment,frame)'));
+  assert.ok(mobile.includes('mountUnifiedThumbnail?.(attachment,button)'));
+});
