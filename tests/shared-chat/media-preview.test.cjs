@@ -53,7 +53,7 @@ test('shared thumbnails keep working while the original phone viewer is reused a
   assert.match(pc,/openSharedOriginalInBrowser\(attachment\)/);
   assert.match(mobile,/mountUnifiedThumbnail\?\.\(attachment,frame\)/);
   assert.match(mobile,/openOlliTalkPhotoViewer\(item,\{source:'chat'\}\)/);
-  assert.match(mobile,/OlliSharedTeamChat\.fetchUnifiedBlob\(attachment\)/);
+  assert.ok(mobile.includes('OlliSharedTeamChat.fetchUnifiedBlob(attachment,{'));
   assert.match(mobile,/OlliSharedTeamChat\.downloadUnified\(attachment\)/);
   assert.match(mobile,/video\.src=url;video\.hidden=false;video\.load\(\)/);
   assert.doesNotMatch(shared,/openUnifiedMedia|closeUnifiedMedia|olliSharedMediaViewer/);
