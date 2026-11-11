@@ -497,6 +497,14 @@ async function fetchUnifiedBlob(attachment,options={}){
 function mountUnifiedThumbnail(attachment,target){
   const mime=unifiedMediaType(attachment);
   if(!mime||!target)return false;
+  // The overlay is purely visual: the existing thumbnail/card remains the
+  // clickable control, so nested buttons and duplicate event handlers are avoided.
+  if(mime.startsWith('video/')&&!target.querySelector('.olliUnifiedVideoPlay')){
+    const play=node('span',null,'olliUnifiedVideoPlay');
+    play.setAttribute('aria-hidden','true');
+    play.append(node('span',null,'olliUnifiedVideoPlayTriangle'));
+    target.append(play);
+  }
   const showImage=url=>{
     const img=node('img',null,'olliUnifiedThumbnailImage');img.alt='';
     img.onload=()=>{
