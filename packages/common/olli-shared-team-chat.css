@@ -28,19 +28,6 @@
 [data-shared-chat-entry][hidden]{display:none!important}
 @media(max-width:600px){.olliSharedChatDialog{width:100vw;height:100dvh;border-radius:0;border:0;padding:14px;padding-bottom:max(14px,env(safe-area-inset-bottom))}.olliSharedChatDialog header strong{font-size:17px}.olliSharedChatDialog header button{font-size:12px}.olliSharedChatMessage{width:95%}}
 
-/* Private unified Team Chat media preview (one common style on PC and Phone). */
+/* Shared Team Chat thumbnail presentation. The original media viewer is owned by each app. */
 .olliPcTeamTalkAttachmentThumb,.olliTalkBetaAttachmentImageFrame{position:relative;overflow:hidden}
 .olliUnifiedThumbnailImage{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
-.olliSharedMediaViewer{box-sizing:border-box;width:min(900px,96vw);max-width:96vw;max-height:94dvh;overflow:hidden;border:0;border-radius:18px;padding:16px;background:#fff;color:#1a2433;z-index:1000002;box-shadow:0 14px 50px #0004;font:15px/1.5 system-ui,sans-serif}
-.olliSharedMediaViewer::backdrop{background:rgba(0,0,0,.82)}
-.olliSharedMediaViewer[open]{display:flex;flex-direction:column;gap:12px}
-.olliSharedMediaViewer *{box-sizing:border-box}
-.olliSharedMediaHeader,.olliSharedMediaActions{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.olliSharedMediaHeader strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.olliSharedMediaViewer button{background:#f3f5f8;border:1px solid #d7dce4;border-radius:10px;padding:9px 14px;font:inherit;color:#172a45;cursor:pointer}
-.olliSharedMediaViewer button:focus-visible{outline:3px solid #0a84ff;outline-offset:2px}
-.olliSharedMediaStage{min-height:160px;max-height:calc(94dvh - 155px);display:flex;align-items:center;justify-content:center;overflow:auto;background:#111;border-radius:12px;color:#fff}
-.olliSharedMediaStage img,.olliSharedMediaStage video{display:block;max-width:100%;max-height:calc(94dvh - 155px);width:auto;height:auto;object-fit:contain}
-.olliSharedMediaStatus{margin:0;font-size:12px;color:#69778c}
-.olliSharedMediaActions{justify-content:flex-end}
-@media(max-width:600px){.olliSharedMediaViewer{width:100vw;max-width:100vw;max-height:100dvh;border-radius:0;padding:12px}.olliSharedMediaStage{max-height:calc(100dvh - 150px)}.olliSharedMediaStage img,.olliSharedMediaStage video{max-height:calc(100dvh - 150px)}}

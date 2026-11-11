@@ -3,7 +3,7 @@
 'use strict';
 if(global.OlliSharedTeamChat)return;
 const state={room:null,status:null,epoch:'',messages:[],members:[],reply:null,edit:null,lastRead:0,ready:false,busy:false,sequence:0,pendingUpload:null};
-let dialog=null,mode='',watcher=null,configRequest=null,previousFocus=null,unifiedMediaViewer=null;
+let dialog=null,mode='',watcher=null,configRequest=null,previousFocus=null;
 const clean=value=>String(value??'').trim();
 const node=(tag,text,cls)=>{const el=document.createElement(tag);if(text!=null)el.textContent=text;if(cls)el.className=cls;return el;};
 function context(){
@@ -48,7 +48,7 @@ function close(){
   dialog?.remove();dialog=null;mode='';clearContent();
   previousFocus?.focus?.();previousFocus=null;
 }
-function reset(){closeUnifiedMedia();close();for(const el of document.querySelectorAll('[data-shared-chat-entry]')){el.hidden=true;el.textContent='공동 대화';}}
+function reset(){close();for(const el of document.querySelectorAll('[data-shared-chat-entry]')){el.hidden=true;el.textContent='공동 대화';}}
 function createDialog(title){
   close();previousFocus=document.activeElement;
   dialog=node('dialog',null,'olliSharedChatDialog');dialog.setAttribute('aria-label',title);
@@ -324,12 +324,12 @@ async function manage(){
   return true;
 }
 function start(){
-  global.addEventListener('olli:shared-team-chat-changed',closeUnifiedMedia);
+  
   global.OlliStorageCore?.AcademyContext?.registerRuntimeCleaner?.(reset);
   global.addEventListener('olli:account-session-invalidated',reset);
   global.addEventListener('storage',event=>{if(!event.key||['olli_account_session_token_v1','olli_current_academy_id','olli_current_member_id'].includes(event.key))reset();});
   global.addEventListener('online',()=>{refreshEntry();refresh();});global.addEventListener('focus',()=>{refreshEntry();refresh();});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){closeUnifiedMedia();state.messages=[];dialog?.querySelector('[data-shared-messages]')?.replaceChildren();state.ready=false;}else{refreshEntry();refresh();}});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){state.messages=[];dialog?.querySelector('[data-shared-messages]')?.replaceChildren();state.ready=false;}else{refreshEntry();refresh();}});
   watcher=global.OlliRealtime?.watchDomain?.('chat',()=>{refreshEntry();return refresh();});
   navigator.serviceWorker?.addEventListener?.('message',event=>{
     if(event.data?.type==='OLLI_SHARED_CHAT_REFRESH'){refreshEntry();refresh();}
@@ -492,59 +492,6 @@ function mountUnifiedThumbnail(attachment,target){
   }else load();
   return true;
 }
-function closeUnifiedMedia(){
-  const viewer=unifiedMediaViewer;
-  if(!viewer)return;
-  unifiedMediaViewer=null;
-  if(viewer.dialog.open)viewer.dialog.close();
-  viewer.dialog.remove();
-  if(viewer.url)URL.revokeObjectURL(viewer.url);
-}
-function openUnifiedMedia(attachment){
-  if(!unifiedMediaType(attachment))return downloadUnified(attachment);
-  closeUnifiedMedia();
-  const dialog=node('dialog',null,'olliSharedMediaViewer');
-  dialog.setAttribute('aria-label','팀챗 원본 미디어');
-  const header=node('div',null,'olliSharedMediaHeader');
-  const name=node('strong',clean(attachment?.file_name)||'원본 미디어');
-  const closeButton=button('닫기',closeUnifiedMedia);
-  header.append(name,closeButton);
-  const stage=node('div',null,'olliSharedMediaStage');
-  stage.append(node('span','원본을 불러오는 중…'));
-  const status=node('p','원본 파일을 서버에서 안전하게 불러옵니다.','olliSharedMediaStatus');
-  const actions=node('div',null,'olliSharedMediaActions');
-  const download=button('원본 다운로드',()=>{
-    downloadUnified(attachment).catch(error=>{status.textContent=error.message||'다운로드에 실패했습니다.';});
-  });
-  actions.append(download);
-  dialog.append(header,stage,status,actions);
-  document.body.append(dialog);
-  dialog.addEventListener('cancel',event=>{event.preventDefault();closeUnifiedMedia();});
-  dialog.addEventListener('click',event=>{if(event.target===dialog)closeUnifiedMedia();});
-  const viewer={dialog,url:''};
-  unifiedMediaViewer=viewer;
-  dialog.showModal();
-  fetchUnifiedBlob(attachment).then(blob=>{
-    if(unifiedMediaViewer!==viewer)return;
-    viewer.url=URL.createObjectURL(blob);
-    const isVideo=unifiedMediaType(attachment).startsWith('video/');
-    const media=node(isVideo?'video':'img');
-    media.src=viewer.url;
-    if(isVideo){
-      media.controls=true;media.playsInline=true;media.preload='metadata';
-      media.addEventListener('error',()=>{
-        if(unifiedMediaViewer===viewer)status.textContent='이 기기에서 지원되지 않는 영상 형식일 수 있습니다. 원본 다운로드를 이용해 주세요.';
-      });
-    }else media.alt=clean(attachment.file_name)||'원본 사진';
-    stage.replaceChildren(media);
-    status.textContent=isVideo?'영상이 재생되지 않으면 원본 다운로드를 이용해 주세요.':'원본 사진입니다.';
-  }).catch(error=>{
-    if(unifiedMediaViewer!==viewer)return;
-    stage.replaceChildren(node('span','미디어를 불러오지 못했습니다.'));
-    status.textContent=error.message||'원본 파일을 다시 확인해 주세요.';
-  });
-  return true;
-}
 async function downloadUnified(attachment){
   const blob=await fetchUnifiedBlob(attachment);
   const url=URL.createObjectURL(blob),a=node('a');
@@ -629,6 +576,6 @@ function renderInlineSettings(root,status,ctx,message){
   controls.append(save);root.append(controls);
 }
 
-global.OlliSharedTeamChat=Object.freeze({version:'2.0.0',open,manage,close,refreshEntry,reset,context,unifiedExtension,sendUnified,markUnifiedRead,uploadUnified,downloadUnified,fetchUnifiedBlob,mountUnifiedThumbnail,openUnifiedMedia,mountSettings});
+global.OlliSharedTeamChat=Object.freeze({version:'2.0.0',open,manage,close,refreshEntry,reset,context,unifiedExtension,sendUnified,markUnifiedRead,uploadUnified,downloadUnified,fetchUnifiedBlob,mountUnifiedThumbnail,mountSettings});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })(window);

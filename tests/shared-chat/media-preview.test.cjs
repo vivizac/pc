@@ -46,17 +46,20 @@ test('shared media fetch is authorized through the common broker, never the lega
   await assert.rejects(()=>global.OlliSharedTeamChat.fetchUnifiedBlob(media),/참여하지 않습니다/);
   assert.equal(calls.filter(c=>c.url.startsWith('/api/shared-team-chat-file')).length,0);
 });
-test('PC and Phone use one shared thumbnail and media viewer implementation',()=>{
+test('shared thumbnails keep working while the original phone viewer is reused and the duplicate popup is removed',()=>{
   const pc=load('apps/pc/pc-team-talk.js');
   const mobile=load('apps/mobile/olli-talk-beta.js');
   assert.match(pc,/mountUnifiedThumbnail\?\.\(attachment, thumb\)/);
-  assert.match(pc,/openUnifiedMedia\(attachment\)/);
+  assert.match(pc,/openSharedOriginalInBrowser\(attachment\)/);
   assert.match(mobile,/mountUnifiedThumbnail\?\.\(attachment,frame\)/);
-  assert.match(mobile,/openUnifiedMedia\(attachment\)/);
-  assert.match(shared,/function openUnifiedMedia\(attachment\)/);
-  assert.match(shared,/function closeUnifiedMedia\(\)/);
-  assert.match(shared,/function reset\(\)\{closeUnifiedMedia\(\);/);
+  assert.match(mobile,/openOlliTalkPhotoViewer\(item,\{source:'chat'\}\)/);
+  assert.match(mobile,/OlliSharedTeamChat\.fetchUnifiedBlob\(attachment\)/);
+  assert.match(mobile,/OlliSharedTeamChat\.downloadUnified\(attachment\)/);
+  assert.match(mobile,/video\.src=url;video\.hidden=false;video\.load\(\)/);
+  assert.doesNotMatch(shared,/openUnifiedMedia|closeUnifiedMedia|olliSharedMediaViewer/);
+  assert.doesNotMatch(load('packages/common/olli-shared-team-chat.css'),/olliSharedMediaViewer|olliSharedMediaStage/);
+  assert.match(load('apps/mobile/index.html'),/id="olliTalkPhotoViewerVideo"/);
   for(const page of ['apps/pc/index.html','apps/mobile/index.html']){
-    assert.match(load(page),/olli-shared-team-chat.css\?v=20261111-media-preview-1/);
+    assert.match(load(page),/olli-shared-team-chat.css\?v=20261111-original-viewer-restore-1/);
   }
 });
