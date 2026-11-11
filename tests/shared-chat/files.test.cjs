@@ -67,4 +67,15 @@ test('retry after a lost commit response returns the already authorized file mes
   const res=response();await handler(request('POST',{action:'commit',attachment_id:uid(4)}),res);
   assert.equal(res.statusCode,200);assert.equal(res.body.message_id,42);assert.equal(calls.length,1);
 });
-\ntest('untrusted signed URL cannot redirect server to external host',async()=>{\n  const path=`${uid(2)}/${uid(3)}/${uid(4)}`;\n  const calls=[];\n  const handler=makeHandler({key:()=> 'sb_secret_test',fetchImpl:async(url,init)=>{\n    calls.push(url);\n    if(url.includes('/rpc/'))return json({ok:true,storage_path:path,file_name:'a.jpg'});\n    return json({signedURL:'https://evil.example/object/sign/olli_shared_chat_files/'+path+'?token=x'});\n  }});\n  const res=response();await handler(request('GET'),res);\n  assert.equal(res.statusCode,403);assert.equal(calls.length,2);assert.equal(res.bytes.length,0);\n});\n
+
+test('untrusted signed URL cannot redirect server to external host',async()=>{
+  const path=`${uid(2)}/${uid(3)}/${uid(4)}`;
+  const calls=[];
+  const handler=makeHandler({key:()=> 'sb_secret_test',fetchImpl:async(url,init)=>{
+    calls.push(url);
+    if(url.includes('/rpc/'))return json({ok:true,storage_path:path,file_name:'a.jpg'});
+    return json({signedURL:'https://evil.example/object/sign/olli_shared_chat_files/'+path+'?token=x'});
+  }});
+  const res=response();await handler(request('GET'),res);
+  assert.equal(res.statusCode,403);assert.equal(calls.length,2);assert.equal(res.bytes.length,0);
+});
