@@ -4711,7 +4711,12 @@
     if(archiveSource){
       const nextArchive={...archiveSource,messages:(Array.isArray(archiveSource.messages)?archiveSource.messages:[]).filter(keepMessage)};
       olliTalkArchivePayload=nextArchive;
-      writeOlliTalkArchiveCache(context,nextArchive);
+      // A local photo deletion must not copy the unified room's private
+      // attachments into the persistent cache of one academy.
+      writeOlliTalkArchiveCache(context,{
+        ...nextArchive,
+        messages:nextArchive.messages.filter(message=>!message?.is_shared&&!message?.attachment?.is_shared)
+      });
       const archive=document.getElementById('olliTalkArchiveScreen');
       if(archive&&archive.style.display!=='none'&&olliTalkArchiveTab!=='materials'){
         renderOlliTalkArchive();
