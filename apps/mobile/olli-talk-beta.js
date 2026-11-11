@@ -5888,12 +5888,34 @@
   function createOlliTalkMessageBubble(input, options = {}){
     const item=input&&typeof input==='object'?input:null;
     if(item?.attachment?.is_shared){
+      const attachment=item.attachment;
       const wrap=document.createElement('div');wrap.className='olliTalkBetaBubble olliTalkBetaAttachmentBubble';
+      const isImage=/^image\//i.test(String(attachment.mime_type||''));
+      const isVideo=/^video\//i.test(String(attachment.mime_type||''));
+      if(isImage||isVideo){
+        wrap.classList.add('olliTalkBetaImageAttachmentBubble');
+        const frame=document.createElement('div');
+        frame.className='olliTalkBetaAttachmentImageFrame fallbackRatio';
+        frame.style.aspectRatio='4 / 3';
+        frame.setAttribute('role','button');
+        frame.setAttribute('tabindex','0');
+        frame.setAttribute('aria-label',isVideo?'원본 동영상 보기':'원본 사진 보기');
+        frame.appendChild(createMessageText('span','olliTalkBetaAttachmentImageFallback',isVideo?'▶ 동영상':'사진 불러오는 중…'));
+        window.OlliSharedTeamChat?.mountUnifiedThumbnail?.(attachment,frame);
+        const open=()=>Promise.resolve(window.OlliSharedTeamChat.openUnifiedMedia(attachment))
+          .catch(error=>alert(error.message||'원본 미디어를 열 수 없습니다.'));
+        frame.addEventListener('click',open);
+        frame.addEventListener('keydown',event=>{
+          if(event.key!=='Enter'&&event.key!==' ')return;
+          event.preventDefault();open();
+        });
+        wrap.append(frame);return wrap;
+      }
       const card=document.createElement('button');card.type='button';card.className='olliTalkBetaAttachmentCard';
       card.appendChild(createMessageText('span','olliTalkBetaAttachmentIcon','파일'));
-      const info=createMessageText('span','olliTalkBetaAttachmentName',String(item.attachment.file_name||'첨부파일'));
+      const info=createMessageText('span','olliTalkBetaAttachmentName',String(attachment.file_name||'첨부파일'));
       card.appendChild(info);
-      card.addEventListener('click',()=>window.OlliSharedTeamChat.downloadUnified(item.attachment)
+      card.addEventListener('click',()=>window.OlliSharedTeamChat.downloadUnified(attachment)
         .catch(error=>alert(error.message||'첨부파일을 열 수 없습니다.')));
       wrap.append(card);return wrap;
     }

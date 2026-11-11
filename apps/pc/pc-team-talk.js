@@ -493,21 +493,33 @@
     card.className = 'olliPcTeamTalkAttachment';
     card.addEventListener('click', () => {
       if (attachment.is_shared) {
-        global.OlliSharedTeamChat.downloadUnified(attachment).catch(error => alert(error.message || '파일을 열 수 없습니다.'));
+        if (/^(image|video)\//i.test(clean(attachment.mime_type))) {
+          Promise.resolve(global.OlliSharedTeamChat.openUnifiedMedia(attachment))
+            .catch(error => alert(error.message || '원본 미디어를 열 수 없습니다.'));
+        } else {
+          global.OlliSharedTeamChat.downloadUnified(attachment)
+            .catch(error => alert(error.message || '파일을 열 수 없습니다.'));
+        }
       } else downloadAttachment(attachment);
     });
 
-    if (attachment.kind === 'media' && /^image\//i.test(clean(attachment.mime_type))) {
+    const isImage=/^image\//i.test(clean(attachment.mime_type));
+    const isVideo=/^video\//i.test(clean(attachment.mime_type));
+    if ((attachment.kind === 'media' || attachment.is_shared) && (isImage || isVideo)) {
       const thumb = create('span', 'olliPcTeamTalkAttachmentThumb');
-      thumb.appendChild(create('span', 'olliPcTeamTalkAttachmentFallback', '사진'));
-      getAttachmentBlobUrl(attachment).then((url) => {
-        if (!thumb.isConnected) return;
-        const image = document.createElement('img');
-        image.alt = clean(attachment.file_name);
-        image.loading = 'lazy';
-        image.src = url;
-        thumb.replaceChildren(image);
-      }).catch(() => {});
+      thumb.appendChild(create('span', 'olliPcTeamTalkAttachmentFallback', isVideo ? '▶ 동영상' : '사진'));
+      if (attachment.is_shared) {
+        global.OlliSharedTeamChat?.mountUnifiedThumbnail?.(attachment, thumb);
+      } else if (isImage) {
+        getAttachmentBlobUrl(attachment).then((url) => {
+          if (!thumb.isConnected) return;
+          const image = document.createElement('img');
+          image.alt = clean(attachment.file_name);
+          image.loading = 'lazy';
+          image.src = url;
+          thumb.replaceChildren(image);
+        }).catch(() => {});
+      }
       card.appendChild(thumb);
     } else {
       card.appendChild(create('span', 'olliPcTeamTalkFileType', fileExtension(attachment.file_name)));
