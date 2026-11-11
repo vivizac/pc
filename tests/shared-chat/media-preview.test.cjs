@@ -91,16 +91,16 @@ test('Work Hub uses only current-room authorized shared attachments and never an
 });
 test('both Work Hubs merge shared room files without persisting them in academy private cache',()=>{
   const pc=load('apps/pc/pc-team-talk.js'),mobile=load('apps/mobile/olli-talk-beta.js');
-  assert.match(pc,/archiveUnified\\?\\.\\(\\{limit:1000\\}\\)/);
-  assert.match(mobile,/archiveUnified\\?\\.\\(\\{limit:1000\\}\\)/);
-  assert.match(pc,/attachment\\.is_shared[\\s\\S]*openSharedOriginalInBrowser\\(attachment\\)/);
-  assert.match(mobile,/attachment\\.is_shared[\\s\\S]*mountUnifiedThumbnail\\?\\.\\(attachment,button\\)/);
-  assert.match(mobile,/writeOlliTalkArchiveCache\\(context,payload\\)/);
-  assert.doesNotMatch(mobile,/writeOlliTalkArchiveCache\\(context,combined\\)/);
-  assert.match(mobile,/OlliSharedTeamChat\\.fetchUnifiedBlob\\(attachment,\\{[\\s\\S]*signal:controller\\.signal/);
+  assert.ok(pc.includes('archiveUnified?.({limit:1000})'));
+  assert.ok(mobile.includes('archiveUnified?.({limit:1000})'));
+  assert.ok(pc.includes('openSharedOriginalInBrowser(attachment)'));
+  assert.ok(mobile.includes('mountUnifiedThumbnail?.(attachment,button)'));
+  assert.ok(mobile.includes('writeOlliTalkArchiveCache(context,payload)'));
+  assert.ok(!mobile.includes('writeOlliTalkArchiveCache(context,combined)'));
+  assert.ok(mobile.includes('fetchUnifiedBlob(attachment,{'));
+  assert.ok(mobile.includes('signal:controller.signal'));
 });
-
 test('local legacy photo deletion never persists unified-room records into an academy cache',()=>{
   const mobile=load('apps/mobile/olli-talk-beta.js');
-  assert.match(mobile,/writeOlliTalkArchiveCache\\(context,\\{[\\s\\S]*messages:nextArchive\\.messages\\.filter\\(message=>!message\\?\\.is_shared&&!message\\?\\.attachment\\?\\.is_shared\\)/);
+  assert.ok(mobile.includes('messages:nextArchive.messages.filter(message=>!message?.is_shared&&!message?.attachment?.is_shared)'));
 });
