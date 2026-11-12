@@ -10,43 +10,67 @@ const migration = fs.readFileSync('../../supabase/migrations/20261104153500_olli
 const registrationOnlyMigration = fs.readFileSync('../../supabase/migrations/20261104201500_olli_schedule_recent_card_badges_registration_only.sql', 'utf8');
 const readdedSlotMigration = fs.readFileSync('../../supabase/migrations/20261105153800_olli_schedule_recent_card_badges_exclude_readded_slots.sql', 'utf8');
 
-const helperMatch = ui.match(/  function isTimetableNewCard\(kind, cardId, nowMs = Date\.now\(\)\) \{[\s\S]*?\n  \}\n\n  function cellContentsHtml/);
+const helperMatch = ui.match(/  function isTimetableNewCard\(kind, cardId, sessionDate, nowMs = Date\.now\(\)\) \{[\s\S]*?\n  \}\n\n  function cellContentsHtml/);
 assert.ok(helperMatch, 'exact production badge eligibility helper must exist');
 const helperSource = helperMatch[0].replace(/\n\n  function cellContentsHtml$/, '');
-const badge = new Function('data', 'kind', 'id', 'nowMs', `
-  const state = { data };
-  const clean = value => String(value == null ? '' : value).trim();
-  ${helperSource}
-  return isTimetableNewCard(kind, id, nowMs);
-`);
+const dateHelpers = ui.slice(ui.indexOf('  function pad('), ui.indexOf('  function koreanDate('));
+const alignHelper = ui.match(/  function alignDateToWeekdayOnOrAfter\(value, weekday\) \{[\s\S]*?\n  \}/);
+assert.ok(alignHelper, 'production weekday alignment must exist');
+const badge = new Function('data', 'kind', 'id', 'sessionDate', 'nowMs',
+  'const state = { data }; const clean = value => String(value == null ? "" : value).trim();\n'
+    + dateHelpers + '\n' + alignHelper[0] + '\n' + helperSource
+    + '\nreturn isTimetableNewCard(kind, id, sessionDate, nowMs);');
 
-test('new enrollment and pickup IDs display N for fewer than 14 days', () => {
-  const now = Date.parse('2026-11-04T06:00:00.000Z');
-  const data = { recent_card_badges: {
-    enrollments: [{ id: 'enroll-1', created_at: new Date(now - 1000).toISOString() }],
-    pickups: [{ id: 'pickup-1', created_at: new Date(now - (13 * 86400000 + 86399999)).toISOString() }]
-  } };
-  assert.equal(badge(data, 'enrollments', 'enroll-1', now), true);
-  assert.equal(badge(data, 'pickups', 'pickup-1', now), true);
-  assert.equal(badge(data, 'enrollments', 'pickup-1', now), false, 'card categories must not leak');
+test('Nov 11 new student card appears only on Nov 11 and Nov 18, not Nov 25 or Dec 2', () => {
+  const data = { recent_card_badges: { enrollments: [
+    { id: 'juho', created_at: '2026-11-09T05:21:45.366Z', effective_from: '2026-11-09', weekday: 3 }
+  ] } };
+  const now = Date.parse('2026-11-10T09:00:00Z');
+  assert.equal(badge(data, 'enrollments', 'juho', '2026-11-11', now), true);
+  assert.equal(badge(data, 'enrollments', 'juho', '2026-11-18', now), true);
+  assert.equal(badge(data, 'enrollments', 'juho', '2026-11-25', now), false);
+  assert.equal(badge(data, 'enrollments', 'juho', '2026-12-02', now), false);
+  assert.equal(badge(data, 'enrollments', 'juho', new Date(2026, 10, 18), now), true);
 });
 
-test('N expires at exactly 14 days, and unknown or future timestamps never show N', () => {
-  const now = Date.parse('2026-11-04T06:00:00.000Z');
+test('later revisiting prior weeks restores original N; future starts and retroactive adds are bounded correctly', () => {
   const data = { recent_card_badges: { enrollments: [
-    { id: 'expired', created_at: new Date(now - 14 * 86400000).toISOString() },
-    { id: 'future', created_at: new Date(now + 1000).toISOString() },
-    { id: 'invalid', created_at: 'not a timestamp' }
+    { id: 'juho', created_at: '2026-11-09T05:21:45.366Z', effective_from: '2026-11-09', weekday: 3 },
+    { id: 'future', created_at: '2026-11-09T05:21:45.366Z', effective_from: '2026-12-01', weekday: 3 },
+    { id: 'retro', created_at: '2026-11-20T08:00:00Z', effective_from: '2026-11-09', weekday: 3 },
+    { id: 'invalid', created_at: 'invalid', effective_from: '2026-11-09', weekday: 3 }
   ] } };
-  assert.equal(badge(data, 'enrollments', 'expired', now), false);
-  assert.equal(badge(data, 'enrollments', 'future', now), false);
-  assert.equal(badge(data, 'enrollments', 'invalid', now), false);
-  assert.equal(badge(data, 'enrollments', 'unknown', now), false);
-  assert.equal(badge({}, 'enrollments', 'expired', now), false, 'legacy cache');
+  const now = Date.parse('2026-12-15T09:00:00Z');
+  assert.equal(badge(data, 'enrollments', 'juho', '2026-11-11', now), true);
+  assert.equal(badge(data, 'enrollments', 'future', '2026-11-25', now), false);
+  assert.equal(badge(data, 'enrollments', 'future', '2026-12-02', now), true);
+  assert.equal(badge(data, 'enrollments', 'future', '2026-12-09', now), true);
+  assert.equal(badge(data, 'enrollments', 'future', '2026-12-16', now), false);
+  assert.equal(badge(data, 'enrollments', 'retro', '2026-11-18', now), false);
+  assert.equal(badge(data, 'enrollments', 'retro', '2026-11-25', now), true);
+  assert.equal(badge(data, 'enrollments', 'invalid', '2026-11-11', now), false);
+  assert.equal(badge(data, 'enrollments', 'missing', '2026-11-11', now), false);
+  assert.equal(badge({}, 'enrollments', 'juho', '2026-11-11', now), false);
+});
+
+test('pickup N keeps its original 14-day clock; the student date check does not leak to pickups', () => {
+  const now = Date.parse('2026-11-04T06:00:00Z');
+  const data = { recent_card_badges: { pickups: [
+    { id: 'recent', created_at: new Date(now - 1000).toISOString() },
+    { id: 'boundary', created_at: new Date(now - 14 * 86400000).toISOString() },
+    { id: 'future', created_at: new Date(now + 1000).toISOString() },
+    { id: 'invalid', created_at: 'bad timestamp' }
+  ] } };
+  assert.equal(badge(data, 'pickups', 'recent', undefined, now), true);
+  assert.equal(badge(data, 'pickups', 'recent', '2027-01-01', now), true);
+  assert.equal(badge(data, 'pickups', 'boundary', undefined, now), false);
+  assert.equal(badge(data, 'pickups', 'future', undefined, now), false);
+  assert.equal(badge(data, 'pickups', 'invalid', undefined, now), false);
+  assert.equal(badge(data, 'enrollments', 'recent', '2026-11-04', now), false);
 });
 
 test('only registered regular student cards and pickup cards use the independent recent-card class', () => {
-  assert.match(ui, /isTimetableNewCard\('enrollments', item\.id\) \? ' olliTtNewCard' : ''/);
+  assert.match(ui, /isTimetableNewCard\('enrollments', item\.id, date\) \? ' olliTtNewCard' : ''/);
   assert.match(ui, /isTimetableNewCard\('pickups', item\.id\) \? ' olliTtNewCard' : ''/);
   assert.match(ui, /class="olliTtStudent regular \$\{division\}\$\{newCardClass\}/);
   assert.match(ui, /class="olliTtPickupCard\$\{newCardClass\}"/);
@@ -55,7 +79,7 @@ test('only registered regular student cards and pickup cards use the independent
 
 test('regular student NEW renders as the same top-right N overlay as pickup, not a name capsule', () => {
   assert.match(ui, /const studentNameHtml = esc\(item\.student_name\);/);
-  assert.match(ui, /isTimetableNewCard\('enrollments', item\.id\) \? ' olliTtNewCard' : ''/);
+  assert.match(ui, /isTimetableNewCard\('enrollments', item\.id, date\) \? ' olliTtNewCard' : ''/);
   assert.match(ui, /\$\{studentNameHtml\}\$\{pauseBadge\}/);
   assert.doesNotMatch(ui, /olliTtNewName(?:Text)?/);
   assert.doesNotMatch(css, /\.olliTtNewName(?:Text)?/);
@@ -178,7 +202,23 @@ test('read-only NEW correction preserves registration, 14-day clock, pickup N an
 
 test('PC timetable cache-busts only the modified stylesheet and scripts', () => {
   for (const asset of ['pc-timetable.js', 'pc-timetable-service.js', 'pc-timetable.css']) {
-    const version = asset === 'pc-timetable-service.js' ? '20261104-new-card-badge-1' : asset === 'pc-timetable.js' ? '20261105-new-card-n-corner-1' : '20261105-new-border-74aaf6-1';
+    const version = asset === 'pc-timetable-service.js' ? '20261104-new-card-badge-1' : asset === 'pc-timetable.js' ? '20261112-new-card-calendar-verified-1' : '20261105-new-border-74aaf6-1';
     assert.ok(html.includes(asset + '?v=' + version), asset);
   }
+});
+
+test('new calendar metadata RPC preserves authorization and move guards without filtering student N by the current day', () => {
+  const sql = fs.readFileSync('../../supabase/migrations/20261110100000_pc_timetable_new_cards_by_session_date.sql', 'utf8');
+  const enrollment = sql.slice(sql.indexOf('  into v_enrollments'), sql.indexOf('  into v_pickups'));
+  const pickup = sql.slice(sql.indexOf('  into v_pickups'), sql.indexOf('  return jsonb_build_object(', sql.indexOf('  into v_pickups')));
+  assert.match(sql, /private\.olli_schedule_can_access\(p_session_token, p_academy_id\)/);
+  assert.match(sql, /'effective_from', e\.effective_from/);
+  assert.match(sql, /'weekday', e\.weekday/);
+  assert.doesNotMatch(enrollment, /e\.created_at > now\(\) - interval '14 days'/);
+  assert.match(enrollment, /moved\.change_type = 'move'/);
+  assert.match(enrollment, /previous\.weekday = e\.weekday/);
+  assert.match(enrollment, /previous\.time_slot = e\.time_slot/);
+  assert.match(enrollment, /s\.created_at >= e\.created_at - interval '14 days'/);
+  assert.match(pickup, /p\.created_at > now\(\) - interval '14 days'/);
+  assert.doesNotMatch(sql, /\b(?:insert into|update public\.|delete from|truncate table|drop table|alter table)\b/i);
 });
