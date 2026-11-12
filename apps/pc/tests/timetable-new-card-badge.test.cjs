@@ -30,6 +30,8 @@ test('Nov 11 new student card appears only on Nov 11 and Nov 18, not Nov 25 or D
   assert.equal(badge(data, 'enrollments', 'juho', '2026-11-18', now), true);
   assert.equal(badge(data, 'enrollments', 'juho', '2026-11-25', now), false);
   assert.equal(badge(data, 'enrollments', 'juho', '2026-12-02', now), false);
+  assert.equal(badge(data, 'enrollments', 'juho', '2027-01-06', now), false, 'next year calendar must render the original card');
+  assert.equal(badge(data, 'enrollments', 'juho', '2027-12-01', now), false, 'later next year must not show NEW');
   assert.equal(badge(data, 'enrollments', 'juho', new Date(2026, 10, 18), now), true);
 });
 
