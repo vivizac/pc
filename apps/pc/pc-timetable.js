@@ -1187,16 +1187,30 @@
   function linkedAttendanceRegisterHtml() { return attendanceRegisterRuntimeApi().linkedAttendanceRegisterHtml(); }
   function renderAttendanceRegister() { return attendanceRegisterRuntimeApi().renderAttendanceRegister(); }
 
-  // Badge eligibility is tied to actual card creation, not the first class
-  // date or the currently viewed week. Unknown/legacy timestamps never show N.
-  function isTimetableNewCard(kind, cardId, nowMs = Date.now()) {
+  // Student N follows the viewed class date: only the first two weeks after
+  // the first scheduled lesson. Pickup N retains the existing creation clock.
+  function isTimetableNewCard(kind, cardId, sessionDate, nowMs = Date.now()) {
     const rows = state.data?.recent_card_badges?.[kind];
     if (!clean(cardId) || !Array.isArray(rows)) return false;
     return rows.some((row) => {
       if (clean(row?.id) !== clean(cardId)) return false;
       const createdMs = Date.parse(clean(row?.created_at));
+      if (!Number.isFinite(createdMs) || createdMs > nowMs) return false;
+      if (kind === 'enrollments') {
+        const sessionKey = sessionDate instanceof Date ? dateKey(sessionDate) : clean(sessionDate).slice(0, 10);
+        const weekday = Number(row?.weekday);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(sessionKey)
+          || !Number.isInteger(weekday) || weekday < 0 || weekday > 6) return false;
+        // South Korea has no daylight saving time for modern lesson dates.
+        const createdOn = new Date(createdMs + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const effectiveFrom = clean(row?.effective_from).slice(0, 10);
+        const firstEligibleDay = /^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom) && effectiveFrom > createdOn
+          ? effectiveFrom : createdOn;
+        const firstLesson = alignDateToWeekdayOnOrAfter(firstEligibleDay, weekday);
+        return sessionKey >= dateKey(firstLesson) && sessionKey < dateKey(addDays(firstLesson, 14));
+      }
       const ageMs = nowMs - createdMs;
-      return Number.isFinite(createdMs) && ageMs >= 0 && ageMs < 14 * 24 * 60 * 60 * 1000;
+      return ageMs >= 0 && ageMs < 14 * 24 * 60 * 60 * 1000;
     });
   }
 
@@ -1220,7 +1234,7 @@
       const attended = isToday(date) && attendanceStatus === 'present';
       const secondSessionMark = isSecondWeeklySession(item, date) ? '<strong class="olliTtSecondSessionMark" aria-label="주 2회차">▲</strong>' : '';
       const pauseBadge = pausedStudent ? '<span class="olliTtPauseBadge">휴원</span>' : '';
-      const newCardClass = isTimetableNewCard('enrollments', item.id) ? ' olliTtNewCard' : '';
+      const newCardClass = isTimetableNewCard('enrollments', item.id, date) ? ' olliTtNewCard' : '';
       // The corner N badge is painted by the card itself, not inside the name.
       const studentNameHtml = esc(item.student_name);
       return `<div class="olliTtStudent regular ${division}${newCardClass}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}${mutedAbsence ? ' absenceUpcoming' : ''}${pausedStudent ? ' pausedStudent' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${sessionKey}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${studentNameHtml}${pauseBadge}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
