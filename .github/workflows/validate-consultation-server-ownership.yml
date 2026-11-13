@@ -19,6 +19,8 @@ on:
       - 'tests/consultation-exact-task-authority.test.cjs'
       - 'tests/consultation-record-type-period.test.cjs'
       - 'tests/consultation-three-week-auto.test.cjs'
+      - 'tests/consultation-batch-generate.test.cjs'
+      - 'apps/pc/pc-student-management.css'
       - 'packages/common/olli-consultation-task-core.js'
       - 'packages/common/olli-operations-consultation-policy.js'
       - 'packages/common/api/_lib/consultation-summary-handler.cjs'
@@ -81,3 +83,4 @@ jobs:
           node --test tests/consultation-exact-task-authority.test.cjs
           node --test tests/consultation-record-type-period.test.cjs
           node --test tests/consultation-three-week-auto.test.cjs
+          node --test tests/consultation-batch-generate.test.cjs
