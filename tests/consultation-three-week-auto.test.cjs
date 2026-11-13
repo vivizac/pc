@@ -78,6 +78,18 @@ test('elementary report prompt forbids invented event dates; one source can be s
  assert.match(prompt,/특정 날짜\(월\/일\)를 사례에 붙이지 마세요/);
  assert.match(prompt,/기록에 없는 수업, 행동, 변화, 성과를 만들어 쓰지 마세요/);
 });
+test('production migration changes only service-role cron discovery and preserves stored records',()=>{
+ const sql=read('supabase/migrations/20261113091841_consultation_three_week_auto_summary.sql');
+ assert.match(sql,/create or replace function public\.olli_consultation_summary_cron_candidates/);
+ assert.match(sql,/first_lesson\+21/);
+ assert.match(sql,/extract\(dow from t\.threshold_month\)/);
+ assert.match(sql,/is_stat_only/);
+ assert.match(sql,/current_setting\('request\.jwt\.claim\.role'/);
+ assert.match(sql,/grant execute on function public\.olli_consultation_summary_cron_candidates\(integer\) to service_role/);
+ assert.match(sql,/sc\.due_month=to_char\(now\(\) at time zone 'Asia\/Seoul','YYYY-MM'\)/);
+ assert.doesNotMatch(sql,/delete\s+from\s+public\./i);
+ assert.doesNotMatch(sql,/update\s+public\.(students|feedbacks|summary_feedbacks)/i);
+});
 test('automatic generation remains single server-owned Cron, not device double generation',()=>{
  const server=read('packages/common/api/_lib/consultation-summary-handler.cjs');
  const cron=read('packages/common/api/_lib/consultation-summary-cron.cjs');
