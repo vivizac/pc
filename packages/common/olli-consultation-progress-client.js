@@ -35,6 +35,7 @@
     }
   }
 
+  let consultationBatchRunning=false;
   const VALID_TASK_RULES=new Set(['after_1','after_3','every_6','every_12']);
   function summaryMonthsForTask(task) {
     return task?.ruleKey==='after_1'?1:task?.ruleKey==='after_3'?3:task?.ruleKey==='every_6'?6:12;
@@ -117,6 +118,67 @@
       const data=await response.json();
       if(!response.ok||!data.ok)throw new Error(data.message||data.error||'첫 수업일 조회 실패');
       return data.dates||{};
+    },
+    // Explicit manager action. Every read and write uses the existing
+    // session-protected server endpoint and the exact current-month task.
+    // A previous ready report is never generated again.
+    async generateDueSummaries(students,onProgress){
+      assertProductionWriteHost();
+      const {academyId}=context();
+      const role=typeof global.getOlliCurrentRole==='function'?global.getOlliCurrentRole():'';
+      if(!['owner','manager','super_admin'].includes(role))
+        throw new Error('원장 또는 관리자 계정으로 실행해 주세요.');
+      if(consultationBatchRunning)throw new Error('종합 피드백 일괄 생성이 이미 실행 중입니다.');
+      if(!Array.isArray(students)||students.length>200)
+        throw new Error('현재 학원의 상담예정학생 목록을 확인해 주세요.');
+      const month=new Date();
+      const dueMonth=month.getFullYear()+'-'+String(month.getMonth()+1).padStart(2,'0');
+      const keys=new Set();
+      const planned=[];
+      for(const student of students){
+        if(!student?.id||student.academy_id&&String(student.academy_id)!==academyId)continue;
+        const task=primaryTask(student);
+        if(!task||task.dueMonth!==dueMonth||keys.has(task.key))continue;
+        keys.add(task.key);
+        planned.push({student,task});
+      }
+      const summary={total:planned.length,processed:0,created:0,existing:0,
+        insufficient:0,generating:0,reviewRequired:0,error:0,failedNames:[]};
+      consultationBatchRunning=true;
+      try{
+        for(const {student,task} of planned){
+          // Never continue an in-flight request for an unrelated academy.
+          if(context().academyId!==academyId)throw new Error('학원이 변경되어 일괄 생성을 중지했습니다.');
+          try{
+            const existing=await this.checkSummaryStatus(student,task);
+            if(existing.status==='ready'&&Number(existing.feedbackId)>0){
+              summary.existing++;
+            }else if(existing.reviewRequired===true){
+              summary.reviewRequired++;
+            }else{
+              const result=await this.requestSummary(student.id,task.key);
+              if(result.status==='ready'&&Number.isSafeInteger(Number(result.feedbackId))&&Number(result.feedbackId)>0){
+                writeCachedStatus(cacheKey(academyId,task),{status:'ready',feedbackId:Number(result.feedbackId)});
+                summary.created++;
+              }else if(result.status==='generating'){
+                summary.generating++;
+              }else if(result.reviewRequired===true){
+                summary.reviewRequired++;
+              }else{
+                summary.insufficient++;
+              }
+            }
+          }catch(error){
+            summary.error++;
+            summary.failedNames.push(String(student.name||'학생')+': '+String(error?.message||error));
+          }
+          summary.processed++;
+          if(typeof onProgress==='function'){
+            try{onProgress({...summary},student.name)}catch(_){}
+          }
+        }
+      }finally{consultationBatchRunning=false;}
+      return summary;
     },
     // Claim status is owned by the central server endpoint, never the client.
     async requestSummary(studentId, taskKey) {
