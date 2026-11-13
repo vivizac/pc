@@ -105,6 +105,37 @@ function consultationAddMonths(date, months){
   if (d.getDate() !== day) d.setDate(0);
   return d;
 }
+// One first-consultation month: enough teaching experience by the second Monday.
+function consultationSecondMonday(year, monthIndex){
+  const first=new Date(year,monthIndex,1);
+  return new Date(year,monthIndex,1+((1-first.getDay()+7)%7)+7);
+}
+function consultationFirstEligibleMonth(enrolled,firstLessonDate){
+  if(!(enrolled instanceof Date)||Number.isNaN(enrolled.getTime()))return null;
+  const lesson=firstLessonDate instanceof Date&&!Number.isNaN(firstLessonDate.getTime())&&firstLessonDate>=enrolled
+    ?firstLessonDate:enrolled;
+  const threeWeeks=new Date(lesson.getFullYear(),lesson.getMonth(),lesson.getDate()+21);
+  let due=new Date(enrolled.getFullYear(),enrolled.getMonth()+1,1);
+  while(consultationSecondMonday(due.getFullYear(),due.getMonth())<threeWeeks){
+    due=new Date(due.getFullYear(),due.getMonth()+1,1);
+  }
+  return due;
+}
+function consultationFirstScheduledLessonDate(enrolled,scheduledRows=[]){
+  if(!(enrolled instanceof Date)||Number.isNaN(enrolled.getTime()))return null;
+  let first=null;
+  for(const row of Array.isArray(scheduledRows)?scheduledRows:[]){
+    const raw=String(row?.effective_from||'');
+    if(!/^20\d{2}-\d{2}-\d{2}$/.test(raw))continue;
+    const effective=new Date(raw+'T00:00:00');
+    const weekday=Number(row?.weekday);
+    if(Number.isNaN(effective.getTime())||!Number.isInteger(weekday)||weekday<0||weekday>6)continue;
+    const base=effective<enrolled?new Date(enrolled):effective;
+    base.setDate(base.getDate()+((weekday-base.getDay()+7)%7));
+    if(!first||base<first)first=base;
+  }
+  return first||new Date(enrolled);
+}
 function calculateOlliConsultationTasks(student, context = {}){
   const referenceDate = context.now || new Date();
 
@@ -144,7 +175,10 @@ function calculateOlliConsultationTasks(student, context = {}){
     }
     if (!activeKeys.has(option.key)) return;
     if (option.type === 'once') {
-      pushTask(option, consultationAddMonths(enrolled, option.month), option.month);
+      const dueDate=option.key==='after_1'
+        ?consultationFirstEligibleMonth(enrolled,context.firstLessonDate)
+        :consultationAddMonths(enrolled,option.month);
+      if(dueDate)pushTask(option,dueDate,option.month);
       return;
     }
     if (option.type === 'repeat' && elapsedMonths >= option.interval) {
@@ -164,5 +198,6 @@ function calculateOlliConsultationTasks(student, context = {}){
 if (typeof module !== 'undefined' && module.exports) module.exports = {
   calculateOlliConsultationTasks, normalizeOlliConsultationRulesByType,
   normalizeOlliConsultationRules, getOlliDefaultConsultationRules, getConsultationTaskKey,
-  consultationMonthKey
+  consultationMonthKey, consultationSecondMonday, consultationFirstEligibleMonth,
+  consultationFirstScheduledLessonDate
 };
