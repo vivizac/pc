@@ -100,7 +100,7 @@ function relevantRows(feedbacks,failures,division,rule,due,months,firstLessonDat
   // The first elementary report uses the actual teaching period, including
   // any deferred month and saved notes through the current consultation month.
   const firstElementary=months===1&&division==='elementary';
-  const lesson=firstElementary&&firstLessonDate instanceof Date?firstLessonDate:null;
+  const lesson=months===1&&firstLessonDate instanceof Date?firstLessonDate:null;
   const start=lesson?new Date(lesson.getFullYear(),lesson.getMonth(),1):addMonth(due,-months);
   const end=firstElementary?addMonth(due,1):due;
   let rows=[...feedbacks.map(x=>({...x,source_table:'feedbacks'})),
@@ -167,9 +167,14 @@ function userPrompt(student,months,rows,dueMonth){
   const records=rows.map((r,i)=>{
     const d=r._date;
     const date=d?d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0'):'미확인';
+    const classNote=String(r.feedback_type||'').trim().toLowerCase()==='class';
     const kind=r.source_table==='fail_feedbacks'?'실패·재도전 성장 기록'
-      :String(r.feedback_type||'').trim().toLowerCase()==='class'?'퀵노트 수업 기록':'성장 기록';
-    return (i+1)+'. ['+date+' / '+kind+']\n'+String(r.content||'');
+      :classNote?'퀵노트 수업 기록':'성장 기록';
+    // A growth note's stored date is NOT evidence of an activity date. Send
+    // only the reporting MONTH so AI cannot mistake metadata for case dates.
+    const evidenceDate=classNote?'실제 수업일: '+date
+      :'성장 기록 월: '+(r._reportingDate?monthKey(r._reportingDate):'미확인');
+    return (i+1)+'. ['+evidenceDate+' / '+kind+']\n'+String(r.content||'');
   }).join('\n\n');
   return '[작성 시 주의사항]\n- 성장 피드백에 표시된 기록일은 개별 활동이 발생한 날짜가 아닙니다.\n- 원문에서 수업 사례의 날짜를 명확하게 밝히지 않았다면 특정 날짜(월/일)를 사례에 붙이지 마세요.\n- 기록에 없는 수업, 행동, 변화, 성과를 만들어 쓰지 마세요.\n- 자료가 적을 때는 확인할 수 있는 사실만 종합하세요.\n\n[학생 정보]\n- 이름: '+student.name+'\n- 구분: '+division+'\n- 등록일: '+student.enrolled_at+
     '\n- 상담 회차: '+months+'개월 / '+dueMonth+'\n\n[상담 분석 기간에 저장된 피드백]\n'+records;
