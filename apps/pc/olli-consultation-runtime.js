@@ -220,7 +220,8 @@ function bindOlliConsultationSyncOnce(){
 
   const refresh = () => Promise.all([
     loadOlliConsultationRulesFromServer({ force: true }),
-    loadOlliConsultationProgressFromServer({ force: true })
+    loadOlliConsultationProgressFromServer({ force: true }),
+    loadOlliConsultationFirstLessonsFromServer()
   ]);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') refresh();
@@ -235,11 +236,13 @@ function bindOlliConsultationSyncOnce(){
     if (settingsVisible || academyVisible) {
       loadOlliConsultationRulesFromServer();
       loadOlliConsultationProgressFromServer();
+      loadOlliConsultationFirstLessonsFromServer();
     }
   }, 30000);
 
   loadOlliConsultationRulesFromServer({ force: true });
   loadOlliConsultationProgressFromServer({ force: true });
+  loadOlliConsultationFirstLessonsFromServer();
 }
 
 if (document.readyState === 'loading') {
@@ -476,7 +479,8 @@ async function loadRecords(name) {
     const settingsPromise = Promise.all([
       (typeof loadOlliSharedSettingsFromServer === 'function') ? loadOlliSharedSettingsFromServer() : Promise.resolve(false),
       (typeof loadOlliConsultationRulesFromServer === 'function') ? loadOlliConsultationRulesFromServer({ force: true }) : Promise.resolve(false),
-      (typeof loadOlliConsultationProgressFromServer === 'function') ? loadOlliConsultationProgressFromServer({ force: true }) : Promise.resolve(false)
+      (typeof loadOlliConsultationProgressFromServer === 'function') ? loadOlliConsultationProgressFromServer({ force: true }) : Promise.resolve(false),
+      (typeof loadOlliConsultationFirstLessonsFromServer === 'function') ? loadOlliConsultationFirstLessonsFromServer() : Promise.resolve(false)
     ]).then(results => results.some(result => result === true || result?.changed === true)).catch(() => false);
     const studentsPromise = loadStudentsFromSupabase().then(result => !!result?.changed).catch(err => {
       console.warn('학원관리 학생 동기화 실패:', err);

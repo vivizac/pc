@@ -42,6 +42,7 @@ test('server inspection never treats lesson-material readiness or legacy-year ca
     const u=new URL(String(url));calls.push({path:u.pathname,method:opts.method||'GET'});
     if(u.pathname.endsWith('/rpc/olli_consultation_progress_access'))return json({ok:true,progress:{}});
     if(u.pathname.endsWith('/students'))return json([{id:studentId,division:'kinder',enrolled_at:'2026-04-01',status:'active',is_deleted:false}]);
+    if(u.pathname.endsWith('/olli_schedule_enrollments'))return json([]);
     if(u.pathname.endsWith('/olli_consultation_summary_jobs'))return json([{status:jobStatus,feedback_id:linkedId}]);
     if(u.pathname.endsWith('/summary_feedbacks'))return json(summaryStudent===studentId
       ?[{id:9,summary_months:1,content:'verified exact task summary'}]:[]);

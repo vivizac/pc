@@ -18,6 +18,10 @@ on:
       - 'tests/consultation-inspect-archive.test.cjs'
       - 'tests/consultation-exact-task-authority.test.cjs'
       - 'tests/consultation-record-type-period.test.cjs'
+      - 'tests/consultation-three-week-auto.test.cjs'
+      - 'packages/common/olli-consultation-task-core.js'
+      - 'packages/common/olli-operations-consultation-policy.js'
+      - 'packages/common/api/_lib/consultation-summary-handler.cjs'
       - 'supabase/migrations/20261024170000_consultation_exact_summary_link_and_audit.sql'
       - 'apps/mobile/api/consultation-summary.js'
       - 'apps/pc/api/consultation-summary.js'
@@ -54,6 +58,9 @@ jobs:
           node --check apps/pc/api/consultation-summary.js
           node --check apps/mobile/api/consultation-summary.js
           node --check packages/common/olli-consultation-progress-client.js
+          node --check packages/common/olli-consultation-task-core.js
+          node --check packages/common/olli-operations-consultation-policy.js
+          node --check packages/common/api/_lib/consultation-summary-handler.cjs
           node --check apps/pc/olli-data-attendance-feedback.js
           node --check apps/mobile/olli-record-student-picker-phone-adapter.js
           node --check packages/common/olli-feedback-target-month.js
@@ -73,3 +80,4 @@ jobs:
           node --test tests/consultation-inspect-archive.test.cjs
           node --test tests/consultation-exact-task-authority.test.cjs
           node --test tests/consultation-record-type-period.test.cjs
+          node --test tests/consultation-three-week-auto.test.cjs

@@ -216,7 +216,11 @@ function initializeMobileConsultationServer() {
   if (!window.OlliConsultationServer) return;
   const reload = () => {
     if (typeof getOlliCurrentAcademyId !== 'function' || !getOlliCurrentAcademyId()) return;
-    Promise.all([loadOlliConsultationRulesFromServer(),loadOlliConsultationProgressFromServer({ force: true })]).then(() => {
+    Promise.all([
+      loadOlliConsultationRulesFromServer(),
+      loadOlliConsultationProgressFromServer({ force: true }),
+      loadOlliConsultationFirstLessonsFromServer()
+    ]).then(() => {
       if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') {
         window.renderRecordAcademyManagementDashboard();
       }
