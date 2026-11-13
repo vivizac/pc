@@ -606,10 +606,46 @@
       onLinked:async()=>{renderConsultationPanel();await resolveConsultationStatus(student,dueLabelsForStudent(student));}
     });
   }
+  let consultationBatchInProgress=false;
+  async function generateConsultationBatch(){
+    if(consultationBatchInProgress)return;
+    if(!['owner','manager','super_admin'].includes(typeof global.getOlliCurrentRole==='function'?global.getOlliCurrentRole():'')){
+      alert('원장 또는 관리자 계정으로 진행해 주세요.');return;
+    }
+    const due=consultationStudents();
+    if(!due.length){alert('이번 달 상담예정학생이 없습니다.');return;}
+    if(!global.OlliConsultationServer?.generateDueSummaries){
+      alert('올리 공통 서버가 준비되지 않았습니다. 페이지를 새로고침해 주세요.');return;
+    }
+    consultationBatchInProgress=true;
+    const button=document.getElementById('pcAcademyConsultBatchGenerateBtn');
+    if(button){button.disabled=true;button.textContent='생성 진행 중 (0/'+due.length+')';}
+    try{
+      const result=await global.OlliConsultationServer.generateDueSummaries(due,(progress)=>{
+        const current=document.getElementById('pcAcademyConsultBatchGenerateBtn');
+        if(current){current.disabled=true;current.textContent='생성 진행 중 ('+progress.processed+'/'+progress.total+')';}
+      });
+      alert('이번 달 종합 피드백 생성 결과\n새로 저장: '+result.created+'명\n기존 준비완료: '+result.existing+
+        '명\n자료 부족: '+result.insufficient+'명\n기존 기록 연결 확인: '+result.reviewRequired+
+        '명\n서버 생성 중: '+result.generating+'명\n오류: '+result.error+'명'+
+        (result.failedNames.length?'\n\n'+result.failedNames.slice(0,5).join('\n'):''));
+    }catch(error){
+      alert('종합 피드백 일괄 생성 실패: '+String(error?.message||error));
+    }finally{
+      consultationBatchInProgress=false;
+      renderConsultationPanel();
+      if(typeof global.runAcademyConsultationSummaryAutoCheck==='function')
+        global.runAcademyConsultationSummaryAutoCheck();
+    }
+  }
   function renderConsultationPanel(due = consultationStudents()) {
     const panel = document.getElementById('pcAcademyDetailPanel');
     if (!panel) return;
-    panel.innerHTML = '<div class="pcAcademySectionHeader pcAcademyConsultHeader"><div><div class="pcAcademyDetailName">상담예정 학생</div><div class="pcAcademyDetailSub">이번 달 상담이 필요한 학생</div></div><span class="pcAcademySectionCount">'+due.length+'명</span></div>'
+    panel.innerHTML = '<div class="pcAcademySectionHeader pcAcademyConsultHeader"><div><div class="pcAcademyDetailName">상담예정 학생</div><div class="pcAcademyDetailSub">이번 달 상담이 필요한 학생</div></div><div class="pcAcademyConsultBatchActions">'
+      + (['owner','manager','super_admin'].includes(typeof global.getOlliCurrentRole==='function'?global.getOlliCurrentRole():'')
+        ? '<button id="pcAcademyConsultBatchGenerateBtn" type="button" class="pcAcademyConsultBatchGenerateBtn" onclick="OlliPcStudentManagement.generateConsultationBatch()"'
+          + (consultationBatchInProgress?' disabled':'') + '>이번 달 종합피드백 생성</button>' : '')
+      + '<span class="pcAcademySectionCount">'+due.length+'명</span></div></div>'
       + '<div class="pcAcademyConsultationList">'+consultationListHtml(due)+'</div>';
     refreshConsultationMaterialStatuses(due);
   }
@@ -781,7 +817,7 @@
     if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') renderDashboard();
   }
 
-  global.OlliPcStudentManagement = { renderContext, renderDashboard, renderTodoCard, renderMaterialOrders, renderConsultationPanel, openLegacyReview, loadServerTodos, loadMaterialOrders, open, filter, handleSearch, resolveStudent, bindRows, start };
+  global.OlliPcStudentManagement = { renderContext, renderDashboard, renderTodoCard, renderMaterialOrders, renderConsultationPanel, generateConsultationBatch, openLegacyReview, loadServerTodos, loadMaterialOrders, open, filter, handleSearch, resolveStudent, bindRows, start };
   global.pcOpenAcademyMaterials = openMaterials;
   global.pcToggleAcademyMaterial = toggleMaterialOrder;
   global.pcAddAcademyTodo = addTodo;
