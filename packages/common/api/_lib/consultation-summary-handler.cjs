@@ -171,8 +171,8 @@ function userPrompt(student,months,rows,dueMonth){
       :String(r.feedback_type||'').trim().toLowerCase()==='class'?'퀵노트 수업 기록':'성장 기록';
     return (i+1)+'. ['+date+' / '+kind+']\n'+String(r.content||'');
   }).join('\n\n');
-  return '[작성 시 주의사항]\\n- 성장 피드백에 표시된 기록일은 개별 활동이 발생한 날짜가 아닙니다.\\n- 원문에서 수업 사례의 날짜를 명확하게 밝히지 않았다면 특정 날짜(월/일)를 사례에 붙이지 마세요.\\n- 기록에 없는 수업, 행동, 변화, 성과를 만들어 쓰지 마세요.\\n- 자료가 적을 때는 확인할 수 있는 사실만 종합하세요.\\n\\n[학생 정보]\\n- 이름: '+student.name+'\n- 구분: '+division+'\n- 등록일: '+student.enrolled_at+
-    '\n- 상담 회차: '+months+'개월 / '+dueMonth+'\n\n[최근 '+months+'개월 저장 피드백]\n'+records;
+  return '[작성 시 주의사항]\n- 성장 피드백에 표시된 기록일은 개별 활동이 발생한 날짜가 아닙니다.\n- 원문에서 수업 사례의 날짜를 명확하게 밝히지 않았다면 특정 날짜(월/일)를 사례에 붙이지 마세요.\n- 기록에 없는 수업, 행동, 변화, 성과를 만들어 쓰지 마세요.\n- 자료가 적을 때는 확인할 수 있는 사실만 종합하세요.\n\n[학생 정보]\n- 이름: '+student.name+'\n- 구분: '+division+'\n- 등록일: '+student.enrolled_at+
+    '\n- 상담 회차: '+months+'개월 / '+dueMonth+'\n\n[상담 분석 기간에 저장된 피드백]\n'+records;
 }
 async function generate(student,months,rows,dueMonth){
   const body={promptType:student.division==='kinder'&&months===1?'kinder_one_month':'summary',
