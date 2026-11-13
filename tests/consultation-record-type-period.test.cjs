@@ -37,28 +37,41 @@ test('weekly class records bypass final-month growth requirement regardless of s
     assert.equal(result.rows.filter(x=>x.feedback_type==='class').length,2);
   }
 });
-test('growth-only annual records must include previous October growth for November due',()=>{
+test('elementary annual summary accepts existing growth records without final-month notes',()=>{
   const due=month('2026-11');
   const before=[f('2026-01-15','growth'),f('2026-04-15','growth'),f('2026-07-15','growth')];
-  assert.equal(h.relevantRows(before,[],'elementary','every_12',due,12).status,'insufficient');
-  const withLast=h.relevantRows([...before,f('2026-10-30','growth')],[],'elementary','every_12',due,12);
-  assert.equal(withLast.status,'ready');
-  assert.equal(withLast.mode,'quarterly_growth_records');
-  // A current-November growth record cannot masquerade as last October's.
-  assert.equal(h.relevantRows([...before,f('2026-11-03','growth')],[],'elementary','every_12',due,12).status,'insufficient');
+  const elementary=h.relevantRows(before,[],'elementary','every_12',due,12);
+  assert.equal(elementary.status,'ready');
+  assert.equal(elementary.mode,'elementary_available_records');
+  assert.equal(elementary.rows.length,3);
+  // The kindergarten growth-only rule is unchanged.
+  assert.equal(h.relevantRows(before,[],'kinder','every_12',due,12).status,'insufficient');
+  assert.equal(h.relevantRows([...before,f('2026-10-30','growth')],[],'kinder','every_12',due,12).status,'ready');
 });
-test('growth saved after month rollover counts only with explicit prior-month target_month',()=>{
+test('report period is based on the due month, including prior-month target records only',()=>{
   const due=month('2026-11');
   const before=[f('2026-01-15','growth'),f('2026-04-15','growth')];
-  assert.equal(h.relevantRows([...before,f('2026-11-04','growth',{target_month:'2026-10'})],[],'elementary','every_12',due,12).status,'ready');
-  assert.equal(h.relevantRows([...before,f('2026-11-04','growth',{target_month:'2026-11'})],[],'elementary','every_12',due,12).status,'insufficient');
+  const datedPrior=h.relevantRows([...before,f('2026-11-04','growth',{target_month:'2026-10'})],[],'elementary','every_12',due,12);
+  const currentMonth=h.relevantRows([...before,f('2026-11-04','growth',{target_month:'2026-11'})],[],'elementary','every_12',due,12);
+  assert.equal(datedPrior.status,'ready');
+  assert.equal(datedPrior.rows.length,3);
+  assert.equal(currentMonth.status,'ready');
+  assert.equal(currentMonth.rows.length,2);
+  assert.ok(currentMonth.rows.every(x=>x._reportingDate<due));
 });
-test('quarterly growth-only gates apply to 3-month and 6-month consultations',()=>{
+test('elementary 3-month and 6-month reports use even one saved note, without last-month requirement',()=>{
   const due=month('2026-11');
-  assert.equal(h.relevantRows([f('2026-09-10','growth')],[],'elementary','after_3',due,3).status,'insufficient');
-  assert.equal(h.relevantRows([f('2026-10-30','growth')],[],'elementary','after_3',due,3).status,'ready');
-  assert.equal(h.relevantRows([f('2026-07-13','growth'),f('2026-09-11','growth')],[],'elementary','every_6',due,6).status,'insufficient');
-  assert.equal(h.relevantRows([f('2026-07-13','growth'),f('2026-10-28','growth')],[],'elementary','every_6',due,6).status,'ready');
+  const third=h.relevantRows([f('2026-09-10','growth')],[],'elementary','after_3',due,3);
+  assert.equal(third.status,'ready');
+  assert.equal(third.rows.length,1);
+  const sixth=h.relevantRows([f('2026-07-13','growth')],[],'elementary','every_6',due,6);
+  assert.equal(sixth.status,'ready');
+  assert.equal(sixth.rows.length,1);
+  assert.equal(h.relevantRows([],[],'elementary','after_3',due,3).status,'insufficient');
+  assert.equal(h.relevantRows([f('2026-11-05','growth')],[],'elementary','after_3',due,3).status,'insufficient');
+  assert.equal(h.relevantRows([f('2026-03-05','growth')],[],'elementary','after_3',due,3).status,'insufficient');
+  // Kindergarten's growth-only record-count and final-month rules stay intact.
+  assert.equal(h.relevantRows([f('2026-09-10','growth')],[],'kinder','after_3',due,3).status,'insufficient');
 });
 test('Quick Note actual lesson_date wins over save date around month boundary',()=>{
   const due=month('2026-11');
@@ -78,6 +91,12 @@ test('untyped legacy growth records cannot pretend to be weekly Quick Notes',()=
     {date:'2026-04-01',content:'legacy b'}
   ],[],'kinder','every_12',due,12);
   assert.equal(r.status,'insufficient');
+  const elementary=h.relevantRows([
+    {date:'2026-01-01',content:'legacy a'},
+    {date:'2026-04-01',content:'legacy b'}
+  ],[],'elementary','every_12',due,12);
+  assert.equal(elementary.status,'ready');
+  assert.equal(elementary.rows.length,2);
 });
 
 test('growth and failure observations are retained alongside Quick Note records for any division',()=>{
@@ -90,4 +109,17 @@ test('growth and failure observations are retained alongside Quick Note records 
     assert.equal(r.rows.length,3);
     assert.ok(r.rows.some(x=>x.source_table==='fail_feedbacks'));
   }
+});
+
+test('elementary summary uses retry-only observations and retains first-month handling',()=>{
+  const due=month('2026-11');
+  const retry=h.relevantRows([],[f('2026-08-17','fail')],'elementary','after_3',due,3);
+  assert.equal(retry.status,'ready');
+  assert.equal(retry.rows.length,1);
+  assert.equal(retry.rows[0].source_table,'fail_feedbacks');
+  const first=h.relevantRows([f('2026-10-12','growth')],[],'elementary','after_1',due,1);
+  assert.equal(first.status,'ready');
+  assert.equal(first.mode,'elementary_one_month_records');
+  assert.equal(h.relevantRows([],[],'elementary','after_1',due,1).status,'insufficient');
+  assert.equal(h.relevantRows([f('2026-10-01','class')],[],'kinder','after_1',due,1).status,'insufficient');
 });
