@@ -21,14 +21,57 @@ function dateFromFeedback(row) {
   if(m) {const d=new Date(+m[1],+m[2]-1,+m[3]); return d.getFullYear()==+m[1] && d.getMonth()==+m[2]-1 && d.getDate()==+m[3]?d:null;}
   const d=new Date(raw);return Number.isNaN(d.getTime())?null:d;
 }
-function verifyDue(student, rule, due) {
+// The server independently checks the actual first scheduled lesson before
+// accepting a first-month consultation. Other consultation periods are unchanged.
+function secondMonday(year,monthIndex){
+  const first=new Date(year,monthIndex,1);
+  return new Date(year,monthIndex,1+((1-first.getDay()+7)%7)+7);
+}
+function firstEligibleMonth(enrolled,firstLessonDate){
+  const lesson=firstLessonDate instanceof Date&&!Number.isNaN(firstLessonDate.getTime())&&firstLessonDate>=enrolled?firstLessonDate:enrolled;
+  const threshold=new Date(lesson.getFullYear(),lesson.getMonth(),lesson.getDate()+21);
+  let due=new Date(enrolled.getFullYear(),enrolled.getMonth()+1,1);
+  while(secondMonday(due.getFullYear(),due.getMonth())<threshold)due=new Date(due.getFullYear(),due.getMonth()+1,1);
+  return due;
+}
+function firstScheduledLessonDate(enrolled,rows){
+  let first=null;
+  for(const row of Array.isArray(rows)?rows:[]){
+    if(!/^20\d{2}-\d{2}-\d{2}$/.test(String(row.effective_from||'')))continue;
+    const effective=new Date(row.effective_from+'T00:00:00');
+    const weekday=Number(row.weekday);
+    if(Number.isNaN(effective.getTime())||!Number.isInteger(weekday)||weekday<0||weekday>6)continue;
+    const base=effective<enrolled?new Date(enrolled):effective;
+    base.setDate(base.getDate()+((weekday-base.getDay()+7)%7));
+    if(!first||base<first)first=base;
+  }
+  return first||enrolled;
+}
+async function firstLessonDateForStudent(student,key){
+  const enrolled=new Date(String(student.enrolled_at||'')+'T00:00:00');
+  if(Number.isNaN(enrolled.getTime()))fail(400,'학생 등록일이 없습니다.','ENROLLMENT_MISSING');
+  const schedules=await getRows('olli_schedule_enrollments',{
+    academy_id:'eq.'+student.academy_id,student_id:'eq.'+student.id,
+    select:'weekday,effective_from',limit:'500'
+  },key);
+  return firstScheduledLessonDate(enrolled,schedules);
+}
+async function verifyDueForStudent(student,rule,due,key){
+  const firstLessonDate=rule==='after_1'?await firstLessonDateForStudent(student,key):null;
+  return {months:verifyDue(student,rule,due,firstLessonDate),firstLessonDate};
+}
+function verifyDue(student, rule, due, firstLessonDate=null) {
   const enrolled=new Date(String(student.enrolled_at||'')+'T00:00:00');
   if(Number.isNaN(enrolled.getTime())) fail(400,'학생 등록일이 없습니다.','ENROLLMENT_MISSING');
   const registeredMonth = new Date(enrolled.getFullYear(),enrolled.getMonth(),1);
   const difference=(due.getFullYear()-registeredMonth.getFullYear())*12+due.getMonth()-registeredMonth.getMonth();
   const months=rule==='after_1'?1:rule==='after_3'?3:rule==='every_6'?6:12;
-  if(difference<months || (rule==='every_12'?difference%12!==0:rule==='every_6'?difference%6!==0:difference!==months))
+  if(rule==='after_1'){
+    if(monthKey(firstEligibleMonth(enrolled,firstLessonDate))!==monthKey(due))
+      fail(400,'첫 상담은 실제 첫 수업 후 3주가 지난 둘째 주 기준으로 선정합니다.','DUE_MISMATCH');
+  }else if(difference<months || (rule==='every_12'?difference%12!==0:rule==='every_6'?difference%6!==0:difference!==months)){
     fail(400,'등록일과 상담회차가 일치하지 않습니다.','DUE_MISMATCH');
+  }
   if(due>new Date(new Date().getFullYear(),new Date().getMonth(),1))
     fail(400,'아직 상담 대상 월이 아닙니다.','FUTURE_DUE');
   return months;
@@ -52,11 +95,14 @@ async function getRows(table, params,key) {
   if(!response.ok || !Array.isArray(result))fail(response.status||500,result?.message||'기록 조회 실패');
   return result;
 }
-function relevantRows(feedbacks,failures,division,rule,due,months) {
-  // The consultation month is NOT part of the analysis period.
-  // November 2026 annual consultation: Nov 2025 through Oct 2026.
-  const start=addMonth(due,-months);
-  const end=due;
+function relevantRows(feedbacks,failures,division,rule,due,months,firstLessonDate=null) {
+  // Long-term reports use the months prior to consultation.
+  // The first elementary report uses the actual teaching period, including
+  // any deferred month and saved notes through the current consultation month.
+  const firstElementary=months===1&&division==='elementary';
+  const lesson=firstElementary&&firstLessonDate instanceof Date?firstLessonDate:null;
+  const start=lesson?new Date(lesson.getFullYear(),lesson.getMonth(),1):addMonth(due,-months);
+  const end=firstElementary?addMonth(due,1):due;
   let rows=[...feedbacks.map(x=>({...x,source_table:'feedbacks'})),
     ...failures.map(x=>({...x,source_table:'fail_feedbacks'}))];
   rows=rows.map(row=>{
@@ -80,9 +126,9 @@ function relevantRows(feedbacks,failures,division,rule,due,months) {
 
   // Keep the existing first-month rules and protect the initial adjustment report.
   if(months===1&&division==='elementary')
-    return {status:general.length?'ready':'insufficient',
-      mode:'elementary_one_month_records',rows:general,
-      reason:general.length?'':'저장된 첫 달 기록이 없습니다.'};
+    return {status:rows.length?'ready':'insufficient',
+      mode:'elementary_first_month_summary',rows,
+      reason:rows.length?'':'첫 상담 기간에 저장된 기록이 없습니다.'};
   if(months===1&&division==='kinder') {
     if(classRecords.length<4)
       return {status:'insufficient',rows:classRecords,
@@ -90,6 +136,14 @@ function relevantRows(feedbacks,failures,division,rule,due,months) {
     return {status:'ready',rows:classRecords};
   }
 
+  // Elementary reports never require a minimum count or the last month's
+  // growth report. Use every genuine available record in the analysis window.
+  if(division==='elementary')
+    return {status:rows.length?'ready':'insufficient',rows,
+      mode:'elementary_available_records',
+      reason:rows.length?'':'상담 분석 기간에 저장된 피드백이 없습니다.'};
+
+  // Kindergarten retains its established record requirements.
   // Rule applies to the student's RECORD MIX, not kindergarten vs elementary.
   // Weekly Quick Note (class) records make the final-month quarterly growth
   // document optional. Include both lesson and growth records in the summary.
@@ -117,7 +171,7 @@ function userPrompt(student,months,rows,dueMonth){
       :String(r.feedback_type||'').trim().toLowerCase()==='class'?'퀵노트 수업 기록':'성장 기록';
     return (i+1)+'. ['+date+' / '+kind+']\n'+String(r.content||'');
   }).join('\n\n');
-  return '[학생 정보]\n- 이름: '+student.name+'\n- 구분: '+division+'\n- 등록일: '+student.enrolled_at+
+  return '[작성 시 주의사항]\\n- 성장 피드백에 표시된 기록일은 개별 활동이 발생한 날짜가 아닙니다.\\n- 원문에서 수업 사례의 날짜를 명확하게 밝히지 않았다면 특정 날짜(월/일)를 사례에 붙이지 마세요.\\n- 기록에 없는 수업, 행동, 변화, 성과를 만들어 쓰지 마세요.\\n- 자료가 적을 때는 확인할 수 있는 사실만 종합하세요.\\n\\n[학생 정보]\\n- 이름: '+student.name+'\n- 구분: '+division+'\n- 등록일: '+student.enrolled_at+
     '\n- 상담 회차: '+months+'개월 / '+dueMonth+'\n\n[최근 '+months+'개월 저장 피드백]\n'+records;
 }
 async function generate(student,months,rows,dueMonth){
@@ -134,12 +188,40 @@ async function main(body, context = {}) {
   const action=String(body.action||'generate').trim();
   // All preview deployments share the production Supabase project.
   // Block real AI generation and updates in preview unless explicitly enabled for a controlled test.
-  if(!['inspect','legacy_candidates'].includes(action) && process.env.VERCEL_ENV==='preview' && process.env.OLLI_ENABLE_PREVIEW_CONSULTATION_WRITES!=='enabled')
+  if(!['inspect','legacy_candidates','first_lessons'].includes(action) && process.env.VERCEL_ENV==='preview' && process.env.OLLI_ENABLE_PREVIEW_CONSULTATION_WRITES!=='enabled')
     fail(403,'미리보기 환경에서는 실제 상담 데이터 생성을 차단합니다.','PREVIEW_WRITE_BLOCKED');
   const academyId=String(body.academyId||'').trim(),
     sessionToken=context.scheduled===true?'__olli_server_cron_internal__':String(body.sessionToken||'').trim();
   if(context.scheduled!==true && sessionToken==='__olli_server_cron_internal__')
     fail(403,'서버 내부 작업으로 가장한 요청은 허용되지 않습니다.','INVALID_SESSION');
+  // Read-only academy-scoped first lesson dates; owner/teacher session verified
+  // before any student schedule is fetched with the server credential.
+  if(action==='first_lessons'){
+    const key=serverKey();
+    if(!academyId||!key||!sessionToken||context.scheduled===true)fail(403,'상담 조회 권한이 없습니다.','PERMISSION_DENIED');
+    await callRpc('olli_consultation_progress_access',{
+      p_session_token:sessionToken,p_academy_id:academyId,p_action:'read'
+    },key);
+    const students=await getRows('students',{academy_id:'eq.'+academyId,
+      select:'id,enrolled_at,status,is_deleted,is_stat_only',limit:'1000'},key);
+    const schedules=await getRows('olli_schedule_enrollments',{academy_id:'eq.'+academyId,
+      select:'student_id,weekday,effective_from',limit:'3000'},key);
+    const grouped=new Map();
+    for(const row of schedules){
+      const id=String(row.student_id||'');
+      if(!grouped.has(id))grouped.set(id,[]);
+      grouped.get(id).push(row);
+    }
+    const dates={};
+    for(const student of students){
+      if(student.status!=='active'||student.is_deleted||student.is_stat_only)continue;
+      const enrolled=new Date(String(student.enrolled_at||'')+'T00:00:00');
+      if(Number.isNaN(enrolled.getTime()))continue;
+      const first=firstScheduledLessonDate(enrolled,grouped.get(String(student.id))||[]);
+      dates[student.id]=first.getFullYear()+'-'+String(first.getMonth()+1).padStart(2,'0')+'-'+String(first.getDate()).padStart(2,'0');
+    }
+    return {ok:true,dates};
+  }
   const studentId=String(body.studentId||'').trim(), taskKey=String(body.taskKey||'').trim();
   const parts=taskKey.split('|'),rule=parts[1],dueMonth=parts[2];
   if(!academyId||!sessionToken||!studentId||parts.length!==3||parts[0]!=='id:'+studentId
@@ -159,7 +241,7 @@ async function main(body, context = {}) {
       fail(404,'재원 학생을 찾지 못했습니다.','STUDENT_NOT_FOUND');
     // Historical links require a valid *original* consultation month, not
     // the summary creation month. Never assign a different due period.
-    verifyDue(ownerStudent[0],rule,parseMonth(dueMonth));
+    await verifyDueForStudent({...ownerStudent[0],academy_id:academyId},rule,parseMonth(dueMonth),key);
   }
   if(action==='legacy_candidates') {
     const list=await callRpc('olli_consultation_legacy_summary_candidates',params,key);
@@ -193,7 +275,7 @@ async function main(body, context = {}) {
     if(!student||student.status!=='active'||student.is_deleted)
       fail(404,'재원 학생을 찾을 수 없습니다.','STUDENT_NOT_FOUND');
     const due=parseMonth(dueMonth);
-    const months=verifyDue(student,rule,due);
+    const {months}=await verifyDueForStudent({...student,academy_id:academyId},rule,due,key);
     const jobs=await getRows('olli_consultation_summary_jobs',{
       academy_id:'eq.'+academyId,student_id:'eq.'+studentId,
       rule_key:'eq.'+rule,due_month:'eq.'+dueMonth,
@@ -249,7 +331,9 @@ async function main(body, context = {}) {
   const students=await getRows('students',{id:'eq.'+studentId,academy_id:'eq.'+academyId,select:'id,name,division,enrolled_at,status,is_deleted'},key);
   const student=students[0];if(!student||student.status!=='active'||student.is_deleted)fail(404,'재원 학생을 찾을 수 없습니다.');
   const due=parseMonth(dueMonth);
-  const months=manual ? Number(rule.slice(7)) : verifyDue(student,rule,due);
+  const summaryContext=manual?{months:Number(rule.slice(7)),firstLessonDate:null}
+    :await verifyDueForStudent({...student,academy_id:academyId},rule,due,key);
+  const months=summaryContext.months;
   if(manual) {
     const today=new Date(), kst=new Date(today.toLocaleString('en-US',{timeZone:'Asia/Seoul'}));
     if(due>new Date(kst.getFullYear(),kst.getMonth(),1))
@@ -275,11 +359,11 @@ async function main(body, context = {}) {
       fail(400,'다른 학생의 기록 또는 삭제된 기록이 포함되었습니다.','SELECTION_NOT_FOUND');
     material={status:'ready',rows:found};
   }else{
-    material=relevantRows(feedbacks,failures,student.division,rule,due,months);
+    material=relevantRows(feedbacks,failures,student.division,rule,due,months,summaryContext.firstLessonDate);
   }
   if(material.status!=='ready')return{ok:true,status:'insufficient',reason:material.reason};
-  if(material.mode==='elementary_one_month_records')return{ok:true,status:'ready',mode:'elementary_one_month_records',
-    content:material.rows.map(r=>String(r.content||'')).join('\n\n')};
+  // Elementary first-month summaries go through the same AI and atomic finish
+  // path as all other periods. A linked summary ID is required for readiness.
   const claim=await callRpc('olli_consultation_summary_job_access',{...params,p_action:'claim'},key);
   if(claim.status==='ready') {
     const rows=await getRows('summary_feedbacks',{id:'eq.'+claim.feedback_id,academy_id:'eq.'+academyId,select:'id,content'},key);
@@ -316,4 +400,5 @@ async function handler(req,res) {
 }
 module.exports=handler;
 module.exports.runScheduled=(task)=>main(task,{scheduled:true});
-module.exports.__test={monthKey,addMonth,parseMonth,verifyDue,dateFromFeedback,relevantRows,userPrompt};
+module.exports.__test={monthKey,addMonth,parseMonth,verifyDue,dateFromFeedback,relevantRows,userPrompt,
+  secondMonday,firstEligibleMonth,firstScheduledLessonDate};
