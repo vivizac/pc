@@ -90,7 +90,15 @@ function relevantRows(feedbacks,failures,division,rule,due,months) {
     return {status:'ready',rows:classRecords};
   }
 
-  // Rule applies to the student's RECORD MIX, not kindergarten vs elementary.
+  // Elementary reports use every available observation in the exact consultation
+  // analysis window. A missing final-month growth note or a low record count
+  // must not postpone a due report; never invent progress when no records exist.
+  if(division==='elementary')
+    return {status:rows.length?'ready':'insufficient',rows,
+      mode:'elementary_available_records',
+      reason:rows.length?'':'상담 분석 기간에 저장된 피드백이 없습니다.'};
+
+  // Kindergarten retains its record-type rules (weekly Quick Note versus growth only).
   // Weekly Quick Note (class) records make the final-month quarterly growth
   // document optional. Include both lesson and growth records in the summary.
   if(classRecords.length)
