@@ -1725,7 +1725,7 @@
     });
     const materialCreate = byId('olliPcTeamTalkMaterialCreate');
     if (materialCreate) materialCreate.hidden = next !== 'materials';
-    if (next === 'archive' && !state.archivePayload) loadArchive({ showLoading:true });
+    if (next === 'archive') loadArchive({ showLoading:!state.archivePayload });
     if (next === 'materials' && global.OlliTeamTalkMaterialOrders?.activate) {
       global.OlliTeamTalkMaterialOrders.activate().catch((error) => {
         console.warn('PC 팀톡 재료주문 새로고침 실패:', error?.message || error);
@@ -1771,8 +1771,11 @@
         button.className = 'olliPcTeamTalkMediaItem';
         button.title = clean(attachment.file_name);
         button.appendChild(create('span', 'olliPcTeamTalkMediaFallback', /^video\//i.test(clean(attachment.mime_type)) ? '동영상' : '사진'));
-        button.addEventListener('click', () => downloadAttachment(attachment));
-        if (/^image\//i.test(clean(attachment.mime_type))) {
+        button.addEventListener('click', () => attachment.is_shared
+          ? openSharedOriginalInBrowser(attachment) : downloadAttachment(attachment));
+        if (attachment.is_shared) {
+          global.OlliSharedTeamChat?.mountUnifiedThumbnail?.(attachment,button);
+        } else if (/^image\//i.test(clean(attachment.mime_type))) {
           getAttachmentBlobUrl(attachment).then((url) => {
             if (!button.isConnected) return;
             const image = document.createElement('img');
@@ -1810,7 +1813,9 @@
           create('span', 'olliPcTeamTalkFileMeta', formatBytes(attachment.file_size))
         );
         button.appendChild(info);
-        button.addEventListener('click', () => downloadAttachment(attachment));
+        button.addEventListener('click', () => attachment.is_shared
+          ? global.OlliSharedTeamChat.downloadUnified(attachment).catch(error=>alert(error.message||'파일을 열 수 없습니다.'))
+          : downloadAttachment(attachment));
         list.appendChild(button);
       });
       section.appendChild(list);
@@ -1897,7 +1902,14 @@
       });
       if (sequence !== state.archiveLoadSequence) return false;
       if (!payload?.ok) throw new Error(payload?.message || '자료실을 불러오지 못했습니다.');
-      state.archivePayload = payload;
+      let shared={joined:false,messages:[]};
+      try{shared=await global.OlliSharedTeamChat?.archiveUnified?.({limit:1000})||shared;}
+      catch(error){console.warn('Work Hub 통합 자료 조회 실패:',error?.message||error);}
+      if(sequence!==state.archiveLoadSequence)return false;
+      state.archivePayload=shared.joined
+        ? {...payload,messages:[...(payload.messages||[]),...shared.messages]
+          .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))}
+        : payload;
       renderArchive();
       return true;
     } catch (error) {

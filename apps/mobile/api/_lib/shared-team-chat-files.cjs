@@ -26,12 +26,29 @@ function makeHandler({fetchImpl=globalThis.fetch,base=process.env.OLLI_SHARED_CH
       if(req.method==='GET'){
         const id=clean(req.query?.attachmentId);if(!UUID.test(id))return res.status(400).json({error:'첨부파일 ID가 필요합니다.'});
         const file=await rpc('file_access',{...base,p_attachment_id:id,p_upload:false});
-        const upstream=await fetchImpl(objectUrl(file.storage_path,BASE),{headers,redirect:'error'});
+        // Supabase sb_secret keys are not user Bearer JWTs. Mint a brief signed
+        // private-object URL server-side; never expose it to the browser.
+        const validated=objectUrl(file.storage_path,BASE);
+        const sign=await fetchImpl(validated.replace('/object/authenticated/','/object/sign/'),{
+          method:'POST',headers:{...headers,'Content-Type':'application/json'},
+          body:JSON.stringify({expiresIn:120}),redirect:'error'
+        });
+        if(!sign.ok)throw new Error('Object signing unavailable');
+        const signed=await sign.json();
+        if(typeof signed?.signedURL!=='string')throw new Error('Invalid storage signature');
+        const url=new URL(signed.signedURL,BASE+'/storage/v1/');
+        if(url.pathname.startsWith('/object/sign/'))url.pathname='/storage/v1'+url.pathname;
+        if(url.origin!==new URL(BASE).origin
+          ||url.pathname!==('/storage/v1/object/sign/'+BUCKET+'/'+file.storage_path)
+          ||!url.searchParams.get('token'))throw new Error('Untrusted storage signature');
+        const upstream=await fetchImpl(url.href,{redirect:'error',headers:{'Cache-Control':'no-store'}});
         if(!upstream.ok)throw new Error('Object unavailable');
         // Recheck after storage fetch; a leave/deletion may have happened in between.
         try{await rpc('file_access',{...base,p_attachment_id:id,p_upload:false});}
         catch(error){await upstream.body?.cancel?.();throw error;}
         res.setHeader('Content-Type','application/octet-stream');
+        if(Number.isSafeInteger(Number(file.file_size))&&Number(file.file_size)>0)
+          res.setHeader('Content-Length',String(file.file_size));
         res.setHeader('Content-Disposition',"attachment; filename*=UTF-8''"+encodeURIComponent(file.file_name));
         if(upstream.body?.getReader){
           const reader=upstream.body.getReader();

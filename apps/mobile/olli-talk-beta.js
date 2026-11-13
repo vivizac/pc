@@ -4711,7 +4711,12 @@
     if(archiveSource){
       const nextArchive={...archiveSource,messages:(Array.isArray(archiveSource.messages)?archiveSource.messages:[]).filter(keepMessage)};
       olliTalkArchivePayload=nextArchive;
-      writeOlliTalkArchiveCache(context,nextArchive);
+      // A local photo deletion must not copy the unified room's private
+      // attachments into the persistent cache of one academy.
+      writeOlliTalkArchiveCache(context,{
+        ...nextArchive,
+        messages:nextArchive.messages.filter(message=>!message?.is_shared&&!message?.attachment?.is_shared)
+      });
       const archive=document.getElementById('olliTalkArchiveScreen');
       if(archive&&archive.style.display!=='none'&&olliTalkArchiveTab!=='materials'){
         renderOlliTalkArchive();
@@ -4899,7 +4904,13 @@
     try{
       let url='';
       if(shared){
-        const blob=await window.OlliSharedTeamChat.fetchUnifiedBlob(attachment);
+        const blob=await window.OlliSharedTeamChat.fetchUnifiedBlob(attachment,{
+          signal:controller.signal,
+          onProgress:progress=>{
+            if(sequence!==olliTalkPhotoViewerLoadSequence||olliTalkPhotoViewerState?.sequence!==sequence)return;
+            setOlliTalkPhotoViewerProgress(progress);
+          }
+        });
         if(
           sequence!==olliTalkPhotoViewerLoadSequence
           || olliTalkPhotoViewerState?.item!==item
@@ -5439,10 +5450,13 @@
         button.type='button';button.className='olliTalkArchiveMediaItem';
         button.appendChild(createMessageText('span','olliTalkArchiveMediaFallback',attachment.file_name||'미디어'));
         button.addEventListener('click',()=>{
-          if(isOlliTalkImageAttachment(attachment))openOlliTalkPhotoViewer(item,{source:'archive'});
-          else downloadOlliTalkAttachment(attachment);
+          if(isOlliTalkImageAttachment(attachment)||isOlliTalkVideoAttachment(attachment))
+            openOlliTalkPhotoViewer(item,{source:'archive'});
+          else openOlliTalkArchiveFile(attachment);
         });grid.appendChild(button);
-        if(options.deferHydration===true){
+        if(attachment.is_shared){
+          window.OlliSharedTeamChat?.mountUnifiedThumbnail?.(attachment,button);
+        }else if(options.deferHydration===true){
           button.dataset.olliArchiveDeferredMedia='1';
           button.__olliTalkArchiveAttachment=attachment;
         }else{
@@ -5553,6 +5567,7 @@
     if(!['media','files','materials'].includes(tab))return;
     olliTalkArchiveTab=tab;
     renderOlliTalkArchive();
+    if(tab!=='materials')loadOlliTalkArchive({renderLocal:false}).catch(()=>{});
     const archive=document.getElementById('olliTalkArchiveScreen');
     if(tab==='materials'&&archive&&archive.style.display!=='none'){
       markOlliTalkMaterialNotificationsRead().catch(()=>{});
@@ -5587,8 +5602,17 @@
       const payload=await callOlliTalkRpc('olli_team_chat_archive',{p_session_token:context.sessionToken,p_academy_id:context.academyId,p_limit:1000});
       if(sequence!==olliTalkArchiveLoadSequence)return false;
       if(!payload?.ok)throw new Error(payload?.message||'자료실을 불러오지 못했습니다.');
-      const changed=!areOlliTalkArchivePayloadsEquivalent(cachedPayload,payload);
-      olliTalkArchivePayload=payload;
+      let joined={joined:false,messages:[]};
+      try{joined=await window.OlliSharedTeamChat?.archiveUnified?.({limit:1000})||joined;}
+      catch(error){console.warn('Work Hub 통합 자료 조회 실패:',error?.message||error);}
+      if(sequence!==olliTalkArchiveLoadSequence)return false;
+      const combined=joined.joined
+        ? {...payload,messages:[...(payload.messages||[]),...joined.messages]
+          .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))}
+        : payload;
+      const changed=!areOlliTalkArchivePayloadsEquivalent(olliTalkArchivePayload||cachedPayload,combined);
+      olliTalkArchivePayload=combined;
+      // Shared room data never becomes academy-local persisted cache.
       writeOlliTalkArchiveCache(context,payload);
       if(olliTalkArchiveTab!=='materials'&&changed)renderOlliTalkArchive();
       return true;
@@ -5693,17 +5717,28 @@
     setOlliTalkArchiveFileLoading(true,attachment);
 
     try{
-      const url=await getOlliTalkAttachmentBlobUrl(attachment,{
-        signal:controller.signal,
-        onProgress:progress=>{
-          if(olliTalkArchiveFileTransferState?.sequence!==sequence)return;
-          setOlliTalkArchiveFileProgress(progress);
-        }
-      });
-      if(olliTalkArchiveFileTransferState?.sequence!==sequence)return false;
+      const progress=progress=>{
+        if(olliTalkArchiveFileTransferState?.sequence!==sequence)return;
+        setOlliTalkArchiveFileProgress(progress);
+      };
+      const shared=attachment.is_shared===true;
+      let url='';
+      if(shared){
+        const blob=await window.OlliSharedTeamChat.fetchUnifiedBlob(attachment,{signal:controller.signal,onProgress:progress});
+        if(olliTalkArchiveFileTransferState?.sequence!==sequence)return false;
+        url=URL.createObjectURL(blob);
+      }else{
+        url=await getOlliTalkAttachmentBlobUrl(attachment,{signal:controller.signal,onProgress:progress});
+      }
+      if(olliTalkArchiveFileTransferState?.sequence!==sequence){
+        if(shared&&url)URL.revokeObjectURL(url);
+        return false;
+      }
       olliTalkArchiveFileTransferState=null;
       setOlliTalkArchiveFileLoading(false);
-      return triggerOlliTalkAttachmentDownload(url,attachment);
+      const started=triggerOlliTalkAttachmentDownload(url,attachment);
+      if(shared)setTimeout(()=>URL.revokeObjectURL(url),30000);
+      return started;
     }catch(error){
       if(olliTalkArchiveFileTransferState?.sequence===sequence){
         olliTalkArchiveFileTransferState=null;
@@ -5925,8 +5960,8 @@
     if(item?.attachment?.is_shared){
       const attachment=item.attachment;
       const wrap=document.createElement('div');wrap.className='olliTalkBetaBubble olliTalkBetaAttachmentBubble';
-      const isImage=/^image\//i.test(String(attachment.mime_type||''));
-      const isVideo=/^video\//i.test(String(attachment.mime_type||''));
+      const isImage=isOlliTalkImageAttachment(attachment);
+      const isVideo=isOlliTalkVideoAttachment(attachment);
       if(isImage||isVideo){
         wrap.classList.add('olliTalkBetaImageAttachmentBubble');
         const frame=document.createElement('div');
