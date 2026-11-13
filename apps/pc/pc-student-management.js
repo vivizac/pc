@@ -213,13 +213,13 @@
         + ' title="'+(!materialOrderCanProcess ? '원장 또는 관리자만 변경할 수 있습니다.' : (arrived ? '도착 취소' : '도착 처리'))+'"'
         + (disabled ? ' disabled' : '')+' onclick="pcToggleAcademyMaterial(\''+jsSingleQuote(id)+'\')"><span></span></button>'
         + '<button type="button" class="pcAcademyMaterialOpen" onclick="pcOpenAcademyMaterials()" title="업무의 재료주문 화면에서 확인">'
-        + '<span class="pcAcademyMaterialMain"><strong>'+name+'</strong>'
-        + '<small>'+escape(item?.quantity_text || '수량 미지정')+' · '+neededText+'</small></span>'
+        + '<span class="pcAcademyMaterialMain"><span class="pcAcademyTodoText">'+name+'</span>'
+        + '<span class="pcAcademyTodoGuide">'+escape(item?.quantity_text || '수량 미지정')+' · '+neededText+'</span></span>'
         + '<span class="pcAcademyMaterialStatus '+escape(status)+'">'+escape(statusLabels[status] || status)+'</span>'
         + '</button></div>';
     }).join('');
     return rows || (materialOrderError
-      ? '<div class="pcAcademyMaterialLoadError" role="status">재료주문을 불러오지 못했습니다.</div>'
+      ? '<div class="pcAcademyTodoGuide pcAcademyMaterialLoadError" role="status">재료주문을 불러오지 못했습니다.</div>'
       : '');
   }
 
