@@ -223,10 +223,38 @@ function getOlliConsultationRulesLabel(type){
   return `초등부 ${elementary} / 유치부 ${kinder}`;
 }
 
+// Academy-scoped, read-only calendar facts used by the shared consultation
+// policy. No student feedback or schedule state is written here.
+const olliConsultationFirstLessonsByAcademy=new Map();
+const olliConsultationFirstLessonInFlight=new Map();
+async function loadOlliConsultationFirstLessonsFromServer(){
+  const academyId=ensureOlliConsultationContext();
+  if(!academyId||!window.OlliConsultationServer?.readFirstLessons)return false;
+  if(olliConsultationFirstLessonInFlight.has(academyId))
+    return olliConsultationFirstLessonInFlight.get(academyId);
+  const promise=(async()=>{
+    const dates=await window.OlliConsultationServer.readFirstLessons();
+    if(!dates||typeof dates!=='object'||Array.isArray(dates))return false;
+    const previous=olliConsultationFirstLessonsByAcademy.get(academyId);
+    olliConsultationFirstLessonsByAcademy.set(academyId,{...dates});
+    if(JSON.stringify(previous||{})!==JSON.stringify(dates))refreshOlliConsultationViews();
+    return true;
+  })().catch(error=>{
+    console.warn('상담 첫 수업일 확인 실패:',error);
+    return false;
+  }).finally(()=>olliConsultationFirstLessonInFlight.delete(academyId));
+  olliConsultationFirstLessonInFlight.set(academyId,promise);
+  return promise;
+}
 function getConsultationDueTasksForStudent(student, referenceDate = new Date()){
   if (getStudentStatus(student) !== 'active') return [];
   return calculateOlliConsultationTasks(student, {
     enrolled: getStudentEnrollmentDateForStats(student),
+    firstLessonDate:(()=>{
+      const academyId=ensureOlliConsultationContext();
+      const raw=olliConsultationFirstLessonsByAcademy.get(academyId)?.[String(student?.id||'')];
+      return /^20\d{2}-\d{2}-\d{2}$/.test(String(raw||''))?new Date(raw+'T00:00:00'):null;
+    })(),
     now: referenceDate,
     rules: getOlliConsultationRules(student?.type)
   });
