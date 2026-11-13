@@ -612,6 +612,12 @@
     if(!['owner','manager','super_admin'].includes(typeof global.getOlliCurrentRole==='function'?global.getOlliCurrentRole():'')){
       alert('원장 또는 관리자 계정으로 진행해 주세요.');return;
     }
+    // Require the verified first scheduled lesson map before choosing the
+    // first-month cohort. Never rely on an old enrollment-only fallback.
+    if(typeof global.loadOlliConsultationFirstLessonsFromServer==='function'){
+      const verified=await global.loadOlliConsultationFirstLessonsFromServer();
+      if(!verified){alert('실제 첫 수업일을 서버에서 확인할 수 없습니다. 다시 시도해 주세요.');return;}
+    }
     const due=consultationStudents();
     if(!due.length){alert('이번 달 상담예정학생이 없습니다.');return;}
     if(!global.OlliConsultationServer?.generateDueSummaries){
