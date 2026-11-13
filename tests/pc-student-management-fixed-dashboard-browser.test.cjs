@@ -30,7 +30,7 @@ function fixture(){
  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7a8 8 0 0 0-14-2L4 7m0-4v4h4"></path></svg>반복 업무 관리</button>
  <span class="pcAcademySectionCount">8개 남음</span></div></div>
  <form class="pcAcademyTodoForm"><input placeholder="할 일 입력"><button type="button">추가</button></form>
- <div class="pcAcademyTodoList" id="todos"><div class="pcAcademyTodoItem"><div class="pcAcademyTodoTextWrap"><div class="pcAcademyTodoText">처리할 업무</div><span class="pcAcademyTodoOrigin">올리톡</span></div></div><div class="pcAcademyMaterialRow"><button class="pcAcademyTodoCheck pcAcademyMaterialCheck" type="button" aria-pressed="false"><span></span></button><button class="pcAcademyMaterialOpen" type="button"><span class="pcAcademyMaterialMain"><strong>재료 주문</strong><small>3개 · 필요일 2026-11-12</small></span><span class="pcAcademyMaterialStatus requested">요청</span></button></div></div></section>
+ <div class="pcAcademyTodoList" id="todos"><div class="pcAcademyTodoItem"><div class="pcAcademyTodoTextWrap"><div class="pcAcademyTodoText">처리할 업무</div><span class="pcAcademyTodoOrigin">올리톡</span></div></div><div class="pcAcademyMaterialRow"><button class="pcAcademyTodoCheck pcAcademyMaterialCheck" type="button" aria-pressed="false"><span></span></button><button class="pcAcademyMaterialOpen" type="button"><span class="pcAcademyMaterialMain"><span class="pcAcademyTodoText">재료 주문</span><span class="pcAcademyTodoGuide">3개 · 필요일 2026-11-12</span></span><span class="pcAcademyMaterialStatus requested">요청</span></button></div></div></section>
  </div></div>
  <aside class="pcAcademyDetailPanel" id="pcAcademyDetailPanel">
  <div class="pcAcademySectionHeader pcAcademyConsultHeader"><div><div class="pcAcademyDetailName">상담예정 학생</div><div class="pcAcademyDetailSub">이번 달 상담이 필요한 학생</div></div><span class="pcAcademySectionCount">3명</span></div>
@@ -82,7 +82,7 @@ test('PC page grid stays flush and only hidden-scroll inner lists move as data g
  }finally{await browser.close()}
 });
 
-test('material cards share the work list, headings are lighter, and the recurring manager styling remains unchanged',async()=>{
+test('material cards share the work list, headings and count capsules use requested lighter weights',async()=>{
  const browser=await chromium.launch({headless:true});
  try{
   const page=await browser.newPage({viewport:{width:1600,height:900}});
@@ -102,8 +102,8 @@ test('material cards share the work list, headings are lighter, and the recurrin
    };
   });
   assert.equal(measured.cardParent,'todos');
-  assert.equal(measured.title.fontWeight,'650');
-  assert.equal(measured.consultationTitle.fontWeight,'650');
+  assert.equal(measured.title.fontWeight,'600');
+  assert.equal(measured.consultationTitle.fontWeight,'600');
   for(const property of ['height','backgroundColor','color','borderRadius','fontSize','fontWeight'])
    assert.equal(measured.repeat[property],measured.count[property],property+' capsule mismatch');
   assert.equal(measured.repeatIcon,measured.repeat.color,'icon should inherit capsule text color');
@@ -120,20 +120,22 @@ test('approved typography uses consistent sizes in a desktop browser',async()=>{
    '.recordAcademyStatLabel':['12px','600'],
    '.recordAcademyStatValue':['42px','400'],
    '.recordAcademyStatSub':['12px',null],
-   '.pcAcademySectionTitle':['18px','650'],
-   '.pcAcademyDetailName':['18px','650'],
-   '.pcAcademySectionSub':['12px','700'],
-   '.pcAcademyDetailSub':['12px','700'],
-   '.pcAcademySectionCount':['11px','820'],
-   '.pcAcademyRecurringManageBtn':['11px','820'],
+   '.pcAcademySectionTitle':['18px','600'],
+   '.pcAcademyDetailName':['18px','600'],
+   '.pcAcademySectionSub':['12px','400'],
+   '.pcAcademyDetailSub':['12px','400'],
+   '.pcAcademySectionCount':['11px','400'],
+   '.pcAcademyRecurringManageBtn':['11px','400'],
    '.pcAcademyTodoForm input':['14px',null],
-   '.pcAcademyTodoForm button':['14px','830'],
-   '.pcAcademyTodoText':['14px','600'],
-   '.pcAcademyTodoOrigin':['10px','800'],
+   '.pcAcademyTodoForm button':['14px','600'],
+   '.pcAcademyTodoText':['14px','500'],
+   '.pcAcademyTodoGuide':['11px','400'],
+   '.pcAcademyMaterialStatus':['11px','400'],
+   '.pcAcademyTodoOrigin':['11px','400'],
    '.pcAcademyDetailPanel .recordAcademyConsultGroupTitle':['12px','800'],
-   '.pcAcademyDetailPanel .recordAcademyListName':['14px','700'],
+   '.pcAcademyDetailPanel .recordAcademyListName':['14px','500'],
    '.pcAcademyDetailPanel .recordAcademyInfoChip':['11px','400'],
-   '.pcAcademyDetailPanel .recordAcademyConsultStatusChip':['11px','700'],
+   '.pcAcademyDetailPanel .recordAcademyConsultStatusChip':['11px','400'],
   };
   const measured=await page.evaluate(selectors=>Object.fromEntries(selectors.map(selector=>{
    const style=getComputedStyle(document.querySelector(selector));
@@ -164,7 +166,7 @@ test('sidebar menu aligns at topbar bottom; material text stays on one line',asy
    await page.setContent(fixture());
    const v=await page.evaluate(()=>{
     const main=document.querySelector('.pcAcademyMaterialMain');
-    const name=main.querySelector('strong'),guide=main.querySelector('small');
+    const name=main.querySelector('.pcAcademyTodoText'),guide=main.querySelector('.pcAcademyTodoGuide');
     return {direction:getComputedStyle(main).flexDirection,
      nameY:name.getBoundingClientRect().top,guideY:guide.getBoundingClientRect().top,
      nameSize:getComputedStyle(name).fontSize,guideSize:getComputedStyle(guide).fontSize,
@@ -172,7 +174,7 @@ test('sidebar menu aligns at topbar bottom; material text stays on one line',asy
    });
    assert.equal(v.direction,'row');
    assert.ok(Math.abs(v.nameY-v.guideY)<5);
-   assert.equal(v.nameSize,'14px');assert.equal(v.guideSize,'11px');assert.equal(v.weight,'600');
+   assert.equal(v.nameSize,'14px');assert.equal(v.guideSize,'11px');assert.equal(v.weight,'500');
    await page.close();
   }
  }finally{await browser.close()}
