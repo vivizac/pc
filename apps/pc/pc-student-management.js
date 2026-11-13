@@ -612,22 +612,20 @@
     if(!['owner','manager','super_admin'].includes(typeof global.getOlliCurrentRole==='function'?global.getOlliCurrentRole():'')){
       alert('원장 또는 관리자 계정으로 진행해 주세요.');return;
     }
-    // Require the verified first scheduled lesson map before choosing the
-    // first-month cohort. Never rely on an old enrollment-only fallback.
-    if(typeof global.loadOlliConsultationFirstLessonsFromServer==='function'){
-      const verified=await global.loadOlliConsultationFirstLessonsFromServer();
-      if(!verified){alert('실제 첫 수업일을 서버에서 확인할 수 없습니다. 다시 시도해 주세요.');return;}
-    }
-    const due=consultationStudents();
-    if(!due.length){alert('이번 달 상담예정학생이 없습니다.');return;}
-    if(!global.OlliConsultationServer?.generateDueSummaries){
-      alert('올리 공통 서버가 준비되지 않았습니다. 페이지를 새로고침해 주세요.');return;
-    }
     consultationBatchInProgress=true;
-    const button=document.getElementById('pcAcademyConsultBatchGenerateBtn');
-    if(button){button.disabled=true;button.textContent='생성 진행 중 (0/'+due.length+')';}
     try{
-      const result=await global.OlliConsultationServer.generateDueSummaries(due,(progress)=>{
+      // A verified actual first lesson, rather than enrollment month alone,
+      // is required to select the exact first-month consultation cohort.
+      if(typeof global.loadOlliConsultationFirstLessonsFromServer!=='function'
+        || !await global.loadOlliConsultationFirstLessonsFromServer())
+        throw new Error('실제 첫 수업일을 서버에서 확인할 수 없습니다.');
+      const due=consultationStudents();
+      if(!due.length){alert('이번 달 상담예정학생이 없습니다.');return;}
+      if(!global.OlliConsultationServer?.generateDueSummaries)
+        throw new Error('올리 공통 서버가 준비되지 않았습니다. 새로고침해 주세요.');
+      const button=document.getElementById('pcAcademyConsultBatchGenerateBtn');
+      if(button){button.disabled=true;button.textContent='생성 진행 중 (0/'+due.length+')';}
+      const result=await global.OlliConsultationServer.generateDueSummaries(due,progress=>{
         const current=document.getElementById('pcAcademyConsultBatchGenerateBtn');
         if(current){current.disabled=true;current.textContent='생성 진행 중 ('+progress.processed+'/'+progress.total+')';}
       });
