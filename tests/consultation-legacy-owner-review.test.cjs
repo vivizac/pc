@@ -20,7 +20,7 @@ test('owner candidates are strictly read-only; period and ownership rules remain
 });
 test('server only reads candidates and verifies the original due month for linking',()=>{
   assert.match(api,/action==='legacy_candidates'\s*\|\|\s*action==='link_legacy'/);
-  assert.match(api,/verifyDue\(ownerStudent\[0\],rule,parseMonth\(dueMonth\)\)/);
+  assert.match(api,/await verifyDueForStudent\(\{\.\.\.ownerStudent\[0\],academy_id:academyId\},rule,parseMonth\(dueMonth\),key\)/);
   assert.match(api,/olli_consultation_legacy_summary_candidates/);
   assert.match(api,/confirmExactRecord!==true/);
   assert.match(api,/p_confirm_exact_record:true/);
