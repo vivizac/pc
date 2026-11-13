@@ -107,6 +107,17 @@
       if(!response.ok||!data.ok)throw new Error(data.message||data.error||'상담 자료 조회 실패');
       return data;
     },
+    // Date-only schedule evidence for the current academy, read after session authorization.
+    async readFirstLessons(){
+      const {academyId,sessionToken}=context();
+      const response=await global.fetch('/api/consultation-summary',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({academyId,sessionToken,action:'first_lessons'})
+      });
+      const data=await response.json();
+      if(!response.ok||!data.ok)throw new Error(data.message||data.error||'첫 수업일 조회 실패');
+      return data.dates||{};
+    },
     // Claim status is owned by the central server endpoint, never the client.
     async requestSummary(studentId, taskKey) {
       const { academyId, sessionToken } = context();
