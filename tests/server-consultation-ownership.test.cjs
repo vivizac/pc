@@ -34,17 +34,14 @@ test('calendar month calculation: April 2025 enrollment means April 2026 due',()
  assert.throws(()=>h.verifyDue(enrolled,'every_12',h.parseMonth('2026-03')),/등록일/);
  assert.throws(()=>h.verifyDue(enrolled,'after_3',due),/등록일/);
 });
-test('growth-only annual summary requires last reporting-month growth, even if saved during due month',()=>{
+test('elementary annual summary accepts available growth records with explicit target month',()=>{
  const h=getHelpers(),due=h.parseMonth('2026-04');
- const row=(date,feedback_type='growth')=>({date,feedback_type,content:'growth example'});
- const prior=[row('2025-06-20'),row('2025-09-13'),row('2025-12-12')];
- assert.equal(h.relevantRows(prior,[],'elementary','every_12',due,12).status,'insufficient');
- const march=h.relevantRows([...prior,row('2026. 3. 28.')],[],'elementary','every_12',due,12);
+ const prior=[{date:'2025-06-20',feedback_type:'growth',content:'growth example'}];
+ assert.equal(h.relevantRows(prior,[],'elementary','every_12',due,12).status,'ready');
+ assert.equal(h.relevantRows([],[],'elementary','every_12',due,12).status,'insufficient');
+ const march=h.relevantRows([{date:'2026-04-08',target_month:'2026-03',feedback_type:'growth',content:'March lessons written April'}],[],'elementary','every_12',due,12);
  assert.equal(march.status,'ready');
- assert.equal(h.relevantRows([...prior,row('2026-04-08')],[],'elementary','every_12',due,12).status,'insufficient');
- assert.equal(h.relevantRows([...prior,{...row('2026-04-08'),target_month:'2026-03'}],[],'elementary','every_12',due,12).status,'ready');
- assert.equal(h.relevantRows([...prior,row('2026-05-08')],[],'elementary','every_12',due,12).status,'insufficient');
- assert.equal(h.relevantRows([...prior,row('2026-04-08','class')],[],'elementary','every_12',due,12).status,'insufficient');
+ assert.equal(h.relevantRows([{date:'2026-04-08',target_month:'2026-04',feedback_type:'growth',content:'April lessons'}],[],'elementary','every_12',due,12).status,'insufficient');
 });
 test('kinder first-month consultation requires four feedbacks',()=>{
  const h=getHelpers(),due=h.parseMonth('2026-10');
@@ -130,12 +127,12 @@ test('summary claim RPC is executable only by service role',()=>{
  assert.match(migration,/to service_role/);
 });
 
-test('annual growth gate uses explicit lesson target month rather than generation date',()=>{
+test('elementary reports use explicit target month, never a later creation date',()=>{
  const h=getHelpers(),due=h.parseMonth('2026-04');
- const old=[{date:'2025-06-20',feedback_type:'growth',content:'first'},{date:'2025-11-21',feedback_type:'growth',content:'second'}];
- assert.equal(h.relevantRows([...old,{date:'2026-04-05',feedback_type:'growth',content:'April draft without target month'}],[],'elementary','every_12',due,12).status,'insufficient');
- assert.equal(h.relevantRows([...old,{date:'2026-04-05',target_month:'2026-03',feedback_type:'growth',content:'March lessons written April'}],[],'elementary','every_12',due,12).status,'ready');
- assert.equal(h.relevantRows([...old,{date:'2026-04-05',target_month:'2026-04',feedback_type:'growth',content:'April lessons'}],[],'elementary','every_12',due,12).status,'insufficient');
+ const observed={date:'2026-04-05',feedback_type:'growth',content:'March lesson evidence'};
+ assert.equal(h.relevantRows([observed],[],'elementary','every_12',due,12).status,'insufficient');
+ assert.equal(h.relevantRows([{...observed,target_month:'2026-03'}],[],'elementary','every_12',due,12).status,'ready');
+ assert.equal(h.relevantRows([{...observed,target_month:'2026-04'}],[],'elementary','every_12',due,12).status,'insufficient');
 });
 test('expired generation lease is allowed to proceed to atomic claim check',()=>{
  const s=read('packages/common/api/_lib/consultation-summary-handler.cjs');
