@@ -219,7 +219,7 @@
       '<span><i class="isUnavailable"></i>보강 불가</span></div>'+
       '<div class="ombWeekScroll" role="region" tabindex="0" aria-label="날짜별 보강 시간표, 가로로 이동할 수 있습니다">'+
       '<div class="ombWeekGrid">'+columns+'</div></div>'+
-      '</div><p class="ombMuted">선예약 중은 해당 날짜에 다른 학생의 보강 예약으로 마감된 자리입니다. 다른 주를 확인해 보세요.</p>';
+      '</div>';
   }
   function credits(){
     const previous=(state.snapshot?.absences||[]).length;
@@ -251,11 +251,12 @@
   function renderApply(){
     const canContinue=(state.absences.length+state.makeups.length)>0&&
       state.makeups.length<=credits()&&!state.loading;
-    shell('보강 신청하기','한 주 시간표에서 보강 날짜와 시간을 선택하고, 결석 예정일은 필요할 때 펼쳐 선택해 주세요.',
+    shell('보강 신청하기','',
       '<p class="ombSelectedStudent">'+esc(state.student)+' 학생</p>'+
       '<section class="ombSection">'+
       '<div class="ombSectionTitle"><strong>1. 보강 수업일 선택</strong><small>날짜·시간 복수 선택</small></div>'+
-      '<p class="ombMuted">원하시는 주를 이동한 후 보강 가능한 시간을 눌러 주세요. 남은 자리 수는 표시하지 않습니다.</p>'+
+
+
       weekTimetable()+
       '<div class="ombSummary"><h2>보강 수업 '+state.makeups.length+'건</h2>'+
       chosen('makeup')+'</div></section>'+
