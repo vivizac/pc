@@ -12,7 +12,7 @@
     ready:false,academy:'',phase:'choice',mode:'apply',
     name:'',phone:'',result:null,token:'',student:'',
     snapshot:null,absenceMonth:'',absenceDay:'',absenceOpen:false,
-    weekStart:'',weekSlots:[],weekLoading:false,loading:false,
+    weekStart:'',weekSlots:[],selectedWeekDay:'',weekLoading:false,loading:false,
     error:'',absences:[],makeups:[],requestKey:''
   };
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -125,6 +125,46 @@
           (exists?' · 결석 등록됨':'')+'</button>';
       }).join('')+'</div>';
   }
+  function mobileDayCards(start,weekday,statusLabel){
+    const selected=state.selectedWeekDay||koreaToday();
+    const max=afterDays(koreaToday(),90);
+    const dayPicker='<div class="ombMobileDayPicker" role="group" aria-label="보강 날짜 선택">'+
+      weekday.map((name,i)=>{
+        const date=afterDays(start,i);
+        const disabled=date<koreaToday()||date>max;
+        const picked=date===selected;
+        return '<button type="button" data-action="select-week-day" data-date="'+date+'" '+
+          (disabled?'disabled':'')+' class="ombMobileDay '+(picked?'isCurrent':'')+
+          '" aria-pressed="'+picked+'" aria-label="'+esc(dateLabel(date))+'">'+
+          '<small>'+name+'</small><strong>'+Number(date.slice(-2))+'</strong></button>';
+      }).join('')+'</div>';
+    const slots=state.weekSlots.filter(x=>x.date===selected);
+    let cards='';
+    if(state.weekLoading){
+      cards='<p class="ombMobileEmpty" role="status">수업 시간을 확인하고 있습니다.</p>';
+    }else if(!slots.length){
+      cards='<p class="ombMobileEmpty">이 날짜에는 신청 가능한 수업이 없습니다. 다른 날짜를 선택해 주세요.</p>';
+    }else{
+      cards=slots.map(slot=>{
+        const key=itemKey(slot);
+        const picked=state.makeups.some(x=>itemKey(x)===key);
+        const status=slot.status||'unavailable';
+        const canChoose=status==='available'||picked;
+        const title=(slot.label||String(slot.time_slot)+'시')+(slot.group==='B'?' · B반':'');
+        return '<button type="button" class="ombMobileClass '+(picked?'isSelected':'is'+status)+
+          '" data-action="toggle-week-makeup" data-item="'+esc(key)+'" '+
+          (canChoose?'':'disabled')+' aria-pressed="'+picked+'" aria-label="'+
+          esc(dateLabel(selected)+' '+title+' '+(picked?'선택됨':statusLabel[status]||'보강 불가'))+'">'+
+          '<span class="ombMobileClassTime"><span class="ombMobileClassIcon" aria-hidden="true">'+
+          (picked?'✓':'◷')+'</span><strong>'+esc(title)+'</strong></span>'+
+          '<span class="ombMobileClassStatus">'+esc(picked?'선택됨':statusLabel[status]||'보강 불가')+'</span>'+
+          '</button>';
+      }).join('');
+    }
+    return '<div class="ombMobileWeek" aria-label="모바일 보강 수업 날짜·시간 선택">'+
+      dayPicker+'<div class="ombMobileSelectedDate"><strong>'+esc(dateLabel(selected))+
+      '</strong></div><div class="ombMobileClassList">'+cards+'</div></div>';
+  }
   function weekTimetable(){
     const start=state.weekStart||mondayOf(koreaToday());
     const first=mondayOf(koreaToday());
@@ -145,6 +185,7 @@
       available:'보강 가능',prebooked:'선예약 중',unavailable:'보강 불가',
       own:'기존 수업',closed:'휴원',past:'신청 불가'
     };
+    const mobile=mobileDayCards(start,weekday,statusLabel);
     const columns=Array.from({length:6},(_,i)=>{
       const date=afterDays(start,i);
       const slots=state.weekSlots.filter(x=>x.date===date);
@@ -173,12 +214,12 @@
         '<strong>'+weekday[i]+'</strong><span>'+shortLabel(date)+'</span></div>'+
         '<div class="ombWeekDayBody">'+body+'</div></div>';
     }).join('');
-    return heads+'<div class="ombWeekLegend"><span><i class="isAvailable"></i>보강 가능</span>'+
+    return heads+mobile+'<div class="ombDesktopWeek"><div class="ombWeekLegend"><span><i class="isAvailable"></i>보강 가능</span>'+
       '<span><i class="isPrebooked"></i>선예약 중</span>'+
       '<span><i class="isUnavailable"></i>보강 불가</span></div>'+
       '<div class="ombWeekScroll" role="region" tabindex="0" aria-label="날짜별 보강 시간표, 가로로 이동할 수 있습니다">'+
       '<div class="ombWeekGrid">'+columns+'</div></div>'+
-      '<p class="ombMuted">선예약 중은 해당 주에 다른 학생의 보강 예약으로 마감된 자리입니다. 다른 주를 확인해 보세요.</p>';
+      '</div><p class="ombMuted">선예약 중은 해당 날짜에 다른 학생의 보강 예약으로 마감된 자리입니다. 다른 주를 확인해 보세요.</p>';
   }
   function credits(){
     const previous=(state.snapshot?.absences||[]).length;
@@ -229,7 +270,10 @@
       '<div class="ombSummary"><h2>결석 예정 '+state.absences.length+'건</h2>'+
       chosen('absence')+'</div></section>'+
       (state.makeups.length>credits()?'<p class="ogbNotice isError">보강 횟수가 결석 예정·기등록 결석 횟수를 초과했습니다. 결석 예정일을 추가하거나 보강을 줄여 주세요.</p>':'')+
-      '<div class="ombActions">'+
+      '<div class="ombMobileSticky" role="group" aria-label="선택 일정 확인">'+
+      '<div class="ombMobileStickyCount"><small>선택한 보강</small><strong>'+state.makeups.length+'건</strong></div>'+
+      '<button type="button" class="ogbPrimary" data-action="review" '+(canContinue?'':'disabled')+'>선택 일정 확인</button></div>'+
+      '<div class="ombActions ombDesktopActions">'+
       '<button type="button" class="ogbPrimary" data-action="review" '+(canContinue?'':'disabled')+'>선택한 일정 확인하기</button>'+
       '<button type="button" class="ogbSecondary" data-action="go-history">보강 확인하기</button>'+
       '</div><button type="button" class="ombBack" data-action="home">처음으로</button>');
@@ -302,7 +346,7 @@
     try{
       await loadSnapshot();
       const month=koreaToday().slice(0,7);
-      state.absenceMonth=month;state.weekStart=mondayOf(koreaToday());
+      state.absenceMonth=month;state.weekStart=mondayOf(koreaToday());state.selectedWeekDay=koreaToday();
       state.phase=state.mode==='apply'?'apply':'history';
       state.absences=[];state.makeups=[];state.weekSlots=[];
       state.absenceDay='';state.absenceOpen=false;state.requestKey='';
@@ -312,7 +356,10 @@
     }finally{state.loading=false;render();}
   }
   async function loadWeek(start){
-    state.weekStart=start;state.weekSlots=[];state.weekLoading=true;state.error='';
+    state.weekStart=start;
+    if(!state.selectedWeekDay||state.selectedWeekDay<start||state.selectedWeekDay>afterDays(start,5))
+      state.selectedWeekDay=start;
+    state.weekSlots=[];state.weekLoading=true;state.error='';
     render();
     const token=state.token;
     try{
@@ -389,6 +436,13 @@
     if(action==='week-prev'||action==='week-next'){
       const next=afterDays(state.weekStart,action==='week-next'?7:-7);
       if(next>=mondayOf(koreaToday())&&next<=mondayOf(afterDays(koreaToday(),90)))void loadWeek(next);
+      return;
+    }
+    if(action==='select-week-day'){
+      const date=b.dataset.date;
+      if(date>=koreaToday()&&date<=afterDays(koreaToday(),90)&&date>=state.weekStart&&date<=afterDays(state.weekStart,5)){
+        state.selectedWeekDay=date;render();
+      }
       return;
     }
     if(action==='toggle-absence-calendar'){
