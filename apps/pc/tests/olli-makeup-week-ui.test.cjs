@@ -72,6 +72,16 @@ test('guardian weekly timetable, prior reservation, multiple selections and coll
   await settle();
   assert.match(root.innerHTML,/11\/16/);
   assert.match(root.innerHTML,/선예약 중/);
+  assert.match(root.innerHTML,/ombMobileDayPicker/,'mobile six-day strip is rendered');
+  assert.match(root.innerHTML,/ombMobileClassList/,'selected day uses stacked class cards');
+  assert.match(root.innerHTML,/ombMobileSticky/,'mobile selection review remains accessible');
+  assert.match(root.innerHTML,/ombDesktopWeek/,'desktop weekly table remains');
+  click('select-week-day',{date:'2026-11-16'});
+  assert.match(root.innerHTML,/ombMobileClass isprebooked/,'prebooked lesson is visible in mobile cards');
+  click('select-week-day',{date:'2026-11-17'});
+  assert.match(root.innerHTML,/이 날짜에는 신청 가능한 수업이 없습니다/);
+  click('select-week-day',{date:'2026-11-16'});
+
   assert.match(root.innerHTML,/보강 불가/);
   click('toggle-week-makeup',{item:'2026-11-16|5|A'});
   assert.match(root.innerHTML,/보강 수업 0건/,'prebooked time cannot be selected');
@@ -81,6 +91,10 @@ test('guardian weekly timetable, prior reservation, multiple selections and coll
   await settle();
   assert.match(root.innerHTML,/11\/23/);
   assert.match(root.innerHTML,/보강 수업 1건/,'selection persists across week navigation');
+  assert.match(root.innerHTML,/ombMobileDayPicker/);
+  click('select-week-day',{date:'2026-11-23'});
+  assert.match(root.innerHTML,/11월 23일/);
+
   click('toggle-week-makeup',{item:'2026-11-23|5|A'});
   assert.match(root.innerHTML,/보강 수업 2건/);
   click('toggle-absence-calendar');

@@ -91,3 +91,52 @@
 .ombAbsenceToggle[aria-expanded="true"] b{background:#e5f5f7}
 #ombAbsenceCalendar[hidden]{display:none}
 @media(max-width:450px){.ombWeekGrid{min-width:570px}.ombWeekNav strong{font-size:12px}.ombWeekScroll{margin-right:-4px}.ombWeekDayBody{padding:5px}}
+
+
+/* Guardian phone layout: six tap targets, one selected day's class cards.
+   Desktop retains the existing six-column timetable and its own review actions. */
+.ombMobileWeek,.ombMobileSticky{display:none}
+@media(max-width:600px){
+  .ombMobileWeek{display:block}
+  .ombDesktopWeek,.ombDesktopActions{display:none!important}
+  .ombPanel{padding-bottom:104px}
+  .ombWeekNav{margin:14px 0 16px}
+  .ombWeekNav button{flex:0 0 44px;width:44px;height:44px}
+  .ombWeekNav strong{font-size:13px}
+  .ombMobileDayPicker{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin:0 0 20px}
+  .ombMobileDay{min-width:0;min-height:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:8px 0;border:1px solid #e3eaf0;border-radius:12px;background:#f5f7f9;color:#53616e;cursor:pointer}
+  .ombMobileDay small{font-size:11px;font-weight:500}
+  .ombMobileDay strong{font-size:17px;font-weight:700}
+  .ombMobileDay.isCurrent{background:#079eb3;color:#fff;border-color:#079eb3;box-shadow:0 2px 8px rgba(7,158,179,.14)}
+  .ombMobileDay:disabled{opacity:.36;cursor:default}
+  .ombMobileDay:focus-visible,.ombMobileClass:focus-visible{outline:2px solid #087f95;outline-offset:3px}
+  .ombMobileSelectedDate{margin:0 0 12px}
+  .ombMobileSelectedDate strong{font-size:15px;color:#2f3c47;font-weight:700}
+  .ombMobileClassList{display:flex;flex-direction:column;gap:9px}
+  .ombMobileClass{display:flex;width:100%;min-height:62px;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#fff;border:1px solid #dfe7ed;border-radius:13px;text-align:left;font:inherit;color:#334454;cursor:pointer}
+  .ombMobileClassTime{display:flex;align-items:center;gap:11px;min-width:0}
+  .ombMobileClassTime strong{font-size:15px;font-weight:650}
+  .ombMobileClassIcon{width:29px;height:29px;flex:0 0 29px;border-radius:50%;display:grid;place-items:center;color:#7b8b97;background:#eff3f6;font-size:17px}
+  .ombMobileClassStatus{font-size:12px;font-weight:650;white-space:nowrap}
+  .ombMobileClass.isavailable .ombMobileClassStatus{color:#05879a}
+  .ombMobileClass.isprebooked{background:#fffaf2;border-color:#f3e5ce;color:#a48b69}
+  .ombMobileClass.isprebooked .ombMobileClassStatus{color:#a77a35}
+  .ombMobileClass.isunavailable,.ombMobileClass.isclosed,.ombMobileClass.ispast{background:#f7f8f9;color:#a7b0b8;border-color:#edf0f3}
+  .ombMobileClass.isown{background:#f7f7fb;color:#9697aa;border-color:#ebebf3}
+  .ombMobileClass.isSelected{background:#e8f7f9;border-color:#079eb3;color:#067d90}
+  .ombMobileClass.isSelected .ombMobileClassIcon{background:#079eb3;color:#fff}
+  .ombMobileClass:disabled{opacity:1;cursor:default}
+  .ombMobileEmpty{font-size:13px;line-height:1.7;color:#80909c;background:#f5f8fa;border-radius:12px;padding:20px 15px;margin:0}
+  .ombMobileSticky{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:30;align-items:center;justify-content:space-between;gap:14px;padding:12px max(16px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));background:#fff;border-top:1px solid #e3e9ef;box-shadow:0 -8px 22px rgba(28,50,64,.08)}
+  .ombMobileStickyCount{display:flex;flex-direction:column;gap:2px;white-space:nowrap}
+  .ombMobileStickyCount small{font-size:11px;color:#718290}
+  .ombMobileStickyCount strong{font-size:18px;color:#253845}
+  .ombMobileSticky .ogbPrimary{width:auto!important;flex:1 1 auto;max-width:215px;min-height:46px;margin:0;font-size:14px}
+  .ombDateList{gap:7px}
+  .ombDateChip{max-width:100%}
+}
+@media(max-width:350px){
+  .ombMobileDayPicker{gap:3px}
+  .ombMobileDay{min-height:60px;border-radius:9px}
+  .ombMobileDay strong{font-size:16px}
+}
