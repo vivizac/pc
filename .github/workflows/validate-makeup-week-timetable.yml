@@ -1,0 +1,40 @@
+name: Validate guardian makeup weekly timetable
+on:
+  pull_request:
+    paths:
+      - 'apps/pc/olli-makeup-guardian.js'
+      - 'apps/pc/olli-makeup-guardian.css'
+      - 'apps/pc/makeup-booking.html'
+      - 'apps/pc/api/olli-makeup-public.js'
+      - 'apps/pc/tests/olli-makeup-public.test.cjs'
+      - 'apps/pc/tests/olli-makeup-week-ui.test.cjs'
+      - 'supabase/migrations/*_olli_makeup_parent_week_timetable.sql'
+      - '.github/workflows/validate-makeup-week-timetable.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/pc/olli-makeup-guardian.js'
+      - 'apps/pc/api/olli-makeup-public.js'
+      - 'apps/pc/tests/olli-makeup-public.test.cjs'
+      - 'apps/pc/tests/olli-makeup-week-ui.test.cjs'
+      - 'supabase/migrations/*_olli_makeup_parent_week_timetable.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  makeup-week:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check guardian and API syntax
+        run: |
+          node --check apps/pc/olli-makeup-guardian.js
+          node --check apps/pc/api/olli-makeup-public.js
+      - name: Run isolated guardian API and week UI tests
+        run: node --test apps/pc/tests/olli-makeup-public.test.cjs apps/pc/tests/olli-makeup-week-ui.test.cjs

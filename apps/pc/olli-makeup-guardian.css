@@ -50,3 +50,44 @@
 .ombReviewBlock li:last-child{border:0}
 .ombSelectedStudent{font-size:13px;color:#6d7b8a;margin:-8px 0 17px}
 @media(max-width:450px){.ombSlots{grid-template-columns:repeat(2,minmax(0,1fr))}.ombIdentityResult{flex-wrap:wrap}}
+
+
+/* Weekly makeup timetable: date and class time share one selectable cell. */
+.ombWeekNav{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 0 12px}
+.ombWeekNav button{flex:0 0 38px;width:38px;height:38px;background:#fff;border:1px solid #dde5ec;border-radius:10px;font-size:22px;color:#137e91;cursor:pointer}
+.ombWeekNav button:disabled{opacity:.3;cursor:not-allowed}
+.ombWeekNav strong{font-size:13px;letter-spacing:-.035em;text-align:center;line-height:1.4}
+.ombWeekLegend{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 11px}
+.ombWeekLegend span{display:flex;align-items:center;gap:5px;font-size:11px;color:#70808a}
+.ombWeekLegend i{width:9px;height:9px;border-radius:50%;display:inline-block;border:1px solid #ccd7de}
+.ombWeekLegend .isAvailable{background:#079eb3;border-color:#079eb3}
+.ombWeekLegend .isPrebooked{background:#efba64;border-color:#e0ac58}
+.ombWeekLegend .isUnavailable{background:#d3dce2}
+.ombWeekScroll{overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;border-radius:13px;border:1px solid #e2e7eb;margin-bottom:12px}
+.ombWeekScroll:focus-visible{outline:2px solid #079eb3;outline-offset:3px}
+.ombWeekGrid{min-width:606px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));background:#fff}
+.ombWeekColumn{min-width:0;border-right:1px solid #edf0f3}
+.ombWeekColumn:last-child{border-right:0}
+.ombWeekDayHeader{position:sticky;top:0;background:#eff7f8;display:flex;align-items:center;justify-content:center;gap:4px;flex-direction:column;padding:11px 3px;min-height:51px}
+.ombWeekDayHeader strong{font-size:12px;color:#14798b}
+.ombWeekDayHeader span{font-size:11px;color:#5c8790}
+.ombWeekDayBody{padding:6px;display:flex;flex-direction:column;gap:6px;min-height:73px}
+.ombWeekSlot{width:100%;min-height:56px;padding:7px 3px;border-radius:9px;border:1px solid #dfe7ec;background:#f4f7f9;color:#79858f;font:inherit;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;line-height:1.2;text-align:center;cursor:pointer}
+.ombWeekSlot strong{font-size:12px;font-weight:750;word-break:keep-all}
+.ombWeekSlot small{font-size:10px;white-space:nowrap}
+.ombWeekSlot.isavailable{background:#e8f7f9;border-color:#b6e4e9;color:#087f92}
+.ombWeekSlot.isavailable:hover{background:#ddf3f6;border-color:#079eb3}
+.ombWeekSlot.isprebooked{background:#fff7ed;border-color:#f4e0c2;color:#b17930}
+.ombWeekSlot.isunavailable,.ombWeekSlot.isclosed,.ombWeekSlot.ispast{background:#f5f6f7;border-color:#eef0f1;color:#a5aeb6}
+.ombWeekSlot.isown{background:#eff0f6;border-color:#e0e1ed;color:#8b8ca5}
+.ombWeekSlot.isSelected{background:#079eb3;border-color:#079eb3;color:white}
+.ombWeekSlot:disabled{cursor:default;opacity:1}
+.ombWeekLoading,.ombWeekEmpty{font-size:11px;color:#97a5ac;text-align:center;padding:18px 3px}
+.ombAbsenceToggle{width:100%;border:0;background:#fff;display:flex;justify-content:space-between;align-items:center;text-align:left;gap:12px;padding:3px 0 15px;cursor:pointer;color:#242f39}
+.ombAbsenceToggle span{display:flex;flex-direction:column;gap:7px}
+.ombAbsenceToggle strong{font-size:16px}
+.ombAbsenceToggle small{font-size:12px;color:#788694;font-weight:400}
+.ombAbsenceToggle b{width:32px;height:32px;border:1px solid #dfe8ed;border-radius:10px;display:grid;place-items:center;color:#079eb3;font-size:21px;font-weight:400}
+.ombAbsenceToggle[aria-expanded="true"] b{background:#e5f5f7}
+#ombAbsenceCalendar[hidden]{display:none}
+@media(max-width:450px){.ombWeekGrid{min-width:570px}.ombWeekNav strong{font-size:12px}.ombWeekScroll{margin-right:-4px}.ombWeekDayBody{padding:5px}}
