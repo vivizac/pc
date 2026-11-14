@@ -1,0 +1,14 @@
+.olliMakeupNoticeOverlay{position:fixed;inset:0;z-index:2147482000;background:rgba(23,35,46,.42);display:flex;justify-content:center;align-items:center;padding:20px;box-sizing:border-box}
+.olliMakeupNoticeDialog{background:#fff;border-radius:22px;box-shadow:0 22px 65px #1425324d;width:min(470px,100%);max-height:90vh;overflow:auto;padding:26px;font-family:inherit;color:#202b35;box-sizing:border-box}
+.olliMakeupNoticeEyebrow{font-size:12px;color:#079eb3;font-weight:800;margin-bottom:9px}
+.olliMakeupNoticeDialog h2{font-size:21px;font-weight:750;margin:0 0 8px;letter-spacing:-.035em}
+.olliMakeupNoticeCaption{font-size:13px;color:#778491;line-height:1.6;margin:0 0 21px}
+.olliMakeupNoticeDialog section{border-top:1px solid #e7eaee;padding:15px 0}
+.olliMakeupNoticeDialog h3{font-size:14px;font-weight:750;margin:0 0 10px}
+.olliMakeupNoticeDialog ul{padding-left:20px;margin:0}
+.olliMakeupNoticeDialog li{font-size:13px;line-height:1.7}
+.olliMakeupNoticeDialog .ommEmpty{font-size:12px;color:#96a0a9;margin:0}
+.olliMakeupNoticeConfirm{width:100%;min-height:46px;border:0;border-radius:11px;background:#079eb3;color:#fff;font-size:14px;font-weight:750;cursor:pointer;margin-top:10px}
+.olliMakeupNoticeConfirm:disabled{opacity:.45;cursor:wait}
+.olliMakeupNoticeError{font-size:12px;color:#b84258;line-height:1.5}
+@media(max-width:450px){.olliMakeupNoticeDialog{padding:21px 18px;border-radius:18px}}

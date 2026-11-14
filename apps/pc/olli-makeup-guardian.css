@@ -1,0 +1,52 @@
+/* The parent-facing makeup site deliberately reuses the consultation booking design. */
+.ombPanel{overflow:hidden}
+.ombHeader{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px}
+.ombHeader strong{font-size:19px;letter-spacing:-.035em}
+.ombHeader small{font-size:12px;color:#7f8994}
+.ombTabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:23px}
+.ombTabs button{min-height:47px;border-radius:11px;border:1px solid #dfe5ed;background:#fff;color:#485560;font-size:14px;font-weight:750}
+.ombTabs button[aria-selected="true"]{background:#079eb3;color:#fff;border-color:#079eb3}
+.ombIdentityResult{display:flex;justify-content:space-between;gap:15px;align-items:center;background:#f3fafb;border:1px solid #d6ebee;border-radius:13px;padding:15px;margin-top:12px}
+.ombIdentityResult strong{font-size:15px}
+.ombIdentityResult span{font-size:12px;color:#748391}
+.ombIdentityResult button{border:1px solid #079eb3;color:#078ca0;background:#fff;border-radius:9px;padding:9px 14px;white-space:nowrap;font-size:13px;font-weight:750}
+.ombSection{padding-top:23px;border-top:1px solid #e9edf1;margin-top:24px}
+.ombSection:first-of-type{padding-top:0;margin-top:0;border-top:0}
+.ombSectionTitle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px}
+.ombSectionTitle strong{font-size:16px}
+.ombSectionTitle small{color:#8a949f;font-size:12px}
+.ombSummary{border:1px solid #e1e9ee;border-radius:12px;padding:16px;margin-top:16px;background:#fafcfd}
+.ombSummary h2{font-size:14px;margin:0 0 9px}
+.ombSummary p{font-size:13px;line-height:1.65;margin:5px 0}
+.ombSummary .isAbsence{color:#d26064}
+.ombSummary .isMakeup{color:#057f96}
+.ombDateList{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 8px}
+.ombDateChip{display:flex;align-items:center;gap:9px;padding:9px 11px;background:#f1f8fa;color:#137888;border:1px solid #cce6eb;border-radius:10px;font-size:12px;line-height:1.45}
+.ombDateChip.isAbsence{background:#fff6f6;color:#a8525c;border-color:#f5dbdc}
+.ombDateChip button{border:none;background:transparent;color:inherit;font-size:17px;line-height:1;cursor:pointer;padding:0}
+.ombCalendar>button.hasLesson{border-color:#cde4e9;color:#167989;font-weight:700}
+.ombCalendar>button.selected{background:#e5f6f8;border-color:#079eb3;color:#067c8d}
+.ombCalendar>button:disabled{opacity:.28}
+.ombSlots{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ombSlots button{line-height:1.35;text-align:center;padding:9px 5px}
+.ombSlots button.selected{border-color:#079eb3;background:#e6f7f9;color:#07879a;font-weight:800}
+.ombStatus{font-size:12px;font-weight:750;padding:5px 9px;border-radius:999px;background:#f1f4f7;color:#677481}
+.ombStatus.scheduled{color:#077c92;background:#e3f6f8}
+.ombStatus.completed{color:#337b5d;background:#edf8f2}
+.ombStatus.cancelled{color:#a85a64;background:#fff0f2}
+.ombHistoryRow{padding:16px 0;border-bottom:1px solid #e9edf1}
+.ombHistoryRow:last-child{border-bottom:none}
+.ombHistoryRowTop{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.ombHistoryRow strong{font-size:16px;line-height:1.5}
+.ombHistoryRow p{font-size:13px;color:#7b8996;margin:7px 0 0}
+.ombBack{border:0;background:none;color:#7a8995;padding:9px 3px;font-size:13px;cursor:pointer}
+.ombActions{display:grid;gap:10px;margin-top:20px}
+.ombMuted{font-size:12px;color:#788694;line-height:1.7}
+.ombError{margin:10px 0}
+.ombReviewBlock{margin-top:22px}
+.ombReviewBlock h2{font-size:15px;margin:0 0 12px}
+.ombReviewBlock ul{list-style:none;padding:0;margin:0}
+.ombReviewBlock li{border-bottom:1px solid #e9edf1;padding:12px 0;font-size:14px;line-height:1.5}
+.ombReviewBlock li:last-child{border:0}
+.ombSelectedStudent{font-size:13px;color:#6d7b8a;margin:-8px 0 17px}
+@media(max-width:450px){.ombSlots{grid-template-columns:repeat(2,minmax(0,1fr))}.ombIdentityResult{flex-wrap:wrap}}
