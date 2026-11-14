@@ -149,6 +149,18 @@ module.exports=async function handler(req,res){
       if(result?.ok!==true)fail('ACCESS_DENIED',403);
       return send(res,200,result);
     }
+    if(action==='week'){
+      const weekStart=parseDate(b.week_start);
+      // Parent credentials are checked inside the service-role SQL RPC.
+      const result=await rpc('olli_makeup_parent_week',{
+        p_token_hash:tokenFrom(b),p_week_start:weekStart});
+      if(result?.ok!==true){
+        const code=result?.code==='DATE_INVALID'?'DATE_INVALID':'ACCESS_DENIED';
+        fail(code,code==='ACCESS_DENIED'?403:400);
+      }
+      return send(res,200,{ok:true,week_start:String(result.week_start||weekStart),
+        slots:Array.isArray(result.slots)?result.slots:[]});
+    }
     if(action==='slots'){
       const date=parseDate(b.date);
       const result=await rpc('olli_makeup_parent_slots',{

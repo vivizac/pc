@@ -91,3 +91,32 @@ test('duplicate slot and back-end vacancy failures are blocked',async()=>{
   assert.equal(full.statusCode,409);
   assert.equal(full.payload.code,'SLOT_UNAVAILABLE');
 });
+
+test('weekly timetable requires a parent session and preserves date-bound status labels',async()=>{
+  let params;
+  mockRpc({olli_makeup_parent_week:p=>(params=p,{ok:true,week_start:p.p_week_start,slots:[
+    {date:'2026-11-16',time_slot:4,group:'A',label:'4시',status:'available'},
+    {date:'2026-11-16',time_slot:5,group:'A',label:'5시',status:'prebooked'},
+    {date:'2026-11-23',time_slot:5,group:'A',label:'5시',status:'available'}
+  ]})});
+  const token='A'.repeat(43);
+  const responseWeek=await response({action:'week',session_token:token,week_start:'2026-11-16'});
+  assert.equal(responseWeek.statusCode,200);
+  assert.equal(params.p_week_start,'2026-11-16');
+  assert.match(params.p_token_hash,/^[0-9a-f]{64}$/);
+  assert.deepEqual(responseWeek.payload.slots.map(s=>s.status),['available','prebooked','available']);
+  const denied=await response({action:'week',session_token:'invalid',week_start:'2026-11-16'});
+  assert.equal(denied.statusCode,403);
+  const invalidDate=await response({action:'week',session_token:token,week_start:'2026-11-55'});
+  assert.equal(invalidDate.statusCode,400);
+});
+
+test('weekly timetable returns only status and class fields from server RPC',async()=>{
+  mockRpc({olli_makeup_parent_week:{ok:true,slots:[
+    {date:'2026-11-16',time_slot:4,group:'A',label:'4시',status:'unavailable'}
+  ]}});
+  const r=await response({action:'week',session_token:'A'.repeat(43),week_start:'2026-11-16'});
+  assert.equal(r.statusCode,200);
+  assert.equal(r.payload.slots[0].status,'unavailable');
+  assert.equal(r.payload.slots[0].student_name,undefined);
+});

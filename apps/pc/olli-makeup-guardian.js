@@ -11,8 +11,8 @@
   const state={
     ready:false,academy:'',phase:'choice',mode:'apply',
     name:'',phone:'',result:null,token:'',student:'',
-    snapshot:null,absenceMonth:'',makeupMonth:'',absenceDay:'',
-    makeupDay:'',slots:[],loadingSlots:false,loading:false,
+    snapshot:null,absenceMonth:'',absenceDay:'',absenceOpen:false,
+    weekStart:'',weekSlots:[],weekLoading:false,loading:false,
     error:'',absences:[],makeups:[],requestKey:''
   };
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -24,6 +24,7 @@
   }
   function afterDays(date,amount){const d=new Date(date+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+amount);return d.toISOString().slice(0,10);}
   function shiftMonth(month,amount){const a=month.split('-').map(Number);return new Date(Date.UTC(a[0],a[1]-1+amount,1)).toISOString().slice(0,7);}
+  function mondayOf(date){const d=new Date(date+'T00:00:00Z');d.setUTCDate(d.getUTCDate()-(d.getUTCDay()+6)%7);return d.toISOString().slice(0,10);}
   function dateLabel(date){
     if(!date)return '';
     return new Intl.DateTimeFormat('ko-KR',{timeZone:KST,month:'long',day:'numeric',weekday:'short'})
@@ -75,34 +76,32 @@
       (description?'<p class="ogbMuted">'+esc(description)+'</p>':'')+
       failBox()+inner+'</section><p class="ogbFooter">비비작아이성향미술학원 · 학부모 전용</p>';
   }
-  function calendar(type){
-    const isAbs=type==='absence';
-    const month=isAbs?state.absenceMonth:state.makeupMonth;
+  function absenceCalendar(){
+    const month=state.absenceMonth;
     const [y,m]=month.split('-').map(Number);
     const first=new Date(Date.UTC(y,m-1,1)),count=new Date(Date.UTC(y,m,0)).getUTCDate();
     const min=koreaToday(),max=afterDays(min,90);
-    const selected=isAbs?state.absences:state.makeups;
     const active=new Set((state.snapshot?.regular||[]).map(x=>x.date));
     let cells=['일','월','화','수','목','금','토'].map(x=>'<span>'+x+'</span>').join('');
     cells+='<i aria-hidden="true"></i>'.repeat(first.getUTCDay());
     for(let day=1;day<=count;day++){
-      const d=month+'-'+String(day).padStart(2,'0');
-      const weekday=new Date(Date.UTC(y,m-1,day)).getUTCDay();
-      const allowed=d>=min&&d<=max&&(isAbs?active.has(d):weekday!==0);
-      const marked=selected.some(x=>x.date===d);
-      const focused=(isAbs?state.absenceDay:state.makeupDay)===d;
-      cells+='<button type="button" data-action="'+(isAbs?'abs-date':'makeup-date')+
-        '" data-date="'+d+'" '+(allowed?'':'disabled')+
-        ' class="'+(marked||focused?'selected ':'')+(isAbs&&active.has(d)?'hasLesson ':'')+
-        (weekday===0?'sunday':'')+'" aria-pressed="'+(marked||focused)+'">'+day+'</button>';
+      const date=month+'-'+String(day).padStart(2,'0');
+      const allowed=date>=min&&date<=max&&active.has(date);
+      const selected=state.absences.some(x=>x.date===date);
+      const focused=state.absenceDay===date;
+      cells+='<button type="button" data-action="abs-date" data-date="'+date+'" '+
+        (allowed?'':'disabled')+' class="'+(selected||focused?'selected ':'')+
+        (active.has(date)?'hasLesson ':'')+
+        (new Date(Date.UTC(y,m-1,day)).getUTCDay()===0?'sunday':'')+
+        '" aria-pressed="'+(selected||focused)+'">'+day+'</button>';
     }
     return '<div class="ogbMonth">'+
-      '<button type="button" aria-label="이전 달" data-action="'+type+'-prev" '+
+      '<button type="button" aria-label="결석 이전 달" data-action="absence-prev" '+
         (month<=min.slice(0,7)?'disabled':'')+'>‹</button>'+
       '<strong>'+y+'년 '+m+'월</strong>'+
-      '<button type="button" aria-label="다음 달" data-action="'+type+'-next" '+
+      '<button type="button" aria-label="결석 다음 달" data-action="absence-next" '+
         (shiftMonth(month,1)>max.slice(0,7)?'disabled':'')+'>›</button></div>'+
-      '<div class="ogbCalendar ombCalendar" aria-label="'+(isAbs?'결석':'보강')+' 날짜 선택">'+cells+'</div>';
+      '<div class="ogbCalendar ombCalendar" aria-label="결석 예정일 달력">'+cells+'</div>';
   }
   function chosen(kind){
     const isAbs=kind==='absence',list=isAbs?state.absences:state.makeups;
@@ -126,17 +125,60 @@
           (exists?' · 결석 등록됨':'')+'</button>';
       }).join('')+'</div>';
   }
-  function makeupSlots(){
-    if(!state.makeupDay)return '<p class="ombMuted">보강 날짜를 선택해 주세요.</p>';
-    if(state.loadingSlots)return '<p class="ombMuted">빈자리를 확인하고 있습니다.</p>';
-    if(!state.slots.length)return '<p class="ombMuted">선택한 날짜에 신청 가능한 수업이 없습니다.</p>';
-    return '<h3 class="ogbSubheading">'+esc(dateLabel(state.makeupDay))+' 빈자리</h3>'+
-      '<div class="ogbSlots ombSlots">'+state.slots.map(x=>{
-        const key=itemKey(x),active=state.makeups.some(s=>itemKey(s)===key);
-        return '<button type="button" data-action="toggle-makeup" data-item="'+esc(key)+
-          '" class="'+(active?'selected':'')+'" aria-pressed="'+active+'">'+
-          esc(x.label||String(x.time_slot)+'시')+(x.group==='B'?' · B반':'')+'</button>';
-      }).join('')+'</div>';
+  function weekTimetable(){
+    const start=state.weekStart||mondayOf(koreaToday());
+    const first=mondayOf(koreaToday());
+    const last=mondayOf(afterDays(koreaToday(),90));
+    const end=afterDays(start,5);
+    const weekday=['월','화','수','목','금','토'];
+    const shortLabel=date=>{
+      const bits=date.split('-');
+      return Number(bits[1])+'/'+Number(bits[2]);
+    };
+    const heads='<div class="ombWeekNav">'+
+      '<button type="button" data-action="week-prev" aria-label="이전 주" '+
+        (start<=first?'disabled':'')+'>‹</button>'+
+      '<strong>'+esc(dateLabel(start))+' ~ '+esc(dateLabel(end))+'</strong>'+
+      '<button type="button" data-action="week-next" aria-label="다음 주" '+
+        (start>=last?'disabled':'')+'>›</button></div>';
+    const statusLabel={
+      available:'보강 가능',prebooked:'선예약 중',unavailable:'보강 불가',
+      own:'기존 수업',closed:'휴원',past:'신청 불가'
+    };
+    const columns=Array.from({length:6},(_,i)=>{
+      const date=afterDays(start,i);
+      const slots=state.weekSlots.filter(x=>x.date===date);
+      const dayDisabled=date<koreaToday()||date>afterDays(koreaToday(),90);
+      let body='';
+      if(state.weekLoading){
+        body='<span class="ombWeekLoading">조회 중</span>';
+      }else if(!slots.length){
+        body='<span class="ombWeekEmpty">'+(dayDisabled?'신청 불가':'수업 없음')+'</span>';
+      }else{
+        body=slots.map(slot=>{
+          const key=itemKey(slot),chosen=state.makeups.some(x=>itemKey(x)===key);
+          const status=slot.status||'unavailable';
+          const canChoose=status==='available'||chosen;
+          const title=(slot.label||String(slot.time_slot)+'시')+(slot.group==='B'?' · B반':'');
+          return '<button type="button" class="ombWeekSlot '+(chosen?'isSelected':'is'+status)+
+            '" data-action="toggle-week-makeup" data-item="'+esc(key)+'" '+
+            (canChoose?'':'disabled')+' aria-pressed="'+chosen+'" '+
+            'aria-label="'+esc(dateLabel(date)+' '+title+' '+(chosen?'선택됨':statusLabel[status]||'보강 불가'))+'">'+
+            '<strong>'+esc(title)+'</strong><small>'+
+            esc(chosen?'선택됨':statusLabel[status]||'보강 불가')+
+            '</small></button>';
+        }).join('');
+      }
+      return '<div class="ombWeekColumn"><div class="ombWeekDayHeader">'+
+        '<strong>'+weekday[i]+'</strong><span>'+shortLabel(date)+'</span></div>'+
+        '<div class="ombWeekDayBody">'+body+'</div></div>';
+    }).join('');
+    return heads+'<div class="ombWeekLegend"><span><i class="isAvailable"></i>보강 가능</span>'+
+      '<span><i class="isPrebooked"></i>선예약 중</span>'+
+      '<span><i class="isUnavailable"></i>보강 불가</span></div>'+
+      '<div class="ombWeekScroll" role="region" tabindex="0" aria-label="날짜별 보강 시간표, 가로로 이동할 수 있습니다">'+
+      '<div class="ombWeekGrid">'+columns+'</div></div>'+
+      '<p class="ombMuted">선예약 중은 해당 주에 다른 학생의 보강 예약으로 마감된 자리입니다. 다른 주를 확인해 보세요.</p>';
   }
   function credits(){
     const previous=(state.snapshot?.absences||[]).length;
@@ -168,21 +210,26 @@
   function renderApply(){
     const canContinue=(state.absences.length+state.makeups.length)>0&&
       state.makeups.length<=credits()&&!state.loading;
-    shell('보강 신청하기','결석 예정일과 보강 수업일을 각각 여러 개 선택할 수 있습니다.',
+    shell('보강 신청하기','한 주 시간표에서 보강 날짜와 시간을 선택하고, 결석 예정일은 필요할 때 펼쳐 선택해 주세요.',
       '<p class="ombSelectedStudent">'+esc(state.student)+' 학생</p>'+
       '<section class="ombSection">'+
-      '<div class="ombSectionTitle"><strong>1. 결석 예정일 선택</strong><small>여러 날짜 선택 가능</small></div>'+
-      '<p class="ombMuted">정규 수업이 있는 날짜를 선택해 주세요.</p>'+calendar('absence')+
-      absentList()+'<div class="ombSummary"><h2>결석 예정 '+state.absences.length+'건</h2>'+
-      chosen('absence')+'</div></section>'+
-      '<section class="ombSection">'+
-      '<div class="ombSectionTitle"><strong>2. 보강 수업일 선택</strong><small>여러 날짜 선택 가능</small></div>'+
-      '<p class="ombMuted">결석 날짜보다 앞선 보강도 신청할 수 있습니다. 보강은 결석 횟수만큼 신청 가능합니다.</p>'+
-      calendar('makeup')+makeupSlots()+
+      '<div class="ombSectionTitle"><strong>1. 보강 수업일 선택</strong><small>날짜·시간 복수 선택</small></div>'+
+      '<p class="ombMuted">원하시는 주를 이동한 후 보강 가능한 시간을 눌러 주세요. 남은 자리 수는 표시하지 않습니다.</p>'+
+      weekTimetable()+
       '<div class="ombSummary"><h2>보강 수업 '+state.makeups.length+'건</h2>'+
-      chosen('makeup')+'</div>'+
-      (state.makeups.length>credits()?'<p class="ogbNotice isError">보강 신청 건수가 결석 예정·기등록 결석 횟수를 초과했습니다.</p>':'')+
-      '</section><div class="ombActions">'+
+      chosen('makeup')+'</div></section>'+
+      '<section class="ombSection">'+
+      '<button type="button" class="ombAbsenceToggle" data-action="toggle-absence-calendar" aria-expanded="'+state.absenceOpen+
+      '" aria-controls="ombAbsenceCalendar"><span><strong>2. 결석 예정일 선택</strong>'+
+      '<small>필요한 날짜를 여러 개 선택할 수 있습니다.</small></span>'+
+      '<b aria-hidden="true">'+(state.absenceOpen?'−':'+')+'</b></button>'+
+      '<div id="ombAbsenceCalendar" '+(state.absenceOpen?'':'hidden')+'>'+
+      '<p class="ombMuted">결석할 정규 수업 날짜를 누르면 수업 시간을 선택할 수 있습니다.</p>'+
+      (state.absenceOpen?absenceCalendar()+absentList():'')+'</div>'+
+      '<div class="ombSummary"><h2>결석 예정 '+state.absences.length+'건</h2>'+
+      chosen('absence')+'</div></section>'+
+      (state.makeups.length>credits()?'<p class="ogbNotice isError">보강 횟수가 결석 예정·기등록 결석 횟수를 초과했습니다. 결석 예정일을 추가하거나 보강을 줄여 주세요.</p>':'')+
+      '<div class="ombActions">'+
       '<button type="button" class="ogbPrimary" data-action="review" '+(canContinue?'':'disabled')+'>선택한 일정 확인하기</button>'+
       '<button type="button" class="ogbSecondary" data-action="go-history">보강 확인하기</button>'+
       '</div><button type="button" class="ombBack" data-action="home">처음으로</button>');
@@ -241,7 +288,7 @@
     state.requestKey='';
   }
   function findRegular(key){return (state.snapshot?.regular||[]).find(x=>itemKey(x)===key);}
-  function findSlot(key){return state.slots.find(x=>itemKey(x)===key);}
+  function findSlot(key){return state.weekSlots.find(x=>itemKey(x)===key);}
   async function loadSnapshot(){
     const s=await api('snapshot',{session_token:state.token});
     state.snapshot=s;
@@ -255,26 +302,31 @@
     try{
       await loadSnapshot();
       const month=koreaToday().slice(0,7);
-      state.absenceMonth=month;state.makeupMonth=month;
+      state.absenceMonth=month;state.weekStart=mondayOf(koreaToday());
       state.phase=state.mode==='apply'?'apply':'history';
-      state.absences=[];state.makeups=[];state.slots=[];
-      state.absenceDay='';state.makeupDay='';state.requestKey='';
+      state.absences=[];state.makeups=[];state.weekSlots=[];
+      state.absenceDay='';state.absenceOpen=false;state.requestKey='';
+      if(state.phase==='apply')await loadWeek(state.weekStart);
     }catch(e){
       state.token='';state.error=message(e);
     }finally{state.loading=false;render();}
   }
-  async function daySlots(day){
-    state.makeupDay=day;state.slots=[];state.error='';
-    state.loadingSlots=true;render();
+  async function loadWeek(start){
+    state.weekStart=start;state.weekSlots=[];state.weekLoading=true;state.error='';
+    render();
     const token=state.token;
     try{
-      const result=await api('slots',{session_token:token,date:day});
-      if(state.makeupDay!==day||state.token!==token)return;
-      state.slots=result.slots.filter(x=>x&&x.date===day);
+      const result=await api('week',{session_token:token,week_start:start});
+      if(state.weekStart!==start||state.token!==token)return;
+      const end=afterDays(start,5);
+      state.weekSlots=(Array.isArray(result.slots)?result.slots:[])
+        .filter(x=>x&&x.date>=start&&x.date<=end);
     }catch(e){
-      if(state.makeupDay===day)state.error=message(e);
+      if(state.weekStart===start&&state.token===token)state.error=message(e);
     }finally{
-      if(state.makeupDay===day){state.loadingSlots=false;render();}
+      if(state.weekStart===start&&state.token===token){
+        state.weekLoading=false;render();
+      }
     }
   }
   async function submit(){
@@ -285,7 +337,7 @@
         absences:state.absences.map(x=>({date:x.date,time_slot:x.time_slot,group:x.group})),
         makeups:state.makeups.map(x=>({date:x.date,time_slot:x.time_slot,group:x.group}))});
       state.phase='done';state.absences=[];state.makeups=[];
-      state.makeupDay='';state.absenceDay='';state.requestKey='';
+      state.absenceDay='';state.absenceOpen=false;state.requestKey='';
       state.error='';render();
       try{await loadSnapshot();}catch{}
     }catch(e){state.error=message(e);}
@@ -309,7 +361,7 @@
     const action=b.dataset.action;
     if(action==='home'){
       state.phase='choice';state.token='';state.student='';state.result=null;
-      state.absences=[];state.makeups=[];state.requestKey='';state.error='';
+      state.absences=[];state.makeups=[];state.weekSlots=[];state.requestKey='';state.error='';
       render();return;
     }
     if(action==='begin-apply'||action==='begin-history'){
@@ -319,7 +371,9 @@
     if(action==='select-student'){void chooseStudent();return;}
     if(action==='go-history'||action==='go-apply'){
       state.phase=action==='go-history'?'history':'apply';state.error='';
-      render();return;
+      if(action==='go-apply'&&state.token){void loadWeek(state.weekStart||mondayOf(koreaToday()));}
+      else render();
+      return;
     }
     if(action==='review'){
       if(!state.absences.length&&!state.makeups.length)return;
@@ -332,24 +386,27 @@
       state.absenceMonth=shiftMonth(state.absenceMonth,action.endsWith('prev')?-1:1);
       state.absenceDay='';render();return;
     }
-    if(action==='makeup-prev'||action==='makeup-next'){
-      state.makeupMonth=shiftMonth(state.makeupMonth,action.endsWith('prev')?-1:1);
-      state.makeupDay='';state.slots=[];render();return;
+    if(action==='week-prev'||action==='week-next'){
+      const next=afterDays(state.weekStart,action==='week-next'?7:-7);
+      if(next>=mondayOf(koreaToday())&&next<=mondayOf(afterDays(koreaToday(),90)))void loadWeek(next);
+      return;
+    }
+    if(action==='toggle-absence-calendar'){
+      state.absenceOpen=!state.absenceOpen;render();return;
     }
     if(action==='abs-date'){
       state.absenceDay=b.dataset.date;state.error='';render();return;
     }
-    if(action==='makeup-date'){void daySlots(b.dataset.date);return;}
     if(action==='toggle-absence'){
       const x=findRegular(b.dataset.item);
       if(x&&!(state.snapshot?.absences||[]).some(a=>itemKey(a)===itemKey(x)))
         toggle(state.absences,x);
       render();return;
     }
-    if(action==='toggle-makeup'){
+    if(action==='toggle-week-makeup'){
       const x=findSlot(b.dataset.item);
-      if(x){
-        // A pupil must not select both A and B groups at the same date/time.
+      if(x && (x.status==='available'||state.makeups.some(s=>itemKey(s)===itemKey(x)))){
+        // A student can select only one class group for the same date/time.
         if(!state.makeups.some(s=>itemKey(s)===itemKey(x))){
           state.makeups=state.makeups.filter(s=>
             !(s.date===x.date&&Number(s.time_slot)===Number(x.time_slot)));
