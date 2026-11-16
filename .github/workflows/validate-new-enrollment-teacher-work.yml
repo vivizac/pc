@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'supabase/migrations/20261116073000_olli_new_enrollment_targeted_teacher_work_badges.sql'
+      - 'supabase/migrations/20261116074500_olli_registration_notice_bot_toggle_exception.sql'
       - 'tests/new-enrollment-teacher-work-notification.test.cjs'
       - '.github/workflows/validate-new-enrollment-teacher-work.yml'
 permissions:

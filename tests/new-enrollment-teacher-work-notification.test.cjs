@@ -8,6 +8,10 @@ const migration = fs.readFileSync(path.join(
   __dirname, '..', 'supabase', 'migrations',
   '20261116073000_olli_new_enrollment_targeted_teacher_work_badges.sql'
 ), 'utf8');
+const toggleMigration = fs.readFileSync(path.join(
+  __dirname, '..', 'supabase', 'migrations',
+  '20261116074500_olli_registration_notice_bot_toggle_exception.sql'
+), 'utf8');
 const emitter = migration.split('create or replace function private.olli_team_talk_emit_schedule_event(')[1]?.split('CREATE OR REPLACE FUNCTION public.olli_team_chat_system_push_targets(')[0] || '';
 const target = migration.split('CREATE OR REPLACE FUNCTION public.olli_team_chat_system_push_targets(')[1] || '';
 
@@ -47,4 +51,13 @@ test('migration leaves timetable save, core sync, student data and existing read
   assert.doesNotMatch(migration, /\b(?:delete|update)\s+(?:from\s+)?public\.olli_schedule_enrollments\b/i);
   assert.doesNotMatch(migration, /update\s+public\.olli_team_chat_member_state/i);
   assert.match(migration, /commit;\s*$/);
+});
+
+test('new enrollment is delivered even when optional Olli-bot alerts are off', () => {
+  assert.match(toggleMigration, /and p_event_type <> 'registration_add' then/);
+  assert.match(toggleMigration, /if coalesce\(v_enabled, true\) = false/);
+  assert.match(toggleMigration, /private\.olli_team_talk_effective_teacher/);
+  assert.match(toggleMigration, /insert into public\.olli_team_chat_mentions/);
+  assert.match(toggleMigration, /on conflict \(academy_id, event_key\) do nothing/);
+  assert.doesNotMatch(toggleMigration, /\b(?:drop|truncate)\s+(?:table|function)\b/i);
 });
