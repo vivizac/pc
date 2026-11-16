@@ -1,0 +1,19 @@
+name: Validate new-enrollment teacher Work notification
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261116073000_olli_new_enrollment_targeted_teacher_work_badges.sql'
+      - 'tests/new-enrollment-teacher-work-notification.test.cjs'
+      - '.github/workflows/validate-new-enrollment-teacher-work.yml'
+permissions:
+  contents: read
+jobs:
+  notification-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate teacher-only new registration targeting and push badge
+        run: node --test tests/new-enrollment-teacher-work-notification.test.cjs
