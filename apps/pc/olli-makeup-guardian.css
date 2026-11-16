@@ -1,7 +1,11 @@
 /* The parent-facing makeup site deliberately reuses the consultation booking design. */
-.ombPanel{overflow:hidden}
-.ombHeader{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px}
-.ombHeader strong{font-size:19px;letter-spacing:-.035em}
+/* Standalone guardian page: one flat white canvas, no nested panel. */
+html:has(#olliMakeupBooking){background:#fff}
+#olliMakeupBooking.ogbApp{background:#fff;max-width:568px}
+.ombContent{width:100%;min-width:0}
+.ombPageHeading{font-size:22px;font-weight:650;letter-spacing:-.035em;margin:4px 0 21px}
+.ombHeader{display:flex;justify-content:center;align-items:center;text-align:center;margin-bottom:25px}
+.ombHeader strong{font-size:20px;font-weight:750;letter-spacing:-.035em;word-break:keep-all}
 .ombHeader small{font-size:12px;color:#7f8994}
 .ombTabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:23px}
 .ombTabs button{min-height:47px;border-radius:11px;border:1px solid #dfe5ed;background:#fff;color:#485560;font-size:14px;font-weight:750}
@@ -99,7 +103,7 @@
 @media(max-width:600px){
   .ombMobileWeek{display:block}
   .ombDesktopWeek,.ombDesktopActions{display:none!important}
-  .ombPanel{padding-bottom:104px}
+  #olliMakeupBooking.ogbApp{padding-bottom:104px}
   .ombWeekNav{margin:8px 0 14px}
   .ombWeekNav button{flex:0 0 36px;width:36px;height:42px;background:transparent;border:0;box-shadow:none;border-radius:0;color:#0c6170;font-size:29px;line-height:1;cursor:pointer;padding:0}
   .ombWeekNav button:disabled{opacity:.24;cursor:default}
@@ -115,13 +119,17 @@
   .ombMobileDay:focus-visible,.ombMobileClass:focus-visible{outline:2px solid #0c6170;outline-offset:3px}
   .ombMobileSelectedDate{margin:0 0 18px}
   .ombMobileSelectedDate strong{font-size:15px;color:#4d5760;font-weight:600}
-  .ombMobileClassList{display:flex;flex-direction:column;gap:21px}
+  .ombMobileClassList{display:grid;gap:10px;align-items:stretch}
+  .ombMobileClassList.isKinderGrid{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+  .ombMobileClassList.isElementaryGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
   .ombMobileTimeGroup{min-width:0}
   .ombMobileTimeHeading{font-size:15px;font-weight:400;color:#8b9097;letter-spacing:-.02em;margin:0 0 11px}
   .ombMobileTimeGrid{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
   .ombMobileTimeGrid.isSplit{grid-template-columns:repeat(2,minmax(0,1fr))}
   .ombMobileClass{min-width:0;min-height:68px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 7px;background:#fff;border:1px solid #e3e6e9;border-radius:13px;text-align:center;font:inherit;color:#0c6170;box-shadow:0 1px 3px rgba(29,44,50,.04);cursor:pointer}
-  .ombMobileClass strong{font-size:18px;font-weight:600;white-space:nowrap;letter-spacing:-.03em}
+  .ombMobileClass strong{font-size:16px;font-weight:600;white-space:nowrap;letter-spacing:-.04em}
+  .ombMobileClassList.isKinderGrid .ombMobileClass{min-height:64px;padding:8px 2px}
+  .ombMobileClassList.isKinderGrid .ombMobileClass strong{font-size:12px}
   .ombMobileClassStatus{font-size:11px;font-weight:500;line-height:1.2}
   .ombMobileClass.isavailable:hover{border-color:#0c6170}
   .ombMobileClass.isSelected{background:#0c6170;border-color:#0c6170;color:#fff}
@@ -137,9 +145,12 @@
   .ombMobileSticky .ogbPrimary{width:auto!important;flex:1 1 auto;max-width:215px;min-height:46px;margin:0;font-size:14px}
   .ombDateList{gap:7px}
   .ombDateChip{max-width:100%}
+  .ombHeader{margin-bottom:22px}
 }
 @media(max-width:350px){
   .ombMobileDayPicker{gap:3px}
   .ombMobileDay{min-height:60px;border-radius:9px}
   .ombMobileDay strong{font-size:16px}
 }
+
+@media(max-width:350px){.ombMobileClassList{gap:6px}.ombMobileClass{min-height:62px;padding:8px 3px}.ombMobileClass strong{font-size:14px}.ombMobileClassList.isKinderGrid .ombMobileClass strong{font-size:11px}.ombMobileClassStatus{font-size:10px}}

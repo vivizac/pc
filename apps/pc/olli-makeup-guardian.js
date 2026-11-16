@@ -70,11 +70,13 @@
     return state.error?'<p class="ogbNotice isError ombError" role="alert">'+esc(state.error)+'</p>':'';
   }
   function shell(title,description,inner){
-    root.innerHTML='<div class="ombHeader"><strong>'+esc(state.academy)+'</strong>'+
-      '<small>보강 수업 안내</small></div><section class="ogbPanel ombPanel">'+
-      '<div class="ogbTitleBand"><h1>'+esc(title)+'</h1></div>'+
+    // One continuous page: do not nest a bordered card or colored title band.
+    // The selection form needs no repeated "보강 신청하기" heading.
+    const heading=title==='보강 신청하기'?'':'<h1 class="ombPageHeading">'+esc(title)+'</h1>';
+    root.innerHTML='<div class="ombHeader"><strong>'+esc(state.academy)+'</strong></div>'+
+      '<div class="ombContent">'+heading+
       (description?'<p class="ogbMuted">'+esc(description)+'</p>':'')+
-      failBox()+inner+'</section><p class="ogbFooter">비비작아이성향미술학원 · 학부모 전용</p>';
+      failBox()+inner+'</div><p class="ogbFooter">비비작아이성향미술학원 · 학부모 전용</p>';
   }
   function absenceCalendar(){
     const month=state.absenceMonth;
@@ -141,11 +143,10 @@
       }).join('')+'</div>';
     const slots=state.weekSlots.filter(x=>x.date===selected)
       .sort((a,b)=>Number(a.time_slot)-Number(b.time_slot)||String(a.group).localeCompare(String(b.group)));
-    const groups=new Map();
+    const perTimeCount=new Map();
     for(const slot of slots){
       const time=Number(slot.time_slot);
-      if(!groups.has(time))groups.set(time,[]);
-      groups.get(time).push(slot);
+      perTimeCount.set(time,(perTimeCount.get(time)||0)+1);
     }
     function slotButton(slot,split){
       const key=itemKey(slot);
@@ -170,22 +171,17 @@
     }else if(!slots.length){
       cards='<p class="ombMobileEmpty">이 날짜에는 신청 가능한 수업이 없습니다. 다른 날짜를 선택해 주세요.</p>';
     }else{
-      cards=Array.from(groups,([time,items])=>{
-        // Backend returns only one A slot when a class is not divided.
-        // Two class groups are rendered side by side; one occupies the full row.
-        const split=items.length>1;
-        const caption=isKinder?'<h3 class="ombMobileTimeHeading">'+time+'시 타임</h3>':'';
-        return '<section class="ombMobileTimeGroup">'+caption+
-          '<div class="ombMobileTimeGrid '+(split?'isSplit':'isSingle')+'">'+
-          items.map(slot=>slotButton(slot,split)).join('')+
-          '</div></section>';
-      }).join('');
+      // A flat, chronological flow: kinder uses 2 columns, elementary uses 3.
+      // Split A/B classes take consecutive cells and push later times forward.
+      cards=slots.map(slot=>slotButton(
+        slot,(perTimeCount.get(Number(slot.time_slot))||0)>1
+      )).join('');
     }
     return '<div class="ombMobileWeek '+(isKinder?'isKinder':'isElementary')+
       '" aria-label="모바일 보강 수업 날짜·시간 선택">'+dayPicker+
       (isKinder?'':'<div class="ombMobileSelectedDate"><strong>'+esc(dateLabel(selected))+
         '</strong></div>')+
-      '<div class="ombMobileClassList">'+cards+'</div></div>';
+      '<div class="ombMobileClassList '+(isKinder?'isKinderGrid':'isElementaryGrid')+'">'+cards+'</div></div>';
   }
   function weekTimetable(){
     const start=state.weekStart||mondayOf(koreaToday());
