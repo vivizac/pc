@@ -128,6 +128,7 @@
   function mobileDayCards(start,weekday,statusLabel){
     const selected=state.selectedWeekDay||koreaToday();
     const max=afterDays(koreaToday(),90);
+    const isKinder=state.snapshot?.division==='kinder';
     const dayPicker='<div class="ombMobileDayPicker" role="group" aria-label="보강 날짜 선택">'+
       weekday.map((name,i)=>{
         const date=afterDays(start,i);
@@ -138,32 +139,53 @@
           '" aria-pressed="'+picked+'" aria-label="'+esc(dateLabel(date))+'">'+
           '<small>'+name+'</small><strong>'+Number(date.slice(-2))+'</strong></button>';
       }).join('')+'</div>';
-    const slots=state.weekSlots.filter(x=>x.date===selected);
+    const slots=state.weekSlots.filter(x=>x.date===selected)
+      .sort((a,b)=>Number(a.time_slot)-Number(b.time_slot)||String(a.group).localeCompare(String(b.group)));
+    const groups=new Map();
+    for(const slot of slots){
+      const time=Number(slot.time_slot);
+      if(!groups.has(time))groups.set(time,[]);
+      groups.get(time).push(slot);
+    }
+    function slotButton(slot,split){
+      const key=itemKey(slot);
+      const picked=state.makeups.some(x=>itemKey(x)===key);
+      const status=slot.status||'unavailable';
+      const canChoose=status==='available'||picked;
+      const time=Number(slot.time_slot);
+      const title=time+':00'+(split?' '+slot.group+'반':'');
+      return '<button type="button" class="ombMobileClass '+(picked?'isSelected':'is'+status)+
+        '" data-action="toggle-week-makeup" data-item="'+esc(key)+'" '+
+        (canChoose?'':'disabled')+' aria-pressed="'+picked+'" aria-label="'+
+        esc(dateLabel(selected)+' '+title+' '+(picked?'선택됨':statusLabel[status]||'보강 불가'))+'">'+
+        '<strong>'+esc(title)+'</strong>'+
+        (picked?'<span class="ombMobileClassStatus">선택됨</span>':
+        status==='available'?'':'<span class="ombMobileClassStatus">'+
+        esc(statusLabel[status]||'보강 불가')+'</span>')+
+        '</button>';
+    }
     let cards='';
     if(state.weekLoading){
       cards='<p class="ombMobileEmpty" role="status">수업 시간을 확인하고 있습니다.</p>';
     }else if(!slots.length){
       cards='<p class="ombMobileEmpty">이 날짜에는 신청 가능한 수업이 없습니다. 다른 날짜를 선택해 주세요.</p>';
     }else{
-      cards=slots.map(slot=>{
-        const key=itemKey(slot);
-        const picked=state.makeups.some(x=>itemKey(x)===key);
-        const status=slot.status||'unavailable';
-        const canChoose=status==='available'||picked;
-        const title=(slot.label||String(slot.time_slot)+'시')+(slot.group==='B'?' · B반':'');
-        return '<button type="button" class="ombMobileClass '+(picked?'isSelected':'is'+status)+
-          '" data-action="toggle-week-makeup" data-item="'+esc(key)+'" '+
-          (canChoose?'':'disabled')+' aria-pressed="'+picked+'" aria-label="'+
-          esc(dateLabel(selected)+' '+title+' '+(picked?'선택됨':statusLabel[status]||'보강 불가'))+'">'+
-          '<span class="ombMobileClassTime"><span class="ombMobileClassIcon" aria-hidden="true">'+
-          (picked?'✓':'◷')+'</span><strong>'+esc(title)+'</strong></span>'+
-          '<span class="ombMobileClassStatus">'+esc(picked?'선택됨':statusLabel[status]||'보강 불가')+'</span>'+
-          '</button>';
+      cards=Array.from(groups,([time,items])=>{
+        // Backend returns only one A slot when a class is not divided.
+        // Two class groups are rendered side by side; one occupies the full row.
+        const split=items.length>1;
+        const caption=isKinder?'<h3 class="ombMobileTimeHeading">'+time+'시 타임</h3>':'';
+        return '<section class="ombMobileTimeGroup">'+caption+
+          '<div class="ombMobileTimeGrid '+(split?'isSplit':'isSingle')+'">'+
+          items.map(slot=>slotButton(slot,split)).join('')+
+          '</div></section>';
       }).join('');
     }
-    return '<div class="ombMobileWeek" aria-label="모바일 보강 수업 날짜·시간 선택">'+
-      dayPicker+'<div class="ombMobileSelectedDate"><strong>'+esc(dateLabel(selected))+
-      '</strong></div><div class="ombMobileClassList">'+cards+'</div></div>';
+    return '<div class="ombMobileWeek '+(isKinder?'isKinder':'isElementary')+
+      '" aria-label="모바일 보강 수업 날짜·시간 선택">'+dayPicker+
+      (isKinder?'':'<div class="ombMobileSelectedDate"><strong>'+esc(dateLabel(selected))+
+        '</strong></div>')+
+      '<div class="ombMobileClassList">'+cards+'</div></div>';
   }
   function weekTimetable(){
     const start=state.weekStart||mondayOf(koreaToday());

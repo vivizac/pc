@@ -100,33 +100,36 @@
   .ombMobileWeek{display:block}
   .ombDesktopWeek,.ombDesktopActions{display:none!important}
   .ombPanel{padding-bottom:104px}
-  .ombWeekNav{margin:14px 0 16px}
-  .ombWeekNav button{flex:0 0 44px;width:44px;height:44px}
-  .ombWeekNav strong{font-size:13px}
-  .ombMobileDayPicker{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin:0 0 20px}
-  .ombMobileDay{min-width:0;min-height:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:8px 0;border:1px solid #e3eaf0;border-radius:12px;background:#f5f7f9;color:#53616e;cursor:pointer}
-  .ombMobileDay small{font-size:11px;font-weight:500}
-  .ombMobileDay strong{font-size:17px;font-weight:700}
-  .ombMobileDay.isCurrent{background:#079eb3;color:#fff;border-color:#079eb3;box-shadow:0 2px 8px rgba(7,158,179,.14)}
-  .ombMobileDay:disabled{opacity:.36;cursor:default}
-  .ombMobileDay:focus-visible,.ombMobileClass:focus-visible{outline:2px solid #087f95;outline-offset:3px}
-  .ombMobileSelectedDate{margin:0 0 12px}
-  .ombMobileSelectedDate strong{font-size:15px;color:#2f3c47;font-weight:700}
-  .ombMobileClassList{display:flex;flex-direction:column;gap:9px}
-  .ombMobileClass{display:flex;width:100%;min-height:62px;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#fff;border:1px solid #dfe7ed;border-radius:13px;text-align:left;font:inherit;color:#334454;cursor:pointer}
-  .ombMobileClassTime{display:flex;align-items:center;gap:11px;min-width:0}
-  .ombMobileClassTime strong{font-size:15px;font-weight:650}
-  .ombMobileClassIcon{width:29px;height:29px;flex:0 0 29px;border-radius:50%;display:grid;place-items:center;color:#7b8b97;background:#eff3f6;font-size:17px}
-  .ombMobileClassStatus{font-size:12px;font-weight:650;white-space:nowrap}
-  .ombMobileClass.isavailable .ombMobileClassStatus{color:#05879a}
-  .ombMobileClass.isprebooked{background:#fffaf2;border-color:#f3e5ce;color:#a48b69}
-  .ombMobileClass.isprebooked .ombMobileClassStatus{color:#a77a35}
-  .ombMobileClass.isunavailable,.ombMobileClass.isclosed,.ombMobileClass.ispast{background:#f7f8f9;color:#a7b0b8;border-color:#edf0f3}
-  .ombMobileClass.isown{background:#f7f7fb;color:#9697aa;border-color:#ebebf3}
-  .ombMobileClass.isSelected{background:#e8f7f9;border-color:#079eb3;color:#067d90}
-  .ombMobileClass.isSelected .ombMobileClassIcon{background:#079eb3;color:#fff}
+  .ombWeekNav{margin:8px 0 14px}
+  .ombWeekNav button{flex:0 0 36px;width:36px;height:42px;background:transparent;border:0;box-shadow:none;border-radius:0;color:#0c6170;font-size:29px;line-height:1;cursor:pointer;padding:0}
+  .ombWeekNav button:disabled{opacity:.24;cursor:default}
+  .ombWeekNav button:focus-visible{outline:2px solid #0c6170;outline-offset:2px;border-radius:7px}
+  .ombWeekNav strong{font-size:13px;font-weight:500;color:#7b8790}
+  .ombMobileDayPicker{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin:0 0 22px}
+  .ombMobileDay{min-width:0;min-height:74px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:9px 0;border:0;border-radius:13px;background:transparent;color:#374149;cursor:pointer}
+  .ombMobileDay small{font-size:12px;font-weight:400;color:#858b92}
+  .ombMobileDay strong{font-size:23px;font-weight:600}
+  .ombMobileDay.isCurrent{background:#0c6170;color:#fff;box-shadow:0 2px 8px rgba(12,97,112,.12)}
+  .ombMobileDay.isCurrent small{color:#fff}
+  .ombMobileDay:disabled{opacity:.27;cursor:default}
+  .ombMobileDay:focus-visible,.ombMobileClass:focus-visible{outline:2px solid #0c6170;outline-offset:3px}
+  .ombMobileSelectedDate{margin:0 0 18px}
+  .ombMobileSelectedDate strong{font-size:15px;color:#4d5760;font-weight:600}
+  .ombMobileClassList{display:flex;flex-direction:column;gap:21px}
+  .ombMobileTimeGroup{min-width:0}
+  .ombMobileTimeHeading{font-size:15px;font-weight:400;color:#8b9097;letter-spacing:-.02em;margin:0 0 11px}
+  .ombMobileTimeGrid{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+  .ombMobileTimeGrid.isSplit{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ombMobileClass{min-width:0;min-height:68px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 7px;background:#fff;border:1px solid #e3e6e9;border-radius:13px;text-align:center;font:inherit;color:#0c6170;box-shadow:0 1px 3px rgba(29,44,50,.04);cursor:pointer}
+  .ombMobileClass strong{font-size:18px;font-weight:600;white-space:nowrap;letter-spacing:-.03em}
+  .ombMobileClassStatus{font-size:11px;font-weight:500;line-height:1.2}
+  .ombMobileClass.isavailable:hover{border-color:#0c6170}
+  .ombMobileClass.isSelected{background:#0c6170;border-color:#0c6170;color:#fff}
+  .ombMobileClass.isprebooked,.ombMobileClass.isunavailable,.ombMobileClass.isclosed,.ombMobileClass.ispast,.ombMobileClass.isown{background:#fff;color:#afb4b8;border-color:#eceeef;box-shadow:none}
+  .ombMobileClass.isprebooked .ombMobileClassStatus{color:#a68b65}
+  .ombMobileClass.isunavailable strong,.ombMobileClass.isclosed strong,.ombMobileClass.ispast strong{text-decoration:line-through;text-decoration-color:#b5bcc1}
   .ombMobileClass:disabled{opacity:1;cursor:default}
-  .ombMobileEmpty{font-size:13px;line-height:1.7;color:#80909c;background:#f5f8fa;border-radius:12px;padding:20px 15px;margin:0}
+  .ombMobileEmpty{font-size:13px;line-height:1.7;color:#80909c;background:#f7f8f9;border-radius:12px;padding:20px 15px;margin:0}
   .ombMobileSticky{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:30;align-items:center;justify-content:space-between;gap:14px;padding:12px max(16px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));background:#fff;border-top:1px solid #e3e9ef;box-shadow:0 -8px 22px rgba(28,50,64,.08)}
   .ombMobileStickyCount{display:flex;flex-direction:column;gap:2px;white-space:nowrap}
   .ombMobileStickyCount small{font-size:11px;color:#718290}
