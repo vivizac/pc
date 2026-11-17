@@ -204,7 +204,7 @@ test('read-only NEW correction preserves registration, 14-day clock, pickup N an
 
 test('PC timetable cache-busts only the modified stylesheet and scripts', () => {
   for (const asset of ['pc-timetable.js', 'pc-timetable-service.js', 'pc-timetable.css']) {
-    const version = asset === 'pc-timetable-service.js' ? '20261104-new-card-badge-1' : asset === 'pc-timetable.js' ? '20261112-new-card-calendar-verified-1' : '20261105-new-border-74aaf6-1';
+    const version = asset === 'pc-timetable-service.js' ? '20261104-new-card-badge-1' : asset === 'pc-timetable.js' ? '20261118-date-capacity-safety-1' : '20261105-new-border-74aaf6-1';
     assert.ok(html.includes(asset + '?v=' + version), asset);
   }
 });
