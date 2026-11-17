@@ -1139,6 +1139,39 @@
     if (!match) return '';
     return `${pad(Number(match[1]))}:${match[2]}`;
   }
+  // Capacity must be calculated from the requested week, never an unrelated
+  // currently visible week. Future weeks are read-only snapshots.
+  const capacityWeeks = new Map();
+  const capacityRequests = new Map();
+  let capacityAcademyId = '';
+  function capacityWeekData(date) {
+    const academyId = currentSyncAcademyId();
+    if (capacityAcademyId !== academyId) {
+      capacityWeeks.clear();
+      capacityRequests.clear();
+      capacityAcademyId = academyId;
+    }
+    const week = dateKey(mondayOf(date));
+    if (state.data && state.dataWeek === week && state.dataAcademyId === academyId) return state.data;
+    return capacityWeeks.get(week) || null;
+  }
+  function fetchCapacityWeek(dateKeyValue) {
+    const date = parseDate(dateKeyValue);
+    const week = dateKey(mondayOf(date));
+    if (capacityWeekData(date) || capacityRequests.has(week)) return;
+    const academyId = currentSyncAcademyId();
+    const request = service.loadWeek(week).then((data) => {
+      if (currentSyncAcademyId() !== academyId || capacityAcademyId !== academyId) return;
+      capacityWeeks.set(week, data);
+      if (state.dialog && state.dialog.kind === 'move'
+        && dateKey(mondayOf(state.dialog.effectiveDate)) === week) renderDialog();
+    }).catch((error) => {
+      console.warn('미래 수업 정원 확인 실패:', error);
+    }).finally(() => {
+      if (capacityRequests.get(week) === request) capacityRequests.delete(week);
+    });
+    capacityRequests.set(week, request);
+  }
   function countAt(division, weekday, time, targetDate, classGroup, includeAbsenceVacancy) {
     const date = parseDate(targetDate || todayKey());
     const wantedDay = Number(weekday);
@@ -1146,20 +1179,27 @@
       const delta = (wantedDay - date.getDay() + 7) % 7;
       date.setDate(date.getDate() + delta);
     }
-    const regular = slotRegulars(division, date, time, classGroup);
-    const absentRegularCount = includeAbsenceVacancy
-      ? regular.filter((item) =>
-        timetableAttendanceSessionStatus(
-          item.student_id,
-          date,
-          Number(item.time_slot),
-          classGroup ? classGroupOf({ class_group: classGroup }) : classGroupOf(item),
-          'regular'
-        ) === 'absent'
-      ).length
-      : 0;
-    return Math.max(0, regular.length - absentRegularCount)
-      + slotMakeups(division, date, time, classGroup).length;
+    const data = capacityWeekData(date);
+    if (!data) return null;
+    const regular = (Array.isArray(data.enrollments) ? data.enrollments : []).filter((item) =>
+      clean(item.division) === division && timeSlotMatches(division, date, time, item.time_slot)
+      && enrollmentActiveOn(item, date)
+      && (!classGroup || classGroupOf(item) === classGroupOf({ class_group: classGroup })));
+    const sessionKey = dateKey(date);
+    const absenceRows = Array.isArray(data.attendance_overrides) ? data.attendance_overrides : [];
+    const absentRegularCount = includeAbsenceVacancy ? regular.filter((item) =>
+      absenceRows.some((mark) => clean(mark.student_id) === clean(item.student_id)
+        && clean(mark.session_date) === sessionKey
+        && Number(mark.time_slot) === Number(item.time_slot)
+        && classGroupOf(mark) === classGroupOf(item)
+        && clean(mark.register_session_kind || mark.session_kind) === 'regular'
+        && clean(mark.register_status || mark.status) === 'absent')
+    ).length : 0;
+    const makeupCount = (Array.isArray(data.one_time_sessions) ? data.one_time_sessions : []).filter((item) =>
+      clean(item.division) === division && clean(item.session_date) === sessionKey
+      && timeSlotMatches(division, date, time, item.time_slot)
+      && (!classGroup || classGroupOf(item) === classGroupOf({ class_group: classGroup }))).length;
+    return Math.max(0, regular.length - absentRegularCount) + makeupCount;
   }
 
   function weekRangeText() {
@@ -2093,6 +2133,7 @@
     };
     syncMoveAbsenceState(state.dialog);
     openOverlay();
+    fetchCapacityWeek(state.dialog.effectiveDate);
   }
 
   function openAdd(dataset) {
@@ -2350,9 +2391,9 @@
     const timeHtml = isHalfHourMode() && !(division === 'elementary' && Number(dialog.targetWeekday) === 6)
       ? (HALF_HOUR_SLOTS[division] || []).map((slot) => {
         const count = countAt(division, dialog.targetWeekday, slot.time, dialog.effectiveDate, '', dialog.actionType === 'makeup');
-        const full = capacity && count >= capacity;
+        const full = capacity && count !== null && count >= capacity;
         const active = Number(dialog.targetTime) === Number(slot.time);
-        return `<button type="button" class="olliTtChoice ${active ? 'active' : ''} ${full ? 'full' : ''}" data-tt-target-time="${slot.time}">${slot.label}${capacity ? `<small>${count}/${capacity}${full ? ' · 대기' : ''}</small>` : ''}</button>`;
+        return `<button type="button" class="olliTtChoice ${active ? 'active' : ''} ${full ? 'full' : ''}" data-tt-target-time="${slot.time}">${slot.label}${capacity ? `<small>${count === null ? '확인 중' : count}/${capacity}${full ? ' · 대기' : ''}</small>` : ''}</button>`;
       }).join('')
       : (division === 'kinder'
         ? timeOptions.map((time) => {
@@ -2360,11 +2401,11 @@
           const groups = split ? ['A', 'B'] : ['A'];
           return groups.map((group) => {
             const count = countAt(division, dialog.targetWeekday, time, dialog.effectiveDate, group, dialog.actionType === 'makeup');
-            const full = capacity && count >= capacity;
+            const full = capacity && count !== null && count >= capacity;
             const active = Number(dialog.targetTime) === Number(time)
               && classGroupOf({ class_group: dialog.targetClassGroup }) === group;
             const label = split ? `${time}시 ${group}반` : `${time}시 합반`;
-            return `<button type="button" class="olliTtChoice olliTtKinderTimeClassChoice ${active ? 'active' : ''} ${full ? 'full' : ''}" data-tt-kinder-time-class data-time="${time}" data-class-group="${group}">${label}${capacity ? `<small>${count}/${capacity}${full ? ' · 대기' : ''}</small>` : ''}</button>`;
+            return `<button type="button" class="olliTtChoice olliTtKinderTimeClassChoice ${active ? 'active' : ''} ${full ? 'full' : ''}" data-tt-kinder-time-class data-time="${time}" data-class-group="${group}">${label}${capacity ? `<small>${count === null ? '확인 중' : count}/${capacity}${full ? ' · 대기' : ''}</small>` : ''}</button>`;
           }).join('');
         }).join('')
         : timeOptions.map((time) => {
@@ -2376,8 +2417,8 @@
             dialog.targetClassGroup,
             dialog.actionType === 'makeup'
           );
-          const full = capacity && count >= capacity;
-          return `<button type="button" class="olliTtChoice ${dialog.targetTime === time ? 'active' : ''} ${full ? 'full' : ''}" data-tt-target-time="${time}">${scheduleSlotLabel(division, time, dialog.targetClassGroup, dialog.targetWeekday)}${capacity ? `<small>${count}/${capacity}${full ? ' · 대기' : ''}</small>` : ''}</button>`;
+          const full = capacity && count !== null && count >= capacity;
+          return `<button type="button" class="olliTtChoice ${dialog.targetTime === time ? 'active' : ''} ${full ? 'full' : ''}" data-tt-target-time="${time}">${scheduleSlotLabel(division, time, dialog.targetClassGroup, dialog.targetWeekday)}${capacity ? `<small>${count === null ? '확인 중' : count}/${capacity}${full ? ' · 대기' : ''}</small>` : ''}</button>`;
         }).join(''));
     const moveStatusHtml = moveRows.length ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>수업 이동 상태</span></div><div class="olliTtEnrollmentList">${moveRows.map((item) => {
       const target = rows.find((row) => clean(row.id) === clean(item.target_enrollment_id));
@@ -2890,6 +2931,7 @@
       }
       if (state.dialog.kind === 'move' && state.dialog.actionType === 'move') syncMoveAbsenceState(state.dialog);
       renderDialog();
+      fetchCapacityWeek(state.dialog.effectiveDate);
     }));
     dialog.querySelectorAll('[data-tt-target-time]').forEach((button) => button.addEventListener('click', () => {
       state.dialog.targetTime = Number(button.dataset.ttTargetTime);
@@ -2946,6 +2988,7 @@
       state.dialog.effectiveDate = dateKey(selectedDate);
       if (state.dialog.kind === 'move' && state.dialog.actionType === 'move') syncMoveAbsenceState(state.dialog);
       renderDialog();
+      fetchCapacityWeek(state.dialog.effectiveDate);
     });
     bindAddStudentField(dialog);
     dialog.querySelectorAll('[data-tt-add-type]').forEach((button) => button.addEventListener('click', () => {
@@ -3242,6 +3285,7 @@
       state.saving = false;
       closeDialog();
       state.data = null;
+      capacityWeeks.clear();
       await refreshWeekAfterMutation();
       return result;
     } catch (error) {
@@ -3249,7 +3293,6 @@
       // A preceding step may already be committed on the server. Refresh the
       // authoritative week before showing the error; do not discard dialog edits.
       try {
-        state.data = null;
         await refreshWeekAfterMutation();
       } catch (refreshError) {
         console.warn('시간표 저장 실패 후 서버 재조회 실패:', refreshError);
@@ -3548,7 +3591,9 @@
         dialog.targetClassGroup,
         false
       );
-      if (capacity && occupied >= capacity) {
+      // If the target week has not been loaded, the server remains the
+      // authoritative capacity validator; never treat unknown as zero.
+      if (capacity && occupied !== null && occupied >= capacity) {
         alert('이 수업은 정원이 가득 찼습니다. 대기 등록을 선택해 주세요.');
         return;
       }
