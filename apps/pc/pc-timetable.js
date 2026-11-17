@@ -985,7 +985,10 @@
   function slotWaitlist(division, date, time, classGroup) {
     const dayKey = dateKey(date);
     return waitlist().filter((item) => clean(item.division) === division && Number(item.target_weekday) === Number(date.getDay()) && timeSlotMatches(division, date, time, item.target_time_slot)
-      && (!waitRequestedDate(item) || waitRequestedDate(item) <= dayKey)
+      // The desired start date takes precedence over when the request was created.
+      && (!clean(item.desired_effective_date).slice(0, 10)
+        ? (!waitRequestedDate(item) || waitRequestedDate(item) <= dayKey)
+        : clean(item.desired_effective_date).slice(0, 10) <= dayKey)
       && (!classGroup || classGroupOf(item, 'target_class_group') === classGroupOf({ class_group: classGroup })));
   }
   function slotMakeups(division, date, time, classGroup) {
@@ -2874,7 +2877,10 @@
     dialog.querySelectorAll('[data-tt-target-day]').forEach((button) => button.addEventListener('click', () => {
       state.dialog.targetWeekday = Number(button.dataset.ttTargetDay);
       if (state.dialog.kind === 'move' && state.dialog.actionType === 'move') {
-        state.dialog.effectiveDate = upcomingDateForWeekday(state.dialog.targetWeekday);
+        // Keep a previously chosen future week when changing the target weekday.
+        state.dialog.effectiveDate = dateKey(alignDateToWeekdayOnOrAfter(
+          state.dialog.effectiveDate || todayKey(), state.dialog.targetWeekday
+        ));
       }
       const student = studentById(state.dialog.studentId);
       if (student) {
@@ -2934,9 +2940,9 @@
         const student = studentById(state.dialog.studentId);
         const options = student ? timeOptionsFor(divisionOf(student), state.dialog.targetWeekday) : [];
         if (!options.includes(state.dialog.targetTime)) state.dialog.targetTime = options[0];
-      } else if (state.dialog.kind === 'move' && state.dialog.actionType === 'move') {
-        selectedDate = alignDateToWeekdayOnOrAfter(selectedDate, state.dialog.targetWeekday);
       }
+      // A calendar selection must remain exactly the date the user picked.
+      // The save handler validates a weekday mismatch instead of silently moving it.
       state.dialog.effectiveDate = dateKey(selectedDate);
       if (state.dialog.kind === 'move' && state.dialog.actionType === 'move') syncMoveAbsenceState(state.dialog);
       renderDialog();
@@ -3240,8 +3246,17 @@
       return result;
     } catch (error) {
       state.saving = false;
-      renderDialog();
-      alert(error && (error.message || error) || '시간표 저장에 실패했습니다.');
+      // A preceding step may already be committed on the server. Refresh the
+      // authoritative week before showing the error; do not discard dialog edits.
+      try {
+        state.data = null;
+        await refreshWeekAfterMutation();
+      } catch (refreshError) {
+        console.warn('시간표 저장 실패 후 서버 재조회 실패:', refreshError);
+      }
+      if (state.dialog) renderDialog();
+      alert((error && (error.message || error) || '시간표 저장에 실패했습니다.')
+        + '\n일부 변경은 저장되었을 수 있습니다. 새로고침된 시간표를 확인해 주세요.');
       return null;
     }
   }
@@ -3254,6 +3269,15 @@
       return;
     }
 
+    const selectedDate = clean(dialog.effectiveDate);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(selectedDate) || selectedDate < todayKey()) {
+      alert('오늘 이후의 적용 날짜를 선택해 주세요.');
+      return;
+    }
+    if (dialog.actionType === 'move' && parseDate(selectedDate).getDay() !== Number(dialog.targetWeekday)) {
+      alert('선택한 수업 요일과 적용 날짜의 요일이 다릅니다. 날짜 또는 새 요일을 다시 선택해 주세요.');
+      return;
+    }
     const student = studentById(dialog.studentId);
     const source = moveSourceEnrollment(dialog);
     const rawNote = dialog.actionType === 'move' ? clean(dialog.note) : '';
