@@ -52,3 +52,70 @@ test('partial server failure requests authoritative refreshed data without erasi
   assert.match(block, /if \(state\.dialog\) renderDialog\(\)/);
   assert.match(service, /async function changeSchedule\(options\)/);
 });
+
+
+test('real countAt helper never reuses a different week and includes future makeup counts', async () => {
+  const capacitySource = between('  const capacityWeeks = new Map();', '  function weekRangeText() {');
+  const clean = value => String(value ?? '').trim();
+  const dateKey = date => [
+    date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')
+  ].join('-');
+  const parseDate = value => {
+    const [y, m, d] = value.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+  const mondayOf = value => {
+    const d = new Date(value);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d;
+  };
+  const state = {
+    dataWeek: '2026-11-16', dataAcademyId: 'academy-A',
+    data: { enrollments: Array(9).fill({ student_id:'old', division:'kinder', weekday:3, time_slot:4, effective_from:'2026-11-01' }) },
+    dialog: null
+  };
+  let loadCount = 0;
+  const service = { loadWeek: async week => {
+    loadCount++;
+    assert.equal(week, '2026-11-23');
+    return {
+      enrollments: [
+        { student_id:'one', division:'kinder', weekday:3, time_slot:4, class_group:'A', effective_from:'2026-11-01' },
+        { student_id:'two', division:'kinder', weekday:3, time_slot:4, class_group:'A', effective_from:'2026-11-01' }
+      ],
+      one_time_sessions: [{ student_id:'three', division:'kinder', session_date:'2026-11-25', time_slot:4, class_group:'A' }],
+      attendance_overrides: []
+    };
+  }};
+  const ctx = { state, service, dateKey, parseDate, mondayOf, clean,
+    currentSyncAcademyId:()=>'academy-A',
+    timeSlotMatches:(_division,_date,expected,actual)=>Number(expected)===Number(actual),
+    enrollmentActiveOn:(item,date)=>Number(item.weekday)===date.getDay() && item.effective_from<=dateKey(date),
+    classGroupOf:item=>item.class_group || 'A',
+    renderDialog:()=>{}
+  };
+  const helpers = new Function(...Object.keys(ctx),
+    capacitySource + '\nreturn { countAt, fetchCapacityWeek };'
+  )(...Object.values(ctx));
+  assert.equal(helpers.countAt('kinder',3,4,'2026-11-25','A',false),null);
+  helpers.fetchCapacityWeek('2026-11-25');
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(helpers.countAt('kinder',3,4,'2026-11-25','A',false),3);
+  assert.equal(loadCount,1);
+  assert.equal(state.data.enrollments.length,9,'visible week must not be overwritten');
+});
+
+test('real waitlist helper hides future starts even when the request was made earlier', () => {
+  const source = between('  function slotWaitlist(', '  function slotMakeups(');
+  const rows = [
+    { id:'future', division:'kinder', target_weekday:3, target_time_slot:4, desired_effective_date:'2026-12-02', requested_at:'2026-11-01T09:00:00+09:00' },
+    { id:'present', division:'kinder', target_weekday:3, target_time_slot:4, desired_effective_date:'2026-11-25', requested_at:'2026-11-01T09:00:00+09:00' }
+  ];
+  const dateKey = date => [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
+  const list = new Function('waitlist','dateKey','clean','timeSlotMatches','waitRequestedDate','classGroupOf',
+    source + '\nreturn slotWaitlist;'
+  )(()=>rows,dateKey,value=>String(value??'').trim(),(_division,_date,expected,actual)=>Number(expected)===Number(actual),
+    ()=>'2026-11-01',item=>item.target_class_group||'A');
+  assert.deepEqual(list('kinder',new Date(2026,10,25),4,'A').map(item=>item.id),['present']);
+  assert.deepEqual(list('kinder',new Date(2026,11,2),4,'A').map(item=>item.id),['future','present']);
+});
