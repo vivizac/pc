@@ -12,7 +12,7 @@ export default async function handler(req,res){
       ...(req.method==='POST'?{'Content-Type':'application/json'}:{})
     },...(req.method==='POST'?{body:JSON.stringify(req.body||{})}:{})});
     res.statusCode=upstream.status;
-    for(const header of ['content-type','content-disposition','x-content-type-options']){
+    for(const header of ['content-type','content-length','content-disposition','x-content-type-options']){
       const value=upstream.headers.get(header);if(value)res.setHeader(header,value);
     }
     if(upstream.body?.getReader){const reader=upstream.body.getReader();try{while(true){const {done,value}=await reader.read();if(done)break;res.write(Buffer.from(value));}}finally{reader.releaseLock();}return res.end();}

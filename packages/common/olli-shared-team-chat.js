@@ -211,9 +211,9 @@ async function enablePush(interactive=true){
     if(interactive)announce('공동 대화 알림을 켰습니다.');return true;
   }catch(error){if(interactive)announce(error.message);return false;}
 }
-async function fileRequest(ctx,room,body,attachmentId){
+async function fileRequest(ctx,room,body,attachmentId,options={}){
   const res=await fetch('/api/shared-team-chat-file'+(attachmentId?'?attachmentId='+encodeURIComponent(attachmentId):''),{
-    method:body?'POST':'GET',cache:'no-store',headers:{'X-Olli-Session-Token':ctx.sessionToken,'X-Olli-Academy-Id':ctx.academyId,'X-Olli-Room-Id':room.id,
+    method:body?'POST':'GET',cache:'no-store',signal:options.signal,headers:{'X-Olli-Session-Token':ctx.sessionToken,'X-Olli-Academy-Id':ctx.academyId,'X-Olli-Room-Id':room.id,
       ...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})
   });assertCurrent(ctx);if(!res.ok)throw new Error('첨부파일 권한 또는 연결을 확인해 주세요.');return res;
 }
@@ -346,6 +346,51 @@ async function openNotification(roomId){
 
 /* Single Team Chat integration: use the existing PC / mobile message surface.
  * Shared messages are never written to the legacy academy cache. */
+function unifiedAttachment(attachment){
+  if(!attachment)return null;
+  const mime=clean(attachment.mime_type).toLowerCase();
+  const isMedia=/^(image|video)\//.test(mime)||/\.(?:avif|bmp|gif|heic|heif|jpe?g|png|webp|mov|mp4|m4v|webm|ogv)$/i.test(clean(attachment.file_name));
+  return {...attachment,is_shared:true,kind:isMedia?'media':'file'};
+}
+function unifiedMessage(msg,ctx){
+  return {...msg,id:'shared:'+msg.id,shared_message_id:msg.id,shared_seq:msg.seq,is_shared:true,
+    sender_member_id:msg.is_mine?ctx.memberId:msg.sender_member_id,body:msg.body,
+    attachment:unifiedAttachment(msg.attachment),reply_to_message_id:null};
+}
+function unifiedVisibleMessage(msg){
+  return ['text','system','file'].includes(String(msg?.message_type||''))
+    && !msg?.material_request_id&&!msg?.material_event_id&&!msg?.action;
+}
+async function archiveUnified(options={}){
+  const ctx=context();
+  if(!ctx.academyId||!ctx.sessionToken)return {joined:false,messages:[]};
+  const status=await rpc('status',params(ctx),ctx);
+  if(!status.enabled||!status.room)return {joined:false,messages:[]};
+  const room=status.room;
+  const limit=Math.max(1,Math.min(1000,Number(options.limit)||1000));
+  const messages=[],seen=new Set();
+  let before=null;
+  // Archive RPC is page-limited to 100; walk backwards without pulling
+  // student/business data from another academy's private chat.
+  while(messages.length<limit){
+    const page=await rpc('list',{...params(ctx,room),p_before_seq:before,p_limit:100},ctx);
+    if(page.room_id!==room.id||page.participation_id!==room.participation_id)
+      throw new Error('통합 팀챗 참여 정보가 변경되었습니다.');
+    const rows=Array.isArray(page.messages)?page.messages:[];
+    for(const msg of rows){
+      if(!msg?.attachment||!unifiedVisibleMessage(msg)||seen.has(String(msg.id)))continue;
+      seen.add(String(msg.id));
+      messages.push(unifiedMessage(msg,ctx));
+      if(messages.length>=limit)break;
+    }
+    if(rows.length<100)break;
+    const oldest=Math.min(...rows.map(row=>Number(row.seq)).filter(Number.isFinite));
+    if(!Number.isFinite(oldest)||oldest<1||(before!==null&&oldest>=before))break;
+    before=oldest;
+  }
+  assertCurrent(ctx);
+  return {joined:true,room,messages};
+}
 async function unifiedExtension(options={}){
   const ctx=context();
   if(!ctx.academyId||!ctx.sessionToken)return {joined:false,messages:[],members:[]};
@@ -362,20 +407,7 @@ async function unifiedExtension(options={}){
   const memberPayload=options.members?responses[cursor++]:null;
   if(list&&(list.room_id!==room.id||list.participation_id!==room.participation_id))throw new Error('팀챗 참여 상태가 변경되었습니다.');
   // Shared storage is for ordinary conversation and files, never Olli work actions.
-  const messages=(list?.messages||[]).filter(msg=>
-    ['text','system','file'].includes(String(msg?.message_type||''))
-    && !msg?.material_request_id && !msg?.material_event_id && !msg?.action
-  ).map(msg=>({
-    ...msg,
-    id:'shared:'+msg.id,
-    shared_message_id:msg.id,
-    shared_seq:msg.seq,
-    is_shared:true,
-    sender_member_id:msg.is_mine?ctx.memberId:msg.sender_member_id,
-    body:msg.body,
-    attachment:msg.attachment?{...msg.attachment,is_shared:true}:null,
-    reply_to_message_id:null
-  }));
+  const messages=(list?.messages||[]).filter(unifiedVisibleMessage).map(msg=>unifiedMessage(msg,ctx));
   return {joined:true,room,status,epoch,messages,members:memberPayload?.members||[],latestSeq:(list?.messages||[]).at(-1)?.seq||0};
 }
 async function sendUnified(body,clientId){
@@ -423,21 +455,56 @@ function unifiedMediaType(attachment){
   const mime=clean(attachment?.mime_type).split(';')[0].toLowerCase();
   return UNIFIED_MEDIA_MIME.test(mime)?mime:'';
 }
-async function fetchUnifiedBlob(attachment){
+async function fetchUnifiedBlob(attachment,options={}){
   const id=clean(attachment?.id);
   if(!id)throw new Error('파일 정보를 찾을 수 없습니다.');
+  const progress=typeof options?.onProgress==='function'?options.onProgress:null;
+  const declared=Math.max(0,Number(attachment?.file_size)||0);
+  progress?.({phase:'waiting',loaded:0,total:declared});
+  if(options.signal?.aborted)throw new DOMException('Aborted','AbortError');
   const ctx=context(),status=await rpc('status',params(ctx),ctx);
   if(!status.enabled||!status.room)throw new Error('현재 팀챗에 참여하지 않습니다.');
-  const response=await fileRequest(ctx,status.room,null,id);
-  const blob=await response.blob();
+  if(options.signal?.aborted)throw new DOMException('Aborted','AbortError');
+  const response=await fileRequest(ctx,status.room,null,id,{signal:options.signal});
+  const total=declared||Math.max(0,Number(response.headers.get('content-length'))||0);
+  const mime=unifiedMediaType(attachment)||clean(attachment?.mime_type)||'application/octet-stream';
+  let blob;
+  if(typeof response.body?.getReader==='function'){
+    const reader=response.body.getReader(),chunks=[];
+    let loaded=0;
+    try{
+      while(true){
+        if(options.signal?.aborted)throw new DOMException('Aborted','AbortError');
+        const {done,value}=await reader.read();
+        if(done)break;
+        loaded+=value.byteLength;
+        if(loaded>20*1024*1024)throw new Error('파일 크기 제한을 초과했습니다.');
+        chunks.push(value);
+        progress?.({phase:'transferring',loaded,total});
+      }
+    }finally{reader.releaseLock();}
+    blob=new Blob(chunks,{type:mime});
+  }else{
+    const original=await response.blob();
+    blob=new Blob([original],{type:mime});
+  }
   assertCurrent(ctx);
+  if(options.signal?.aborted)throw new DOMException('Aborted','AbortError');
   if(!blob.size)throw new Error('원본 파일 데이터가 비어 있습니다.');
-  const mime=unifiedMediaType(attachment);
-  return mime?new Blob([blob],{type:mime}):blob;
+  progress?.({phase:'done',loaded:blob.size,total:total||blob.size});
+  return blob;
 }
 function mountUnifiedThumbnail(attachment,target){
   const mime=unifiedMediaType(attachment);
   if(!mime||!target)return false;
+  // The overlay is purely visual: the existing thumbnail/card remains the
+  // clickable control, so nested buttons and duplicate event handlers are avoided.
+  if(mime.startsWith('video/')&&!target.querySelector('.olliUnifiedVideoPlay')){
+    const play=node('span',null,'olliUnifiedVideoPlay');
+    play.setAttribute('aria-hidden','true');
+    play.append(node('span',null,'olliUnifiedVideoPlayTriangle'));
+    target.append(play);
+  }
   const showImage=url=>{
     const img=node('img',null,'olliUnifiedThumbnailImage');img.alt='';
     img.onload=()=>{
@@ -576,6 +643,6 @@ function renderInlineSettings(root,status,ctx,message){
   controls.append(save);root.append(controls);
 }
 
-global.OlliSharedTeamChat=Object.freeze({version:'2.0.0',open,manage,close,refreshEntry,reset,context,unifiedExtension,sendUnified,markUnifiedRead,uploadUnified,downloadUnified,fetchUnifiedBlob,mountUnifiedThumbnail,mountSettings});
+global.OlliSharedTeamChat=Object.freeze({version:'2.0.0',open,manage,close,refreshEntry,reset,context,unifiedExtension,archiveUnified,sendUnified,markUnifiedRead,uploadUnified,downloadUnified,fetchUnifiedBlob,mountUnifiedThumbnail,mountSettings});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })(window);

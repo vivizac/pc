@@ -8,6 +8,7 @@ on:
       - 'apps/pc/pc-timetable-service.js'
       - 'apps/pc/index.html'
       - 'apps/pc/tests/timetable-new-card-badge.test.cjs'
+      - 'apps/pc/tests/timetable-date-save-capacity-safety.test.cjs'
       - 'supabase/migrations/*_olli_schedule_recent_card_badges.sql'
       - 'supabase/migrations/*_olli_schedule_recent_card_badges_*.sql'
       - '.github/workflows/validate-pc-timetable-new-card-badge.yml'
@@ -19,6 +20,7 @@ on:
       - 'apps/pc/pc-timetable-service.js'
       - 'apps/pc/index.html'
       - 'apps/pc/tests/timetable-new-card-badge.test.cjs'
+      - 'apps/pc/tests/timetable-date-save-capacity-safety.test.cjs'
       - 'supabase/migrations/*_olli_schedule_recent_card_badges.sql'
       - 'supabase/migrations/*_olli_schedule_recent_card_badges_*.sql'
       - '.github/workflows/validate-pc-timetable-new-card-badge.yml'
@@ -43,6 +45,8 @@ jobs:
           node --check pc-timetable-service.js
       - name: Verify creation-date window, security and no-layout badge
         run: node --test tests/timetable-new-card-badge.test.cjs
+      - name: Test timetable move dates, future capacity, waitlist and partial-save recovery
+        run: node --test tests/timetable-date-save-capacity-safety.test.cjs
       - name: Check existing timetable and pickup regressions
         run: |
           # The legacy pickup v3 assertions predate the live v4 path and fail on main.
