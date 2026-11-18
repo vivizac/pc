@@ -611,6 +611,60 @@ function renderTodayFeedbackPage() {}
 function getTodayFeedbackItemById(id) {
   return getTodayFeedbackItemsRaw().find(item => item && item.id === id) || null;
 }
+// Quick Note edit-save diagnostics: one implementation for PC and mobile.
+// Submit only an error category and failure phase; never transmit feedback content.
+function getQuicknoteEditSaveErrorCode(error) {
+  const candidates = [error?.code, error?.details?.code, error?.error_code, error?.errorCode];
+  for (const candidate of candidates) {
+    const value = String(candidate || '').trim().toUpperCase();
+    if (/^[A-Z0-9_]{1,64}$/.test(value)) return value;
+  }
+  return 'UNKNOWN';
+}
+function reportQuicknoteEditSaveFailure(item = {}, savePhase = 'server_patch', error, appType = 'mobile') {
+  const code = getQuicknoteEditSaveErrorCode(error);
+  const phase = ['record_lookup', 'server_record_id', 'server_patch', 'local_queue_save'].includes(savePhase)
+    ? savePhase : 'server_patch';
+  const platform = appType === 'pc' ? 'pc' : 'mobile';
+  // Keep the local issue available even when the network or server logging is down.
+  try {
+    if (typeof recordOlliStorageIssue === 'function') recordOlliStorageIssue({
+      feature: 'quicknote_feedback_edit',
+      resource: 'feedbacks',
+      operation: phase,
+      message: '퀵노트 수정 저장 오류 [' + code + '] · ' + phase,
+      severity: 'error'
+    });
+  } catch (_) { /* A diagnostic failure must not block editing. */ }
+  try {
+    const academyId = String(item.savedAcademyId || item.academyId
+      || (typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '') || '').trim();
+    const sessionToken = String((typeof window.getOlliPhoneWritableAccountSessionToken === 'function'
+      ? window.getOlliPhoneWritableAccountSessionToken() : '')
+      || localStorage.getItem('olli_account_session_token_v1') || '').trim();
+    if (!academyId || !sessionToken) return code;
+    const rawStatus = Number(error?.httpStatus || error?.status || 0);
+    const status = Number.isInteger(rawStatus) && rawStatus >= 0 && rawStatus <= 599 ? rawStatus : 0;
+    fetch('/api/feedback-client-error', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        academyId, sessionToken,
+        requestId: String(item.id || '').slice(0, 100),
+        promptType: 'class',
+        stage: 'EDIT_SAVE_FAILED',
+        errorCode: code,
+        savePhase: phase,
+        appType: platform,
+        httpStatus: status
+      })
+    }).catch(() => { /* The local diagnostic remains available. */ });
+  } catch (_) { /* Never turn telemetry into another feedback save error. */ }
+  return code;
+}
+window.reportQuicknoteEditSaveFailure = reportQuicknoteEditSaveFailure;
+
 function getTodayFeedbackSavedSourceTable(item = {}) {
   const explicitTable = String(item.savedSourceTable || item.sourceTable || item.serverTable || '').trim();
   if (explicitTable) return explicitTable;
