@@ -28,7 +28,7 @@ test('ambiguous students or multiple matching sessions cannot be silently change
   assert.equal(get([{...sample,session_type:'trial'}])(dialog),null);
 });
 test('save paths use updateOneTimeSession for existing makeup and keep addMakeup for new makeup',()=>{
-  const code=slice('  async function saveAdd()', '  async function ');
+  const code=source.slice(source.indexOf('  async function saveAdd()'), source.indexOf('  async function ',source.indexOf('  async function saveAdd()') + 20));
   assert.match(code,/const existing = existingMakeupForGroupChange\(dialog\)/);
   assert.match(code,/if \(existing\) \{[\s\S]*?service\.updateOneTimeSession\(existing\.id/);
   assert.match(code,/else \{[\s\S]*?service\.addMakeup\(dialog\.studentId/);
