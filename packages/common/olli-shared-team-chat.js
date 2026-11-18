@@ -20,13 +20,13 @@ function chatContext(){
   if(!state.room||state.epoch!==key(ctx)+':'+state.room.id+':'+state.room.participation_id){reset();throw new Error('학원 또는 계정이 변경되었습니다. 다시 열어 주세요.');}
   return ctx;
 }
-async function rpc(name,body,ctx){
+async function rpc(name,body,ctx,options={}){
   assertCurrent(ctx);
   const {url,apiKey}=supabaseConfig();
   if(!url||!apiKey)throw new Error('서버 연결을 확인할 수 없습니다.');
   const token=global.getOlliAuthAccessToken?.()||apiKey;
   const res=await fetch(url+'/rest/v1/rpc/olli_shared_chat_'+name,{
-    method:'POST',headers:{apikey:apiKey,Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body),cache:'no-store'
+    method:'POST',headers:{apikey:apiKey,Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body),cache:'no-store',signal:options.signal
   });
   const result=await res.json();assertCurrent(ctx);
   if(!res.ok||result?.ok!==true)throw new Error(result?.message||result?.error||'공동 팀챗 요청에 실패했습니다.');
@@ -462,10 +462,20 @@ async function fetchUnifiedBlob(attachment,options={}){
   const declared=Math.max(0,Number(attachment?.file_size)||0);
   progress?.({phase:'waiting',loaded:0,total:declared});
   if(options.signal?.aborted)throw new DOMException('Aborted','AbortError');
-  const ctx=context(),status=await rpc('status',params(ctx),ctx);
+  const externalSignal=options.signal;
+  const controller=typeof AbortController==='function'?new AbortController():null;
+  const signal=controller?.signal||externalSignal;
+  const onAbort=()=>controller?.abort();
+  if(controller&&externalSignal)externalSignal.addEventListener('abort',onAbort,{once:true});
+  // A stalled download must never hold the original viewer open indefinitely.
+  const timeoutMs=Number.isFinite(options.timeoutMs)?Math.max(1,Math.min(45000,options.timeoutMs)):30000;
+  let timedOut=false;
+  const timer=controller?setTimeout(()=>{timedOut=true;controller.abort();},timeoutMs):null;
+  try{
+  const ctx=context(),status=await rpc('status',params(ctx),ctx,{signal});
   if(!status.enabled||!status.room)throw new Error('현재 팀챗에 참여하지 않습니다.');
   if(options.signal?.aborted)throw new DOMException('Aborted','AbortError');
-  const response=await fileRequest(ctx,status.room,null,id,{signal:options.signal});
+  const response=await fileRequest(ctx,status.room,null,id,{signal});
   const total=declared||Math.max(0,Number(response.headers.get('content-length'))||0);
   const mime=unifiedMediaType(attachment)||clean(attachment?.mime_type)||'application/octet-stream';
   let blob;
@@ -493,6 +503,13 @@ async function fetchUnifiedBlob(attachment,options={}){
   if(!blob.size)throw new Error('원본 파일 데이터가 비어 있습니다.');
   progress?.({phase:'done',loaded:blob.size,total:total||blob.size});
   return blob;
+  }catch(error){
+    if(timedOut)throw new Error('원본 파일 다운로드가 지연되어 중단되었습니다. 다시 시도해 주세요.');
+    throw error;
+  }finally{
+    if(timer!==null)clearTimeout(timer);
+    if(controller&&externalSignal)externalSignal.removeEventListener('abort',onAbort);
+  }
 }
 function mountUnifiedThumbnail(attachment,target){
   const mime=unifiedMediaType(attachment);
