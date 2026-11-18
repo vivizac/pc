@@ -37,7 +37,7 @@ test('mobile save failure records actual error code, stage, device and no feedba
   assert.equal(ctx.requests[0].url,'/api/feedback-client-error');
   assert.deepEqual([payload.stage,payload.errorCode,payload.savePhase,payload.appType],
     ['EDIT_SAVE_FAILED','SERVER_VERIFY_FAILED','server_patch','mobile']);
-  assert.doesNotMatch(JSON.stringify(payload),'비밀학생|민감한 피드백');
+  assert.doesNotMatch(JSON.stringify(payload),/비밀학생|민감한 피드백/);
 });
 test('PC records missing server ID and local store failure using existing endpoint',()=>{
   const ctx=makeReporter();
@@ -101,8 +101,8 @@ test('server authenticated endpoint stores edit failure code and phase, no stude
   assert.equal(record.message,'EDIT_SAVE_FAILED');
   assert.equal(record.detail.error_code,'SERVER_VERIFY_FAILED');
   assert.equal(record.detail.save_phase,'server_patch');
-  assert.doesNotMatch(JSON.stringify(record),'should not be saved');
-  assert.doesNotMatch(JSON.stringify(record),'teacher-session');
+  assert.doesNotMatch(JSON.stringify(record),/should not be saved/);
+  assert.doesNotMatch(JSON.stringify(record),/teacher-session/);
 });
 test('server continues accepting existing AI stream failure diagnostics',async()=>{
   let written;
