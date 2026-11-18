@@ -617,7 +617,7 @@ function getTodayFeedbackSavedSourceTable(item = {}) {
   return getFeedbackTableNameByType(item.feedbackType || 'class');
 }
 function getTodayFeedbackSavedRowId(item = {}) {
-  return String(item.savedRowId || item.serverRowId || item.feedbackRowId || item.rowId || item.row?.id || '').trim();
+  return String(item.savedRowId || item.savedRow?.id || item.serverRowId || item.feedbackRowId || item.rowId || item.row?.id || '').trim();
 }
 function getTodayFeedbackEditFeatureByTable(tableName) {
   if (typeof getMemoFeedbackArchiveEditFeature === 'function') return getMemoFeedbackArchiveEditFeature(tableName);
@@ -645,9 +645,11 @@ async function patchSavedTodayFeedbackItem(item = {}, nextText = '') {
     data: patch,
     forceCommon: true
   });
-  if (isOlliPendingCommonSaveResult(result)) {
-    return { ...patch, id: recordId, academy_id: academyId, student_id: studentId, __pending_sync: true };
-  }
+  // Do not mark a feedback edit as finished until the authoritative server save
+  // is verified. The pending-result helper is optional across legacy runtimes.
+  const pending = (typeof isOlliPendingCommonSaveResult === 'function'
+    && isOlliPendingCommonSaveResult(result)) || result?.pending === true || result?.__pending_sync === true;
+  if (pending) throw new Error('수정 내용을 서버에 아직 저장하지 못했습니다. 연결 상태를 확인하고 다시 저장해 주세요.');
   if (!result || !result.serverSaved || !result.verified) {
     const error = result && result.error ? result.error : new Error('저장된 피드백 수정 서버 저장이 완료되지 않았습니다.');
     throw error;
