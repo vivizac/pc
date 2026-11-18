@@ -1,0 +1,44 @@
+name: Validate PC makeup group and kinder feedback edit
+
+on:
+  pull_request:
+    paths:
+      - 'apps/pc/pc-timetable.js'
+      - 'packages/common/olli-feedback-runtime.js'
+      - 'apps/pc/index.html'
+      - 'apps/pc/tests/timetable-makeup-class-change.test.cjs'
+      - 'tests/pc-kinder-feedback-edit-save.test.cjs'
+      - '.github/workflows/validate-pc-makeup-feedback-edit.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/pc/pc-timetable.js'
+      - 'packages/common/olli-feedback-runtime.js'
+      - 'apps/pc/index.html'
+      - 'apps/pc/tests/timetable-makeup-class-change.test.cjs'
+      - 'tests/pc-kinder-feedback-edit-save.test.cjs'
+      - '.github/workflows/validate-pc-makeup-feedback-edit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax
+        run: |
+          node --check apps/pc/pc-timetable.js
+          node --check packages/common/olli-feedback-runtime.js
+          node --check apps/pc/tests/timetable-makeup-class-change.test.cjs
+          node --check tests/pc-kinder-feedback-edit-save.test.cjs
+      - name: A/B makeup and saved kinder feedback edits
+        run: node --test apps/pc/tests/timetable-makeup-class-change.test.cjs tests/pc-kinder-feedback-edit-save.test.cjs
+      - name: Existing timetable and feedback regressions
+        run: |
+          node --test apps/pc/tests/timetable-new-card-badge.test.cjs apps/pc/tests/timetable-pickup-location-sort.test.cjs
+          node --test tests/pc-pickup-half-hour-ui.test.cjs tests/consultation-record-type-period.test.cjs
