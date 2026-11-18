@@ -1,0 +1,52 @@
+name: Validate Quick Note edit-save error telemetry
+
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/api/feedback-client-error.js'
+      - 'apps/mobile/kinder-feedback.js'
+      - 'apps/pc/pc-kinder-feedback.js'
+      - 'packages/common/olli-feedback-runtime.js'
+      - 'apps/mobile/index.html'
+      - 'apps/pc/index.html'
+      - 'tests/quicknote-edit-save-error-telemetry.test.cjs'
+      - '.github/workflows/validate-quicknote-edit-error-telemetry.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/api/feedback-client-error.js'
+      - 'apps/mobile/kinder-feedback.js'
+      - 'apps/pc/pc-kinder-feedback.js'
+      - 'packages/common/olli-feedback-runtime.js'
+      - 'apps/mobile/index.html'
+      - 'apps/pc/index.html'
+      - 'tests/quicknote-edit-save-error-telemetry.test.cjs'
+      - '.github/workflows/validate-quicknote-edit-error-telemetry.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  quicknote-telemetry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: JavaScript syntax
+        run: |
+          node --check apps/mobile/api/feedback-client-error.js
+          node --check apps/mobile/kinder-feedback.js
+          node --check apps/pc/pc-kinder-feedback.js
+          node --check packages/common/olli-feedback-runtime.js
+          node --check tests/quicknote-edit-save-error-telemetry.test.cjs
+      - name: Quick Note error telemetry and existing edit-save validation
+        run: |
+          node --test tests/quicknote-edit-save-error-telemetry.test.cjs tests/pc-kinder-feedback-edit-save.test.cjs
+      - name: Ensure no stale script assets
+        run: |
+          grep -q 'olli-feedback-runtime.js?v=20261118-quicknote-edit-error-1' apps/mobile/index.html
+          grep -q 'olli-feedback-runtime.js?v=20261118-quicknote-edit-error-1' apps/pc/index.html
+          grep -q 'kinder-feedback.js?v=20261118-quicknote-edit-error-1' apps/mobile/index.html
+          grep -q 'pc-kinder-feedback.js?v=20261118-quicknote-edit-error-1' apps/pc/index.html
