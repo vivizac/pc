@@ -2475,6 +2475,21 @@
     if (!dialog) return false;
     return isGuestAddType(dialog.addType) ? Boolean(clean(dialog.guestName)) : Boolean(dialog.studentId);
   }
+  // Registering a different A/B group for an existing makeup is a MOVE, not a
+  // second makeup. Only an explicitly selected student and one unique source
+  // session may be updated; never infer a student's identity from a class slot.
+  function existingMakeupForGroupChange(dialog) {
+    if (!dialog || dialog.kind !== 'add' || dialog.addType !== 'makeup' || !clean(dialog.studentId)) return null;
+    const sessions = oneTimeSessions().filter(item =>
+      clean(item.student_id) === clean(dialog.studentId)
+      && clean(item.division) === clean(dialog.division)
+      && clean(item.session_date) === clean(dialog.date)
+      && Number(item.time_slot) === Number(dialog.time)
+      && clean(item.session_type) !== 'trial');
+    if (sessions.length !== 1) return null;
+    const source = sessions[0];
+    return classGroupOf(source) !== classGroupOf({class_group:dialog.targetClassGroup}) ? source : null;
+  }
 
   function addPickerHtml(dialog) {
     const students = service.activeStudents().filter((student) => divisionOf(student) === dialog.division && (!dialog.query || clean(student.name).includes(dialog.query)));
@@ -2505,7 +2520,7 @@
     saveButton.disabled = !(hasSelectedStudent || hasNote || hadMemo || pendingKinderMerge || pendingKinderSplit || teacherChanged || overrideChanged);
     saveButton.textContent = (pendingKinderMerge || pendingKinderSplit)
       ? '등록'
-      : (hasSelectedStudent ? '등록' : (hasNote ? '메모 저장' : (hadMemo ? '메모 삭제' : (teacherChanged ? '담임 저장' : (overrideChanged ? '당일 담당 저장' : '등록')))));
+      : (hasSelectedStudent ? (existingMakeupForGroupChange(state.dialog) ? '반 변경' : '등록') : (hasNote ? '메모 저장' : (hadMemo ? '메모 삭제' : (teacherChanged ? '담임 저장' : (overrideChanged ? '당일 담당 저장' : '등록')))));
   }
 
   function renderAddPickerResults(dialogElement) {
@@ -2549,7 +2564,7 @@
     const canRegister = Boolean(hasRegistrationTarget || note || hadMemo || dialog.pendingKinderMerge || dialog.pendingKinderSplit || teacherChanged || overrideChanged);
     const primaryLabel = (dialog.pendingKinderMerge || dialog.pendingKinderSplit)
       ? '등록'
-      : (hasRegistrationTarget ? '등록' : (note ? '메모 저장' : (hadMemo ? '메모 삭제' : (teacherChanged ? '담임 저장' : (overrideChanged ? '당일 담당 저장' : '등록')))));
+      : (hasRegistrationTarget ? (existingMakeupForGroupChange(dialog) ? '반 변경' : '등록') : (note ? '메모 저장' : (hadMemo ? '메모 삭제' : (teacherChanged ? '담임 저장' : (overrideChanged ? '당일 담당 저장' : '등록')))));
     const studentField = addStudentFieldHtml(dialog);
     return dialogHead('+', '이 시간에 학생 추가', `${koreanDate(parseDate(dialog.date), true)} ${weekdayLabel(dialog.weekday)}요일 · ${scheduleSlotLabel(dialog.division, dialog.time, dialog.targetClassGroup, dialog.weekday)}`)
       + '<div class="olliTtDialogBody">'
@@ -2562,6 +2577,8 @@
       + `<div data-tt-add-student-field>${studentField}</div>`
       + (division === 'elementary' && !isHalfHourMode() ? `<div class="olliTtField olliTtSplitClassField"><div class="olliTtFieldHead"><span>클래스 운영</span><small>${isClassSplit(division, dialog.weekday, dialog.time, dialog.date) ? '분리된 A반·B반을 하나의 칸으로 통합합니다.' : '현재 칸을 위·아래 A반·B반으로 나눕니다.'}</small></div><button type="button" class="olliTtSplitClassBtn" ${isClassSplit(division, dialog.weekday, dialog.time, dialog.date) ? 'data-tt-merge-class' : 'data-tt-split-class'}>${isClassSplit(division, dialog.weekday, dialog.time, dialog.date) ? '클래스 통합' : '클래스 분리'}</button></div>` : '')
       + classGroupChoiceHtml(division, dialog.targetClassGroup, dialog.weekday, dialog.time, dialog.date, false, true)
+      + (dialog.addType === 'makeup' && !hasRegistrationTarget
+        ? '<div class="olliTtStatusNotice">A반·B반 변경은 먼저 위에서 해당 학생을 선택해 주세요. 기존 보강이 있으면 중복 등록하지 않고 반을 변경합니다.</div>' : '')
       + teacherControlsHtml(dialog)
       + `<label class="olliTtAddMemo"><span>메모</span><textarea data-tt-add-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note)}</textarea></label>`
       + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-add ${canRegister ? '' : 'disabled'}>${primaryLabel}</button></div></div>`;
@@ -3605,6 +3622,7 @@
       if (teacherChanged) await service.setClassTeacher(dialog.division, dialog.weekday, dialog.time, dialog.targetClassGroup, dialog.teacherMemberId);
       if (overrideChanged) await service.setTeacherOverride(dialog.date, dialog.division, dialog.time, dialog.targetClassGroup, dialog.overrideTeacherMemberId, 'teacher_absence');
       let actionResult;
+      let changedMakeupGroup = false;
       if (guestMode) {
         actionResult = await service.addGuestEntry({
           guestName,
@@ -3615,7 +3633,15 @@
           classGroup: dialog.targetClassGroup
         });
       } else if (dialog.addType === 'makeup') {
-        actionResult = await service.addMakeup(dialog.studentId, dialog.date, dialog.time, note, dialog.targetClassGroup);
+        const existing = existingMakeupForGroupChange(dialog);
+        if (existing) {
+          changedMakeupGroup = true;
+          actionResult = await service.updateOneTimeSession(existing.id, {
+            sessionDate: dialog.date, timeSlot: dialog.time, classGroup: dialog.targetClassGroup
+          });
+        } else {
+          actionResult = await service.addMakeup(dialog.studentId, dialog.date, dialog.time, note, dialog.targetClassGroup);
+        }
       } else if (dialog.addType === 'regular') {
         actionResult = await service.changeSchedule({
           studentId: dialog.studentId,
@@ -3645,7 +3671,7 @@
         memoError = clean(error && (error.message || error)) || '메모 저장 실패';
       }
       if (teacherChanged) await refreshStudentsFromServer();
-      return { actionResult, memoError };
+      return { actionResult, memoError, changedMakeupGroup };
     });
 
     if (!combined || !combined.actionResult) return;
@@ -3655,7 +3681,7 @@
         : `${guestName} (비) 학생을 대기로 등록했어요.`);
     } else {
       const student = studentById(dialog.studentId);
-      if (dialog.addType === 'makeup') notify(`${student.name} 학생의 보강을 등록했어요.`);
+      if (dialog.addType === 'makeup') notify(combined.changedMakeupGroup ? `${student.name} 학생의 보강을 ${dialog.targetClassGroup}반으로 변경했어요.` : `${student.name} 학생의 보강을 등록했어요.`);
       else if (dialog.addType === 'regular') notify(`${student.name} 학생을 정규 시간표에 등록했어요.`);
       else notify(`${student.name} 학생을 대기로 등록했어요.`);
     }
