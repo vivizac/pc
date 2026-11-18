@@ -120,3 +120,45 @@ test('video cards in PC and mobile Team Chat and Work Hub retain a visible centr
   assert.ok(mobile.includes('mountUnifiedThumbnail?.(attachment,frame)'));
   assert.ok(mobile.includes('mountUnifiedThumbnail?.(attachment,button)'));
 });
+
+
+test('a stalled media request times out, releases controls, and permits a clean retry',async()=>{
+  const academy='00000000-0000-0000-0000-000000000001';
+  const room='00000000-0000-0000-0000-000000000002';
+  const store={olli_account_session_token_v1:'session',olli_current_academy_id:academy,olli_current_member_id:'member'};
+  const localStorage={getItem:key=>store[key]||null};
+  const doc={readyState:'loading',addEventListener(){}};
+  const global={SUPABASE_URL:'https://test.supabase.co',SUPABASE_KEY:'anon',
+    OlliStorageCore:{AcademyContext:{getCurrent:()=>({academyId:academy,memberId:'member',contextVersion:1})}},
+    document:doc,localStorage,addEventListener(){}};
+  let stall='status',aborts=0;
+  async function mockFetch(url,init){
+    if(stall==='status'&&String(url).endsWith('olli_shared_chat_status')
+      ||stall==='file'&&String(url).startsWith('/api/shared-team-chat-file')){
+      return new Promise((_,reject)=>{
+        init.signal.addEventListener('abort',()=>{aborts++;reject(new Error('request aborted'));},{once:true});
+      });
+    }
+    if(String(url).endsWith('olli_shared_chat_status'))
+      return new Response(JSON.stringify({ok:true,enabled:true,room:{id:room}}));
+    if(String(url).startsWith('/api/shared-team-chat-file'))
+      return new Response(Uint8Array.from([1,2,3]));
+    throw new Error('Unexpected URL '+url);
+  }
+  vm.runInNewContext(shared,{window:global,document:doc,localStorage,fetch:mockFetch,
+    Blob,Response,URL,AbortController,DOMException,setTimeout,clearTimeout});
+  const attachment={id:'00000000-0000-0000-0000-000000000004',mime_type:'image/jpeg'};
+  await assert.rejects(
+    ()=>global.OlliSharedTeamChat.fetchUnifiedBlob(attachment,{timeoutMs:15}),
+    /다운로드가 지연되어 중단/
+  );
+  stall='file';
+  await assert.rejects(
+    ()=>global.OlliSharedTeamChat.fetchUnifiedBlob(attachment,{timeoutMs:15}),
+    /다운로드가 지연되어 중단/
+  );
+  assert.equal(aborts,2,'both the authorization check and media transfer are abortable');
+  stall='none';
+  const blob=await global.OlliSharedTeamChat.fetchUnifiedBlob(attachment,{timeoutMs:100});
+  assert.equal(blob.size,3,'failed downloads do not poison the next attempt');
+});
