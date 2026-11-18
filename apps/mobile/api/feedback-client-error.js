@@ -1,7 +1,8 @@
 const SUPABASE_URL = 'https://fvkxipjwgeyosgnfhdnx.supabase.co';
 const ACCESS_RPC = SUPABASE_URL + '/rest/v1/rpc/olli_team_talk_settings_get';
 const ERROR_LOG = SUPABASE_URL + '/rest/v1/olli_app_error_logs';
-const STAGES = new Set(['NETWORK_REQUEST', 'HTTP_RESPONSE', 'STREAM_RECEIVE', 'EMPTY_RESPONSE', 'CLIENT_EXCEPTION', 'SAVE_FAILED']);
+const STAGES = new Set(['NETWORK_REQUEST', 'HTTP_RESPONSE', 'STREAM_RECEIVE', 'EMPTY_RESPONSE', 'CLIENT_EXCEPTION', 'SAVE_FAILED', 'EDIT_SAVE_FAILED']);
+const EDIT_PHASES = new Set(['record_lookup', 'server_record_id', 'server_patch', 'local_queue_save']);
 
 function validUuid(id) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
@@ -21,6 +22,10 @@ export default async function handler(req, res) {
   const promptType = String(body.promptType || '').trim();
   const requestId = String(body.requestId || '').trim().slice(0, 100);
   const status = Number(body.httpStatus || 0);
+  const editErrorCode = typeof body.errorCode === 'string' && /^[A-Z0-9_]{1,64}$/.test(body.errorCode)
+    ? body.errorCode : 'UNKNOWN';
+  const savePhase = EDIT_PHASES.has(body.savePhase) ? body.savePhase : 'unknown';
+  const appType = body.appType === 'pc' ? 'pc' : 'mobile';
   if (!validUuid(academyId) || !sessionToken || sessionToken.length > 512 || !STAGES.has(stage)
     || !['class','elementary','fail','summary','kinder_one_month'].includes(promptType)
     || !Number.isInteger(status) || status < 0 || status > 599) {
@@ -41,12 +46,13 @@ export default async function handler(req, res) {
 
     // The device submits only fixed error categories and technical metadata: no raw student input.
     const record = {
-      academy_id:academyId, app_type:'mobile', feature:'quicknote_feedback',
+      academy_id:academyId, app_type:appType, feature:'quicknote_feedback',
       severity:'error', message:stage,
       request_id:requestId || null,
       detail:{stage,feature:promptType,http_status:status,
         model:String(body.model || '').replace(/[^a-zA-Z0-9._-]/g,'').slice(0,60),
-        effort:['none','minimal','low','medium','high','xhigh'].includes(body.effort)?body.effort:null}
+        effort:['none','minimal','low','medium','high','xhigh'].includes(body.effort)?body.effort:null,
+        ...(stage === 'EDIT_SAVE_FAILED' ? {error_code:editErrorCode,save_phase:savePhase} : {})}
     };
     const logged = await fetch(ERROR_LOG, {
       method:'POST',
