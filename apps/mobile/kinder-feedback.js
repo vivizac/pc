@@ -2405,12 +2405,20 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
   const segments = getSuspiciousFeedbackSegments(nextText);
   const nextStatus = segments.length ? 'review' : 'done';
   const originalItem = getTodayFeedbackItemById(id);
+  if (!originalItem) {
+    const code = reportQuicknoteEditSaveFailure({ id }, 'record_lookup',
+      { code: 'FEEDBACK_ITEM_NOT_FOUND' }, 'mobile');
+    setKinderChatFeedbackWarning('수정할 피드백을 찾지 못했습니다. [' + code + ']');
+    return;
+  }
   const wasServerSaved = !!(originalItem && (originalItem.saved || originalItem.reviewed));
   const savedRecordId = getTodayFeedbackSavedRowId(originalItem || {});
   let patchedSavedRow = null;
   if (wasServerSaved) {
     if (!savedRecordId) {
-      setKinderChatFeedbackWarning('이미 저장된 피드백의 서버 ID를 찾지 못해 수정 저장을 할 수 없습니다.');
+      const code = reportQuicknoteEditSaveFailure(originalItem, 'server_record_id',
+        { code: 'RECORD_ID_MISSING' }, 'mobile');
+      setKinderChatFeedbackWarning('이미 저장된 피드백의 서버 ID를 찾지 못했습니다. [' + code + ']');
       return;
     }
     try {
@@ -2423,7 +2431,8 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
         : await patchSavedTodayFeedbackItem(originalItem, nextText);
     } catch (err) {
       console.error('저장된 1분 피드백 수정 오류:', err);
-      setKinderChatFeedbackWarning(`수정 저장 중 오류가 발생했어요. ${err.message || ''}`.trim());
+      const code = reportQuicknoteEditSaveFailure(originalItem, 'server_patch', err, 'mobile');
+      setKinderChatFeedbackWarning(`수정 저장 중 오류가 발생했어요. ${err.message || ''} [${code}]`.trim());
       return;
     }
   }
@@ -2452,7 +2461,14 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
     return updatedItem;
   });
   if (!changed) return;
-  setTodayFeedbackItemsRaw(nextList);
+  try {
+    setTodayFeedbackItemsRaw(nextList);
+  } catch (err) {
+    console.error('퀵노트 피드백 수정 로컬 저장 오류:', err);
+    const code = reportQuicknoteEditSaveFailure(originalItem, 'local_queue_save', err, 'mobile');
+    setKinderChatFeedbackWarning('수정한 피드백을 기기에 기록하지 못했습니다. [' + code + ']');
+    return;
+  }
   const liveItem = getKinderChatFeedbackLiveItem(id);
   if (liveItem) {
     liveItem.resultText = nextText;
