@@ -33,4 +33,6 @@ test('save paths use updateOneTimeSession for existing makeup and keep addMakeup
   assert.match(code,/if \(existing\) \{[\s\S]*?service\.updateOneTimeSession\(existing\.id/);
   assert.match(code,/else \{[\s\S]*?service\.addMakeup\(dialog\.studentId/);
   assert.match(source,/existingMakeupForGroupChange\(dialog\) \? '반 변경' : '등록'/);
+  assert.match(source,/A반·B반 변경은 먼저 위에서 해당 학생을 선택해 주세요/);
+  assert.match(source,/changedMakeupGroup \? .*보강을 .*반으로 변경했어요/);
 });
