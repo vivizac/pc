@@ -5091,7 +5091,7 @@
   }
 
   function isOlliTalkVideoAttachment(attachment){
-    return /^video\\//i.test(String(attachment?.mime_type||''))||/\\.(mov|mp4|m4v|webm|ogv)$/i.test(String(attachment?.file_name||''));
+    return /^video\//i.test(String(attachment?.mime_type||''))||/\.(mov|mp4|m4v|webm|ogv)$/i.test(String(attachment?.file_name||''));
   }
 
   function isOlliTalkImageAttachment(attachment){
