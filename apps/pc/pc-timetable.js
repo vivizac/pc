@@ -1321,8 +1321,19 @@
     }).join('');
     const movedSourceHtml = movedSources.map((item) => {
       const sessionKey = dateKey(date);
+      const linkedMove = changes().find((change) =>
+        clean(change.source_enrollment_id) === clean(item.id)
+        && regularMoveInWeek(item.id, date, 'source', [change]));
+      const targetId = clean(linkedMove && linkedMove.target_enrollment_id);
+      // Never fall back to an arbitrary other weekly enrollment (e.g. for
+      // a student enrolled twice). Link only to the actual moved destination.
+      const availableTarget = targetId && currentStudentEnrollments(item.student_id)
+        .some((row) => clean(row.id) === targetId);
+      const menu = availableTarget
+        ? `<button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(targetId)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 이동된 수업 설정">☰</button>`
+        : '<span class="olliTtStudentMore" aria-hidden="true">☰</span>';
       // Visual-only source: no drag, no attendance toggle, no capacity impact.
-      return `<div class="olliTtStudent regular ${division} olliTtMovedSource" data-tt-move-source-ghost="1" aria-label="${esc(item.student_name)} 이동 전 수업"><span class="olliTtAttendanceBtn">${esc(item.student_name)}</span><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
+      return `<div class="olliTtStudent regular ${division} olliTtMovedSource" data-tt-move-source-ghost="1" aria-label="${esc(item.student_name)} 이동 전 수업"><span class="olliTtAttendanceBtn">${esc(item.student_name)}</span>${menu}</div>`;
     }).join('');
     const waitHtml = waits.map((item) => {
       const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;

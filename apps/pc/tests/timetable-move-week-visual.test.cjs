@@ -45,6 +45,10 @@ test('ghost is separate from attendance, drag and capacity; destination has blue
   assert.match(js, /!regularMoveInWeek\(item\.id, date, 'source', data\.changes\)/);
   assert.match(js, /movedSources = movedSourceEnrollments\(/);
   assert.match(js, /data-tt-move-source-ghost="1"/);
+  assert.match(js, /const targetId = clean\(linkedMove && linkedMove\.target_enrollment_id\)/);
+  assert.match(js, /const availableTarget = targetId && currentStudentEnrollments\(item\.student_id\)/);
+  assert.match(js, /data-enrollment-id="\$\{esc\(targetId\)\}"/);
+  assert.match(js, /'<span class="olliTtStudentMore" aria-hidden="true">☰<\/span>'/);
   assert.match(js, /if \(ghost && !event\.target\.closest\('\[data-tt-entry="regular"\]'\)\)/);
   assert.match(js, /const studentNameHtml = movedTarget/);
   assert.match(js, /movedSourcePickups\(date, classTime\)/);
