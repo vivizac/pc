@@ -973,6 +973,42 @@
     return service.saveCellMemo(clean(division), keyDate, Number(time), clean(note), classGroupOf({ class_group: classGroup }), clean(memoId) || null);
   }
 
+
+  // Movement styling and capacity projection are scoped to one calendar week.
+  function isMoveTransitionWeek(effectiveDate, sessionDate) {
+    const key = clean(effectiveDate).slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(key)
+      && dateKey(mondayOf(key)) === dateKey(mondayOf(sessionDate));
+  }
+  function regularMoveInWeek(enrollmentId, sessionDate, side, changeRows) {
+    const id = clean(enrollmentId);
+    const key = side === 'target' ? 'target_enrollment_id' : 'source_enrollment_id';
+    return !!id && (Array.isArray(changeRows) ? changeRows : changes()).some((change) =>
+      clean(change.change_type) === 'move'
+      && (change.status === 'scheduled' || change.status === 'applied')
+      && clean(change[key]) === id
+      && isMoveTransitionWeek(change.effective_date, sessionDate));
+  }
+  function movedSourceEnrollments(division, date, time, classGroup) {
+    const sources = (Array.isArray(state.data?.move_source_enrollments) ? state.data.move_source_enrollments : []).concat(enrollments());
+    const seen = new Set();
+    return sources.filter((item) => {
+      const id = clean(item.id);
+      if (!id || seen.has(id) || clean(item.division) !== division
+        || Number(item.weekday) !== date.getDay()
+        || !timeSlotMatches(division, date, time, item.time_slot)
+        || (classGroup && classGroupOf(item) !== classGroupOf({class_group:classGroup}))
+        || !regularMoveInWeek(id, date, 'source')) return false;
+      seen.add(id);
+      return true;
+    });
+  }
+  function movedSourcePickups(date, classTime) {
+    const sources = Array.isArray(state.data?.move_source_pickups) ? state.data.move_source_pickups : [];
+    return sources.filter((item) => Number(item.weekday) === date.getDay()
+      && Number(item.class_time) === Number(classTime)
+      && isMoveTransitionWeek(item.move_effective_date, date));
+  }
   function slotEntryCount(division, date, time, classGroup) {
     return slotRegulars(division, date, time, classGroup).length
       + slotWaitlist(division, date, time, classGroup).length
@@ -980,6 +1016,7 @@
   }
   function slotRegulars(division, date, time, classGroup) {
     return enrollments().filter((item) => clean(item.division) === division && timeSlotMatches(division, date, time, item.time_slot) && enrollmentActiveOn(item, date)
+      && !regularMoveInWeek(item.id, date, 'source')
       && (!classGroup || classGroupOf(item) === classGroupOf({ class_group: classGroup })))
       .sort((a, b) => Number(isSecondWeeklySession(b, date)) - Number(isSecondWeeklySession(a, date)));
   }
@@ -1003,15 +1040,6 @@
     const key = dateKey(date);
     return oneTimeSessions().filter((item) => clean(item.division) === division && clean(item.session_date) === key && timeSlotMatches(division, date, time, item.time_slot)
       && (!classGroup || classGroupOf(item) === classGroupOf({ class_group: classGroup })));
-  }
-  function scheduledChangeForSource(enrollmentId, sessionDate) {
-    const sessionKey = sessionDate instanceof Date ? dateKey(sessionDate) : clean(sessionDate).slice(0, 10);
-    if (sessionKey && sessionKey < todayKey()) return null;
-    return changes().find((item) => clean(item.source_enrollment_id) === clean(enrollmentId)
-      && item.status === 'scheduled'
-      && clean(item.change_type) === 'move'
-      && isReservedMoveDate(item.effective_date)
-      && (!sessionKey || clean(item.effective_date) > sessionKey));
   }
   function capacityFor(division) {
     return division === 'kinder'
@@ -1192,6 +1220,7 @@
     const regular = (Array.isArray(data.enrollments) ? data.enrollments : []).filter((item) =>
       clean(item.division) === division && timeSlotMatches(division, date, time, item.time_slot)
       && enrollmentActiveOn(item, date)
+      && !regularMoveInWeek(item.id, date, 'source', data.changes)
       && (!classGroup || classGroupOf(item) === classGroupOf({ class_group: classGroup })));
     const sessionKey = dateKey(date);
     const absenceRows = Array.isArray(data.attendance_overrides) ? data.attendance_overrides : [];
