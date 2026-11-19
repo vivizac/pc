@@ -21,6 +21,17 @@ function file(id,fileName,mime){
       file_name:fileName,mime_type:mime,file_size:1000}};
 }
 
+test('production MIME classifier executes for both JPEG and QuickTime MOV without throwing',()=>{
+  const start=source.indexOf('  function isOlliTalkVideoAttachment(attachment){');
+  const end=source.indexOf('\n  function isOlliTalkImageAttachment(',start);
+  assert.ok(start>=0&&end>start,'test the real production MIME classifier');
+  const classifier=new Function(source.slice(start,end)+';return isOlliTalkVideoAttachment;')();
+  assert.equal(classifier({mime_type:'image/jpeg',file_name:'IMG_4660.jpeg'}),false);
+  assert.equal(classifier({mime_type:'video/quicktime',file_name:'IMG_4667.mov'}),true);
+  assert.equal(classifier({mime_type:'application/octet-stream',file_name:'IMG_4662.mov'}),true);
+  assert.equal(classifier({mime_type:'application/pdf',file_name:'notes.pdf'}),false);
+});
+
 test('iPhone-sized real renderer mounts photo/video previews, not raw IMG filenames', {timeout:120000},async()=>{
   const browser=await chromium.launch({headless:true,channel:'chromium'});
   try{
