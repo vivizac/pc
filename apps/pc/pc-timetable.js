@@ -1757,7 +1757,15 @@
       }
       throw new Error('이동할 카드 종류를 확인해 주세요.');
     });
-    if (result) notify(source.name + ' 학생의 ' + kindLabel + ' 일정을 이동했어요.');
+    if (result) {
+      const storedEffectiveDate = clean(result.effective_date) || target.date;
+      const reserved = (source.kind === 'regular' && result.result === 'scheduled')
+        || (source.kind === 'pickup' && pickupScope(source.row) === 'weekly'
+          && storedEffectiveDate > todayKey());
+      notify(reserved
+        ? source.name + ' 학생의 ' + kindLabel + ' 이동을 ' + shortDate(target.date) + '부터 예약했어요.'
+        : source.name + ' 학생의 ' + kindLabel + ' 일정을 이동했어요.');
+    }
   }
 
   function onTimetableDrop(event) {

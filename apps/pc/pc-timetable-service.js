@@ -313,7 +313,7 @@
     }));
     if (params?.student_id && ['change','remove_enrollment','add_enrollment'].includes(action)) {
       try { global.dispatchEvent(new CustomEvent('olli:schedule-changed', { detail: {
-        studentId: params.student_id, effectiveDate: params.effective_date, source: 'pc_timetable'
+        studentId: params.student_id, effectiveDate: clean(result && result.effective_date) || params.effective_date, source: 'pc_timetable'
       } })); } catch (_) {}
     }
     return result;
