@@ -104,7 +104,7 @@ begin
         and e.weekday=p_target_weekday and e.time_slot=p_target_time_slot
         and (private.olli_schedule_timetable_mode(p_academy_id)='half_hour' or e.class_group=v_class_group)
         and e.status='active'
-        and e.effective_from<=v_effective and (e.effective_to is null or e.effective_to>=v_effective)
+        and e.effective_from<=v_target_session_date and (e.effective_to is null or e.effective_to>=v_target_session_date)
         and (p_change_type<>'move' or e.id<>p_source_enrollment_id))
     +
     (select count(*)

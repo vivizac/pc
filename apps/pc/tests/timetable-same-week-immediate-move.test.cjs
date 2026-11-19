@@ -23,6 +23,7 @@ test('capacity includes one-time sessions on the actual destination weekday, wit
   assert.match(schedule, /v_target_session_date := private\.olli_schedule_first_occurrence_on_or_after\(\s*v_effective, p_target_weekday\s*\)/);
   assert.match(schedule, /o\.session_date=v_target_session_date and o\.time_slot=p_target_time_slot/);
   assert.doesNotMatch(schedule, /o\.session_date=v_effective/);
+  assert.match(schedule, /e\.effective_from<=v_target_session_date and \(e\.effective_to is null or e\.effective_to>=v_target_session_date\)/);
   assert.match(schedule, /private\.olli_schedule_group_is_enabled\([\s\S]*?private\.olli_schedule_first_occurrence_on_or_after\(v_effective, p_target_weekday\)/);
 });
 
