@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '../../..');
-const sql = fs.readFileSync(path.join(root, 'supabase/migrations/20261119080000_pc_timetable_same_week_immediate_moves.sql'), 'utf8');
+const sql = fs.readFileSync(path.join(root, 'supabase/migrations/20261119074858_pc_timetable_same_week_immediate_moves.sql'), 'utf8');
 const ui = fs.readFileSync(path.join(root, 'apps/pc/pc-timetable.js'), 'utf8');
 const service = fs.readFileSync(path.join(root, 'apps/pc/pc-timetable-service.js'), 'utf8');
 const schedule = sql.slice(sql.indexOf('CREATE OR REPLACE FUNCTION public.olli_schedule_change('), sql.indexOf('$function$;') + '$function$;'.length);
