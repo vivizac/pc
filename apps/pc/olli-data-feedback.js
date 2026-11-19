@@ -27,7 +27,7 @@ function getStudentNameForAutoFeedbackSave(studentDivision = '') {
 }
 
 
-async function getOrCreateStudentForSupabaseSave(studentName, preferredType = 'elementary', preferredStudentId = '') {
+async function getOrCreateStudentForSupabaseSave(studentName, preferredType = 'elementary', preferredStudentId = '', options = {}) {
   const name = String(studentName || '').trim();
   if (!name) throw new Error('학생 이름이 없습니다.');
 
@@ -63,6 +63,33 @@ async function getOrCreateStudentForSupabaseSave(studentName, preferredType = 'e
   }
   if (!String(student.id || '').trim()) {
     throw new Error('학생코드가 없는 학생은 피드백을 저장할 수 없습니다. 학생정보를 먼저 확인해 주세요.');
+  }
+
+  if (options.readOnlyExisting) {
+    // Read the scoped server student instead of rewriting their profile during Quick Note save.
+    const academyId = requireOlliAcademyId('피드백 학생 확인');
+    const core = window.OlliStorageCore;
+    if (!core?.FeatureRegistry?.require || !core?.ServerAdapter?.read) {
+      const error = new Error('학생 서버 확인 기능이 준비되지 않았습니다.');
+      error.code = 'STUDENT_READ_UNAVAILABLE';
+      throw error;
+    }
+    const rows = await core.ServerAdapter.read(core.FeatureRegistry.require('student_profile'),
+      {academyId, studentId:String(student.id)}, {limit:1});
+    const remote = Array.isArray(rows) ? rows[0] : null;
+    if (!remote || String(remote.id || '') !== String(student.id)
+        || String(remote.academy_id || '') !== academyId) {
+      const error = new Error('현재 학원의 서버 학생정보를 확인하지 못했습니다. 학생 목록을 새로고침해 주세요.');
+      error.code = 'STUDENT_NOT_ON_SERVER';
+      throw error;
+    }
+    if (remote.is_deleted === true || ['inactive','deleted'].includes(String(remote.status || '').toLowerCase())) {
+      const error = new Error('삭제 또는 비활성화된 학생은 피드백을 저장할 수 없습니다.');
+      error.code = 'STUDENT_INACTIVE';
+      throw error;
+    }
+    return {...student,id:remote.id,name:String(remote.name || name),
+      academy_id:academyId,type:remote.division === 'kinder' ? 'kinder' : 'elementary'};
   }
 
   const registeredType = student.type || student.division;
@@ -133,6 +160,7 @@ async function autoSaveGeneratedFeedback(text, options = {}, btn = null) {
 
   const year = new Date().getFullYear();
   const date = new Date().toLocaleDateString('ko-KR');
+  let savePhase = 'student_lookup';
 
   try {
     if (btn) {
@@ -141,7 +169,9 @@ async function autoSaveGeneratedFeedback(text, options = {}, btn = null) {
       btn.textContent = '저장 중...';
     }
 
-    const savedStudent = await getOrCreateStudentForSupabaseSave(name, studentDivision, selectedStudentId);
+    const savedStudent = await getOrCreateStudentForSupabaseSave(name, studentDivision, selectedStudentId,
+      {readOnlyExisting: !!options.quickNoteRequestId});
+    savePhase = 'feedback_write';
 
     const feedbackPayload = addOlliAcademyToPayload({
       student_id: savedStudent.id,
@@ -150,11 +180,22 @@ async function autoSaveGeneratedFeedback(text, options = {}, btn = null) {
       feedback_type: feedbackType,
       ...(feedbackType === 'growth' ? {target_month:getOlliFeedbackTargetMonthForSave(feedbackType,options.targetMonth)} : {}),
       year,
-      date
+      date,
+      ...(options.clientRecordId ? {client_record_id:String(options.clientRecordId)} : {})
     }, tableName === 'fail_feedbacks' ? '실패·성장 피드백 저장' : '피드백 저장');
     const savedRow = await saveFeedbackRowVerified(tableName, feedbackPayload, tableName === 'fail_feedbacks' ? '실패·성장 피드백 저장' : '피드백 저장');
+    savePhase = 'feedback_verify';
+    if (options.quickNoteRequestId && (!savedRow || savedRow.__pending_sync)) {
+      const error = new Error('피드백 서버 저장이 아직 확인되지 않았습니다.');
+      error.code = 'FEEDBACK_PENDING_SYNC';
+      if (typeof window.reportQuicknoteInitialSaveFailure === 'function')
+        window.reportQuicknoteInitialSaveFailure(
+          {id:options.quickNoteRequestId,promptType:feedbackType},savePhase,error,'pc');
+      return savedRow || false;
+    }
 
-    await refreshRecordsAfterFeedbackSave();
+    try { await refreshRecordsAfterFeedbackSave(); }
+    catch (refreshError) { console.warn('저장된 피드백 목록 새로고침 실패:',refreshError); }
     closeFeedbackResultCardFromButton(btn);
     if (tableName === 'fail_feedbacks' && typeof resetGrowthFeedbackAfterSuccessfulSave === 'function') {
       resetGrowthFeedbackAfterSuccessfulSave(studentDivision);
@@ -162,6 +203,9 @@ async function autoSaveGeneratedFeedback(text, options = {}, btn = null) {
     return savedRow || true;
   } catch (err) {
     console.error('피드백 저장 오류:', err);
+    if (options.quickNoteRequestId && typeof window.reportQuicknoteInitialSaveFailure === 'function')
+      window.reportQuicknoteInitialSaveFailure(
+        {id:options.quickNoteRequestId,promptType:feedbackType},savePhase,err,'pc');
     alert(`저장 중 오류가 발생했어요.\n\n${err.message || '알 수 없는 오류입니다.'}`);
     return false;
   } finally {

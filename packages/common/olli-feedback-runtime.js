@@ -665,6 +665,39 @@ function reportQuicknoteEditSaveFailure(item = {}, savePhase = 'server_patch', e
 }
 window.reportQuicknoteEditSaveFailure = reportQuicknoteEditSaveFailure;
 
+// Initial-save diagnostic uses the existing authenticated endpoint without student content.
+function reportQuicknoteInitialSaveFailure(item = {}, savePhase = 'feedback_write', error, appType = 'mobile') {
+  const phase = ['student_lookup','feedback_write','feedback_verify','unexpected_exception'].includes(savePhase)
+    ? savePhase : 'unexpected_exception';
+  const code = getQuicknoteEditSaveErrorCode(error);
+  try {
+    if (typeof recordOlliStorageIssue === 'function') recordOlliStorageIssue({
+      feature:'quicknote_feedback_save',resource:'feedbacks',operation:phase,
+      message:'퀵노트 저장 오류 [' + code + '] · ' + phase,severity:'error'
+    });
+  } catch (_) {}
+  try {
+    const academyId = String(item.academyId
+      || (typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '') || '').trim();
+    const sessionToken = String((typeof window.getOlliPhoneWritableAccountSessionToken === 'function'
+      ? window.getOlliPhoneWritableAccountSessionToken() : '')
+      || localStorage.getItem('olli_account_session_token_v1') || '').trim();
+    if (!academyId || !sessionToken) return code;
+    const raw = Number(error?.httpStatus || error?.status || 0);
+    const status = Number.isInteger(raw) && raw >= 0 && raw <= 599 ? raw : 0;
+    fetch('/api/feedback-client-error',{
+      method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,
+      body:JSON.stringify({academyId,sessionToken,requestId:String(item.id || '').slice(0,100),
+        promptType:['class','elementary','fail','summary','kinder_one_month'].includes(item.promptType)
+          ? item.promptType : 'class',
+        stage:'SAVE_FAILED',errorCode:code,savePhase:phase,
+        appType:appType === 'pc' ? 'pc' : 'mobile',httpStatus:status})
+    }).catch(() => {});
+  } catch (_) {}
+  return code;
+}
+window.reportQuicknoteInitialSaveFailure = reportQuicknoteInitialSaveFailure;
+
 function getTodayFeedbackSavedSourceTable(item = {}) {
   const explicitTable = String(item.savedSourceTable || item.sourceTable || item.serverTable || '').trim();
   if (explicitTable) return explicitTable;
@@ -821,9 +854,14 @@ async function saveTodayFeedbackItem(id, btn, selectedStudentId = '') {
     feedbackType: item.feedbackType || 'class',
     studentDivision,
     studentName,
-    studentId: finalStudentId
+    studentId: finalStudentId,
+    quickNoteRequestId: id,
+    clientRecordId: 'quicknote_' + String(id)
   }, btn || null);
-  if (savedOk === false) return false;
+  if (!savedOk || savedOk.__pending_sync) {
+    if (savedOk?.__pending_sync) showPushToast('서버 저장이 대기 중이에요. 피드백을 보관하고 다시 저장할 수 있습니다.');
+    return false;
+  }
   try {
     await linkFeedbackPhotosToStudent(item, finalStudentId);
   } catch (err) {

@@ -236,8 +236,8 @@ test('fresh PC and mobile HTML bypass stale runtime while old tabs require manua
      assert.match(header.headers.find(x=>x.key==='Cache-Control').value,/no-store/);
    }
  }
- assert.match(read('apps/pc/index.html'),/olli-data-feedback\.js\?v=20261109-feedback-student-binding-1/);
- assert.match(read('apps/mobile/index.html'),/olli-student-core\.js\?v=20261109-feedback-student-binding-1/);
+ assert.match(read('apps/pc/index.html'),/olli-data-feedback\.js\?v=20261119-quicknote-save-1/);
+ assert.match(read('apps/mobile/index.html'),/olli-student-core\.js\?v=20261119-quicknote-save-1/);
 });
 
 test('cron schedules current due month only and never retries an overdue consultation',()=>{
