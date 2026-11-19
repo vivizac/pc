@@ -1296,11 +1296,11 @@
 
   function cellContentsHtml(division, date, time, classGroup, memoText) {
     const regular = slotRegulars(division, date, time, classGroup);
+    const movedSources = movedSourceEnrollments(division, date, time, classGroup);
     const waits = slotWaitlist(division, date, time, classGroup);
     const makeups = slotMakeups(division, date, time, classGroup);
     const regularHtml = regular.map((item) => {
-      const scheduled = scheduledChangeForSource(item.id, date);
-      const scheduleText = scheduled ? `<span class="olliTtReservation">◷ ${shortDate(scheduled.effective_date)} 예약 ${scheduled.change_type === 'remove' ? '삭제' : '이동'}</span>` : '';
+      const movedTarget = regularMoveInWeek(item.id, date, 'target');
       const attendanceTime = Number(item.time_slot);
       const entryClassGroup = classGroup ? classGroupOf({ class_group: classGroup }) : classGroupOf(item);
       const attendanceStatus = timetableAttendanceSessionStatus(item.student_id, date, attendanceTime, entryClassGroup, 'regular');
@@ -1316,8 +1316,13 @@
       const pauseBadge = pausedStudent ? '<span class="olliTtPauseBadge">휴원</span>' : '';
       const newCardClass = isTimetableNewCard('enrollments', item.id, date) ? ' olliTtNewCard' : '';
       // The corner N badge is painted by the card itself, not inside the name.
-      const studentNameHtml = esc(item.student_name);
-      return `<div draggable="true" data-tt-drag-kind="regular" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${sessionKey}" class="olliTtStudent regular ${division}${newCardClass}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}${mutedAbsence ? ' absenceUpcoming' : ''}${pausedStudent ? ' pausedStudent' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${sessionKey}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${studentNameHtml}${pauseBadge}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
+      const studentNameHtml = movedTarget ? `<span class="olliTtMovedTargetName">${esc(item.student_name)}</span>` : esc(item.student_name);
+      return `<div draggable="true" data-tt-drag-kind="regular" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${sessionKey}" class="olliTtStudent regular ${division}${newCardClass}${movedTarget ? ' olliTtMovedTarget' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}${mutedAbsence ? ' absenceUpcoming' : ''}${pausedStudent ? ' pausedStudent' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${sessionKey}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${studentNameHtml}${pauseBadge}${secondSessionMark}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
+    }).join('');
+    const movedSourceHtml = movedSources.map((item) => {
+      const sessionKey = dateKey(date);
+      // Visual-only source: no drag, no attendance toggle, no capacity impact.
+      return `<div class="olliTtStudent regular ${division} olliTtMovedSource" data-tt-move-source-ghost="1" aria-label="${esc(item.student_name)} 이동 전 수업"><span class="olliTtAttendanceBtn">${esc(item.student_name)}</span><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
     }).join('');
     const waitHtml = waits.map((item) => {
       const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;
@@ -1340,7 +1345,7 @@
       && Number(item.time_slot) === Number(time)
       && (!memoGroup || classGroupOf(item) === memoGroup))
       .map((item) => `<button type="button" class="olliTtCellMemoCard" data-tt-memo-card="1" data-memo-id="${esc(item.id)}" data-division="${esc(division)}" data-date="${dateKey(date)}" data-time="${Number(time)}" data-class-group="${esc(classGroupOf(item))}" aria-label="시간표 메모 관리"><span aria-hidden="true">📝</span><strong>${esc(item.note)}</strong></button>`).join('');
-    return `<div class="olliTtEntries">${regularHtml}${waitHtml}${makeupHtml}${memoHtml}</div>`;
+    return `<div class="olliTtEntries">${regularHtml}${movedSourceHtml}${waitHtml}${makeupHtml}${memoHtml}</div>`;
   }
 
   function cellHtml(division, date, displayTime) {
@@ -1398,10 +1403,21 @@
       const pickupPlace = onlyDropoff ? (clean(item.dropoff_label) || clean(item.pickup_label)) : clean(item.pickup_label);
       const pickupTime = onlyDropoff ? pickupTimeLabel(item.dropoff_time) : pickupTimeLabel(item.pickup_time);
       const pickupKind = onlyDropoff ? '하원 · ' : '';
+      const movedTarget = (Array.isArray(state.data?.move_source_pickups) ? state.data.move_source_pickups : [])
+        .some((source) => clean(source.target_pickup_id) === clean(item.id)
+          && isMoveTransitionWeek(source.move_effective_date, date));
       const newCardClass = isTimetableNewCard('pickups', item.id) ? ' olliTtNewCard' : '';
-      return `<div draggable="true" data-tt-drag-kind="pickup" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${dateKey(date)}" class="olliTtPickupCard${newCardClass}" data-tt-pickup-manage="${esc(item.id)}" data-tt-pickup-date="${dateKey(date)}"><strong class="olliTtPickupStudentName"><span>${esc(item.student_name)}</span>${dropoffMark}</strong><span>${esc(pickupKind + pickupPlace)} ${esc(pickupTime)}</span></div>`;
+      return `<div draggable="true" data-tt-drag-kind="pickup" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${dateKey(date)}" class="olliTtPickupCard${newCardClass}${movedTarget ? ' olliTtMovedTarget' : ''}" data-tt-pickup-manage="${esc(item.id)}" data-tt-pickup-date="${dateKey(date)}"><strong class="olliTtPickupStudentName"><span>${esc(item.student_name)}</span>${dropoffMark}</strong><span>${esc(pickupKind + pickupPlace)} ${esc(pickupTime)}</span></div>`;
     }).join('');
-    return `<div class="olliTtPickupCell${holiday ? ' holiday' : ''}" data-tt-pickup-cell="1" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-class-time="${classTime}"${holiday ? ' data-holiday="1" aria-disabled="true"' : ''}><div class="olliTtPickupEntries">${cards}</div></div>`;
+    const movedSourceHtml = movedSourcePickups(date, classTime).map((item) => {
+      const onlyDropoff = item.is_dropoff === true;
+      const place = onlyDropoff ? (clean(item.dropoff_label) || clean(item.pickup_label)) : clean(item.pickup_label);
+      const timeLabel = onlyDropoff ? pickupTimeLabel(item.dropoff_time) : pickupTimeLabel(item.pickup_time);
+      const dropoffMark = item.is_dropoff === true || Boolean(clean(item.dropoff_label))
+        ? '<span class="olliTtPickupDropoffMark" aria-label="하원">하</span>' : '';
+      return `<div class="olliTtPickupCard olliTtMovedSource" data-tt-move-source-ghost="1" aria-label="${esc(item.student_name)} 이동 전 픽업"><strong class="olliTtPickupStudentName"><span>${esc(item.student_name)}</span>${dropoffMark}</strong><span>${esc((onlyDropoff ? '하원 · ' : '') + place)} ${esc(timeLabel)}</span></div>`;
+    }).join('');
+    return `<div class="olliTtPickupCell${holiday ? ' holiday' : ''}" data-tt-pickup-cell="1" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-class-time="${classTime}"${holiday ? ' data-holiday="1" aria-disabled="true"' : ''}><div class="olliTtPickupEntries">${cards}${movedSourceHtml}</div></div>`;
   }
 
   function pickupGridHtml(dates) {
@@ -1844,6 +1860,12 @@
       event.preventDefault();
       event.stopPropagation();
       notify(`${holidayName(holidayTarget.dataset.date) || '공휴일'}에는 시간표 작업을 할 수 없습니다. 정상수업으로 변경한 뒤 이용해 주세요.`);
+      return;
+    }
+    // A visual-only moved source must not open the empty-slot registration popup.
+    const ghost = event.target.closest('[data-tt-move-source-ghost="1"]');
+    if (ghost && !event.target.closest('[data-tt-entry="regular"]')) {
+      event.stopPropagation();
       return;
     }
     const attendanceButton = event.target.closest('[data-tt-attendance]');
