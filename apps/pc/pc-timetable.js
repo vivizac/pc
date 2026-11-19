@@ -2674,11 +2674,10 @@
           const full = capacity && count !== null && count >= capacity;
           return `<button type="button" class="olliTtChoice ${dialog.targetTime === time ? 'active' : ''} ${full ? 'full' : ''}" data-tt-target-time="${time}">${scheduleSlotLabel(division, time, dialog.targetClassGroup, dialog.targetWeekday)}${capacity ? `<small>${count === null ? '확인 중' : count}/${capacity}${full ? ' · 대기' : ''}</small>` : ''}</button>`;
         }).join(''));
-    const moveStatusHtml = moveRows.length ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>수업 이동 상태</span></div><div class="olliTtEnrollmentList">${moveRows.map((item) => {
+    const moveStatusHtml = moveRows.length ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>수업 이동 취소</span></div><div class="olliTtEnrollmentList">${moveRows.map((item) => {
       const target = rows.find((row) => clean(row.id) === clean(item.target_enrollment_id));
-      const reserved = isReservedMoveDate(item.effective_date);
       const targetText = target ? `${weekdayLabel(target.weekday)}요일 ${scheduleSlotLabel(division, target.time_slot, target.class_group, target.weekday)}` : '이동할 수업';
-      return `<button type="button" class="olliTtEnrollmentChoice" data-tt-cancel-change="${esc(item.id)}"><strong>${shortDate(item.effective_date)} · ${reserved ? '예약 이동' : '이번 주 이동'} · ${esc(targetText)}</strong><span>${reserved ? '예약 취소' : '이동 취소'}</span></button>`;
+      return `<button type="button" class="olliTtEnrollmentChoice" data-tt-cancel-change="${esc(item.id)}"><strong>${shortDate(item.effective_date)} · ${esc(targetText)}</strong><span>이동 취소</span></button>`;
     }).join('')}</div></div>` : '';
     const legacyDeleteHtml = legacyDeleteRows.length ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>기존 삭제 예약</span><small>이전 방식으로 저장된 예약입니다. 새 삭제는 즉시 처리됩니다.</small></div><div class="olliTtEnrollmentList">${legacyDeleteRows.map((item) => {
       const scheduledSource = rows.find((row) => clean(row.id) === clean(item.source_enrollment_id));
@@ -2692,11 +2691,11 @@
     const moveSaveLabel = dialog.actionType === 'move'
       ? (absenceChangedForSave
         ? (dialog.absenceSelected ? '결석 저장' : '결석 취소')
-        : (isReservedAction ? '예약 이동' : '지금 바로 이동'))
+        : '수업 이동')
       : '저장';
     const effectiveDateLabel = dialog.actionType === 'move' ? '수업 이동 적용일' : '적용 날짜';
     const effectiveDateGuide = dialog.actionType === 'move'
-      ? (isReservedAction ? '다음 주 이후 적용은 예약 이동입니다.' : '이번 주 안의 이동은 즉시 반영됩니다.')
+      ? (isReservedAction ? '선택한 주의 시간표에 이동 결과가 미리 반영됩니다.' : '이번 주 안의 이동은 즉시 반영됩니다.')
       : '';
     const showAbsenceMemo = dialog.actionType === 'move' && Boolean(clean(dialog.sourceEnrollmentId));
     const absenceMemoHtml = showAbsenceMemo
@@ -3394,7 +3393,7 @@
         const absenceChanged = Boolean(state.dialog.absenceSelected) !== Boolean(state.dialog.originalAbsenceSelected);
         saveButton.textContent = absenceChanged
           ? (state.dialog.absenceSelected ? '결석 저장' : '결석 취소')
-          : (isReservedMoveDate(clean(state.dialog.effectiveDate) || todayKey()) ? '예약 이동' : '지금 바로 이동');
+          : '수업 이동';
       }
     });
     const saveMoveButton = dialog.querySelector('[data-tt-save-move]');
@@ -3695,7 +3694,7 @@
       else if (combined.actionResult.result === 'start_date_updated') notify(`${student.name} 학생의 첫 수업일을 ${shortDate(dialog.effectiveDate)}로 변경했어요.`);
       else if (combined.actionResult.result === 'waitlisted') notify(`${student.name} 학생을 대기로 등록했어요.`);
       else if (dialog.actionType === 'move' && combined.actionResult.result === 'scheduled' && isReservedMoveDate(dialog.effectiveDate)) {
-        notify(`${student.name} 학생의 수업 이동을 ${shortDate(dialog.effectiveDate)}부터 예약했어요.`);
+        notify(`${student.name} 학생의 수업 이동이 ${shortDate(dialog.effectiveDate)}부터 반영되도록 설정했어요.`);
       } else if (dialog.actionType === 'move') {
         notify(`${student.name} 학생의 이번 주 수업을 이동했어요.`);
       } else if (combined.actionResult.result === 'scheduled') {
@@ -4295,10 +4294,6 @@ ${combined.memoError}`);
   function studentInfoPanelHtml(student) {
     const rows = studentEnrollments(student.id).filter((item) => enrollmentEffectiveOn(item, currentWeekEndDate()));
     const waits = waitlist().filter((item) => clean(item.student_id) === clean(student.id));
-    const scheduledMoves = changes().filter((item) => clean(item.student_id) === clean(student.id)
-      && item.status === 'scheduled'
-      && clean(item.change_type) === 'move'
-      && isReservedMoveDate(item.effective_date));
     const legacyDeletes = changes().filter((item) => clean(item.student_id) === clean(student.id)
       && item.status === 'scheduled'
       && clean(item.change_type) === 'remove'
@@ -4307,7 +4302,6 @@ ${combined.memoError}`);
     const statusRows = [
       `<div><strong>정규 수업</strong>　${esc(regularText)}</div>`,
       waits.length ? `<div><strong>대기</strong>　${waits.map((item) => `${weekdayLabel(item.target_weekday)} ${scheduleSlotLabel(divisionOf(student), item.target_time_slot, item.target_class_group, item.target_weekday)}`).join(' · ')}</div>` : '',
-      scheduledMoves.length ? `<div><strong>예약 이동</strong>　${scheduledMoves.map((item) => shortDate(item.effective_date)).join(' · ')}</div>` : '',
       legacyDeletes.length ? `<div><strong>기존 삭제 예약</strong>　${legacyDeletes.map((item) => shortDate(item.effective_date)).join(' · ')}</div>` : ''
     ].filter(Boolean).join('');
     return `<div class="olliTtStudentInfoPanel" data-tt-info-student="${esc(student.id)}"><div class="olliTtStudentInfoPanelHead"><div class="olliTtStudentInfoPanelTitle">수업 시간표</div><button type="button" class="olliTtStudentInfoManage">수업·대기 설정</button></div><div class="olliTtStudentInfoRows">${statusRows}</div></div>`;
