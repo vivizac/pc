@@ -44,6 +44,7 @@ test('iPhone-sized real renderer mounts photo/video previews, not raw IMG filena
     `});
     await page.addScriptTag({content:harness});
     const result=await page.evaluate(records=>{
+      const faults=[];console.warn=(...args)=>faults.push(args.map(x=>x?.message||String(x)).join(' | '));
       const messages=records.map(([id,name,mime])=>({
         id:'shared:'+id,shared_message_id:id,is_shared:true,
         message_type:'file',sender_name:'루루',sender_member_id:'teacher',
@@ -60,7 +61,8 @@ test('iPhone-sized real renderer mounts photo/video previews, not raw IMG filena
         videos:frames.filter(f=>f.getAttribute('aria-label')==='원본 동영상 보기').length,
         mounted:window.__mountedPreviews.length,
         files:[...document.querySelectorAll('.olliTalkBetaBubble')].map(n=>n.textContent.trim()),
-        images:document.querySelectorAll('.olliUnifiedThumbnailImage').length
+        images:document.querySelectorAll('.olliUnifiedThumbnailImage').length,
+        faults
       };
     },[
       [23,'IMG_4660.jpeg','image/jpeg'],
@@ -68,7 +70,7 @@ test('iPhone-sized real renderer mounts photo/video previews, not raw IMG filena
       [25,'IMG_4660.jpeg','image/jpeg'],
       [28,'IMG_4662.mov','video/quicktime']
     ]);
-    assert.equal(result.frames,4);
+    assert.equal(result.frames,4,JSON.stringify(result));
     assert.equal(result.photos,2);
     assert.equal(result.videos,2);
     assert.equal(result.mounted,4,'each preview starts only after its frame is attached');
@@ -92,6 +94,7 @@ test('a single malformed optional message action still preserves attachment card
     `});
     await page.addScriptTag({content:harness});
     const result=await page.evaluate(()=>{
+      const faults=[];console.warn=(...args)=>faults.push(args.map(x=>x?.message||String(x)).join(' | '));
       const item={id:'shared:23',is_shared:true,message_type:'file',
         sender_name:'루루',sender_member_id:'teacher',branch_name:'대천점',
         created_at:'2026-11-19T06:00:00Z',body:'IMG_4660.jpeg',
@@ -99,9 +102,11 @@ test('a single malformed optional message action still preserves attachment card
       window.__renderSharedMediaTest({academy_id:'academy',current_member_id:'owner',messages:[item]},{scrollMode:'initial-latest'});
       return {cards:document.querySelectorAll('.olliTalkBetaAttachmentImageFrame').length,
         images:document.querySelectorAll('.olliUnifiedThumbnailImage').length,
-        plain:[...document.querySelectorAll('.olliTalkBetaBubble')].filter(el=>el.textContent==='IMG_4660.jpeg').length};
+        plain:[...document.querySelectorAll('.olliTalkBetaBubble')].filter(el=>el.textContent==='IMG_4660.jpeg').length,faults};
     });
-    assert.deepEqual(result,{cards:1,images:1,plain:0});
+    assert.equal(result.cards,1,JSON.stringify(result));
+    assert.equal(result.images,1,JSON.stringify(result));
+    assert.equal(result.plain,0,JSON.stringify(result));
     await page.close();
   }finally{await browser.close();}
 });
