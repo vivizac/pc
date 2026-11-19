@@ -35,7 +35,9 @@ test('QuickNote LIVE restores the academy-scoped draft without clearing unrelate
 
 test('QuickNote LIVE reveals the completed result before background save and keeps retry on failure', () => {
   assert.match(js, /showKinderChatFeedbackLiveActions\(item\);\s*if \(liveUi\.area\)[\s\S]{0,480}?void saveKinderChatFeedbackLive\(item\.id, item\.studentId\)\.then/);
-  assert.match(js, /if \(saved !== true\) reportKinderChatFeedbackFailure\(item, 'SAVE_FAILED', 0\);/);
+  assert.match(js, /if \(item\.trialSessionId && saved === false\) reportKinderChatFeedbackFailure\(item, 'SAVE_FAILED', 0\);/);
+  assert.match(js, /reportQuicknoteInitialSaveFailure\(item, 'unexpected_exception', error, 'mobile'\)/);
+  assert.match(js, /quickNoteRequestId: item\.id/);
   assert.match(html, /<script src="kinder-feedback\.js\?v=[^"]+"/);
   assert.match(html, /<link rel="stylesheet" href="kinder-feedback\.css\?v=[^"]+"/);
 });
