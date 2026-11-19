@@ -16,6 +16,8 @@
   let olliTalkArchivePayload = null;
   let olliTalkArchiveLoadSequence = 0;
   let olliTalkCurrentPayload = null;
+  // In-memory display snapshot only; shared messages never enter academy localStorage.
+  let olliTalkCurrentViewPayload = null;
   let olliTalkSharedViewSignature = '';
   let olliTalkHistoryLoading = false;
   let olliTalkHistoryExhausted = false;
@@ -3996,6 +3998,37 @@
     }catch(_){return false}
   }
 
+
+  // Reuse authorized shared messages for a gallery/history repaint without
+  // persisting them to the academy-local message cache.
+  function getOlliTalkCurrentPresentation(privatePayload){
+    const view=olliTalkCurrentViewPayload;
+    if(!privatePayload||!view?.__academyLocal
+      ||String(view.academy_id||'')!==String(privatePayload.academy_id||''))return privatePayload;
+    const shared=(Array.isArray(view.messages)?view.messages:[]).filter(item=>item?.is_shared===true);
+    if(!shared.length)return privatePayload;
+    return {...privatePayload,__academyLocal:privatePayload,messages:[
+      ...(Array.isArray(privatePayload.messages)?privatePayload.messages:[]),...shared
+    ].sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))};
+  }
+
+  // Content may be unchanged while the actual DOM lost some messages. Reconcile
+  // the IDs actually painted, including inline AI result/system bubbles.
+  function isOlliTalkMessageListInSync(payload,limit){
+    const area=document.getElementById('olliTalkBetaChatArea');
+    if(!area)return false;
+    const all=Array.isArray(payload?.messages)?payload.messages:[];
+    const count=Math.max(0,Math.floor(Number(limit)||0));
+    const expected=count>0&&all.length>count?all.slice(-count):all;
+    if(!expected.length)return !!area.querySelector('.olliTalkBetaEmpty')
+      &&!area.querySelector('.olliTalkBetaMessage');
+    const actual=Array.from(area.querySelectorAll(
+      '.olliTalkBetaMessage[data-message-id], .olliTalkBetaInlineSystemResult[data-message-id]'
+    ));
+    return actual.length===expected.length&&actual.every((node,index)=>
+      String(node.dataset.messageId||'')===String(expected[index]?.id||''));
+  }
+
   function syncOlliTalkRenderedUnreadCounts(payload){
     const chatArea=document.getElementById('olliTalkBetaChatArea');
     if(!chatArea)return false;
@@ -4703,7 +4736,11 @@
       olliTalkCurrentPayload=nextChat;
       writeOlliTalkMessageCache(context,nextChat);
       if(isOlliTalkBetaVisible()){
-        renderOlliTalkServerMessages(nextChat,{scrollMode:'preserve'});
+        const currentView=getOlliTalkCurrentPresentation(nextChat);
+        const visibleAfterDeletion=currentView===nextChat?nextChat:{
+          ...currentView,messages:currentView.messages.filter(keepMessage)
+        };
+        renderOlliTalkServerMessages(visibleAfterDeletion,{scrollMode:'preserve'});
       }
     }
 
@@ -5036,7 +5073,7 @@
     if(source==='archive'){
       renderOlliTalkArchive();
     }else if(olliTalkCurrentPayload){
-      renderOlliTalkServerMessages(olliTalkCurrentPayload,{scrollMode:'preserve'});
+      renderOlliTalkServerMessages(getOlliTalkCurrentPresentation(olliTalkCurrentPayload),{scrollMode:'preserve'});
     }
     return true;
   }
@@ -7554,6 +7591,7 @@
     const wasNearBottom=isOlliTalkChatNearBottom(chatArea);
 
     olliTalkCurrentPayload=payload?.__academyLocal || payload || null;
+    olliTalkCurrentViewPayload=payload || null;
     const allMessages=Array.isArray(payload?.messages) ? payload.messages : [];
     const requestedMessageLimit=Math.max(0,Math.floor(Number(options.messageLimit) || 0));
     const messages=requestedMessageLimit>0 && allMessages.length>requestedMessageLimit
@@ -7577,6 +7615,7 @@
     let lastRenderedMessage=null;
 
     messages.forEach((item,index)=>{
+      try{
       const previousItem=index>0 ? messages[index-1] : null;
       const previousActionStatus=String(previousItem?.action?.status || '').trim();
       const isInlineSystemResult=String(item?.message_type || 'text')==='system'
@@ -7615,6 +7654,31 @@
         olliReplyTargetIds,
         deferHydration:options.deferHydration===true
       });
+      }catch(error){
+        // One bad attachment/action must not hide ordinary chat or mention messages.
+        console.warn('올리톡 개별 메시지 렌더링 실패:',{
+          message_id:String(item?.id||''),message_type:String(item?.message_type||'')
+        },error);
+        const group=document.createElement('div');
+        group.className='olliTalkBetaMessageGroup incoming';
+        const message=document.createElement('div');
+        message.className='olliTalkBetaMessage incoming';
+        message.dataset.messageId=String(item?.id||'');
+        const flow=document.createElement('div');
+        flow.className='olliTalkBetaMessageFlow';
+        const row=document.createElement('div');
+        row.className='olliTalkBetaBubbleRow';
+        const bubble=document.createElement('div');
+        bubble.className='olliTalkBetaBubble';
+        bubble.textContent=String(item?.body||'첨부 메시지를 표시하지 못했습니다.');
+        row.appendChild(bubble);
+        flow.appendChild(row);
+        message.appendChild(flow);
+        group.appendChild(message);
+        list.appendChild(group);
+        activeGroup=null;
+        lastRenderedMessage=message;
+      }
     });
 
     chatArea.replaceChildren(list);
@@ -8284,24 +8348,30 @@
         ? extension.room.id+':'+extension.room.participation_id+':'+JSON.stringify(extension.messages.map(item=>[item.id,item.edited_at,item.unread_count]))
         : '';
       const sharedChanged=olliTalkSharedViewSignature!==nextSharedSignature;
-      olliTalkSharedViewSignature=nextSharedSignature;
-      const renderChanged=sharedChanged||!basePayload||!areOlliTalkMessagePayloadsRenderEquivalent(basePayload,mergedPayload);
       const presentation=extension.joined
         ? {...mergedPayload,__academyLocal:mergedPayload,messages:[...(mergedPayload.messages||[]),...extension.messages]
           .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))}
         : mergedPayload;
+      const activeRenderLimit=Math.max(0,Math.floor(Math.max(Number(options.messageLimit)||0,Number(olliTalkRenderedMessageLimit)||0)));
+      // A render:false prefetch or an academy-only redraw must never convince
+      // the phone that unchanged messages are already visible.
+      const renderChanged=sharedChanged||!basePayload
+        ||!areOlliTalkMessagePayloadsRenderEquivalent(basePayload,mergedPayload)
+        ||(options.render!==false&&!isOlliTalkMessageListInSync(presentation,activeRenderLimit));
       olliTalkHistoryExhausted=pageMessages.length<100;
-      // Never persist the joined academies' messages into the academy's local cache.
       writeOlliTalkMessageCache(context,mergedPayload);
       if(options.render!==false&&renderChanged){
-        const activeRenderLimit=Math.max(0,Math.floor(Math.max(Number(options.messageLimit)||0,Number(olliTalkRenderedMessageLimit)||0)));
         renderOlliTalkServerMessages(presentation,{
           scrollMode:options.scrollMode||'bottom',
           ...(activeRenderLimit>0?{messageLimit:activeRenderLimit}:{})
         });
+        olliTalkSharedViewSignature=nextSharedSignature;
       }else{
         olliTalkCurrentPayload=mergedPayload;
-        if(options.render!==false&&changed)syncOlliTalkRenderedUnreadCounts(presentation);
+        if(options.render!==false){
+          olliTalkSharedViewSignature=nextSharedSignature;
+          if(changed)syncOlliTalkRenderedUnreadCounts(presentation);
+        }
       }
       if(extension.joined&&isOlliTalkBetaVisible()&&extension.latestSeq){
         window.OlliSharedTeamChat.markUnifiedRead(extension.room.id,extension.latestSeq).catch(()=>{});
@@ -8339,7 +8409,7 @@
     const renderedLimit=Math.min(messages.length,Math.max(0,Number(olliTalkRenderedMessageLimit||0)));
     if(renderedLimit>0&&renderedLimit<messages.length){
       const nextLimit=Math.min(messages.length,renderedLimit+OLLI_TALK_LOCAL_HISTORY_STEP);
-      renderOlliTalkServerMessages(current,{
+      renderOlliTalkServerMessages(getOlliTalkCurrentPresentation(current),{
         scrollMode:'preserve-prepend',
         messageLimit:nextLimit
       });
@@ -8370,7 +8440,7 @@
       const merged=mergeOlliTalkMessagePayloads(current,payload);
       if(merged.messages.length===messages.length){olliTalkHistoryExhausted=true;return true}
       writeOlliTalkMessageCache(context,merged);
-      renderOlliTalkServerMessages(merged,{scrollMode:'preserve-prepend'});
+      renderOlliTalkServerMessages(getOlliTalkCurrentPresentation(merged),{scrollMode:'preserve-prepend'});
       if(older.length<100)olliTalkHistoryExhausted=true;
       return true;
     }catch(error){
@@ -8739,6 +8809,7 @@
     olliTalkHistoryExhausted=false;
     olliTalkHistoryLoading=false;
     olliTalkCurrentPayload=null;
+    olliTalkCurrentViewPayload=null;
     olliTalkSharedViewSignature='';
     olliTalkRenderedMessageLimit=OLLI_TALK_INITIAL_RENDER_LIMIT;
 
