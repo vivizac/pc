@@ -75,12 +75,13 @@ test('only registered regular student cards and pickup cards use the independent
   assert.match(ui, /isTimetableNewCard\('enrollments', item\.id, date\) \? ' olliTtNewCard' : ''/);
   assert.match(ui, /isTimetableNewCard\('pickups', item\.id\) \? ' olliTtNewCard' : ''/);
   assert.match(ui, /class="olliTtStudent regular \$\{division\}\$\{newCardClass\}/);
-  assert.match(ui, /class="olliTtPickupCard\$\{newCardClass\}"/);
+  assert.match(ui, /class="olliTtPickupCard\$\{newCardClass\}\$\{movedTarget \? ' olliTtMovedTarget' : ''\}"/);
   assert.doesNotMatch(ui, /isTimetableNewCard\('(waitlist|makeups|trials)'/);
 });
 
 test('regular student NEW renders as the same top-right N overlay as pickup, not a name capsule', () => {
-  assert.match(ui, /const studentNameHtml = esc\(item\.student_name\);/);
+  assert.match(ui, /const studentNameHtml = movedTarget \?/);
+  assert.match(ui, /esc\(item\.student_name\)/);
   assert.match(ui, /isTimetableNewCard\('enrollments', item\.id, date\) \? ' olliTtNewCard' : ''/);
   assert.match(ui, /\$\{studentNameHtml\}\$\{pauseBadge\}/);
   assert.doesNotMatch(ui, /olliTtNewName(?:Text)?/);
@@ -202,11 +203,11 @@ test('read-only NEW correction preserves registration, 14-day clock, pickup N an
   assert.doesNotMatch(sql, /\b(?:insert into|update public\.|delete from|truncate table|drop table|alter table)\b/i);
 });
 
-test('PC timetable cache-busts only the modified stylesheet and scripts', () => {
-  for (const asset of ['pc-timetable.js', 'pc-timetable-service.js', 'pc-timetable.css']) {
-    const version = '20261119-card-drag-1';
-    assert.ok(html.includes(asset + '?v=' + version), asset);
+test('PC timetable assets cache-bust safely without modifying the unrelated service', () => {
+  for (const asset of ['pc-timetable.js', 'pc-timetable.css']) {
+    assert.ok(html.includes(asset + '?v=20261119-move-week-1'), asset);
   }
+  assert.ok(html.includes('pc-timetable-service.js?v=20261119-card-drag-1'), 'RPC service is unchanged');
 });
 
 test('new calendar metadata RPC preserves authorization and move guards without filtering student N by the current day', () => {
