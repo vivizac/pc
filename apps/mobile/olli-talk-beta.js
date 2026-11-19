@@ -5091,7 +5091,7 @@
   }
 
   function isOlliTalkVideoAttachment(attachment){
-    return /^video\\//i.test(String(attachment?.mime_type||''))||/\\.(mov|mp4|m4v|webm|ogv)$/i.test(String(attachment?.file_name||''));
+    return /^video\//i.test(String(attachment?.mime_type||''))||/\.(mov|mp4|m4v|webm|ogv)$/i.test(String(attachment?.file_name||''));
   }
 
   function isOlliTalkImageAttachment(attachment){
@@ -5992,38 +5992,79 @@
     return text;
   }
 
+  // Keep a single authoring path for shared photo/video bubbles. Do not start
+  // the private thumbnail fetch until the bubble is attached to the document:
+  // a failed eager thumbnail initializer must not replace a media card with text.
+  function createOlliTalkUnifiedAttachmentBubble(item){
+    const attachment=item.attachment;
+    const isImage=isOlliTalkImageAttachment(attachment);
+    const isVideo=isOlliTalkVideoAttachment(attachment);
+    const wrap=document.createElement('div');
+    wrap.className='olliTalkBetaBubble olliTalkBetaAttachmentBubble';
+    if(isImage||isVideo){
+      wrap.classList.add('olliTalkBetaImageAttachmentBubble');
+      const frame=document.createElement('div');
+      frame.className='olliTalkBetaAttachmentImageFrame fallbackRatio';
+      frame.style.aspectRatio='4 / 3';
+      frame.setAttribute('role','button');
+      frame.setAttribute('tabindex','0');
+      frame.setAttribute('aria-label',isVideo?'원본 동영상 보기':'원본 사진 보기');
+      frame.appendChild(createMessageText('span','olliTalkBetaAttachmentImageFallback',
+        isVideo?'▶ 동영상':'사진 불러오는 중…'));
+      // Runtime-only reference. Never serialize cross-academy attachment records.
+      frame.__olliUnifiedAttachment=attachment;
+      frame.dataset.olliUnifiedThumbnailPending='1';
+      const open=()=>openOlliTalkPhotoViewer(item,{source:'chat'});
+      frame.addEventListener('click',open);
+      frame.addEventListener('keydown',event=>{
+        if(event.key!=='Enter'&&event.key!==' ')return;
+        event.preventDefault();open();
+      });
+      wrap.append(frame);
+      return wrap;
+    }
+    const card=document.createElement('button');
+    card.type='button';
+    card.className='olliTalkBetaAttachmentCard';
+    card.appendChild(createMessageText('span','olliTalkBetaAttachmentIcon','파일'));
+    card.appendChild(createMessageText('span','olliTalkBetaAttachmentName',
+      String(attachment.file_name||'첨부파일')));
+    card.addEventListener('click',()=>window.OlliSharedTeamChat.downloadUnified(attachment)
+      .catch(error=>alert(error.message||'첨부파일을 열 수 없습니다.')));
+    wrap.append(card);
+    return wrap;
+  }
+
+  function hydrateOlliTalkUnifiedThumbnails(root){
+    if(!root)return;
+    root.querySelectorAll('[data-olli-unified-thumbnail-pending="1"]').forEach(frame=>{
+      // A single failed initializer must not interrupt other photos in the room.
+      frame.removeAttribute('data-olli-unified-thumbnail-pending');
+      const attachment=frame.__olliUnifiedAttachment;
+      delete frame.__olliUnifiedAttachment;
+      if(!attachment||!frame.isConnected)return;
+      try{
+        const mounted=window.OlliSharedTeamChat?.mountUnifiedThumbnail?.(attachment,frame);
+        if(mounted!==true){
+          const fallback=frame.querySelector('.olliTalkBetaAttachmentImageFallback');
+          if(fallback)fallback.textContent=isOlliTalkVideoAttachment(attachment)
+            ?'▶ 동영상 보기':'사진 보기';
+        }
+      }catch(error){
+        console.warn('올리톡 통합 미리보기 초기화 실패:',{
+          attachment_type:String(attachment.mime_type||'')
+        },error);
+        const fallback=frame.querySelector('.olliTalkBetaAttachmentImageFallback');
+        if(fallback)fallback.textContent=isOlliTalkVideoAttachment(attachment)
+          ?'▶ 동영상 보기':'사진 보기';
+      }
+    });
+  }
+
   function createOlliTalkMessageBubble(input, options = {}){
     const item=input&&typeof input==='object'?input:null;
     if(item?.attachment?.is_shared){
-      const attachment=item.attachment;
-      const wrap=document.createElement('div');wrap.className='olliTalkBetaBubble olliTalkBetaAttachmentBubble';
-      const isImage=isOlliTalkImageAttachment(attachment);
-      const isVideo=isOlliTalkVideoAttachment(attachment);
-      if(isImage||isVideo){
-        wrap.classList.add('olliTalkBetaImageAttachmentBubble');
-        const frame=document.createElement('div');
-        frame.className='olliTalkBetaAttachmentImageFrame fallbackRatio';
-        frame.style.aspectRatio='4 / 3';
-        frame.setAttribute('role','button');
-        frame.setAttribute('tabindex','0');
-        frame.setAttribute('aria-label',isVideo?'원본 동영상 보기':'원본 사진 보기');
-        frame.appendChild(createMessageText('span','olliTalkBetaAttachmentImageFallback',isVideo?'▶ 동영상':'사진 불러오는 중…'));
-        window.OlliSharedTeamChat?.mountUnifiedThumbnail?.(attachment,frame);
-        const open=()=>openOlliTalkPhotoViewer(item,{source:'chat'});
-        frame.addEventListener('click',open);
-        frame.addEventListener('keydown',event=>{
-          if(event.key!=='Enter'&&event.key!==' ')return;
-          event.preventDefault();open();
-        });
-        wrap.append(frame);return wrap;
-      }
-      const card=document.createElement('button');card.type='button';card.className='olliTalkBetaAttachmentCard';
-      card.appendChild(createMessageText('span','olliTalkBetaAttachmentIcon','파일'));
-      const info=createMessageText('span','olliTalkBetaAttachmentName',String(attachment.file_name||'첨부파일'));
-      card.appendChild(info);
-      card.addEventListener('click',()=>window.OlliSharedTeamChat.downloadUnified(attachment)
-        .catch(error=>alert(error.message||'첨부파일을 열 수 없습니다.')));
-      wrap.append(card);return wrap;
+      return createOlliTalkUnifiedAttachmentBubble(item);
     }
     if(item?.attachment)return createOlliTalkAttachmentMessageBubble(item, options);
     const bubble=document.createElement('div');
@@ -7514,6 +7555,7 @@
     const next=appendOlliTalkMessageToGroup(group,item,currentMemberId);
     if(!next) return false;
     typing.replaceWith(group);
+    hydrateOlliTalkUnifiedThumbnails(group);
     chatArea.dataset.previewReady = '';
 
     // ...가 이미 입력창 위에 고정된 위치를 그대로 유지하고,
@@ -7569,6 +7611,7 @@
 
     const next=appendOlliTalkMessageToGroup(group,item,currentMemberId);
     if(!next) return false;
+    hydrateOlliTalkUnifiedThumbnails(group);
 
     if(String(item?.message_type || '').trim()==='ai' && Number(item?.reply_to_message_id || 0)>0){
       removeOlliTalkReplySuggestion(String(Number(item.reply_to_message_id)));
@@ -7668,9 +7711,21 @@
         flow.className='olliTalkBetaMessageFlow';
         const row=document.createElement('div');
         row.className='olliTalkBetaBubbleRow';
-        const bubble=document.createElement('div');
-        bubble.className='olliTalkBetaBubble';
-        bubble.textContent=String(item?.body||'첨부 메시지를 표시하지 못했습니다.');
+        let bubble;
+        // The earlier generic fallback displayed a photo's filename (IMG_....jpeg)
+        // as a text message, exactly the observed production regression.
+        // Recover the actual attachment card instead of silently losing its type.
+        if(item?.attachment?.is_shared){
+          try{bubble=createOlliTalkUnifiedAttachmentBubble(item);}
+          catch(mediaError){
+            console.warn('올리톡 통합 첨부파일 복구 실패:',mediaError);
+          }
+        }
+        if(!bubble){
+          bubble=document.createElement('div');
+          bubble.className='olliTalkBetaBubble';
+          bubble.textContent=String(item?.body||'첨부 메시지를 표시하지 못했습니다.');
+        }
         row.appendChild(bubble);
         flow.appendChild(row);
         message.appendChild(flow);
@@ -7682,6 +7737,7 @@
     });
 
     chatArea.replaceChildren(list);
+    hydrateOlliTalkUnifiedThumbnails(chatArea);
     chatArea.dataset.previewReady = '';
     if (olliTalkAssistantReplyPending) syncOlliTalkAssistantTypingIndicator({anchor:false});
     scheduleOlliTalkChatToComposer();
