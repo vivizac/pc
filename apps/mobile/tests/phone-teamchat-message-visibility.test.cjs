@@ -43,6 +43,7 @@ function scenario({shared=true}={}){
     renderOlliTalkServerMessages:payload=>{
       rendered.push(payload);
       visibleIds=payload.messages.map(m=>String(m.id));
+      ctx.rememberRendered?.(payload);
     },
     syncOlliTalkRenderedUnreadCounts:()=>{},
     isOlliTalkBetaVisible:()=>false,
@@ -54,7 +55,7 @@ function scenario({shared=true}={}){
   vm.createContext(ctx);
   vm.runInContext(
     "let olliTalkLoadSequence=0;let olliTalkCurrentPayload=null;let olliTalkSharedViewSignature='';"
-    +originalLoader+";globalThis.load=loadOlliTalkBetaMessages;globalThis.sharedSignature=()=>olliTalkSharedViewSignature;",
+    +originalLoader+";globalThis.load=loadOlliTalkBetaMessages;globalThis.sharedSignature=()=>olliTalkSharedViewSignature;globalThis.rememberRendered=payload=>{olliTalkCurrentPayload=payload?.__academyLocal||payload;};",
     ctx
   );
   return {load:ctx.load,rendered,cached,setVisibleIds:ids=>{visibleIds=ids},sharedSignature:ctx.sharedSignature};
