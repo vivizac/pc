@@ -7,6 +7,8 @@ on:
       - 'apps/pc/index.html'
       - 'apps/pc/pc-timetable.css'
       - 'apps/pc/tests/timetable-drag-drop.test.cjs'
+      - 'apps/pc/tests/timetable-same-week-immediate-move.test.cjs'
+      - 'supabase/migrations/*pc_timetable_same_week_immediate_moves.sql'
       - 'supabase/migrations/*pc_timetable_drag_pickup.sql'
       - '.github/workflows/validate-pc-timetable-card-drag.yml'
 jobs:
@@ -29,5 +31,6 @@ jobs:
       - name: Drag and existing schedule contracts
         run: |
           node --test tests/timetable-drag-drop.test.cjs
+          node --test tests/timetable-same-week-immediate-move.test.cjs
           node --test tests/timetable-new-card-badge.test.cjs
           node --test tests/timetable-one-time-wait-manage.test.cjs
