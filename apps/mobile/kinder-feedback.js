@@ -1714,8 +1714,9 @@ async function saveKinderChatFeedbackLiveOnce(id, selectedStudentId = '') {
       studentDivision: item.studentDivision || 'elementary',
       studentName: item.studentName || '',
       studentId: finalStudentId,
-      ...(Array.isArray(item.supersededFeedbacks) && item.supersededFeedbacks.length
-        ? { clientRecordId: 'corrected_' + String(item.id || '') } : {})
+      quickNoteRequestId: item.id,
+      clientRecordId: Array.isArray(item.supersededFeedbacks) && item.supersededFeedbacks.length
+        ? 'corrected_' + String(item.id || '') : 'quicknote_' + String(item.id || '')
     }, null);
   } catch (err) {
     console.error('LIVE 피드백 자동 저장 오류:', err);
@@ -1726,16 +1727,16 @@ async function saveKinderChatFeedbackLiveOnce(id, selectedStudentId = '') {
     try { showPushToast('피드백이 서버에 저장되지 않았어요. 저장 재시도를 눌러 주세요.'); } catch(e) {}
     return false;
   }
-  if (savedOk && savedOk.__pending_sync && Array.isArray(item.supersededFeedbacks)
-      && item.supersededFeedbacks.length) {
-    // Do not present a locally queued replacement as server-verified.
-    // Both the original and replacement remain retryable under stable mutation IDs.
-    item.pendingCorrectionSave = true;
+  if (savedOk && savedOk.__pending_sync) {
+    // Retain all pending feedbacks, not only corrected ones, until server verification.
+    item.pendingCorrectionSave = Array.isArray(item.supersededFeedbacks) && !!item.supersededFeedbacks.length;
     item.saved = false;
     item.reviewed = false;
     item.savedRow = savedOk;
     persistKinderChatFeedbackLiveSessionNow();
-    try { showPushToast('수정 피드백의 서버 저장이 대기 중이에요. 기존 피드백은 아직 삭제하지 않았습니다.'); } catch(e) {}
+    try { showPushToast(item.pendingCorrectionSave
+      ? '수정 피드백 서버 저장이 대기 중이에요. 기존 피드백은 삭제하지 않았습니다.'
+      : '피드백 서버 저장이 대기 중이에요. 내용은 보관되며 재저장할 수 있습니다.'); } catch(e) {}
     return false;
   }
 
@@ -1994,7 +1995,9 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
       // Any failure leaves the original result locally available with a retry action.
       void saveKinderChatFeedbackLive(item.id, item.studentId).then((saved) => {
         if (kcfLiveFeedbackItems.get(item.id) !== item) return;
-        if (saved !== true) reportKinderChatFeedbackFailure(item, 'SAVE_FAILED', 0);
+        // Save errors are logged by the originating save function with the actual phase.
+        // Student-picker wait is not a server failure.
+        if (item.trialSessionId && saved === false) reportKinderChatFeedbackFailure(item, 'SAVE_FAILED', 0);
         if (item.trialSessionId && saved !== true && successTeacherMode) {
           successTeacherMode.onFeedbackRequestResult({
             id:item.id, studentId:item.rosterSelectionId, status:'error'
@@ -2004,7 +2007,9 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
         refreshKinderChatFeedbackLiveActions(item);
       }).catch((error) => {
         console.warn('퀵노트 피드백 백그라운드 저장 실패:', error);
-        reportKinderChatFeedbackFailure(item, 'SAVE_FAILED', 0);
+        if (item.trialSessionId) reportKinderChatFeedbackFailure(item, 'SAVE_FAILED', 0);
+        else if (typeof window.reportQuicknoteInitialSaveFailure === 'function')
+          window.reportQuicknoteInitialSaveFailure(item, 'unexpected_exception', error, 'mobile');
         if (kcfLiveFeedbackItems.get(item.id) !== item) return;
         try { showPushToast('피드백이 서버에 저장되지 않았어요. 저장 재시도를 눌러 주세요.'); } catch (_) {}
         refreshKinderChatFeedbackLiveActions(item);
