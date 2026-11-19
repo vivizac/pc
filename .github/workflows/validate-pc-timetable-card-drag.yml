@@ -1,0 +1,33 @@
+name: Validate PC timetable card dragging
+on:
+  pull_request:
+    paths:
+      - 'apps/pc/pc-timetable.js'
+      - 'apps/pc/pc-timetable-service.js'
+      - 'apps/pc/index.html'
+      - 'apps/pc/pc-timetable.css'
+      - 'apps/pc/tests/timetable-drag-drop.test.cjs'
+      - 'supabase/migrations/*pc_timetable_drag_pickup.sql'
+      - '.github/workflows/validate-pc-timetable-card-drag.yml'
+jobs:
+  drag-contract:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: apps/pc
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Syntax
+        run: |
+          node --check pc-timetable.js
+          node --check pc-timetable-service.js
+      - name: Drag and existing schedule contracts
+        run: |
+          node --test tests/timetable-drag-drop.test.cjs
+          node --test tests/timetable-new-card-badge.test.cjs
+          node --test tests/timetable-one-time-wait-manage.test.cjs

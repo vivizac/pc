@@ -639,6 +639,15 @@
     });
   }
 
+  async function movePickup(pickupId, sourceDate, targetDate, targetClassTime) {
+    return rpc('olli_schedule_move_pickup_v1', contextPayload({
+      p_pickup_id: pickupId,
+      p_source_date: sourceDate,
+      p_target_date: targetDate,
+      p_target_class_time: Number(targetClassTime)
+    }));
+  }
+
   async function removePickup(pickupId, effectiveDate) {
     return executeScheduleAction('remove_pickup', {
       pickup_id: pickupId,
@@ -700,6 +709,7 @@
     removePickupArrival,
     removePickupDropoff,
     updatePickup,
+    movePickup,
     removePickup,
     loadHistory,
     restoreHistory,
