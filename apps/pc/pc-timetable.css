@@ -1488,3 +1488,15 @@ body.olliPcSidebarCollapsed #recordRoomScreen .olliTtSection { --olli-tt-student
   }
 }
 
+
+/* PC 시간표 카드의 직접 드래그 이동 — 저장 전에 기존 카드를 제거하지 않습니다. */
+#recordRoomScreen .olliTtStudent[draggable="true"],
+#recordRoomScreen .olliTtPickupCard[draggable="true"] { cursor:grab; }
+#recordRoomScreen .olliTtStudent.olliTtDragging,
+#recordRoomScreen .olliTtPickupCard.olliTtDragging { opacity:.48; cursor:grabbing; }
+#recordRoomScreen .olliTtCell.olliTtDragTarget,
+#recordRoomScreen .olliTtClassLane.olliTtDragTarget,
+#recordRoomScreen .olliTtPickupCell.olliTtDragTarget {
+  background:#eaf5ff !important;
+  box-shadow:inset 0 0 0 2px #0a84ff !important;
+}

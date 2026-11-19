@@ -148,6 +148,9 @@
     attendanceLoadToken: 0,
     attendanceSavingCount: 0,
     dialog: null,
+    dragSource: null,
+    dragHoverTarget: null,
+    suppressDraggedClickUntil: 0,
     saving: false,
     historyLoadToken: 0,
     syncRevision: 0,
@@ -574,6 +577,11 @@
       root.setAttribute('aria-live', 'polite');
       host.insertBefore(root, document.getElementById('pcAcademyDetailPanel'));
       root.addEventListener('click', onTimetableClick);
+      root.addEventListener('dragstart', onTimetableDragStart);
+      root.addEventListener('dragover', onTimetableDragOver);
+      root.addEventListener('dragleave', onTimetableDragLeave);
+      root.addEventListener('drop', onTimetableDrop);
+      root.addEventListener('dragend', clearTimetableDrag);
     }
     bindTimetableMemoHoverPreview(root);
     ensureDialog();
@@ -605,7 +613,7 @@
     if (screen) screen.classList.toggle('olliPcAttendanceScheduleView', state.active);
     ui.root.classList.toggle('show', state.active);
 
-    if (!state.active) return;
+    if (!state.active) { clearTimetableDrag(); return; }
     renderWorkspaceHeader();
     renderSidebar();
     if (state.pane === 'attendance') loadAttendanceRegister();
@@ -636,7 +644,7 @@
   function scheduleEditorOpen() {
     // 실제 시간표 편집 UI만 Realtime 반영을 보류합니다.
     // 다른 화면의 검색/채팅 입력창 포커스는 섹션 전환 뒤에도 남을 수 있으므로 동기화를 막지 않습니다.
-    return !!state.dialog || Array.from(document.querySelectorAll('.modalOverlay')).some(el => el.getClientRects().length);
+    return !!state.dialog || !!state.dragSource || Array.from(document.querySelectorAll('.modalOverlay')).some(el => el.getClientRects().length);
   }
 
   async function refreshActiveSchedulePane(realtimeContext) {
@@ -1280,11 +1288,11 @@
       const newCardClass = isTimetableNewCard('enrollments', item.id, date) ? ' olliTtNewCard' : '';
       // The corner N badge is painted by the card itself, not inside the name.
       const studentNameHtml = esc(item.student_name);
-      return `<div class="olliTtStudent regular ${division}${newCardClass}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}${mutedAbsence ? ' absenceUpcoming' : ''}${pausedStudent ? ' pausedStudent' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${sessionKey}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${studentNameHtml}${pauseBadge}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
+      return `<div draggable="true" data-tt-drag-kind="regular" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${sessionKey}" class="olliTtStudent regular ${division}${newCardClass}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}${mutedAbsence ? ' absenceUpcoming' : ''}${pausedStudent ? ' pausedStudent' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${sessionKey}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${studentNameHtml}${pauseBadge}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
     }).join('');
     const waitHtml = waits.map((item) => {
       const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;
-      return `<div class="olliTtStudent wait"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}" data-session-date="${dateKey(date)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}" data-session-date="${dateKey(date)}">대기</button></div>`;
+      return `<div draggable="true" data-tt-drag-kind="wait" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${dateKey(date)}" class="olliTtStudent wait"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}" data-session-date="${dateKey(date)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}" data-session-date="${dateKey(date)}">대기</button></div>`;
     }).join('');
     const makeupHtml = makeups.map((item) => {
       const trial = clean(item.session_type) === 'trial';
@@ -1292,10 +1300,10 @@
       const attendanceTime = Number(item.time_slot);
       const entryClassGroup = classGroup ? classGroupOf({ class_group: classGroup }) : classGroupOf(item);
       if (trial) {
-        return `<div class="olliTtStudent trial"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">체험</button></div>`;
+        return `<div draggable="true" data-tt-drag-kind="trial" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${dateKey(date)}" class="olliTtStudent trial"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">체험</button></div>`;
       }
       const attended = isToday(date) && attendanceMarked(item.student_id, date, attendanceTime, entryClassGroup, 'makeup');
-      return `<div class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">보강</button></div>`;
+      return `<div draggable="true" data-tt-drag-kind="makeup" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${dateKey(date)}" class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">보강</button></div>`;
     }).join('');
     const memoGroup = classGroup ? classGroupOf({ class_group: classGroup }) : '';
     const memoHtml = cellMemos().filter((item) => clean(item.division) === clean(division)
@@ -1362,7 +1370,7 @@
       const pickupTime = onlyDropoff ? pickupTimeLabel(item.dropoff_time) : pickupTimeLabel(item.pickup_time);
       const pickupKind = onlyDropoff ? '하원 · ' : '';
       const newCardClass = isTimetableNewCard('pickups', item.id) ? ' olliTtNewCard' : '';
-      return `<div class="olliTtPickupCard${newCardClass}" data-tt-pickup-manage="${esc(item.id)}" data-tt-pickup-date="${dateKey(date)}"><strong class="olliTtPickupStudentName"><span>${esc(item.student_name)}</span>${dropoffMark}</strong><span>${esc(pickupKind + pickupPlace)} ${esc(pickupTime)}</span></div>`;
+      return `<div draggable="true" data-tt-drag-kind="pickup" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${dateKey(date)}" class="olliTtPickupCard${newCardClass}" data-tt-pickup-manage="${esc(item.id)}" data-tt-pickup-date="${dateKey(date)}"><strong class="olliTtPickupStudentName"><span>${esc(item.student_name)}</span>${dropoffMark}</strong><span>${esc(pickupKind + pickupPlace)} ${esc(pickupTime)}</span></div>`;
     }).join('');
     return `<div class="olliTtPickupCell${holiday ? ' holiday' : ''}" data-tt-pickup-cell="1" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-class-time="${classTime}"${holiday ? ' data-holiday="1" aria-disabled="true"' : ''}><div class="olliTtPickupEntries">${cards}</div></div>`;
   }
@@ -1582,7 +1590,193 @@
     else renderScheduleHeader();
   }
 
+
+  // Native PC drag-and-drop is an additional input route into the existing
+  // schedule RPCs. Never move DOM cards optimistically: the server commits first.
+  function clearTimetableDrag() {
+    if (state.dragHoverTarget && state.dragHoverTarget.isConnected) {
+      state.dragHoverTarget.classList.remove('olliTtDragTarget');
+    }
+    if (state.dragSource && state.dragSource.card && state.dragSource.card.isConnected) {
+      state.dragSource.card.classList.remove('olliTtDragging');
+    }
+    state.dragHoverTarget = null;
+    state.dragSource = null;
+  }
+
+  function dragSourceForCard(card) {
+    if (!card || !state.data) return null;
+    const kind = clean(card.dataset.ttDragKind);
+    const id = clean(card.dataset.ttDragId);
+    const date = clean(card.dataset.ttDragDate);
+    if (!id || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+    let row = null;
+    if (kind === 'regular') row = enrollments().find((item) => clean(item.id) === id);
+    if (kind === 'wait') row = waitlist().find((item) => clean(item.id) === id);
+    if (kind === 'makeup' || kind === 'trial') row = oneTimeSessions().find((item) => clean(item.id) === id && clean(item.session_type) === (kind === 'trial' ? 'trial' : 'makeup'));
+    if (kind === 'pickup') row = pickups().find((item) => clean(item.id) === id);
+    if (!row) return null;
+    const division = kind === 'pickup' ? 'kinder' : clean(row.division);
+    if (division !== state.scheduleDivision) return null;
+    const day = parseDate(date);
+    const active = kind === 'regular' ? enrollmentActiveOn(row, day)
+      : kind === 'pickup' ? pickupActiveOn(row, day)
+      : kind === 'wait' ? Number(row.target_weekday) === day.getDay()
+      : clean(row.session_date) === date;
+    if (!active) return null;
+    // A completed one-time lesson or expired daily pickup must remain in history.
+    if (date < todayKey() && (kind === 'makeup' || kind === 'trial'
+      || (kind === 'pickup' && pickupScope(row) === 'daily'))) return null;
+    return {
+      kind, id, date, card, row, division,
+      academyId: currentSyncAcademyId(),
+      weekStart: dateKey(state.weekStart),
+      weekday: kind === 'wait' ? Number(row.target_weekday) : Number(row.weekday || day.getDay()),
+      time: kind === 'pickup' ? Number(row.class_time) : Number(kind === 'wait' ? row.target_time_slot : row.time_slot),
+      classGroup: kind === 'wait' ? classGroupOf(row, 'target_class_group') : classGroupOf(row),
+      name: clean(row.student_name) || '학생'
+    };
+  }
+
+  function timetableDragDestination(event, source) {
+    if (!source || state.saving || state.dialog || !state.active || state.pane !== 'schedule'
+      || currentSyncAcademyId() !== source.academyId
+      || dateKey(state.weekStart) !== source.weekStart) return null;
+    const isPickup = source.kind === 'pickup';
+    let cell = event.target && event.target.closest(isPickup ? '[data-tt-pickup-cell="1"]' : '[data-tt-cell="1"]');
+    if (!cell || !document.getElementById('olliTtRoot')?.contains(cell) || cell.closest('[data-holiday="1"]')) return null;
+    // On split rows, the A/B lane (not its container or divider) is mandatory.
+    if (!isPickup && cell.classList.contains('split')) return null;
+    const date = clean(cell.dataset.date);
+    const weekday = Number(cell.dataset.weekday);
+    const time = Number(isPickup ? cell.dataset.classTime : cell.dataset.time);
+    const division = isPickup ? 'kinder' : clean(cell.dataset.division);
+    if (division !== source.division || !/^\d{4}-\d{2}-\d{2}$/.test(date)
+      || date < todayKey() || weekday !== parseDate(date).getDay()
+      || !timeOptionsFor(division, weekday).includes(time)) return null;
+    const split = !isPickup && !isHalfHourMode() && isClassSplit(division, weekday, time, date);
+    if (split && !cell.classList.contains('olliTtClassLane')) return null;
+    return {
+      cell, date, weekday, time, division,
+      classGroup: split ? classGroupOf({ class_group: cell.dataset.classGroup }) : 'A'
+    };
+  }
+
+  function onTimetableDragStart(event) {
+    const card = event.target && event.target.closest('[data-tt-drag-kind]');
+    if (!card || state.saving || state.dialog || !state.active || state.pane !== 'schedule'
+      || card.closest('[data-holiday="1"]')) {
+      event.preventDefault();
+      return;
+    }
+    const source = dragSourceForCard(card);
+    if (!source || !event.dataTransfer) {
+      event.preventDefault();
+      return;
+    }
+    clearTimetableDrag();
+    state.dragSource = source;
+    state.suppressDraggedClickUntil = Date.now() + 300;
+    card.classList.add('olliTtDragging');
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', source.kind + ':' + source.id);
+  }
+
+  function onTimetableDragOver(event) {
+    if (!state.dragSource) return;
+    const target = timetableDragDestination(event, state.dragSource);
+    if (state.dragHoverTarget && state.dragHoverTarget !== (target && target.cell)) {
+      state.dragHoverTarget.classList.remove('olliTtDragTarget');
+      state.dragHoverTarget = null;
+    }
+    if (!target) {
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
+      return;
+    }
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    target.cell.classList.add('olliTtDragTarget');
+    state.dragHoverTarget = target.cell;
+  }
+
+  function onTimetableDragLeave(event) {
+    if (!state.dragHoverTarget || !event.relatedTarget) return;
+    if (!state.dragHoverTarget.contains(event.relatedTarget)) {
+      state.dragHoverTarget.classList.remove('olliTtDragTarget');
+      state.dragHoverTarget = null;
+    }
+  }
+
+  async function saveDraggedTimetableMove(source, target) {
+    const sameGroup = source.classGroup === target.classGroup;
+    const sameDayTime = source.weekday === target.weekday && source.time === target.time;
+    const recurring = source.kind === 'regular' || (source.kind === 'pickup' && pickupScope(source.row) === 'weekly');
+    if ((sameDayTime && source.kind === 'regular' && sameGroup)
+      || (sameDayTime && source.kind === 'pickup' && (recurring || source.date === target.date))
+      || (!recurring && source.kind !== 'pickup' && source.date === target.date && sameDayTime && sameGroup)) {
+      notify('이미 같은 일정에 등록되어 있어요.');
+      return;
+    }
+    const kindLabel = { regular:'정규수업', makeup:'보강', trial:'체험', wait:'대기', pickup:'픽업' }[source.kind];
+    const fromLabel = shortDate(source.date) + ' ' + scheduleSlotLabel(source.division, source.time, source.classGroup, source.weekday)
+      + (source.kind !== 'pickup' && isClassSplit(source.division, source.weekday, source.time, source.date) ? ' ' + source.classGroup + '반' : '');
+    const toLabel = shortDate(target.date) + ' ' + scheduleSlotLabel(target.division, target.time, target.classGroup, target.weekday)
+      + (source.kind !== 'pickup' && isClassSplit(target.division, target.weekday, target.time, target.date) ? ' ' + target.classGroup + '반' : '');
+    const repeatingGuide = recurring ? '\n정규수업/매주 픽업의 변경은 적용 날짜부터 이후 일정에도 반영됩니다.' : '';
+    if (!global.confirm(source.name + ' 학생의 ' + kindLabel + '을(를) 이동할까요?\n'
+      + fromLabel + ' → ' + toLabel + repeatingGuide)) return;
+
+    // withSaving refreshes server state before mutation and again after a commit.
+    const result = await withSaving(async () => {
+      if (source.academyId !== currentSyncAcademyId()) throw new Error('학원이 변경되었습니다. 다시 시도해 주세요.');
+      if (source.kind === 'regular') {
+        const response = await service.changeSchedule({
+          studentId:source.row.student_id, sourceEnrollmentId:source.id,
+          targetWeekday:target.weekday, targetTimeSlot:target.time,
+          targetClassGroup:target.classGroup, effectiveDate:target.date,
+          changeType:'move', allowWait:false
+        });
+        if (response && response.result !== 'scheduled' && response.result !== 'waitlisted') {
+          await refreshStudentsFromServer();
+        }
+        return response;
+      }
+      if (source.kind === 'wait') {
+        return service.updateWaitlistTarget(source.id, {
+          targetWeekday:target.weekday, targetTimeSlot:target.time,
+          targetClassGroup:target.classGroup, desiredEffectiveDate:target.date
+        });
+      }
+      if (source.kind === 'makeup' || source.kind === 'trial') {
+        return service.updateOneTimeSession(source.id, {
+          sessionDate:target.date, timeSlot:target.time, classGroup:target.classGroup
+        });
+      }
+      if (source.kind === 'pickup') {
+        return service.movePickup(source.id, source.date, target.date, target.time);
+      }
+      throw new Error('이동할 카드 종류를 확인해 주세요.');
+    });
+    if (result) notify(source.name + ' 학생의 ' + kindLabel + ' 일정을 이동했어요.');
+  }
+
+  function onTimetableDrop(event) {
+    if (!state.dragSource) return;
+    const source = state.dragSource;
+    const target = timetableDragDestination(event, source);
+    if (target) event.preventDefault();
+    clearTimetableDrag();
+    state.suppressDraggedClickUntil = Date.now() + 350;
+    if (!target) return;
+    void saveDraggedTimetableMove(source, target);
+  }
+
   function onTimetableClick(event) {
+    if (Date.now() < state.suppressDraggedClickUntil && event.target.closest('[data-tt-drag-kind]')) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (handleScheduleControl(event)) return;
     const saturdayToggle = event.target.closest('[data-tt-saturday-toggle]');
     if (saturdayToggle) {
@@ -1663,6 +1857,7 @@
     const next = pane === 'attendance' ? 'attendance' : 'schedule';
     if (state.pane === next) return;
     state.pane = next;
+    clearTimetableDrag();
     closeDialog();
     // 탭/헤더 상태를 먼저 반영하고, 큰 시간표·출석부 DOM 생성은 다음 프레임에서 실행합니다.
     // 클릭 이벤트 안에서 표 전체를 만들지 않아 버튼 피드백이 즉시 보입니다.
