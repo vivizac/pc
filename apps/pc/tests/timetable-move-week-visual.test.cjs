@@ -48,6 +48,7 @@ test('ghost is separate from attendance, drag and capacity; destination has blue
   assert.match(js, /if \(ghost && !event\.target\.closest\('\[data-tt-entry="regular"\]'\)\)/);
   assert.match(js, /const studentNameHtml = movedTarget/);
   assert.match(js, /movedSourcePickups\(date, classTime\)/);
+  assert.match(js, /const rows = slotPickups\(date, classTime\)\.filter\(\(item\) => !ghostIds\.has\(clean\(item\.id\)\)\)/);
   assert.doesNotMatch(js, /scheduledChangeForSource/);
   assert.doesNotMatch(js, /const scheduleText = scheduled/);
 });

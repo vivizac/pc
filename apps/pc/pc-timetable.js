@@ -1392,7 +1392,11 @@
   }
 
   function pickupCellHtml(date, classTime) {
-    const rows = slotPickups(date, classTime);
+    // Do not show both a real source card and a ghost on earlier weekdays
+    // within the same transition week.
+    const sourceGhosts = movedSourcePickups(date, classTime);
+    const ghostIds = new Set(sourceGhosts.map((item) => clean(item.id)));
+    const rows = slotPickups(date, classTime).filter((item) => !ghostIds.has(clean(item.id)));
     const holiday = isHolidayDate(date);
     const cards = rows.map((item) => {
       const hasDropoff = item.is_dropoff === true || Boolean(clean(item.dropoff_label));
@@ -1409,7 +1413,7 @@
       const newCardClass = isTimetableNewCard('pickups', item.id) ? ' olliTtNewCard' : '';
       return `<div draggable="true" data-tt-drag-kind="pickup" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${dateKey(date)}" class="olliTtPickupCard${newCardClass}${movedTarget ? ' olliTtMovedTarget' : ''}" data-tt-pickup-manage="${esc(item.id)}" data-tt-pickup-date="${dateKey(date)}"><strong class="olliTtPickupStudentName"><span>${esc(item.student_name)}</span>${dropoffMark}</strong><span>${esc(pickupKind + pickupPlace)} ${esc(pickupTime)}</span></div>`;
     }).join('');
-    const movedSourceHtml = movedSourcePickups(date, classTime).map((item) => {
+    const movedSourceHtml = sourceGhosts.map((item) => {
       const onlyDropoff = item.is_dropoff === true;
       const place = onlyDropoff ? (clean(item.dropoff_label) || clean(item.pickup_label)) : clean(item.pickup_label);
       const timeLabel = onlyDropoff ? pickupTimeLabel(item.dropoff_time) : pickupTimeLabel(item.pickup_time);
