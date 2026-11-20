@@ -11,6 +11,9 @@ on:
       - 'tests/mobile-feedback-local-24h-retention.test.cjs'
       - 'tests/mobile-quicknote-edit-server-first.test.cjs'
       - 'tests/mobile-quicknote-saved-state-reconciliation.test.cjs'
+      - 'apps/mobile/olli-record-student-picker-phone-adapter.js'
+      - 'apps/mobile/elementary-analysis-phone-adapter.js'
+      - 'apps/mobile/tests/phone-feedback-archive-direct-server-edit.test.cjs'
       - 'apps/pc/pc-kinder-feedback.js'
       - 'packages/common/olli-feedback-runtime.js'
       - 'apps/mobile/index.html'
@@ -28,6 +31,9 @@ on:
       - 'tests/mobile-feedback-local-24h-retention.test.cjs'
       - 'tests/mobile-quicknote-edit-server-first.test.cjs'
       - 'tests/mobile-quicknote-saved-state-reconciliation.test.cjs'
+      - 'apps/mobile/olli-record-student-picker-phone-adapter.js'
+      - 'apps/mobile/elementary-analysis-phone-adapter.js'
+      - 'apps/mobile/tests/phone-feedback-archive-direct-server-edit.test.cjs'
       - 'apps/pc/pc-kinder-feedback.js'
       - 'packages/common/olli-feedback-runtime.js'
       - 'apps/mobile/index.html'
@@ -56,17 +62,21 @@ jobs:
           node --check tests/mobile-feedback-local-24h-retention.test.cjs
           node --check tests/mobile-quicknote-edit-server-first.test.cjs
           node --check tests/mobile-quicknote-saved-state-reconciliation.test.cjs
+          node --check apps/mobile/olli-record-student-picker-phone-adapter.js
+          node --check apps/mobile/elementary-analysis-phone-adapter.js
+          node --check apps/mobile/tests/phone-feedback-archive-direct-server-edit.test.cjs
           node --check apps/pc/pc-kinder-feedback.js
           node --check packages/common/olli-feedback-runtime.js
           node --check tests/quicknote-edit-save-error-telemetry.test.cjs
       - name: Quick Note error telemetry and existing edit-save validation
         run: |
-          node --test tests/quicknote-edit-save-error-telemetry.test.cjs tests/pc-kinder-feedback-edit-save.test.cjs tests/quicknote-initial-save-regression.test.cjs tests/mobile-feedback-local-24h-retention.test.cjs tests/mobile-quicknote-edit-server-first.test.cjs tests/mobile-quicknote-saved-state-reconciliation.test.cjs tests/observation-feedback-student-binding.test.cjs
+          node --test tests/quicknote-edit-save-error-telemetry.test.cjs tests/pc-kinder-feedback-edit-save.test.cjs tests/quicknote-initial-save-regression.test.cjs tests/mobile-feedback-local-24h-retention.test.cjs tests/mobile-quicknote-edit-server-first.test.cjs tests/mobile-quicknote-saved-state-reconciliation.test.cjs apps/mobile/tests/phone-feedback-archive-direct-server-edit.test.cjs tests/observation-feedback-student-binding.test.cjs
       - name: Ensure no stale script assets
         run: |
           grep -q 'olli-feedback-runtime.js?v=20261120-edit-server-first-1' apps/mobile/index.html
           grep -q 'olli-feedback-runtime.js?v=20261119-quicknote-save-1' apps/pc/index.html
           grep -q 'kinder-feedback.js?v=20261120-direct-server-edit-1' apps/mobile/index.html
+          grep -q 'olli-record-student-picker-phone-adapter.js?v=20261120-archive-direct-server-1' apps/mobile/index.html
           grep -q 'pc-kinder-feedback.js?v=20261118-quicknote-edit-error-1' apps/pc/index.html
           grep -q 'olli-student-core.js?v=20261119-quicknote-save-1' apps/mobile/index.html
           grep -q 'olli-data-feedback.js?v=20261119-quicknote-save-1' apps/pc/index.html
