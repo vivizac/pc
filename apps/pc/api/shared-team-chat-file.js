@@ -4,6 +4,8 @@ export default async function handler(req,res){
   if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'Method not allowed'});
   const url=new URL(UPSTREAM);
   if(req.method==='GET')url.searchParams.set('attachmentId',String(req.query?.attachmentId||''));
+  const requestId=String(req.headers['x-vercel-id']||req.headers['x-request-id']||'').slice(0,120);
+  let stage='fetch',expectedBytes=0,sentBytes=0;
   try{
     const upstream=await fetch(url,{method:req.method,redirect:'error',headers:{
       'X-Olli-Session-Token':String(req.headers['x-olli-session-token']||''),
@@ -15,7 +17,37 @@ export default async function handler(req,res){
     for(const header of ['content-type','content-length','content-disposition','x-content-type-options']){
       const value=upstream.headers.get(header);if(value)res.setHeader(header,value);
     }
-    if(upstream.body?.getReader){const reader=upstream.body.getReader();try{while(true){const {done,value}=await reader.read();if(done)break;res.write(Buffer.from(value));}}finally{reader.releaseLock();}return res.end();}
-    return res.end(Buffer.from(await upstream.arrayBuffer()));
-  }catch(_){if(!res.headersSent)return res.status(502).json({error:'첨부 서버에 연결하지 못했습니다.'});res.end();}
+    stage='stream';
+    expectedBytes=Number(upstream.headers.get('content-length'))||0;
+    if(upstream.body?.getReader){
+      const reader=upstream.body.getReader();
+      try{
+        while(true){
+          const {done,value}=await reader.read();
+          if(done)break;
+          sentBytes+=value.byteLength;
+          if(sentBytes>20971520)throw new Error('Transfer limit exceeded');
+          res.write(Buffer.from(value));
+        }
+      }finally{reader.releaseLock();}
+      if(expectedBytes>0&&sentBytes!==expectedBytes)throw new Error('Incomplete file stream');
+      return res.end();
+    }
+    const bytes=Buffer.from(await upstream.arrayBuffer());
+    sentBytes=bytes.length;
+    if(expectedBytes>0&&sentBytes!==expectedBytes)throw new Error('Incomplete file stream');
+    return res.end(bytes);
+  }catch(error){
+    console.error('teamchat.pc_file_relay.failure',{
+      requestId,stage,sentBytes,expectedBytes,headersSent:!!res.headersSent,
+      code:stage==='stream'?'INCOMPLETE_TRANSFER':'UPSTREAM_UNAVAILABLE'
+    });
+    if(!res.headersSent)return res.status(502).json({
+      error:'통합 첨부파일을 전달하지 못했습니다.',
+      code:stage==='stream'?'INCOMPLETE_TRANSFER':'UPSTREAM_UNAVAILABLE'
+    });
+    // Abort partial responses instead of silently reporting a completed file.
+    if(typeof res.destroy==='function')res.destroy(error);
+    else res.end();
+  }
 }
