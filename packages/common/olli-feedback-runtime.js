@@ -363,6 +363,8 @@ function isOlliPhoneFeedbackProtected(item) {
   return Number.isFinite(created) && created >= OLLI_PHONE_FEEDBACK_UNSAVED_PROTECTION_SINCE
     && !isOlliPhoneFeedbackServerVerified(item);
 }
+window.isOlliPhoneFeedbackProtected = isOlliPhoneFeedbackProtected;
+window.isOlliPhoneFeedbackServerVerified = isOlliPhoneFeedbackServerVerified;
 function isExpiredOlliPhoneLocalFeedback(item, nowMs = Date.now()) {
   if (window.OLLI_MOBILE_FEEDBACK_24H_RETENTION !== true || !item || typeof item !== 'object') return false;
   const created = Date.parse(String(item.createdAt || item.created_at || ''));
