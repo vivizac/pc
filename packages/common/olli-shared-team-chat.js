@@ -576,8 +576,31 @@ function mountUnifiedThumbnail(attachment,target){
   }else load();
   return true;
 }
+// A GET can be retried after a browser transport failure (Safari may report
+// only "Load failed"). Permission errors and explicit cancellations never retry.
+// No chat message or attachment metadata is mutated by this read-only retry.
+function isUnifiedDownloadTransportFailure(error){
+  const message=clean(error?.message).toLowerCase();
+  return error?.name==='TypeError'
+    ||message==='load failed'
+    ||message==='failed to fetch'
+    ||message==='networkerror when attempting to fetch resource.';
+}
 async function downloadUnified(attachment){
-  const blob=await fetchUnifiedBlob(attachment);
+  let blob;
+  try{
+    blob=await fetchUnifiedBlob(attachment);
+  }catch(error){
+    if(!isUnifiedDownloadTransportFailure(error))throw error;
+    try{
+      blob=await fetchUnifiedBlob(attachment);
+    }catch(retryError){
+      if(isUnifiedDownloadTransportFailure(retryError)){
+        throw new Error('통합 팀챗 파일 연결에 실패했습니다. 네트워크 상태를 확인하고 다시 시도해 주세요.');
+      }
+      throw retryError;
+    }
+  }
   const url=URL.createObjectURL(blob),a=node('a');
   a.href=url;a.download=clean(attachment?.file_name)||'파일';
   document.body.append(a);a.click();a.remove();
