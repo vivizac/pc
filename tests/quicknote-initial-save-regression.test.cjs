@@ -103,8 +103,10 @@ test('first-save reporting uses the authenticated endpoint and sanitized metadat
 });
 
 test('new versions are used for both PC and mobile scripts',()=>{
-  for(const file of ['olli-student-core.js','olli-feedback-runtime.js','kinder-feedback.js'])
+  for(const file of ['olli-student-core.js'])
     assert.ok(read('apps/mobile/index.html').includes(file+'?v=20261119-quicknote-save-1'));
+  for(const file of ['olli-feedback-runtime.js','kinder-feedback.js'])
+    assert.ok(read('apps/mobile/index.html').includes(file+'?v=20261120-phone-local-24h-1'));
   for(const file of ['olli-data-feedback.js','olli-feedback-runtime.js'])
     assert.ok(read('apps/pc/index.html').includes(file+'?v=20261119-quicknote-save-1'));
 });
