@@ -89,7 +89,7 @@ test('team chat payroll statement opens only through the private statement RPC',
 
 test('leaving and reopening Team Chat rebuilds payroll statement buttons from server messages', () => {
   assert.match(pcChat, /async function open\(\)[\s\S]*loadMessages\(\{ showLoading: true, followBottom: true \}\)/);
-  assert.match(mobileChat, /async function openOlliTalkBetaPage\(event\)[\s\S]*renderOlliTalkServerMessages\(openCachedPayload/);
+  assert.match(mobileChat, /async function openOlliTalkBetaPage\(event\)[\s\S]*loadOlliTalkBetaMessages\(\{[\s\S]*initialCombinedPaint:true/);
   // A preview has a distinct label; real statements remain server-authorized.
   assert.match(common, /button\.textContent=preview\?'미리보기 열기':'급여명세서 보기'/);
   assert.match(common, /function isPayrollPreviewMessage\(item\)/);
