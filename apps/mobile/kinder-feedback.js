@@ -2583,8 +2583,16 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
   } catch (err) {
     console.error('퀵노트 피드백 수정 로컬 저장 오류:', err);
     const code = reportQuicknoteEditSaveFailure(originalItem, 'local_queue_save', err, 'mobile');
-    setKinderChatFeedbackWarning('수정한 피드백을 기기에 기록하지 못했습니다. [' + code + ']');
-    return;
+    if (!wasServerSaved || !patchedSavedRow) {
+      // Unsaved drafts must not be reported as saved if local storage also fails.
+      setKinderChatFeedbackWarning('수정한 피드백을 기기에 기록하지 못했습니다. [' + code + ']');
+      return;
+    }
+    // The server patch has already been verified. Keep the latest text in memory
+    // for this session instead of showing a false server save error.
+    if (typeof window.rememberOlliPhoneQuickNoteVerifiedEdit === 'function')
+      window.rememberOlliPhoneQuickNoteVerifiedEdit(updatedItem);
+    try { showPushToast('서버에 수정 내용이 저장됐어요. 휴대폰 임시 저장 공간이 부족해 서버 기록을 기준으로 표시합니다.'); } catch(_) {}
   }
   const liveItem = getKinderChatFeedbackLiveItem(id);
   if (liveItem) {
