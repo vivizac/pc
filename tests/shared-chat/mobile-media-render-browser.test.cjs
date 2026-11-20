@@ -123,7 +123,7 @@ test('a single malformed optional message action still preserves attachment card
 });
 
 test('the production phone loads the new renderer and uses authorized media in memory only',()=>{
-  assert.match(html,/olli-talk-beta\.js\?v=20261120-unified-stability-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261120-session-first-paint-2/);
   assert.match(source,/frame\.__olliUnifiedAttachment=attachment/);
   assert.match(source,/hydrateOlliTalkUnifiedThumbnails\(chatArea\)/);
   assert.match(source,/const visibleAfterDeletion=currentView===nextChat/);
