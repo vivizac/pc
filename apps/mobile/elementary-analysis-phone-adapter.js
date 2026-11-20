@@ -29,7 +29,7 @@ function isMemoFeedbackArchiveServerConfirmed(item) {
   const sourceTable = String(item?.sourceTable || item?.row?.source_table || '').trim();
   return (sourceTable === 'feedbacks' || sourceTable === 'fail_feedbacks') && !!item?.row?.id;
 }
-function setMemoFeedbackArchiveItems(student, items) {
+function setMemoFeedbackArchiveItems(student, items, options = {}) {
   const key = getMemoFeedbackArchiveKey(student);
   if (!key) return;
   const list = Array.isArray(items) ? items.filter(item => String(item?.content || '').trim()) : [];
@@ -39,6 +39,9 @@ function setMemoFeedbackArchiveItems(student, items) {
   while (memoFeedbackArchiveFullHistory.size > MEMO_FEEDBACK_ARCHIVE_MEMORY_STUDENT_LIMIT) {
     memoFeedbackArchiveFullHistory.delete(memoFeedbackArchiveFullHistory.keys().next().value);
   }
+  // A verified Supabase edit is updated in memory only. Do not serialize
+  // already-saved feedback back into the quota-limited iOS browser storage.
+  if (options.serverOnly === true) return;
 
   // Preserve every unconfirmed/local-only record in the offline snapshot.
   // Only confirmed server records are limited to 80 for iOS storage safety.
