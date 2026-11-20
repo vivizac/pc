@@ -1668,6 +1668,10 @@
     const contextKey=teamTalkContextKey(current);
     const hasVerifiedView=state.messageViewContextKey===contextKey;
     const body = byId('olliPcTeamTalkMessages');
+    if(body&&!hasVerifiedView){
+      state.messages=[];
+      body.replaceChildren(emptyState('통합 대화를 확인하는 중이에요','잠시만 기다려 주세요.'));
+    }
     if (!current.sessionToken || !current.academyId) {
       if (body) body.replaceChildren(emptyState('팀톡을 열 수 없어요', '계정 로그인 또는 현재 학원 정보를 확인해 주세요.'));
       return false;
@@ -1700,7 +1704,8 @@
           .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))}
         : scopedPayload;
       if(options.render===false){
-        // A prefetch must not replace the verified, currently visible room.
+        // Prefetch can update in-memory messages, but cannot change the verified DOM.
+        state.messages=Array.isArray(combined.messages)?combined.messages:[];
       }else{
         renderMessages(combined,{followBottom:options.followBottom});
         state.messageViewContextKey=contextKey;
@@ -1737,6 +1742,7 @@
 
   function setWorkspaceTab(tab) {
     const next = tab === 'archive' ? 'archive' : 'materials';
+    if(state.archiveViewContextKey!==teamTalkContextKey(context()))state.archivePayload=null;
     state.workspaceTab = next;
     document.querySelectorAll('#olliPcTeamTalkScreen [data-team-talk-workspace-tab]').forEach((button) => {
       const active = button.dataset.teamTalkWorkspaceTab === next;
@@ -1908,14 +1914,18 @@
   async function loadArchive(options = {}) {
     const sequence = ++state.archiveLoadSequence;
     const current = context();
+    const contextKey=teamTalkContextKey(current);
+    const verified=state.archiveViewContextKey===contextKey&&!!state.archivePayload;
     const body = byId('olliPcTeamTalkArchiveBody');
     const meta = byId('olliPcTeamTalkArchiveMeta');
+    if(!verified)state.archivePayload=null;
     if (!current.sessionToken || !current.academyId) {
       if (body) body.replaceChildren(emptyState('자료실을 열 수 없어요', '로그인 정보를 확인해 주세요.'));
       return false;
     }
-    if (body && options.showLoading !== false) body.replaceChildren(emptyState('자료를 불러오는 중이에요', '잠시만 기다려 주세요.'));
-    if (meta) meta.textContent = '';
+    if(body&&!verified&&options.showLoading!==false)
+      body.replaceChildren(emptyState('통합 자료실을 확인하는 중이에요','잠시만 기다려 주세요.'));
+    if(meta&&!verified)meta.textContent='';
 
     try {
       const payload = await rpc('olli_team_chat_archive', {
@@ -1923,22 +1933,26 @@
         p_academy_id: current.academyId,
         p_limit: 1000
       });
-      if (sequence !== state.archiveLoadSequence) return false;
+      if(sequence!==state.archiveLoadSequence||teamTalkContextKey(context())!==contextKey)return false;
       if (!payload?.ok) throw new Error(payload?.message || '자료실을 불러오지 못했습니다.');
-      let shared={joined:false,messages:[]};
-      try{shared=await global.OlliSharedTeamChat?.archiveUnified?.({limit:1000})||shared;}
-      catch(error){console.warn('Work Hub 통합 자료 조회 실패:',error?.message||error);}
-      if(sequence!==state.archiveLoadSequence)return false;
+      if(typeof global.OlliSharedTeamChat?.archiveUnified!=='function')
+        throw new Error('통합 자료실 모듈이 준비되지 않았습니다.');
+      const shared=await global.OlliSharedTeamChat.archiveUnified({limit:1000});
+      if(sequence!==state.archiveLoadSequence||teamTalkContextKey(context())!==contextKey)return false;
       state.archivePayload=shared.joined
         ? {...payload,messages:[...(payload.messages||[]),...shared.messages]
           .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))}
         : payload;
+      state.archiveViewContextKey=contextKey;
       renderArchive();
       return true;
     } catch (error) {
-      if (sequence !== state.archiveLoadSequence) return false;
-      if (body) body.replaceChildren(emptyState('자료실을 불러오지 못했어요', '잠시 후 다시 확인해 주세요.'));
-      console.warn('PC 팀톡 자료실 조회 실패:', error?.message || error);
+      if(sequence!==state.archiveLoadSequence||teamTalkContextKey(context())!==contextKey)return false;
+      if(body&&!verified)body.replaceChildren(emptyState(
+        '통합 자료실을 확인하지 못했어요','잠시 후 다시 확인해 주세요.'
+      ));
+      // Never replace a verified combined archive with academy-only results.
+      console.warn('PC 팀톡 통합 자료실 조회 실패:',error?.message||error);
       return false;
     }
   }
