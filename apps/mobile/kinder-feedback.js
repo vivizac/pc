@@ -969,7 +969,21 @@ const KCF_LIVE_SESSION_RETENTION_MS = 24 * 60 * 60 * 1000;
 function isExpiredKinderChatFeedbackLocalItem(item,now = Date.now()) {
   if (!item || typeof item !== 'object') return false;
   const created = Date.parse(String(item.createdAt || item.created_at || ''));
-  return Number.isFinite(created) && created > 0 && now - created >= KCF_LIVE_SESSION_RETENTION_MS;
+  if (!Number.isFinite(created) || created <= 0) return false;
+  // Use exactly the same protected/verified semantics as the Quick Note inbox.
+  if (typeof window.isOlliPhoneFeedbackProtected === 'function'
+      && window.isOlliPhoneFeedbackProtected(item)) return false;
+  return now - created >= KCF_LIVE_SESSION_RETENTION_MS;
+}
+function retainKinderChatFeedbackLiveLocalItems(items, max = KCF_LIVE_SESSION_MAX_ITEMS) {
+  // Limit completed/legacy entries only. Newly generated unsaved feedback is never
+  // discarded because the app happened to produce more than 50 jobs.
+  const protectedItem = item => typeof window.isOlliPhoneFeedbackProtected === 'function'
+    && window.isOlliPhoneFeedbackProtected(item);
+  let ordinary = 0;
+  return (Array.isArray(items) ? items : []).slice().reverse().filter(
+    item => protectedItem(item) || ++ordinary <= max
+  ).reverse();
 }
 function pruneExpiredKinderChatFeedbackLocalItems() {
   const now = Date.now();
@@ -1095,8 +1109,8 @@ function readKinderChatFeedbackLiveSession(){
     }
     const items = Array.isArray(session.items) ? session.items : [];
     const now = Date.now();
-    const retained = items.filter(item => !isExpiredKinderChatFeedbackLocalItem(item,now))
-      .slice(-KCF_LIVE_SESSION_MAX_ITEMS);
+    const retained = retainKinderChatFeedbackLiveLocalItems(
+      items.filter(item => !isExpiredKinderChatFeedbackLocalItem(item,now)));
     if (retained.length !== items.length || (effectiveExpiryAt > 0 && effectiveExpiryAt <= now)) {
       // A refreshed session timestamp must never extend an individual job beyond 24h.
       try {
@@ -1148,10 +1162,10 @@ function persistKinderChatFeedbackLiveSessionNow(){
       .filter(item => String(item.academyId || academyId) === academyId)
       .map(serializeKinderChatFeedbackLiveItem)
       .filter(Boolean)
-      .sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')))
-      .slice(-KCF_LIVE_SESSION_MAX_ITEMS);
-    count = items.length;
-    if (!items.length) {
+      .sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+    const retainedItems = retainKinderChatFeedbackLiveLocalItems(items);
+    count = retainedItems.length;
+    if (!retainedItems.length) {
       phase = 'remove';
       localStorage.removeItem(key);
       phase = 'verify_remove';
@@ -1171,7 +1185,7 @@ function persistKinderChatFeedbackLiveSessionNow(){
       createdAt:items[0]?.createdAt || new Date().toISOString(),
       updatedAt:new Date().toISOString(),
       expiresAt:getKinderChatFeedbackLiveSessionExpiryAt(),
-      items
+      items: retainedItems
     });
     phase = 'write';
     localStorage.setItem(key, serialized);
@@ -1315,7 +1329,10 @@ function restoreKinderChatFeedbackLiveSession(){
   requestAnimationFrame(() => { area.scrollTop = area.scrollHeight; });
   if (changed) persistKinderChatFeedbackLiveSessionNow();
   if (typeof navigator === 'undefined' || navigator.onLine !== false) {
-    Promise.resolve().then(resumePendingCorrectedQuickNoteSaves);
+    Promise.resolve().then(() => {
+      resumePendingCorrectedQuickNoteSaves();
+      retryPendingNewQuickNoteSaves();
+    });
   }
   return true;
 }
@@ -1657,11 +1674,12 @@ async function saveKcfTrialFeedbackOnServer(item, content, update = false) {
 
 // Retry cleanup after a connection failure or app restart without touching unrelated records.
 function resumePendingCorrectedQuickNoteSaves() {
-  if (typeof window.autoSaveGeneratedFeedback !== 'function'
-      || typeof window.deleteOlliData !== 'function') return;
+  if (typeof window.autoSaveGeneratedFeedback !== 'function') return;
   kcfLiveFeedbackItems.forEach(item => {
-    if (!item || !Array.isArray(item.supersededFeedbacks)
-        || !item.supersededFeedbacks.length) return;
+    if (!item) return;
+    const hasCorrection = Array.isArray(item.supersededFeedbacks)
+      && item.supersededFeedbacks.length > 0;
+    if (!hasCorrection) return;
     if (item.pendingCorrectionSave && !item.saved && item.resultText) {
       void saveKinderChatFeedbackLive(item.id, item.studentId);
     } else if (item.saved && typeof window.retireSupersededQuickNoteFeedbacks === 'function') {
@@ -1671,7 +1689,10 @@ function resumePendingCorrectedQuickNoteSaves() {
     }
   });
 }
-window.addEventListener('online', resumePendingCorrectedQuickNoteSaves);
+window.addEventListener('online', () => {
+  resumePendingCorrectedQuickNoteSaves();
+  retryPendingNewQuickNoteSaves();
+});
 
 // Automatically enforce local Quick Note retention while the phone app is open.
 // Never touch observation memo storage or data held on Supabase.
@@ -1679,13 +1700,14 @@ function cleanupKinderChatFeedbackPhoneLocalRetention() {
   try {
     if (typeof window.cleanupOlliPhoneFeedbackJobQueue === 'function')
       window.cleanupOlliPhoneFeedbackJobQueue();
-    readKinderChatFeedbackLiveSession(); // Cleans the local session by each item's creation date.
+    readKinderChatFeedbackLiveSession(); // Remove only aged legacy or verified records.
     const removedFromMemory = pruneExpiredKinderChatFeedbackLocalItems();
     if (removedFromMemory) {
       // Re-save a trimmed session; never write expired items back during later navigation.
       persistKinderChatFeedbackLiveSessionNow();
       try { updateKinderChatFeedbackBadge(); } catch(_) {}
     }
+    retryPendingNewQuickNoteSaves();
   } catch (error) {
     console.warn('퀵노트 24시간 로컬 정리 실패:',error?.name || 'StorageError');
   }
@@ -1695,10 +1717,37 @@ window.addEventListener('pageshow',cleanupKinderChatFeedbackPhoneLocalRetention)
 document.addEventListener('visibilitychange',() => {
   if (document.visibilityState === 'visible') cleanupKinderChatFeedbackPhoneLocalRetention();
 });
-window.setInterval(cleanupKinderChatFeedbackPhoneLocalRetention,15 * 60 * 1000);
+window.setInterval(cleanupKinderChatFeedbackPhoneLocalRetention,5 * 60 * 1000);
 window.setTimeout(cleanupKinderChatFeedbackPhoneLocalRetention,0);
 
 const kcfLiveSaveInFlight = new Map();
+
+// Only unsaved feedback created under the new protection policy is automatically retried.
+// Existing corrected-feedback retry behavior remains unchanged.
+const kcfQuickNoteRetryAttemptAt = new Map();
+const KCF_QUICKNOTE_RETRY_INTERVAL_MS = 5 * 60 * 1000;
+function retryPendingNewQuickNoteSaves() {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  if (typeof window.autoSaveGeneratedFeedback !== 'function') return;
+  const now = Date.now();
+  const protectedItem = window.isOlliPhoneFeedbackProtected;
+  if (typeof protectedItem !== 'function') return;
+  kcfLiveFeedbackItems.forEach(item => {
+    if (!item || !protectedItem(item) || item.saved === true
+      || !String(item.resultText || '').trim() || !String(item.studentId || '').trim()
+      || item.status === 'streaming' || item.status === 'clarification'
+      || item.status === 'interrupted' || item.status === 'error') return;
+    if (Array.isArray(item.suspiciousSegments) && item.suspiciousSegments.length) return;
+    const id = String(item.id || '');
+    if (!id || kcfLiveSaveInFlight.has(id)) return;
+    if (now - (kcfQuickNoteRetryAttemptAt.get(id) || 0) < KCF_QUICKNOTE_RETRY_INTERVAL_MS) return;
+    kcfQuickNoteRetryAttemptAt.set(id,now);
+    void saveKinderChatFeedbackLive(id,item.studentId).catch(error => {
+      console.warn('퀵노트 미저장 피드백 자동 재시도 실패:',error?.code || error?.name || 'save_error');
+    });
+  });
+}
+
 window.getKinderChatFeedbackLiveSavePromise = id => kcfLiveSaveInFlight.get(String(id || '')) || null;
 function saveKinderChatFeedbackLive(id, selectedStudentId = '') {
   const key = String(id || '');

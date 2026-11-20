@@ -349,11 +349,36 @@ function getFeedbackJobQueueStorageKey() {
 // Phone-only local retention policy. This never reads or deletes Supabase rows,
 // observation drafts, attendance notes, or other local-storage keys.
 const OLLI_PHONE_FEEDBACK_LOCAL_RETENTION_MS = 24 * 60 * 60 * 1000;
+// Records written before this policy change are legacy data; after this moment
+// unfinished saves must remain locally protected until server verification.
+const OLLI_PHONE_FEEDBACK_UNSAVED_PROTECTION_SINCE = Date.parse('2026-11-20T04:43:00Z');
+function isOlliPhoneFeedbackServerVerified(item) {
+  if (!item || item.saved !== true || item.savedRow?.__pending_sync === true) return false;
+  const rowId = String(item.savedRowId || item.savedRow?.id || '').trim();
+  return !!rowId;
+}
+function isOlliPhoneFeedbackProtected(item) {
+  if (!item || typeof item !== 'object') return false;
+  const created = Date.parse(String(item.createdAt || item.created_at || ''));
+  return Number.isFinite(created) && created >= OLLI_PHONE_FEEDBACK_UNSAVED_PROTECTION_SINCE
+    && !isOlliPhoneFeedbackServerVerified(item);
+}
+window.isOlliPhoneFeedbackProtected = isOlliPhoneFeedbackProtected;
+window.isOlliPhoneFeedbackServerVerified = isOlliPhoneFeedbackServerVerified;
 function isExpiredOlliPhoneLocalFeedback(item, nowMs = Date.now()) {
   if (window.OLLI_MOBILE_FEEDBACK_24H_RETENTION !== true || !item || typeof item !== 'object') return false;
   const created = Date.parse(String(item.createdAt || item.created_at || ''));
   // Missing/invalid timestamps are preserved; deleting unknown-age data is unsafe.
-  return Number.isFinite(created) && created > 0 && nowMs - created >= OLLI_PHONE_FEEDBACK_LOCAL_RETENTION_MS;
+  if (!Number.isFinite(created) || created <= 0) return false;
+  if (isOlliPhoneFeedbackProtected(item)) return false;
+  return nowMs - created >= OLLI_PHONE_FEEDBACK_LOCAL_RETENTION_MS;
+}
+function limitOlliPhoneFeedbackJobs(items, max = 300) {
+  if (!Array.isArray(items)) return [];
+  if (window.OLLI_MOBILE_FEEDBACK_24H_RETENTION !== true) return items.slice(0,max);
+  // Never evict an unsaved post-migration feedback just to satisfy a list cap.
+  let unprotectedCount = 0;
+  return items.filter(item => isOlliPhoneFeedbackProtected(item) || ++unprotectedCount <= max);
 }
 function cleanupOlliPhoneFeedbackJobQueue() {
   if (window.OLLI_MOBILE_FEEDBACK_24H_RETENTION !== true) return { removed:0 };
@@ -434,8 +459,8 @@ function setTodayFeedbackItemsRaw(list) {
     const filtered = window.KcfAutoMode && typeof window.KcfAutoMode.filterFeedbackItems === 'function'
       ? window.KcfAutoMode.filterFeedbackItems(list)
       : list;
-    const items = (Array.isArray(filtered) ? filtered : [])
-      .filter(item => !isExpiredOlliPhoneLocalFeedback(item)).slice(0, 300);
+    const items = limitOlliPhoneFeedbackJobs((Array.isArray(filtered) ? filtered : [])
+      .filter(item => !isExpiredOlliPhoneLocalFeedback(item)), 300);
     count = items.length;
     const serialized = JSON.stringify(items);
     phase = 'write';
