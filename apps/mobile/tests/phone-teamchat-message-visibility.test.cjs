@@ -54,7 +54,7 @@ function scenario({shared=true}={}){
   };
   vm.createContext(ctx);
   vm.runInContext(
-    "let olliTalkLoadSequence=0;let olliTalkCurrentPayload=null;let olliTalkCurrentViewPayload=null;let olliTalkSharedViewSignature='';"
+    "let olliTalkLoadSequence=0;let olliTalkCurrentPayload=null;let olliTalkCurrentViewPayload=null;let olliTalkSharedViewSignature='';let olliTalkInitialCombinedPaintPending=false;"
     +originalLoader+";globalThis.load=loadOlliTalkBetaMessages;globalThis.sharedSignature=()=>olliTalkSharedViewSignature;globalThis.rememberRendered=payload=>{olliTalkCurrentPayload=payload?.__academyLocal||payload;olliTalkCurrentViewPayload=payload;};",
     ctx
   );
@@ -105,5 +105,5 @@ test('mobile gallery, history and single-message failures preserve shared messag
   assert.match(source,/renderOlliTalkServerMessages\(getOlliTalkCurrentPresentation\(merged\)/);
   assert.match(source,/const visibleAfterDeletion=currentView===nextChat/);
   assert.match(source,/catch\(error\)\{\s*\/\/ One bad attachment\/action must not hide ordinary chat/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261120-unified-stability-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261120-session-first-paint-2/);
 });
