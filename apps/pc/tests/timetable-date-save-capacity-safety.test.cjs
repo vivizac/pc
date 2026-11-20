@@ -91,6 +91,9 @@ test('real countAt helper never reuses a different week and includes future make
     currentSyncAcademyId:()=>'academy-A',
     timeSlotMatches:(_division,_date,expected,actual)=>Number(expected)===Number(actual),
     enrollmentActiveOn:(item,date)=>Number(item.weekday)===date.getDay() && item.effective_from<=dateKey(date),
+    // This regression isolates future-week capacity; transition-week projection
+    // is exercised with the real helper in timetable-move-week-visual.test.cjs.
+    regularMoveInWeek: () => false,
     classGroupOf:item=>item.class_group || 'A',
     renderDialog:()=>{}
   };

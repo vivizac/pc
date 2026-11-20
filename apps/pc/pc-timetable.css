@@ -448,6 +448,39 @@ body.olliPcSidebarCollapsed #recordRoomScreen .olliTtSection { --olli-tt-student
   pointer-events: none;
 }
 
+
+/* 이동 주에만 표시하는 이동 전 카드: 실제 수업/정원과 분리된 보기 전용 카드 */
+#recordRoomScreen .olliTtCell .olliTtStudent.regular.olliTtMovedSource,
+#recordRoomScreen .olliTtPickupCell .olliTtPickupCard.olliTtMovedSource {
+  border: 1px dashed #6aa9d6;
+  color: #6aa9d6;
+  background: #eff9ff;
+  box-shadow: none;
+  cursor: default;
+}
+#recordRoomScreen .olliTtCell .olliTtStudent.regular.olliTtMovedSource .olliTtStudentMore,
+#recordRoomScreen .olliTtCell .olliTtStudent.regular.olliTtMovedSource .olliTtAttendanceBtn,
+#recordRoomScreen .olliTtPickupCell .olliTtPickupCard.olliTtMovedSource span:not(.olliTtPickupDropoffMark) {
+  color: #6aa9d6;
+}
+/* 이동 전 카드의 '수업이동' 안내도 학생 이름과 같은 하늘색으로 표시합니다. */
+#recordRoomScreen .olliTtCell .olliTtStudent.regular.olliTtMovedSource .olliTtMoveGuide,
+#recordRoomScreen .olliTtPickupCell .olliTtPickupCard.olliTtMovedSource .olliTtMoveGuide {
+  display: inline-block;
+  flex-shrink: 0;
+  margin-left: 4px;
+  color: #6aa9d6;
+  font-size: calc(8px * var(--olli-text-scale));
+  font-weight: 780;
+  white-space: nowrap;
+}
+#recordRoomScreen .olliTtCell .olliTtStudent.regular.olliTtMovedSource .olliTtAttendanceBtn { cursor: default; }
+#recordRoomScreen .olliTtCell .olliTtStudent.regular.olliTtMovedSource:hover { transform: none; box-shadow: none; }
+/* 이동된 카드의 이름만 파랑, 이동 주가 지나면 기본 색상 */
+#recordRoomScreen .olliTtCell .olliTtStudent.regular.olliTtMovedTarget .olliTtMovedTargetName,
+#recordRoomScreen .olliTtPickupCell .olliTtPickupCard.olliTtMovedTarget .olliTtPickupStudentName > span:first-child {
+  color: #1979c8;
+}
 #recordRoomScreen .olliTtPickupCard strong,
 #recordRoomScreen .olliTtPickupCard span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #recordRoomScreen .olliTtPickupCard strong { font-size: calc(10px * var(--olli-text-scale)); font-weight: 820; }
