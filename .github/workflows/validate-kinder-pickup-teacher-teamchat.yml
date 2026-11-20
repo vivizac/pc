@@ -2,7 +2,7 @@ name: Validate kindergarten pickup teacher Team Chat notices
 on:
   pull_request:
     paths:
-      - 'supabase/migrations/20261120050000_kinder_pickup_teacher_teamchat_notifications.sql'
+      - 'supabase/migrations/20261120062547_kinder_pickup_teacher_teamchat_notifications.sql'
       - 'tests/kinder-pickup-teacher-teamchat-notifications.test.cjs'
       - '.github/workflows/validate-kinder-pickup-teacher-teamchat.yml'
 permissions:
