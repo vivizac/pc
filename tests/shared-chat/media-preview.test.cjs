@@ -227,3 +227,52 @@ test('thumbnail original requests are deduplicated in-memory and cleared on cont
   assert.match(shared,/const blob=await fetchUnifiedThumbnailBlob\(attachment\)/);
   assert.doesNotMatch(shared,/localStorage\.setItem\([^)]*unifiedThumbnail/);
 });
+
+test('phone recovered session is used by unified status before localStorage is populated',async()=>{
+  const academy='00000000-0000-0000-0000-000000000001';
+  const room='00000000-0000-0000-0000-000000000002';
+  const store={olli_current_academy_id:academy,olli_current_member_id:'teacher'};
+  const localStorage={getItem:key=>store[key]||null};
+  const doc={readyState:'loading',addEventListener(){}};
+  let recoveredToken='recovered-phone-session';
+  const sent=[];
+  const global={
+    SUPABASE_URL:'https://test.supabase.co',SUPABASE_KEY:'anon',
+    OlliStorageCore:{AcademyContext:{getCurrent:()=>({academyId:academy,memberId:'teacher',contextVersion:1})}},
+    getOlliPhoneWritableAccountSessionToken:()=>recoveredToken,
+    document:doc,localStorage,addEventListener(){}
+  };
+  async function mockFetch(url,init){
+    sent.push({url,init});
+    const payload=JSON.parse(init.body);
+    assert.equal(payload.p_session_token,'recovered-phone-session');
+    if(url.endsWith('olli_shared_chat_status'))
+      return new Response(JSON.stringify({ok:true,enabled:true,room:{id:room,participation_id:'p1'}}));
+    if(url.endsWith('olli_shared_chat_list'))
+      return new Response(JSON.stringify({ok:true,room_id:room,participation_id:'p1',messages:[]}));
+    throw new Error('Unexpected unified request '+url);
+  }
+  vm.runInNewContext(shared,{window:global,document:doc,localStorage,fetch:mockFetch,
+    Blob,Response,URL,setTimeout,clearTimeout});
+  const combined=await global.OlliSharedTeamChat.unifiedExtension({messages:true});
+  assert.equal(combined.joined,true);
+  assert.equal(sent.length,2);
+  assert.equal(localStorage.getItem('olli_account_session_token_v1'),null,
+    'session recovery must not require a localStorage write');
+  recoveredToken='';
+  const priorRequests=sent.length;
+  await assert.rejects(()=>global.OlliSharedTeamChat.unifiedExtension({messages:true}),
+    /세션 연결을 확인하는 중/);
+  assert.equal(sent.length,priorRequests,'missing session cannot be interpreted as a verified room leave');
+});
+
+test('PC and phone never reveal academy messages before a new entry status check',()=>{
+  const phone=load('apps/mobile/olli-talk-beta.js');
+  const pc=load('apps/pc/pc-team-talk.js');
+  assert.match(phone,/olliTalkInitialCombinedPaintPending=true;/);
+  assert.match(phone,/function renderOlliTalkServerMessages\(payload,options=\{\}\)\{[\s\S]*?if\(olliTalkInitialCombinedPaintPending\)return;/);
+  assert.match(phone,/const extension=await window\.OlliSharedTeamChat\.unifiedExtension\(\{messages:true\}\)/);
+  assert.match(phone,/if\(options\.render!==false&&renderChanged\)\{\s*olliTalkInitialCombinedPaintPending=false;/);
+  assert.match(pc,/async function open\(\)\s*\{[\s\S]*?state\.messageViewContextKey='';[\s\S]*?screen\.style\.display = 'flex';/);
+  assert.match(shared,/if\(!ctx\.academyId\|\|!ctx\.sessionToken\)\s*throw new Error\('통합 팀챗 세션 연결/);
+});
