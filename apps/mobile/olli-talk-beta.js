@@ -8443,11 +8443,17 @@
       return true;
     } catch(error) {
       if (sequence !== olliTalkLoadSequence) return false;
-      if (!renderedLocal) {
-        const chatArea = document.getElementById('olliTalkBetaChatArea');
-        if (chatArea) {
-          chatArea.replaceChildren(createOlliTalkEmptyState('대화를 불러오지 못했어요', '잠시 후 다시 열어 주세요.'));
-        }
+      const chatArea = document.getElementById('olliTalkBetaChatArea');
+      if (options.initialCombinedPaint===true && isOlliTalkBetaVisible() && basePayload) {
+        // Network failure: reveal the authorized academy cache rather than
+        // leaving the initial spinner indefinitely. Never alter persisted data.
+        renderOlliTalkServerMessages(basePayload,{
+          scrollMode:'initial-latest',
+          messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
+          deferHydration:true
+        });
+      } else if (!renderedLocal && chatArea) {
+        chatArea.replaceChildren(createOlliTalkEmptyState('대화를 불러오지 못했어요', '잠시 후 다시 열어 주세요.'));
       }
       console.warn('올리톡 메시지 조회 실패:', error);
       return false;
@@ -8869,22 +8875,18 @@
     olliTalkSharedViewSignature='';
     olliTalkRenderedMessageLimit=OLLI_TALK_INITIAL_RENDER_LIMIT;
 
-    // 단일 500개 캐시를 그대로 원본으로 두고, 최근 100개만 첫 화면에 그립니다.
-    // 화면을 공개하기 전에는 서버/IDB/이미지 요청을 시작하지 않습니다.
+    // The academy cache remains intact, but must not become a visible chat
+    // before an authorized unified-room snapshot has been merged with it.
+    // A single loading state prevents the initial academy-only -> unified flash.
     const openContext = getOlliTalkBetaContext();
     const openCachedPayload = readOlliTalkMessageCache(openContext);
     if(openCachedPayload){
       olliTalkCurrentPayload=openCachedPayload;
       renderOlliTalkCachedMemberCount(openCachedPayload);
-      renderOlliTalkServerMessages(openCachedPayload,{
-        scrollMode:'initial-latest',
-        messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
-        deferHydration:true
-      });
     }else{
       applyOlliTalkMemberCount(null);
-      setOlliTalkLoadingState();
     }
+    setOlliTalkLoadingState();
 
     screen.style.display = 'flex';
     screen.setAttribute('aria-hidden', 'false');
@@ -8911,11 +8913,6 @@
     syncViewport();
     updateOlliTalkBetaComposerState();
 
-    if(openCachedPayload){
-      syncOlliTalkChatToComposer();
-      scheduleOlliTalkLatestMessageAnchor();
-    }
-
     requestAnimationFrame(() => {
       // rAF 뒤의 macrotask에서 시작해 로컬 DOM의 첫 paint를 먼저 보장합니다.
       setTimeout(() => {
@@ -8939,7 +8936,8 @@
           localFirst:false,
           cachedPayload:openCachedPayload,
           messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
-          scrollMode:openCachedPayload ? 'follow-if-near-bottom' : 'initial-latest'
+          initialCombinedPaint:true,
+          scrollMode:'initial-latest'
         });
       },0);
     });
