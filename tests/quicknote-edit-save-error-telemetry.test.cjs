@@ -64,9 +64,16 @@ for(const [platform,code] of [['mobile',mobile],['pc',pc]]){
     const end=code.indexOf('\nfunction ',start);
     assert.ok(start>=0&&end>start);
     const body=code.slice(start,end);
-    for(const phase of ['record_lookup','server_record_id','server_patch','local_queue_save'])
+    for(const phase of (platform === 'mobile'
+      ? ['record_lookup','server_record_id','server_patch']
+      : ['record_lookup','server_record_id','server_patch','local_queue_save']))
       assert.match(body,new RegExp("reportQuicknoteEditSaveFailure\\([^;]+?['\\\"]"+phase+"['\\\"]"));
+    if (platform === 'mobile') {
+      assert.doesNotMatch(body,/setTodayFeedbackItemsRaw\s*\(/);
+      assert.match(body,/rememberOlliPhoneQuickNoteVerifiedEdit/);
+    } else {
     assert.match(body,/try\s*\{\s*setTodayFeedbackItemsRaw\(nextList\);\s*\}\s*catch/);
+    }
   });
 }
 function loadEndpoint(mockFetch){
