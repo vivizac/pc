@@ -1575,6 +1575,72 @@ function cancelKinderChatFeedbackLiveEdit(id) {
   if (editArea && item) editArea.value = item.resultText || '';
   row.classList.remove('editing');
 }
+// The server may have saved a feedback even when quota prevented updating
+// the local inbox's saved flag. Reconcile only a single unequivocal record.
+async function reconcileKinderChatFeedbackSavedRecord(item) {
+  if (!item || item.trialSessionId || !String(item.resultText || '').trim()) return item;
+  const currentLive = getKinderChatFeedbackLiveItem(String(item.id || ''));
+  const savedSource = [item,currentLive].find(source =>
+    source && (source.saved === true || source.reviewed === true)
+    && String(source.savedRowId || source.savedRow?.id || '').trim()
+    && source.savedRow?.__pending_sync !== true
+  );
+  if (savedSource) return {
+    ...item, saved:true, reviewed:true,
+    savedRowId:String(savedSource.savedRowId || savedSource.savedRow?.id),
+    savedSourceTable:String(savedSource.savedSourceTable || item.savedSourceTable
+      || getTodayFeedbackSavedSourceTable(item)),
+    savedStudentId:String(savedSource.savedStudentId || savedSource.studentId || item.studentId || ''),
+    savedAcademyId:String(savedSource.savedAcademyId || savedSource.academyId || item.savedAcademyId || ''),
+    savedRow:savedSource.savedRow || item.savedRow || null
+  };
+  if (item.saved || item.reviewed) return item;
+  const academyId = String(item.savedAcademyId || item.academyId
+    || (typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '') || '').trim();
+  const studentId = String(item.savedStudentId || item.studentId || '').trim();
+  if (!academyId || !studentId) return item;
+  const core = window.OlliStorageCore;
+  if (!core?.AcademyContext?.getCurrent || !core?.ServerAdapter?.read
+    || !core?.FeatureRegistry?.require) return item;
+  if (String(core.AcademyContext.getCurrent()?.academyId || '') !== academyId) return item;
+  const table = String(item.savedSourceTable || getTodayFeedbackSavedSourceTable(item) || '');
+  const featureByTable = {
+    feedbacks:'general_feedback',
+    fail_feedbacks:'growth_feedback',
+    summary_feedbacks:'summary_feedback'
+  };
+  const feature = featureByTable[table];
+  if (!feature) return item;
+  const spec = core.FeatureRegistry.require(feature);
+  const rows = await core.ServerAdapter.read(spec,{academyId,studentId},{limit:100});
+  if (String(core.AcademyContext.getCurrent()?.academyId || '') !== academyId) {
+    const error = new Error('피드백 확인 중 학원이 변경됐습니다.');
+    error.code = 'STALE_ACADEMY_RESPONSE';
+    throw error;
+  }
+  const oldText = String(item.resultText || '').trim();
+  const createdAt = Date.parse(String(item.createdAt || ''));
+  const matches = (Array.isArray(rows) ? rows : []).filter(row => {
+    if (!row || String(row.academy_id || '') !== academyId
+      || String(row.student_id || '') !== studentId
+      || String(row.content || '').trim() !== oldText) return false;
+    if (Number.isFinite(createdAt)) {
+      const serverTime = Date.parse(String(row.created_at || ''));
+      if (!Number.isFinite(serverTime) || Math.abs(serverTime - createdAt) > 24*60*60*1000) return false;
+    }
+    return true;
+  });
+  // Never guess which record to patch if two server rows have identical text.
+  if (matches.length !== 1) return item;
+  const serverRow = matches[0];
+  return {
+    ...item, saved:true, reviewed:true,
+    savedRowId:String(serverRow.id),
+    savedSourceTable:table, savedStudentId:studentId,
+    savedAcademyId:academyId, savedRow:serverRow
+  };
+}
+
 async function confirmKinderChatFeedbackLiveEdit(id, btn) {
   const item = getKinderChatFeedbackLiveItem(id);
   const row = getKinderChatFeedbackLiveRow(id);
@@ -1586,14 +1652,21 @@ async function confirmKinderChatFeedbackLiveEdit(id, btn) {
     return false;
   }
 
-  const wasSaved = !!(item.saved || item.reviewed);
+  let savedItem = item;
+  try { savedItem = await reconcileKinderChatFeedbackSavedRecord(item); }
+  catch(error) {
+    console.warn('LIVE 피드백 저장 여부 확인 실패:',error?.code || error?.message);
+    try { showPushToast('기존 피드백의 서버 저장 상태를 확인하지 못했습니다. 다시 시도해 주세요.'); } catch(_) {}
+    return false;
+  }
+  const wasSaved = !!(savedItem.saved || savedItem.reviewed);
   let patchedSavedRow = null;
   if (wasSaved) {
     if (typeof getTodayFeedbackSavedRowId !== 'function' || typeof patchSavedTodayFeedbackItem !== 'function') {
       try { showPushToast('저장된 피드백 수정 기능을 불러오지 못했습니다.'); } catch(e) {}
       return false;
     }
-    const savedRecordId = getTodayFeedbackSavedRowId(item);
+    const savedRecordId = getTodayFeedbackSavedRowId(savedItem);
     if (!savedRecordId) {
       try { showPushToast('저장된 피드백의 서버 ID를 찾지 못했습니다.'); } catch(e) {}
       return false;
@@ -1606,7 +1679,7 @@ async function confirmKinderChatFeedbackLiveEdit(id, btn) {
     try {
       patchedSavedRow = item.trialSessionId
         ? await saveKcfTrialFeedbackOnServer(item, nextText, true)
-        : await patchSavedTodayFeedbackItem(item, nextText);
+        : await patchSavedTodayFeedbackItem(savedItem, nextText);
     } catch (err) {
       console.error('LIVE 저장 피드백 수정 오류:', err);
       if (btn) {
@@ -1632,7 +1705,11 @@ async function confirmKinderChatFeedbackLiveEdit(id, btn) {
   if (wasSaved) {
     item.saved = true;
     item.reviewed = true;
-    item.savedRow = { ...(item.savedRow || {}), ...(patchedSavedRow || {}), content: nextText };
+    item.savedRowId = String(patchedSavedRow?.id || savedItem.savedRowId || '');
+    item.savedSourceTable = String(savedItem.savedSourceTable || item.savedSourceTable || '');
+    item.savedAcademyId = String(savedItem.savedAcademyId || item.savedAcademyId || '');
+    item.savedStudentId = String(savedItem.savedStudentId || item.savedStudentId || item.studentId || '');
+    item.savedRow = { ...(savedItem.savedRow || {}), ...(patchedSavedRow || {}), content: nextText };
   }
   const bubble = row.querySelector('.kcfLiveBubble');
   if (bubble) renderKinderChatFeedbackLiveResultText(bubble, nextText);
@@ -2521,11 +2598,17 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
   }
   const segments = getSuspiciousFeedbackSegments(nextText);
   const nextStatus = segments.length ? 'review' : 'done';
-  const originalItem = getTodayFeedbackItemById(id);
+  let originalItem = getTodayFeedbackItemById(id);
   if (!originalItem) {
     const code = reportQuicknoteEditSaveFailure({ id }, 'record_lookup',
       { code: 'FEEDBACK_ITEM_NOT_FOUND' }, 'mobile');
     setKinderChatFeedbackWarning('수정할 피드백을 찾지 못했습니다. [' + code + ']');
+    return;
+  }
+  try { originalItem = await reconcileKinderChatFeedbackSavedRecord(originalItem); }
+  catch(error) {
+    const code = reportQuicknoteEditSaveFailure(originalItem,'record_lookup',error,'mobile');
+    setKinderChatFeedbackWarning('서버에 저장된 기존 피드백을 확인하지 못했습니다. ['+code+']');
     return;
   }
   const wasServerSaved = !!(originalItem && (originalItem.saved || originalItem.reviewed));
