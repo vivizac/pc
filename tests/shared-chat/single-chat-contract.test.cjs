@@ -15,7 +15,7 @@ test('one visible Team Chat: no second room entry or independent shared dialog',
   for(const html of [pcHtml,mobileHtml]){
     assert.doesNotMatch(html,/data-shared-chat-entry/);
     assert.match(html,/Team Chat/);
-    assert.match(html,/olli-shared-team-chat\.js\?v=20261120-network-download-retry-1/);
+    assert.match(html,/olli-shared-team-chat\.js\?v=20261118-download-timeout-1/);
   }
   assert.doesNotMatch(service,/createDialog\('공동 팀챗'\)/);
   assert.match(service,/async function open\(\)\{[\s\S]*OlliPcTeamTalk\?\.open/);
