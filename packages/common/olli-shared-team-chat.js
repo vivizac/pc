@@ -32,6 +32,27 @@ async function rpc(name,body,ctx,options={}){
   if(!res.ok||result?.ok!==true)throw new Error(result?.message||result?.error||'공동 팀챗 요청에 실패했습니다.');
   return result;
 }
+// Coalesce only concurrent, read-only room checks. No session or shared
+// messages are persisted, and every response still validates its context.
+const sharedStatusInflight=new Map();
+function readUnifiedStatus(ctx,options={}){
+  const read=()=>rpc('status', params(ctx), ctx, options).then(status=>{
+    // A confirmed leave/disable must invalidate in-memory thumbnails immediately.
+    if(!status.enabled||!status.room){
+      unifiedThumbnailLoads.clear();
+      unifiedThumbnailScope='';
+    }
+    return status;
+  });
+  if(options.signal)return read(); // Aborted reads must not share a signal.
+  const scope=key(ctx);
+  const existing=sharedStatusInflight.get(scope);
+  if(existing)return existing;
+  const request=read();
+  sharedStatusInflight.set(scope,request);
+  request.finally(()=>{if(sharedStatusInflight.get(scope)===request)sharedStatusInflight.delete(scope);}).catch(()=>{});
+  return request;
+}
 function supabaseConfig(){
   let url=clean(global.SUPABASE_URL),apiKey=clean(global.SUPABASE_KEY);
   try{if(typeof SUPABASE_URL!=='undefined')url=SUPABASE_URL;if(typeof SUPABASE_KEY!=='undefined')apiKey=SUPABASE_KEY;}catch(_){}
@@ -48,7 +69,12 @@ function close(){
   dialog?.remove();dialog=null;mode='';clearContent();
   previousFocus?.focus?.();previousFocus=null;
 }
-function reset(){close();for(const el of document.querySelectorAll('[data-shared-chat-entry]')){el.hidden=true;el.textContent='공동 대화';}}
+function reset(){
+  close();sharedStatusInflight.clear();unifiedThumbnailLoads.clear();unifiedThumbnailScope='';
+  for(const el of document.querySelectorAll('[data-shared-chat-entry]')){
+    el.hidden=true;el.textContent='공동 대화';
+  }
+}
 function createDialog(title){
   close();previousFocus=document.activeElement;
   dialog=node('dialog',null,'olliSharedChatDialog');dialog.setAttribute('aria-label',title);
@@ -61,7 +87,7 @@ function createDialog(title){
 async function refreshEntry(){
   const ctx=context();if(!ctx.sessionToken||!ctx.academyId){reset();return null;}
   try{
-    const status=await rpc('status',params(ctx),ctx);
+    const status=await readUnifiedStatus(ctx);
     let summary=null;if(status.enabled&&status.room)summary=await rpc('summary',params(ctx,status.room),ctx);
     assertCurrent(ctx);
     for(const el of document.querySelectorAll('[data-shared-chat-entry]')){
@@ -80,7 +106,7 @@ async function refresh(){
   if(state.busy)return false;
   const ctx=context(),seq=++state.sequence,active=dialog;
   try{
-    const status=await rpc('status',params(ctx),ctx);
+    const status=await readUnifiedStatus(ctx);
     if(!status.enabled||!status.room)throw new Error('공동 대화 참여가 해제되었습니다. 내 학원 대화로 돌아가 주세요.');
     const epoch=key(ctx)+':'+status.room.id+':'+status.room.participation_id;
     const [payload,members]=await Promise.all([
@@ -215,7 +241,13 @@ async function fileRequest(ctx,room,body,attachmentId,options={}){
   const res=await fetch('/api/shared-team-chat-file'+(attachmentId?'?attachmentId='+encodeURIComponent(attachmentId):''),{
     method:body?'POST':'GET',cache:'no-store',signal:options.signal,headers:{'X-Olli-Session-Token':ctx.sessionToken,'X-Olli-Academy-Id':ctx.academyId,'X-Olli-Room-Id':room.id,
       ...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})
-  });assertCurrent(ctx);if(!res.ok)throw new Error('첨부파일 권한 또는 연결을 확인해 주세요.');return res;
+  });assertCurrent(ctx);
+  if(!res.ok){
+    const result=await res.json().catch(()=>null);
+    // Only show the broker's sanitized errors; never expose the private object URL.
+    throw new Error(clean(result?.error)||'통합 첨부파일 서버에서 요청을 처리하지 못했습니다.');
+  }
+  return res;
 }
 async function uploadFile(event){
   const file=event.target.files?.[0];if(!file||state.busy||!state.ready)return;
@@ -327,6 +359,11 @@ function start(){
   
   global.OlliStorageCore?.AcademyContext?.registerRuntimeCleaner?.(reset);
   global.addEventListener('olli:account-session-invalidated',reset);
+  global.addEventListener('olli:shared-team-chat-changed',()=>{
+    sharedStatusInflight.clear();
+    unifiedThumbnailLoads.clear();
+    unifiedThumbnailScope='';
+  });
   global.addEventListener('storage',event=>{if(!event.key||['olli_account_session_token_v1','olli_current_academy_id','olli_current_member_id'].includes(event.key))reset();});
   global.addEventListener('online',()=>{refreshEntry();refresh();});global.addEventListener('focus',()=>{refreshEntry();refresh();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){state.messages=[];dialog?.querySelector('[data-shared-messages]')?.replaceChildren();state.ready=false;}else{refreshEntry();refresh();}});
@@ -364,7 +401,7 @@ function unifiedVisibleMessage(msg){
 async function archiveUnified(options={}){
   const ctx=context();
   if(!ctx.academyId||!ctx.sessionToken)return {joined:false,messages:[]};
-  const status=await rpc('status',params(ctx),ctx);
+  const status=await readUnifiedStatus(ctx);
   if(!status.enabled||!status.room)return {joined:false,messages:[]};
   const room=status.room;
   const limit=Math.max(1,Math.min(1000,Number(options.limit)||1000));
@@ -394,7 +431,7 @@ async function archiveUnified(options={}){
 async function unifiedExtension(options={}){
   const ctx=context();
   if(!ctx.academyId||!ctx.sessionToken)return {joined:false,messages:[],members:[]};
-  const status=await rpc('status',params(ctx),ctx);
+  const status=await readUnifiedStatus(ctx);
   if(!status.enabled||!status.room)return {joined:false,messages:[],members:[],status};
   const room=status.room,epoch=key(ctx);
   const requests=[];
@@ -411,7 +448,7 @@ async function unifiedExtension(options={}){
   return {joined:true,room,status,epoch,messages,members:memberPayload?.members||[],latestSeq:(list?.messages||[]).at(-1)?.seq||0};
 }
 async function sendUnified(body,clientId){
-  const ctx=context(),status=await rpc('status',params(ctx),ctx);
+  const ctx=context(),status=await readUnifiedStatus(ctx);
   if(!status.enabled||!status.room)return {joined:false};
   const room=status.room;
   const memberResult=await rpc('members',params(ctx,room),ctx);
@@ -427,14 +464,14 @@ async function sendUnified(body,clientId){
 }
 async function markUnifiedRead(roomId,seq){
   if(!roomId||!Number(seq))return false;
-  const ctx=context(),status=await rpc('status',params(ctx),ctx);
+  const ctx=context(),status=await readUnifiedStatus(ctx);
   if(!status.room||status.room.id!==roomId)return false;
   await rpc('mark_read',{...params(ctx,status.room),p_up_to_seq:Number(seq)},ctx);
   return true;
 }
 async function uploadUnified(file){
   if(!file||file.size<1||file.size>20*1024*1024)throw new Error('첨부파일은 20MB 이하만 올릴 수 있습니다.');
-  const ctx=context(),status=await rpc('status',params(ctx),ctx);
+  const ctx=context(),status=await readUnifiedStatus(ctx);
   if(!status.enabled||!status.room)return {joined:false};
   const room=status.room;
   const prepared=await (await fileRequest(ctx,room,{action:'prepare',file_name:file.name,mime_type:file.type||'application/octet-stream',file_size:file.size})).json();
@@ -472,7 +509,7 @@ async function fetchUnifiedBlob(attachment,options={}){
   let timedOut=false;
   const timer=controller?setTimeout(()=>{timedOut=true;controller.abort();},timeoutMs):null;
   try{
-  const ctx=context(),status=await rpc('status',params(ctx),ctx,{signal});
+  const ctx=context(),status=await readUnifiedStatus(ctx,{signal});
   if(!status.enabled||!status.room)throw new Error('현재 팀챗에 참여하지 않습니다.');
   if(options.signal?.aborted)throw new DOMException('Aborted','AbortError');
   const response=await fileRequest(ctx,status.room,null,id,{signal});
@@ -501,6 +538,10 @@ async function fetchUnifiedBlob(attachment,options={}){
   assertCurrent(ctx);
   if(options.signal?.aborted)throw new DOMException('Aborted','AbortError');
   if(!blob.size)throw new Error('원본 파일 데이터가 비어 있습니다.');
+  // A successful HTTP response can still contain truncated data. Never offer a
+  // corrupt image/video as a successfully downloaded original.
+  if(declared>0 && blob.size!==declared)
+    throw new Error('파일 전송 크기가 일치하지 않습니다. 파일 서버 상태를 확인해 주세요.');
   progress?.({phase:'done',loaded:blob.size,total:total||blob.size});
   return blob;
   }catch(error){
@@ -510,6 +551,36 @@ async function fetchUnifiedBlob(attachment,options={}){
     if(timer!==null)clearTimeout(timer);
     if(controller&&externalSignal)externalSignal.removeEventListener('abort',onAbort);
   }
+}
+// Deduplicate only authorized in-memory thumbnail reads across PC/phone redraws.
+ // Nothing is stored in localStorage/IndexedDB or shared between account contexts.
+const unifiedThumbnailLoads=new Map();
+let unifiedThumbnailScope='';
+function fetchUnifiedThumbnailBlob(attachment){
+  const scope=key(context());
+  if(unifiedThumbnailScope!==scope){
+    unifiedThumbnailLoads.clear();
+    unifiedThumbnailScope=scope;
+  }
+  const id=clean(attachment?.id);
+  const cached=unifiedThumbnailLoads.get(id);
+  if(cached){
+    unifiedThumbnailLoads.delete(id);
+    unifiedThumbnailLoads.set(id,cached);
+    return cached;
+  }
+  const request=fetchUnifiedBlob(attachment);
+  unifiedThumbnailLoads.set(id,request);
+  // Keep at most four recent originals, or only the in-flight request for large media.
+  while(unifiedThumbnailLoads.size>4)unifiedThumbnailLoads.delete(unifiedThumbnailLoads.keys().next().value);
+  const size=Number(attachment?.file_size)||0;
+  request.then(()=>{
+    if((size<=0||size>5*1024*1024)&&unifiedThumbnailLoads.get(id)===request)
+      unifiedThumbnailLoads.delete(id);
+  },()=>{
+    if(unifiedThumbnailLoads.get(id)===request)unifiedThumbnailLoads.delete(id);
+  });
+  return request;
 }
 function mountUnifiedThumbnail(attachment,target){
   const mime=unifiedMediaType(attachment);
@@ -537,7 +608,7 @@ function mountUnifiedThumbnail(attachment,target){
   };
   const load=async()=>{
     try{
-      const blob=await fetchUnifiedBlob(attachment);
+      const blob=await fetchUnifiedThumbnailBlob(attachment);
       if(!target.isConnected)return;
       const url=URL.createObjectURL(blob);
       if(mime.startsWith('image/')){showImage(url);return;}
@@ -595,7 +666,7 @@ function mountSettings(root){
   heading.append(copy);root.append(heading);
   const message=node('p','통합 상태 확인 중…','olliSharedInlineStatus');
   message.setAttribute('role','status');root.append(message);
-  rpc('status',params(ctx),ctx).then(status=>{
+  readUnifiedStatus(ctx).then(status=>{
     if(renderSequence!==inlineSettingsSequence||!root.isConnected)return;
     assertCurrent(ctx);
     renderInlineSettings(root,status,ctx,message);

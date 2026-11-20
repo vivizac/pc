@@ -13,6 +13,10 @@
     messages: [],
     members: [],
     sharedJoined: false,
+    // The last render is valid only for this exact academy/member/session.
+    messageViewContextKey: '',
+    memberViewContextKey: '',
+    archiveViewContextKey: '',
     archivePayload: null,
     messageLoadSequence: 0,
     archiveLoadSequence: 0,
@@ -61,6 +65,10 @@
       memberName: clean(academyContext?.memberName || academyContext?.member_name || memberName),
       sessionToken
     };
+  }
+
+  function teamTalkContextKey(current) {
+    return [current.academyId,current.memberId,current.sessionToken].join(':');
   }
 
   function isVisible() {
@@ -413,25 +421,30 @@
         p_session_token: current.sessionToken,
         p_academy_id: current.academyId
       });
-      state.members = Array.isArray(payload?.members) ? payload.members : [];
-      let extension=null;
-      try { extension=await global.OlliSharedTeamChat?.unifiedExtension?.({members:true}); }
-      catch(error){console.warn('공동 팀챗 선생님 조회 실패:',error?.message||error);}
-      state.sharedJoined = !!extension?.joined;
-      if (extension?.joined) {
+      const baseMembers = Array.isArray(payload?.members) ? payload.members : [];
+      if(typeof global.OlliSharedTeamChat?.unifiedExtension!=='function')
+        throw new Error('통합 팀챗 모듈이 준비되지 않았습니다.');
+      const extension=await global.OlliSharedTeamChat.unifiedExtension({members:true});
+      if(teamTalkContextKey(context())!==teamTalkContextKey(current))return state.members;
+      state.members=baseMembers;
+      // Only the message loader owns the authoritative joined state.
+      if (extension.joined) {
         const members = new Map(state.members.map(member => [String(member.member_id), member]));
         for (const member of extension.members) members.set(String(member.member_id), member);
         state.members = [...members.values()];
         // No @all participating-academies shortcut; individual member mentions only.
       }
+      state.memberViewContextKey=teamTalkContextKey(current);
       hydrateMemberAvatars();
       if (count) count.textContent = state.members.length ? `선생님 ${state.members.length}명` : '';
       renderMentionMenu();
       return state.members;
     } catch (error) {
-      state.members = [];
-      if (count) count.textContent = '';
-      console.warn('PC 팀톡 멤버 조회 실패:', error?.message || error);
+      if(state.memberViewContextKey!==teamTalkContextKey(current)){
+        state.members=[];
+        if(count)count.textContent='';
+      }
+      console.warn('PC 팀톡 통합 멤버 조회 실패:', error?.message || error);
       return [];
     }
   }
@@ -1652,12 +1665,19 @@
   async function loadMessages(options = {}) {
     const sequence = ++state.messageLoadSequence;
     const current = context();
+    const contextKey=teamTalkContextKey(current);
+    const hasVerifiedView=state.messageViewContextKey===contextKey;
     const body = byId('olliPcTeamTalkMessages');
+    if(body&&!hasVerifiedView){
+      state.messages=[];
+      body.replaceChildren(emptyState('통합 대화를 확인하는 중이에요','잠시만 기다려 주세요.'));
+    }
     if (!current.sessionToken || !current.academyId) {
       if (body) body.replaceChildren(emptyState('팀톡을 열 수 없어요', '계정 로그인 또는 현재 학원 정보를 확인해 주세요.'));
       return false;
     }
-    if (body && options.showLoading !== false) body.replaceChildren(emptyState('대화를 불러오는 중이에요', '잠시만 기다려 주세요.'));
+    if(body && !hasVerifiedView && options.showLoading !== false)
+      body.replaceChildren(emptyState('통합 대화를 확인하는 중이에요','잠시만 기다려 주세요.'));
 
     try {
       const payload = await rpc('olli_team_chat_list', {
@@ -1666,13 +1686,13 @@
         p_before_message_id: null,
         p_limit: 100
       });
-      if (sequence !== state.messageLoadSequence) return false;
+      if(sequence!==state.messageLoadSequence||teamTalkContextKey(context())!==contextKey)return false;
       if (!payload?.ok) throw new Error(payload?.message || '대화를 불러오지 못했습니다.');
-      let extension = {joined:false,messages:[]};
-      try {
-        extension = await global.OlliSharedTeamChat?.unifiedExtension?.({messages:true}) || extension;
-      } catch (error) { console.warn('통합 팀챗 조회 실패:',error?.message||error); }
-      if (sequence !== state.messageLoadSequence) return false;
+      if(typeof global.OlliSharedTeamChat?.unifiedExtension!=='function')
+        throw new Error('통합 팀챗 모듈을 불러오지 못했습니다.');
+      // A failed status/list is not evidence that this academy left the room.
+      const extension=await global.OlliSharedTeamChat.unifiedExtension({messages:true});
+      if(sequence!==state.messageLoadSequence||teamTalkContextKey(context())!==contextKey)return false;
       state.sharedJoined=!!extension.joined;
       // Olli materials, coffee orders, confirmations and actions belong only to
       // the academy whose authenticated session requested the message.
@@ -1683,8 +1703,13 @@
         ? {...scopedPayload,messages:[...privateMessages,...extension.messages]
           .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))}
         : scopedPayload;
-      if (options.render === false) state.messages = Array.isArray(combined.messages) ? combined.messages : [];
-      else renderMessages(combined, { followBottom: options.followBottom });
+      if(options.render===false){
+        // Prefetch can update in-memory messages, but cannot change the verified DOM.
+        state.messages=Array.isArray(combined.messages)?combined.messages:[];
+      }else{
+        renderMessages(combined,{followBottom:options.followBottom});
+        state.messageViewContextKey=contextKey;
+      }
       if (extension.joined && isVisible() && extension.latestSeq) {
         global.OlliSharedTeamChat.markUnifiedRead(extension.room.id,extension.latestSeq).catch(()=>{});
       }
@@ -1695,9 +1720,12 @@
       else await refreshBadge();
       return true;
     } catch (error) {
-      if (sequence !== state.messageLoadSequence) return false;
-      if (body) body.replaceChildren(emptyState('대화를 불러오지 못했어요', '잠시 후 다시 확인해 주세요.'));
-      console.warn('PC 팀톡 메시지 조회 실패:', error?.message || error);
+      if(sequence!==state.messageLoadSequence||teamTalkContextKey(context())!==contextKey)return false;
+      if(body&&!hasVerifiedView)body.replaceChildren(emptyState(
+        '팀챗 연결을 확인하지 못했어요','통합 상태를 확인할 수 없습니다. 다시 열어 주세요.'
+      ));
+      // Do not erase a previously verified combined view on a refresh failure.
+      console.warn('PC 팀톡 통합 상태/메시지 조회 실패:',error?.message||error);
       return false;
     }
   }
@@ -1714,6 +1742,7 @@
 
   function setWorkspaceTab(tab) {
     const next = tab === 'archive' ? 'archive' : 'materials';
+    if(state.archiveViewContextKey!==teamTalkContextKey(context()))state.archivePayload=null;
     state.workspaceTab = next;
     document.querySelectorAll('#olliPcTeamTalkScreen [data-team-talk-workspace-tab]').forEach((button) => {
       const active = button.dataset.teamTalkWorkspaceTab === next;
@@ -1885,14 +1914,18 @@
   async function loadArchive(options = {}) {
     const sequence = ++state.archiveLoadSequence;
     const current = context();
+    const contextKey=teamTalkContextKey(current);
+    const verified=state.archiveViewContextKey===contextKey&&!!state.archivePayload;
     const body = byId('olliPcTeamTalkArchiveBody');
     const meta = byId('olliPcTeamTalkArchiveMeta');
+    if(!verified)state.archivePayload=null;
     if (!current.sessionToken || !current.academyId) {
       if (body) body.replaceChildren(emptyState('자료실을 열 수 없어요', '로그인 정보를 확인해 주세요.'));
       return false;
     }
-    if (body && options.showLoading !== false) body.replaceChildren(emptyState('자료를 불러오는 중이에요', '잠시만 기다려 주세요.'));
-    if (meta) meta.textContent = '';
+    if(body&&!verified&&options.showLoading!==false)
+      body.replaceChildren(emptyState('통합 자료실을 확인하는 중이에요','잠시만 기다려 주세요.'));
+    if(meta&&!verified)meta.textContent='';
 
     try {
       const payload = await rpc('olli_team_chat_archive', {
@@ -1900,22 +1933,26 @@
         p_academy_id: current.academyId,
         p_limit: 1000
       });
-      if (sequence !== state.archiveLoadSequence) return false;
+      if(sequence!==state.archiveLoadSequence||teamTalkContextKey(context())!==contextKey)return false;
       if (!payload?.ok) throw new Error(payload?.message || '자료실을 불러오지 못했습니다.');
-      let shared={joined:false,messages:[]};
-      try{shared=await global.OlliSharedTeamChat?.archiveUnified?.({limit:1000})||shared;}
-      catch(error){console.warn('Work Hub 통합 자료 조회 실패:',error?.message||error);}
-      if(sequence!==state.archiveLoadSequence)return false;
+      if(typeof global.OlliSharedTeamChat?.archiveUnified!=='function')
+        throw new Error('통합 자료실 모듈이 준비되지 않았습니다.');
+      const shared=await global.OlliSharedTeamChat.archiveUnified({limit:1000});
+      if(sequence!==state.archiveLoadSequence||teamTalkContextKey(context())!==contextKey)return false;
       state.archivePayload=shared.joined
         ? {...payload,messages:[...(payload.messages||[]),...shared.messages]
           .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))}
         : payload;
+      state.archiveViewContextKey=contextKey;
       renderArchive();
       return true;
     } catch (error) {
-      if (sequence !== state.archiveLoadSequence) return false;
-      if (body) body.replaceChildren(emptyState('자료실을 불러오지 못했어요', '잠시 후 다시 확인해 주세요.'));
-      console.warn('PC 팀톡 자료실 조회 실패:', error?.message || error);
+      if(sequence!==state.archiveLoadSequence||teamTalkContextKey(context())!==contextKey)return false;
+      if(body&&!verified)body.replaceChildren(emptyState(
+        '통합 자료실을 확인하지 못했어요','잠시 후 다시 확인해 주세요.'
+      ));
+      // Never replace a verified combined archive with academy-only results.
+      console.warn('PC 팀톡 통합 자료실 조회 실패:',error?.message||error);
       return false;
     }
   }
@@ -4666,8 +4703,10 @@
     updateComposerState();
 
     try {
-      if (!olliRequested && global.OlliSharedTeamChat?.sendUnified) {
-        const sharedSent = await global.OlliSharedTeamChat.sendUnified(body,clientMessageId());
+      if(!olliRequested){
+        if(typeof global.OlliSharedTeamChat?.sendUnified!=='function')
+          throw new Error('통합 팀챗 상태를 확인할 수 없어 메시지를 전송하지 않았습니다.');
+        const sharedSent=await global.OlliSharedTeamChat.sendUnified(body,clientMessageId());
         if (sharedSent.joined) {
           input.value='';
           state.olliAiMentionSelected=false;
@@ -4891,8 +4930,10 @@
         composerFile.value = '';
         if (file) {
           try {
-            const sharedUpload=await global.OlliSharedTeamChat?.uploadUnified?.(file);
-            if (sharedUpload?.joined) await loadMessages({showLoading:false,followBottom:true});
+            if(typeof global.OlliSharedTeamChat?.uploadUnified!=='function')
+              throw new Error('통합 팀챗 상태를 확인할 수 없어 파일을 올리지 않았습니다.');
+            const sharedUpload=await global.OlliSharedTeamChat.uploadUnified(file);
+            if(sharedUpload.joined)await loadMessages({showLoading:false,followBottom:true});
             else await uploadFile(file);
           } catch(error) { alert(error.message || '공동 첨부파일을 올리지 못했습니다.'); }
         }

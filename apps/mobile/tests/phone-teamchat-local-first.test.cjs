@@ -15,28 +15,45 @@ test('Team Chat keeps one academy-scoped message cache and validates account sco
   assert.doesNotMatch(talk, /olli_team_chat_first_paint/);
 });
 
-test('Team Chat renders cached content before making the Work screen visible', () => {
+test('Team Chat waits for a combined snapshot before its first message paint', () => {
   const openStart = talk.indexOf('async function openOlliTalkBetaPage');
   const openEnd = talk.indexOf('async function closeOlliTalkBetaPage', openStart);
   const body = talk.slice(openStart, openEnd);
-
   const readLocal = body.indexOf('const openCachedPayload = readOlliTalkMessageCache(openContext)');
-  const renderLocal = body.indexOf('renderOlliTalkServerMessages(openCachedPayload', readLocal);
-  const showScreen = body.indexOf("screen.style.display = 'flex'", renderLocal);
+  const loading = body.indexOf('setOlliTalkLoadingState()', readLocal);
+  const showScreen = body.indexOf("screen.style.display = 'flex'", loading);
   const refresh = body.indexOf('loadOlliTalkBetaMessages({', showScreen);
-
-  assert.ok(readLocal >= 0, 'single local cache must be read during open');
-  assert.ok(renderLocal > readLocal, 'cached messages must mount after the cache read');
-  assert.ok(showScreen > renderLocal, 'screen must only be exposed after cached messages are mounted');
-  assert.ok(refresh > showScreen, 'server refresh must begin after the local screen is exposed');
+  assert.ok(readLocal >= 0, 'existing academy cache must still be read');
+  assert.ok(loading > readLocal, 'show a loading state before the chat is exposed');
+  assert.ok(showScreen > loading, 'screen becomes visible with loading state, not academy-only messages');
+  assert.ok(refresh > showScreen, 'fetch messages after showing loading state');
+  assert.ok(body.includes('initialCombinedPaint:true'), 'first render waits for authorized combined messages');
+  assert.doesNotMatch(body, /renderOlliTalkServerMessages\(openCachedPayload/, 'never paint academy-only cache on entry');
 });
 
-test('initial local render is bounded to 100 messages while the full cache stays available for history', () => {
+test('combined first render is bounded and the full academy cache remains for history', () => {
   assert.match(talk, /const OLLI_TALK_INITIAL_RENDER_LIMIT = 100;/);
-  assert.match(talk, /renderOlliTalkServerMessages\(openCachedPayload,[\s\S]*?messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT/);
-  assert.match(talk, /function renderOlliTalkCachedMessages[\s\S]*?messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT/);
+  assert.match(talk, /const activeRenderLimit=Math\.max/);
+  assert.match(talk, /messageLimit:activeRenderLimit/);
+  assert.doesNotMatch(talk, /renderOlliTalkServerMessages\(basePayload/);
   assert.match(talk, /const current=olliTalkCurrentPayload\|\|readOlliTalkMessageCache\(context\)/);
   assert.match(talk, /nextLimit=Math\.min\(messages\.length,renderedLimit\+OLLI_TALK_LOCAL_HISTORY_STEP\)/);
+});
+
+
+test('unknown unified status never paints an academy-only fallback', () => {
+  const loadStart = talk.indexOf('async function loadOlliTalkBetaMessages');
+  const loadEnd = talk.indexOf('async function loadOlderOlliTalkMessages',loadStart);
+  const body = talk.slice(loadStart,loadEnd);
+  const privateFetch = body.indexOf("callOlliTalkRpc('olli_team_chat_list'");
+  const sharedFetch = body.indexOf('OlliSharedTeamChat.unifiedExtension({messages:true})',privateFetch);
+  const paint = body.indexOf('renderOlliTalkServerMessages(presentation',sharedFetch);
+  assert.ok(privateFetch>=0&&sharedFetch>privateFetch&&paint>sharedFetch);
+  assert.match(body,/const renderedLocal = !!olliTalkCurrentViewPayload/);
+  assert.match(body,/if\(!renderedLocal&&chatArea\)/);
+  assert.match(body,/if\(sequence!==olliTalkLoadSequence\|\|!sameSession\(\)\)return false/);
+  assert.doesNotMatch(body,/renderOlliTalkServerMessages\(basePayload/);
+  assert.match(body,/writeOlliTalkMessageCache\(context,mergedPayload\)/);
 });
 
 test('image and link hydration are deferred past the first local paint', () => {
