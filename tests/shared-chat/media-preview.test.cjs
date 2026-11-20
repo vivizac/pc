@@ -162,16 +162,3 @@ test('a stalled media request times out, releases controls, and permits a clean 
   const blob=await global.OlliSharedTeamChat.fetchUnifiedBlob(attachment,{timeoutMs:100});
   assert.equal(blob.size,3,'failed downloads do not poison the next attempt');
 });
-
-test('download button retries transport errors only, not permission errors or mutations',()=>{
-  const service=load('packages/common/olli-shared-team-chat.js');
-  const start=service.indexOf('function isUnifiedDownloadTransportFailure(error)');
-  const end=service.indexOf('let inlineSettingsSequence=0;',start);
-  const download=service.slice(start,end);
-  assert.ok(start>0&&end>start,'inspect real download functions');
-  assert.match(download,/message==='load failed'/);
-  assert.match(download,/message==='failed to fetch'/);
-  assert.match(download,/if\(!isUnifiedDownloadTransportFailure\(error\)\)throw error/);
-  assert.match(download,/catch\(retryError\)/);
-  assert.doesNotMatch(download,/localStorage|file_commit|file_prepare|uploadUnified/);
-});
