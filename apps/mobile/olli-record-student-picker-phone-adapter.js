@@ -249,7 +249,7 @@ function getMemoFeedbackArchiveItemById(id) {
   if (!currentMemoStudent) return null;
   return getMemoFeedbackArchiveItems(currentMemoStudent).find(item => String(item?.id || '') === String(id || '')) || null;
 }
-function replaceMemoFeedbackArchiveItem(student, id, patch = {}) {
+function replaceMemoFeedbackArchiveItem(student, id, patch = {}, options = {}) {
   if (!student?.id) return null;
   const items = getMemoFeedbackArchiveItems(student);
   let updatedItem = null;
@@ -259,7 +259,7 @@ function replaceMemoFeedbackArchiveItem(student, id, patch = {}) {
     if (updatedItem.row) updatedItem.row = { ...updatedItem.row, content: updatedItem.content, updated_at: new Date().toISOString() };
     return updatedItem;
   });
-  setMemoFeedbackArchiveItems(student, next);
+  if (updatedItem) setMemoFeedbackArchiveItems(student, next, options);
   return updatedItem;
 }
 function enterMemoFeedbackArchiveEdit(id) {
@@ -368,26 +368,43 @@ function getMemoFeedbackArchiveEditFeature(tableName) {
   if (table === 'summary_feedbacks') return 'summary_feedback_edit';
   return '';
 }
-async function saveMemoFeedbackArchiveEditViaCommonStorage(tableName, rowId, student, patch) {
+async function saveMemoFeedbackArchiveEditDirectlyToSupabase(tableName, rowId, student, patch) {
   const feature = getMemoFeedbackArchiveEditFeature(tableName);
-  const academyId = getOlliCurrentAcademyId();
+  const academyId = String(getOlliCurrentAcademyId() || '').trim();
   const studentId = String(student?.id || '').trim();
   const recordId = String(rowId || '').trim();
   if (!feature) throw new Error(`지원하지 않는 피드백 수정 테이블입니다: ${tableName}`);
   if (!academyId || !studentId || !recordId) throw new Error('피드백 수정 저장 식별값이 없습니다.');
-  if (typeof saveOlliData !== 'function') throw new Error('공통 저장 함수가 준비되지 않았습니다.');
-  const result = await saveOlliData(feature, {
-    academyId,
-    studentId,
-    recordId,
-    data: patch,
-    forceCommon: true
-  });
-  if (!result || !result.serverSaved || !result.verified) {
-    const error = result && result.error ? result.error : new Error('피드백 수정 서버 저장이 완료되지 않았습니다.');
+  const core = window.OlliStorageCore;
+  if (!core?.AcademyContext?.getCurrent || !core?.FeatureRegistry?.require
+    || !core?.ServerAdapter?.write || !core?.ServerAdapter?.verifyReturnedRow) {
+    const error = new Error('피드백 수정용 서버 기능이 준비되지 않았습니다.');
+    error.code = 'FEEDBACK_EDIT_SERVER_UNAVAILABLE';
     throw error;
   }
-  return result.serverRow || (Array.isArray(result.serverRows) ? result.serverRows[0] : result.serverRows) || null;
+  // The secure server RPC validates the teacher session and academy membership.
+  // Never invoke local-first saveOlliData from this already-saved archive editor.
+  const activeAcademyId = String(core.AcademyContext.getCurrent()?.academyId || '').trim();
+  if (activeAcademyId !== academyId) {
+    const error = new Error('피드백 수정 중 학원 정보가 변경되었습니다.');
+    error.code = 'STALE_ACADEMY_RESPONSE';
+    throw error;
+  }
+  const spec = core.FeatureRegistry.require(feature);
+  const identity = {academyId, studentId, recordId};
+  const rows = await core.ServerAdapter.write(spec, identity, patch, {operation:'patch'});
+  if (String(core.AcademyContext.getCurrent()?.academyId || '').trim() !== academyId) {
+    const error = new Error('피드백 수정 중 학원이 변경되어 서버 응답을 적용하지 않았습니다.');
+    error.code = 'STALE_ACADEMY_RESPONSE';
+    throw error;
+  }
+  const verified = core.ServerAdapter.verifyReturnedRow(spec, identity, patch, rows);
+  if (!verified?.verified || !verified.row) {
+    const error = new Error('서버에서 수정된 피드백을 확인하지 못했습니다.');
+    error.code = 'SERVER_VERIFY_FAILED';
+    throw error;
+  }
+  return verified.row;
 }
 async function saveMemoFeedbackArchiveEdit(id, btn = null) {
   if (!currentMemoStudent) return;
@@ -409,15 +426,28 @@ async function saveMemoFeedbackArchiveEdit(id, btn = null) {
     const tableName = getMemoFeedbackArchiveSourceTable(item);
     const rowId = item?.row?.id || item.id;
     const patch = { content, updated_at: new Date().toISOString() };
-    let savedRow = null;
-    if (rowId && !String(rowId).startsWith('memo_feedback_') && isSupabaseConfigured()) {
-      savedRow = await saveMemoFeedbackArchiveEditViaCommonStorage(tableName, rowId, currentMemoStudent, patch);
+    // This editor is for existing server feedback only. Never report a
+    // successful edit if its authoritative server record cannot be identified.
+    if (!rowId || String(rowId).startsWith('memo_feedback_') || !isSupabaseConfigured()) {
+      const error = new Error('서버 저장이 확인된 피드백만 수정할 수 있습니다.');
+      error.code = 'SERVER_RECORD_UNCONFIRMED';
+      throw error;
     }
-    const updated = replaceMemoFeedbackArchiveItem(currentMemoStudent, id, {
+    const studentAtStart = currentMemoStudent;
+    const savedRow = await saveMemoFeedbackArchiveEditDirectlyToSupabase(
+      tableName, rowId, studentAtStart, patch);
+    // Only after server verification update the sheet in session memory.
+    // No setItem/saveOlliData runs on this edit button path.
+    if (String(currentMemoStudent?.id || '') !== String(studentAtStart?.id || '')) {
+      const error = new Error('학생을 변경하여 수정 결과를 적용하지 않았습니다.');
+      error.code = 'STALE_STUDENT_RESPONSE';
+      throw error;
+    }
+    const updated = replaceMemoFeedbackArchiveItem(studentAtStart, id, {
       content,
       createdAt: item.createdAt || new Date().toISOString(),
-      row: item.row ? { ...item.row, ...patch, ...(savedRow || {}) } : (savedRow || item.row)
-    });
+      row: item.row ? { ...item.row, ...patch, ...savedRow } : savedRow
+    }, {serverOnly:true});
     const full = card.querySelector('.memoFeedbackArchiveFullText');
     if (full) full.textContent = content;
     area.value = content;
