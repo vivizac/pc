@@ -304,6 +304,9 @@ function openKinderChatFeedbackPage(options = {}) {
   }
   const page = document.getElementById('kinderChatFeedbackScreen');
   if (page) page.style.display = 'flex';
+  if (typeof window.cleanupOlliPhoneFeedbackJobQueue === 'function')
+    window.cleanupOlliPhoneFeedbackJobQueue();
+  pruneExpiredKinderChatFeedbackLocalItems();
   restoreKinderChatFeedbackLiveSession();
   setKinderChatFeedbackPersistentTopVisible(true);
   loadKinderChatFeedbackDraft();
@@ -459,6 +462,9 @@ function scheduleKinderChatFeedbackVivicotBubbleMidnightReset() {
   const delay = Math.max(1000, nextMidnight.getTime() - now.getTime());
   kcfVivicotInboxMidnightTimer = window.setTimeout(() => {
     kcfVivicotInboxMidnightTimer = null;
+    if (typeof window.cleanupOlliPhoneFeedbackJobQueue === 'function')
+      window.cleanupOlliPhoneFeedbackJobQueue();
+    persistKinderChatFeedbackLiveSessionNow();
     updateKinderChatFeedbackBadge();
     scheduleKinderChatFeedbackVivicotBubbleMidnightReset();
   }, delay);
@@ -959,6 +965,22 @@ const KCF_LIVE_SESSION_VERSION = 1;
 const KCF_LIVE_SESSION_MAX_ITEMS = 50;
 const KCF_LIVE_SESSION_PERSIST_DELAY_MS = 350;
 const KCF_LIVE_SESSION_RETENTION_MS = 24 * 60 * 60 * 1000;
+// Only this Quick Note session is subject to age-based cleanup, not observation drafts.
+function isExpiredKinderChatFeedbackLocalItem(item,now = Date.now()) {
+  if (!item || typeof item !== 'object') return false;
+  const created = Date.parse(String(item.createdAt || item.created_at || ''));
+  return Number.isFinite(created) && created > 0 && now - created >= KCF_LIVE_SESSION_RETENTION_MS;
+}
+function pruneExpiredKinderChatFeedbackLocalItems() {
+  const now = Date.now();
+  let removed = 0;
+  kcfLiveFeedbackItems.forEach((item,id) => {
+    if (!isExpiredKinderChatFeedbackLocalItem(item,now)) return;
+    kcfLiveFeedbackItems.delete(id);
+    removed++;
+  });
+  return removed;
+}
 let kcfLiveSessionPersistTimer = null;
 let kcfLiveSessionRenderedScope = '';
 function getKinderChatFeedbackLiveAcademyId(){
@@ -1067,13 +1089,28 @@ function readKinderChatFeedbackLiveSession(){
     const storedExpiryAt = Number(session?.expiresAt || 0);
     const rollingExpiryAt = Number.isFinite(updatedAtMs) ? updatedAtMs + KCF_LIVE_SESSION_RETENTION_MS : 0;
     const effectiveExpiryAt = rollingExpiryAt || storedExpiryAt;
-    const expired = effectiveExpiryAt > 0 && effectiveExpiryAt <= Date.now();
-    if (!session || Number(session.version || 0) !== KCF_LIVE_SESSION_VERSION || expired) {
-      localStorage.removeItem(key);
+    if (!session || Number(session.version || 0) !== KCF_LIVE_SESSION_VERSION) {
+      // Preserve unknown-version data rather than clearing a potentially unsynced draft.
       return null;
     }
     const items = Array.isArray(session.items) ? session.items : [];
-    return { ...session, items:items.slice(-KCF_LIVE_SESSION_MAX_ITEMS) };
+    const now = Date.now();
+    const retained = items.filter(item => !isExpiredKinderChatFeedbackLocalItem(item,now))
+      .slice(-KCF_LIVE_SESSION_MAX_ITEMS);
+    if (retained.length !== items.length || (effectiveExpiryAt > 0 && effectiveExpiryAt <= now)) {
+      // A refreshed session timestamp must never extend an individual job beyond 24h.
+      try {
+        if (retained.length) {
+          localStorage.setItem(key,JSON.stringify({
+            ...session,items:retained,updatedAt:new Date().toISOString(),
+            expiresAt:now + KCF_LIVE_SESSION_RETENTION_MS
+          }));
+        } else localStorage.removeItem(key);
+      } catch(error) {
+        console.warn('퀵노트 24시간 보관 데이터 정리 실패:',error?.name || 'StorageError');
+      }
+    }
+    return retained.length ? { ...session,items:retained } : null;
   } catch(e) {
     if (typeof window.recordOlliFeedbackStorageCheck === 'function') {
       window.recordOlliFeedbackStorageCheck('live_session', 'read', 'failed', {
@@ -1102,6 +1139,7 @@ function persistKinderChatFeedbackLiveSessionNow(){
   let phase = 'prepare';
   let count = null;
   try {
+    pruneExpiredKinderChatFeedbackLocalItems();
     kcfLiveFeedbackItems.forEach(item => {
       if (item && (!item.academyId || item.academyId === 'unscoped')) item.academyId = academyId;
     });
@@ -1634,6 +1672,31 @@ function resumePendingCorrectedQuickNoteSaves() {
   });
 }
 window.addEventListener('online', resumePendingCorrectedQuickNoteSaves);
+
+// Automatically enforce local Quick Note retention while the phone app is open.
+// Never touch observation memo storage or data held on Supabase.
+function cleanupKinderChatFeedbackPhoneLocalRetention() {
+  try {
+    if (typeof window.cleanupOlliPhoneFeedbackJobQueue === 'function')
+      window.cleanupOlliPhoneFeedbackJobQueue();
+    readKinderChatFeedbackLiveSession(); // Cleans the local session by each item's creation date.
+    const removedFromMemory = pruneExpiredKinderChatFeedbackLocalItems();
+    if (removedFromMemory) {
+      // Re-save a trimmed session; never write expired items back during later navigation.
+      persistKinderChatFeedbackLiveSessionNow();
+      try { updateKinderChatFeedbackBadge(); } catch(_) {}
+    }
+  } catch (error) {
+    console.warn('퀵노트 24시간 로컬 정리 실패:',error?.name || 'StorageError');
+  }
+}
+window.cleanupKinderChatFeedbackPhoneLocalRetention = cleanupKinderChatFeedbackPhoneLocalRetention;
+window.addEventListener('pageshow',cleanupKinderChatFeedbackPhoneLocalRetention);
+document.addEventListener('visibilitychange',() => {
+  if (document.visibilityState === 'visible') cleanupKinderChatFeedbackPhoneLocalRetention();
+});
+window.setInterval(cleanupKinderChatFeedbackPhoneLocalRetention,15 * 60 * 1000);
+window.setTimeout(cleanupKinderChatFeedbackPhoneLocalRetention,0);
 
 const kcfLiveSaveInFlight = new Map();
 window.getKinderChatFeedbackLiveSavePromise = id => kcfLiveSaveInFlight.get(String(id || '')) || null;
