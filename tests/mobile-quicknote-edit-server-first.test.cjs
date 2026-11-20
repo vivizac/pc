@@ -87,6 +87,7 @@ test('server-verified edit can remain visible during a phone local quota error',
  assert.equal(helpers.merge([original])[0].resultText,'수정 내용');
  academy='academy-b';
  assert.equal(helpers.merge([original])[0].resultText,'이전 내용');
- assert.match(phone,/if \(!wasServerSaved \|\| !patchedSavedRow\)/);
+  assert.match(phone,/if \(!wasServerSaved\) \{/);
+  assert.doesNotMatch(phone,/setTodayFeedbackItemsRaw\s*\(nextList\)/);
  assert.match(phone,/window\.rememberOlliPhoneQuickNoteVerifiedEdit\(updatedItem\)/);
 });
