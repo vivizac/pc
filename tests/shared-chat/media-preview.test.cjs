@@ -91,8 +91,8 @@ test('Work Hub uses only current-room authorized shared attachments and never an
 });
 test('both Work Hubs merge shared room files without persisting them in academy private cache',()=>{
   const pc=load('apps/pc/pc-team-talk.js'),mobile=load('apps/mobile/olli-talk-beta.js');
-  assert.ok(pc.includes('archiveUnified?.({limit:1000})'));
-  assert.ok(mobile.includes('archiveUnified?.({limit:1000})'));
+  assert.ok(pc.includes('OlliSharedTeamChat.archiveUnified({limit:1000})'));
+  assert.ok(mobile.includes('OlliSharedTeamChat.archiveUnified({limit:1000})'));
   assert.ok(pc.includes('openSharedOriginalInBrowser(attachment)'));
   assert.ok(mobile.includes('mountUnifiedThumbnail?.(attachment,button)'));
   assert.ok(mobile.includes('writeOlliTalkArchiveCache(context,payload)'));
@@ -161,4 +161,69 @@ test('a stalled media request times out, releases controls, and permits a clean 
   stall='none';
   const blob=await global.OlliSharedTeamChat.fetchUnifiedBlob(attachment,{timeoutMs:100});
   assert.equal(blob.size,3,'failed downloads do not poison the next attempt');
+});
+
+test('a truncated unified image must fail even when HTTP status is 200',async()=>{
+  const academy='00000000-0000-0000-0000-000000000001';
+  const room='00000000-0000-0000-0000-000000000002';
+  const store={olli_account_session_token_v1:'session',olli_current_academy_id:academy,olli_current_member_id:'member'};
+  const localStorage={getItem:key=>store[key]||null};
+  const doc={readyState:'loading',addEventListener(){}};
+  const global={SUPABASE_URL:'https://test.supabase.co',SUPABASE_KEY:'anon',
+    OlliStorageCore:{AcademyContext:{getCurrent:()=>({academyId:academy,memberId:'member',contextVersion:1})}},
+    document:doc,localStorage,addEventListener(){}};
+  async function mockFetch(url){
+    if(String(url).endsWith('olli_shared_chat_status'))
+      return new Response(JSON.stringify({ok:true,enabled:true,room:{id:room}}));
+    if(String(url).startsWith('/api/shared-team-chat-file'))
+      return new Response(Uint8Array.from([1,2,3]));
+    throw new Error('Unexpected request');
+  }
+  vm.runInNewContext(shared,{window:global,document:doc,localStorage,fetch:mockFetch,
+    Blob,Response,URL,AbortController,DOMException,setTimeout,clearTimeout});
+  await assert.rejects(()=>global.OlliSharedTeamChat.fetchUnifiedBlob({
+    id:'00000000-0000-0000-0000-000000000004',mime_type:'image/jpeg',file_size:4
+  }),/파일 전송 크기가 일치하지 않습니다/);
+});
+test('concurrent verified status reads share one request; failed status is never joined:false',async()=>{
+  const academy='00000000-0000-0000-0000-000000000001';
+  const room='00000000-0000-0000-0000-000000000002';
+  const store={olli_account_session_token_v1:'session',olli_current_academy_id:academy,olli_current_member_id:'member'};
+  const localStorage={getItem:key=>store[key]||null};
+  const doc={readyState:'loading',addEventListener(){}};
+  const global={SUPABASE_URL:'https://test.supabase.co',SUPABASE_KEY:'anon',
+    OlliStorageCore:{AcademyContext:{getCurrent:()=>({academyId:academy,memberId:'member',contextVersion:1})}},
+    document:doc,localStorage,addEventListener(){}};
+  let statusCalls=0,fail=false;
+  async function mockFetch(url){
+    if(String(url).endsWith('olli_shared_chat_status')){
+      statusCalls++;
+      if(fail)throw new Error('status unavailable');
+      return new Response(JSON.stringify({ok:true,enabled:true,room:{id:room,participation_id:'part'}}));
+    }
+    if(String(url).endsWith('olli_shared_chat_list'))
+      return new Response(JSON.stringify({ok:true,room_id:room,participation_id:'part',messages:[]}));
+    if(String(url).endsWith('olli_shared_chat_members'))
+      return new Response(JSON.stringify({ok:true,members:[]}));
+    throw new Error('Unexpected URL '+url);
+  }
+  vm.runInNewContext(shared,{window:global,document:doc,localStorage,fetch:mockFetch,
+    Blob,Response,URL,setTimeout,clearTimeout});
+  const [messages,members]=await Promise.all([
+    global.OlliSharedTeamChat.unifiedExtension({messages:true}),
+    global.OlliSharedTeamChat.unifiedExtension({members:true})
+  ]);
+  assert.equal(statusCalls,1,'one concurrent authorized status lookup');
+  assert.equal(messages.joined,true);assert.equal(members.joined,true);
+  fail=true;
+  await assert.rejects(()=>global.OlliSharedTeamChat.unifiedExtension({messages:true}),/status unavailable/);
+});
+test('thumbnail original requests are deduplicated in-memory and cleared on context change',()=>{
+  assert.match(shared,/const unifiedThumbnailLoads=new Map\(\)/);
+  assert.match(shared,/const cached=unifiedThumbnailLoads\.get\(id\)/);
+  assert.match(shared,/const request=fetchUnifiedBlob\(attachment\)/);
+  assert.match(shared,/while\(unifiedThumbnailLoads\.size>4\)/);
+  assert.match(shared,/if\(unifiedThumbnailScope!==scope\)/);
+  assert.match(shared,/const blob=await fetchUnifiedThumbnailBlob\(attachment\)/);
+  assert.doesNotMatch(shared,/localStorage\.setItem\([^)]*unifiedThumbnail/);
 });
