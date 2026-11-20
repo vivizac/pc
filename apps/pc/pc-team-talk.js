@@ -473,7 +473,14 @@
 
   async function downloadAttachment(attachment) {
     try {
-      const url = await getAttachmentBlobUrl(attachment);
+      let url;
+      try {
+        url = await getAttachmentBlobUrl(attachment);
+      } catch (error) {
+        const message = clean(error?.message).toLowerCase();
+        if(error?.name!=='TypeError' && message!=='load failed' && message!=='failed to fetch') throw error;
+        url = await getAttachmentBlobUrl(attachment);
+      }
       const anchor = document.createElement('a');
       anchor.href = url;
       anchor.download = clean(attachment?.file_name) || 'file';
