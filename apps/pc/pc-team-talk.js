@@ -5022,6 +5022,14 @@
     global.OlliPcCore?.hideMainScreensExcept?.('olliPcTeamTalkScreen');
     const screen = byId('olliPcTeamTalkScreen');
     if (!screen) return false;
+    // A previous visit may have displayed a confirmed academy-only room.
+    // Never show that old DOM again while this visit's unified status is unknown.
+    state.messageLoadSequence++;
+    state.messageViewContextKey='';
+    state.messages=[];
+    byId('olliPcTeamTalkMessages')?.replaceChildren(
+      emptyState('통합 대화를 확인하는 중이에요','잠시만 기다려 주세요.')
+    );
     screen.style.display = 'flex';
     screen.setAttribute('aria-hidden', 'false');
     bindEvents();
