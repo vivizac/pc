@@ -15,7 +15,7 @@ test('one visible Team Chat: no second room entry or independent shared dialog',
   for(const html of [pcHtml,mobileHtml]){
     assert.doesNotMatch(html,/data-shared-chat-entry/);
     assert.match(html,/Team Chat/);
-    assert.match(html,/olli-shared-team-chat\.js\?v=20261118-download-timeout-1/);
+    assert.match(html,/olli-shared-team-chat\.js\?v=20261120-unified-stability-1/);
   }
   assert.doesNotMatch(service,/createDialog\('공동 팀챗'\)/);
   assert.match(service,/async function open\(\)\{[\s\S]*OlliPcTeamTalk\?\.open/);
@@ -31,10 +31,10 @@ test('settings management lives within both native settings pages',()=>{
   assert.match(service,/p_expected_revision/);
 });
 test('shared normal messages join existing renderer, Olli AI stays on original academy RPC',()=>{
-  assert.match(pc,/unifiedExtension\?\.\(\{messages:true\}\)/);
-  assert.match(mobile,/unifiedExtension\?\.\(\{messages:true\}\)/);
-  assert.match(pc,/if \(!olliRequested && global\.OlliSharedTeamChat\?\.sendUnified\)/);
-  assert.match(mobile,/if\(!olliRequested && !pendingPrivateWorkflow && window\.OlliSharedTeamChat\?\.sendUnified\)/);
+  assert.match(pc,/OlliSharedTeamChat\.unifiedExtension\(\{messages:true\}\)/);
+  assert.match(mobile,/OlliSharedTeamChat\.unifiedExtension\(\{messages:true\}\)/);
+  assert.match(pc,/if\(!olliRequested\)\{[\s\S]*throw new Error\('통합 팀챗 상태를 확인할 수 없어 메시지를 전송하지 않았습니다.'\)/);
+  assert.match(mobile,/if\(!olliRequested && !pendingPrivateWorkflow\)\{[\s\S]*throw new Error\('통합 팀챗 상태를 확인할 수 없어 전송하지 않았습니다.'\)/);
   assert.match(mobile,/pendingPrivateWorkflow=hasOlliTalkPendingCommand\(\)/);
   assert.match(pc,/rpc\('olli_team_chat_send'/);
   assert.match(mobile,/callOlliTalkRpc\('olli_team_chat_send'/);
@@ -68,4 +68,17 @@ test('shared attachments and branch labels use current membership',()=>{
   assert.match(service,/function mountSettings\(root\)/);
   assert.match(service,/async function uploadUnified/);
   assert.match(service,/async function downloadUnified/);
+});
+
+test('verified unified room survives a temporary status failure on PC and phone',()=>{
+  assert.match(pc,/const hasVerifiedView=state\.messageViewContextKey===contextKey/);
+  assert.match(pc,/const extension=await global\.OlliSharedTeamChat\.unifiedExtension\(\{messages:true\}\)/);
+  assert.match(pc,/if\(body&&!hasVerifiedView\)body\.replaceChildren/);
+  assert.match(mobile,/const renderedLocal = !!olliTalkCurrentViewPayload/);
+  assert.match(mobile,/const extension=await window\.OlliSharedTeamChat\.unifiedExtension\(\{messages:true\}\)/);
+  assert.match(mobile,/if\(!renderedLocal&&chatArea\)/);
+  assert.doesNotMatch(mobile,/renderOlliTalkServerMessages\(basePayload/);
+  assert.match(pc,/const shared=await global\.OlliSharedTeamChat\.archiveUnified\(\{limit:1000\}\)/);
+  assert.match(mobile,/const joined=await window\.OlliSharedTeamChat\.archiveUnified\(\{limit:1000\}\)/);
+  assert.match(service,/const sharedStatusInflight=new Map\(\)/);
 });
