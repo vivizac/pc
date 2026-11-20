@@ -21,6 +21,9 @@
   // In-memory display snapshot only; shared messages never enter academy localStorage.
   let olliTalkCurrentViewPayload = null;
   let olliTalkSharedViewSignature = '';
+  // Guard the entire first paint, including older-history, gallery and realtime
+  // render paths. Only a verified unified status can release this gate.
+  let olliTalkInitialCombinedPaintPending = false;
   let olliTalkHistoryLoading = false;
   let olliTalkHistoryExhausted = false;
   let olliTalkHistoryScrollRaf = 0;
@@ -7646,6 +7649,9 @@
   function renderOlliTalkServerMessages(payload,options={}){
     const chatArea=document.getElementById('olliTalkBetaChatArea');
     if(!chatArea) return;
+    // Other render callers may race with the opening status request. A private
+    // academy cache is never a valid first paint for a unified member.
+    if(olliTalkInitialCombinedPaintPending)return;
     disconnectOlliTalkImageViewportObserver('chat');
 
     const scrollMode=String(options.scrollMode || 'bottom');
@@ -8457,12 +8463,13 @@
       const activeRenderLimit=Math.max(0,Math.floor(Math.max(Number(options.messageLimit)||0,Number(olliTalkRenderedMessageLimit)||0)));
       // A render:false prefetch or an academy-only redraw must never convince
       // the phone that unchanged messages are already visible.
-      const renderChanged=sharedChanged||!basePayload
+      const renderChanged=sharedChanged||!basePayload||!olliTalkCurrentViewPayload
         ||!areOlliTalkMessagePayloadsRenderEquivalent(basePayload,mergedPayload)
         ||(options.render!==false&&!isOlliTalkMessageListInSync(presentation,activeRenderLimit));
       olliTalkHistoryExhausted=pageMessages.length<100;
       writeOlliTalkMessageCache(context,mergedPayload);
       if(options.render!==false&&renderChanged){
+        olliTalkInitialCombinedPaintPending=false;
         renderOlliTalkServerMessages(presentation,{
           scrollMode:options.scrollMode||'bottom',
           ...(activeRenderLimit>0?{messageLimit:activeRenderLimit}:{})
@@ -8471,6 +8478,7 @@
       }else{
         olliTalkCurrentPayload=mergedPayload;
         if(options.render!==false){
+          olliTalkInitialCombinedPaintPending=false;
           olliTalkSharedViewSignature=nextSharedSignature;
           if(changed)syncOlliTalkRenderedUnreadCounts(presentation);
         }
@@ -8919,6 +8927,7 @@
     olliTalkCurrentViewPayload=null;
     olliTalkSharedViewSignature='';
     olliTalkRenderedMessageLimit=OLLI_TALK_INITIAL_RENDER_LIMIT;
+    olliTalkInitialCombinedPaintPending=true;
 
     // The academy cache remains intact, but must not become a visible chat
     // before an authorized unified-room snapshot has been merged with it.

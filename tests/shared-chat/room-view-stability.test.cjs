@@ -72,7 +72,7 @@ async function runPhone({verified=false,joined=true,fail=false}={}){
   };
   const init='let olliTalkLoadSequence=0;let olliTalkCurrentPayload=initialView?.__academyLocal||null;'
     +"let olliTalkCurrentViewPayload=initialView;let olliTalkSharedViewSignature=initialView?'room:part:old':'';"
-    +'let olliTalkRenderedMessageLimit=100;let olliTalkHistoryExhausted=false;';
+    +'let olliTalkRenderedMessageLimit=100;let olliTalkHistoryExhausted=false;let olliTalkInitialCombinedPaintPending=false;';
   const fn=new Function(...Object.keys(d),'initialView',init+phoneLoader+';return loadOlliTalkBetaMessages')(
     ...Object.values(d),initialView
   );

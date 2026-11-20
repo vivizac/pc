@@ -8,9 +8,19 @@ const clean=value=>String(value??'').trim();
 const node=(tag,text,cls)=>{const el=document.createElement(tag);if(text!=null)el.textContent=text;if(cls)el.className=cls;return el;};
 function context(){
   const ctx=global.OlliStorageCore?.AcademyContext?.getCurrent?.()||{};
-  return {academyId:clean(ctx.academyId||localStorage.getItem('olli_current_academy_id')),
-    sessionToken:clean(localStorage.getItem('olli_account_session_token_v1')),
-    memberId:clean(ctx.memberId||localStorage.getItem('olli_current_member_id')),version:ctx.contextVersion||0};
+  // The phone's account-session helper can have a valid recovered token before
+  // it is mirrored into localStorage. Use the same token as its chat RPC layer.
+  // A missing token is never proof of unified-room non-membership.
+  let sessionToken='';
+  try {
+    if(typeof global.getOlliPhoneWritableAccountSessionToken==='function'){
+      sessionToken=clean(global.getOlliPhoneWritableAccountSessionToken());
+    }
+  }catch(_){}
+  if(!sessionToken)sessionToken=clean(localStorage.getItem('olli_account_session_token_v1'));
+  return {academyId:clean(ctx.academyId||ctx.academy_id||localStorage.getItem('olli_current_academy_id')),
+    sessionToken,
+    memberId:clean(ctx.memberId||ctx.member_id||localStorage.getItem('olli_current_member_id')),version:ctx.contextVersion||0};
 }
 const key=ctx=>[ctx.academyId,ctx.memberId,ctx.sessionToken,ctx.version].join(':');
 const params=(ctx,room)=>({p_session_token:ctx.sessionToken,p_academy_id:ctx.academyId,...(room?{p_room_id:room.id}:{})});
@@ -430,7 +440,8 @@ async function archiveUnified(options={}){
 }
 async function unifiedExtension(options={}){
   const ctx=context();
-  if(!ctx.academyId||!ctx.sessionToken)return {joined:false,messages:[],members:[]};
+  if(!ctx.academyId||!ctx.sessionToken)
+    throw new Error('통합 팀챗 세션 연결을 확인하는 중입니다. 다시 확인해 주세요.');
   const status=await readUnifiedStatus(ctx);
   if(!status.enabled||!status.room)return {joined:false,messages:[],members:[],status};
   const room=status.room,epoch=key(ctx);
