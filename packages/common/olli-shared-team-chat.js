@@ -36,11 +36,19 @@ async function rpc(name,body,ctx,options={}){
 // messages are persisted, and every response still validates its context.
 const sharedStatusInflight=new Map();
 function readUnifiedStatus(ctx,options={}){
-  if(options.signal)return rpc('status',params(ctx),ctx,options);
+  const read=()=>rpc('status', params(ctx), ctx, options).then(status=>{
+    // A confirmed leave/disable must invalidate in-memory thumbnails immediately.
+    if(!status.enabled||!status.room){
+      unifiedThumbnailLoads.clear();
+      unifiedThumbnailScope='';
+    }
+    return status;
+  });
+  if(options.signal)return read(); // Aborted reads must not share a signal.
   const scope=key(ctx);
   const existing=sharedStatusInflight.get(scope);
   if(existing)return existing;
-  const request=rpc('status', params(ctx), ctx);
+  const request=read();
   sharedStatusInflight.set(scope,request);
   request.finally(()=>{if(sharedStatusInflight.get(scope)===request)sharedStatusInflight.delete(scope);}).catch(()=>{});
   return request;
@@ -351,6 +359,11 @@ function start(){
   
   global.OlliStorageCore?.AcademyContext?.registerRuntimeCleaner?.(reset);
   global.addEventListener('olli:account-session-invalidated',reset);
+  global.addEventListener('olli:shared-team-chat-changed',()=>{
+    sharedStatusInflight.clear();
+    unifiedThumbnailLoads.clear();
+    unifiedThumbnailScope='';
+  });
   global.addEventListener('storage',event=>{if(!event.key||['olli_account_session_token_v1','olli_current_academy_id','olli_current_member_id'].includes(event.key))reset();});
   global.addEventListener('online',()=>{refreshEntry();refresh();});global.addEventListener('focus',()=>{refreshEntry();refresh();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){state.messages=[];dialog?.querySelector('[data-shared-messages]')?.replaceChildren();state.ready=false;}else{refreshEntry();refresh();}});
