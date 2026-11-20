@@ -58,9 +58,9 @@ jobs:
           node --test tests/quicknote-edit-save-error-telemetry.test.cjs tests/pc-kinder-feedback-edit-save.test.cjs tests/quicknote-initial-save-regression.test.cjs tests/mobile-feedback-local-24h-retention.test.cjs tests/observation-feedback-student-binding.test.cjs
       - name: Ensure no stale script assets
         run: |
-          grep -q 'olli-feedback-runtime.js?v=20261120-phone-local-24h-1' apps/mobile/index.html
+          grep -q 'olli-feedback-runtime.js?v=20261120-protect-unsaved-retry-1' apps/mobile/index.html
           grep -q 'olli-feedback-runtime.js?v=20261119-quicknote-save-1' apps/pc/index.html
-          grep -q 'kinder-feedback.js?v=20261120-phone-local-24h-1' apps/mobile/index.html
+          grep -q 'kinder-feedback.js?v=20261120-protect-unsaved-retry-1' apps/mobile/index.html
           grep -q 'pc-kinder-feedback.js?v=20261118-quicknote-edit-error-1' apps/pc/index.html
           grep -q 'olli-student-core.js?v=20261119-quicknote-save-1' apps/mobile/index.html
           grep -q 'olli-data-feedback.js?v=20261119-quicknote-save-1' apps/pc/index.html
