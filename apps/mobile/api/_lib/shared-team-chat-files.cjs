@@ -20,7 +20,13 @@ function makeHandler({fetchImpl=globalThis.fetch,base=process.env.OLLI_SHARED_CH
     // Never log credentials, object paths or file names. Correlate only with
     // the platform request ID and transfer sizes.
     const requestId=clean(req.headers['x-vercel-id']||req.headers['x-request-id']).slice(0,120);
-    let stage='request',sentBytes=0,expectedBytes=0;
+    let stage='request',sentBytes=0,expectedBytes=0,completed=false,failed=false;
+    res.on?.('close',()=>{
+      if(req.method==='GET'&&stage==='stream'&&!completed&&!failed)
+        console.error('teamchat.shared_file.client_closed',{
+          requestId,stage,sentBytes,expectedBytes
+        });
+    });
     const headers=credentials(serverKey);
     async function rpc(name,params){
       const response=await fetchImpl(`${BASE}/rest/v1/rpc/olli_shared_chat_${name}`,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify(params),redirect:'error'});
@@ -72,11 +78,13 @@ function makeHandler({fetchImpl=globalThis.fetch,base=process.env.OLLI_SHARED_CH
             }
           }finally{reader.releaseLock();}
           if(expectedBytes>0&&sentBytes!==expectedBytes)throw new Error('Incomplete file stream');
+          completed=true;
           return res.end();
         }
         const bytes=Buffer.from(await upstream.arrayBuffer());
         sentBytes=bytes.length;
         if(expectedBytes>0&&sentBytes!==expectedBytes)throw new Error('Incomplete file stream');
+        completed=true;
         return res.end(bytes);
       }
       const body=req.body;
@@ -109,6 +117,7 @@ function makeHandler({fetchImpl=globalThis.fetch,base=process.env.OLLI_SHARED_CH
       }
       return res.status(400).json({error:'알 수 없는 요청입니다.'});
     }catch(error){
+      failed=true;
       const authorizationStage=stage==='file_access'||stage==='file_reauthorize';
       const failure=authorizationStage?'ACCESS_DENIED'
         :stage==='stream'?'INCOMPLETE_TRANSFER'
