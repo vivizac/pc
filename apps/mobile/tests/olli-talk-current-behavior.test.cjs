@@ -74,6 +74,14 @@ async function openChat(t, messages = [], expectedDialogs = []) {
       calls: [], pushes: [], archiveActions: [], watchers: [],
       messages, older: [], summary: { unread_count: 3, mention_unread_count: 2, material_unread_count: 1 }
     };
+    // This fixture has no unified room: supply a server-confirmed non-member
+    // response, never simulate a missing unified module.
+    window.OlliSharedTeamChat = {
+      unifiedExtension: async () => ({ joined: false, messages: [], members: [] }),
+      archiveUnified: async () => ({ joined: false, messages: [] }),
+      sendUnified: async () => ({ joined: false }),
+      markUnifiedRead: async () => true
+    };
     window.OlliTalkPush = { dispatch: id => fixture.pushes.push(id) };
     window.OlliRealtime = {
       watchDomain: (domain, callback) => { fixture.watchers.push({ domain, callback }); return {}; }
