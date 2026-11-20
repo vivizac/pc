@@ -1673,6 +1673,31 @@ function resumePendingCorrectedQuickNoteSaves() {
 }
 window.addEventListener('online', resumePendingCorrectedQuickNoteSaves);
 
+// Automatically enforce local Quick Note retention while the phone app is open.
+// Never touch observation memo storage or data held on Supabase.
+function cleanupKinderChatFeedbackPhoneLocalRetention() {
+  try {
+    if (typeof window.cleanupOlliPhoneFeedbackJobQueue === 'function')
+      window.cleanupOlliPhoneFeedbackJobQueue();
+    readKinderChatFeedbackLiveSession(); // Cleans the local session by each item's creation date.
+    const removedFromMemory = pruneExpiredKinderChatFeedbackLocalItems();
+    if (removedFromMemory) {
+      // Re-save a trimmed session; never write expired items back during later navigation.
+      persistKinderChatFeedbackLiveSessionNow();
+      try { updateKinderChatFeedbackBadge(); } catch(_) {}
+    }
+  } catch (error) {
+    console.warn('퀵노트 24시간 로컬 정리 실패:',error?.name || 'StorageError');
+  }
+}
+window.cleanupKinderChatFeedbackPhoneLocalRetention = cleanupKinderChatFeedbackPhoneLocalRetention;
+window.addEventListener('pageshow',cleanupKinderChatFeedbackPhoneLocalRetention);
+document.addEventListener('visibilitychange',() => {
+  if (document.visibilityState === 'visible') cleanupKinderChatFeedbackPhoneLocalRetention();
+});
+window.setInterval(cleanupKinderChatFeedbackPhoneLocalRetention,15 * 60 * 1000);
+window.setTimeout(cleanupKinderChatFeedbackPhoneLocalRetention,0);
+
 const kcfLiveSaveInFlight = new Map();
 window.getKinderChatFeedbackLiveSavePromise = id => kcfLiveSaveInFlight.get(String(id || '')) || null;
 function saveKinderChatFeedbackLive(id, selectedStudentId = '') {
