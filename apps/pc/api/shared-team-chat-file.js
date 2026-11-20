@@ -5,7 +5,13 @@ export default async function handler(req,res){
   const url=new URL(UPSTREAM);
   if(req.method==='GET')url.searchParams.set('attachmentId',String(req.query?.attachmentId||''));
   const requestId=String(req.headers['x-vercel-id']||req.headers['x-request-id']||'').slice(0,120);
-  let stage='fetch',expectedBytes=0,sentBytes=0;
+  let stage='fetch',expectedBytes=0,sentBytes=0,completed=false,failed=false;
+  res.on?.('close',()=>{
+    if(req.method==='GET'&&stage==='stream'&&!completed&&!failed)
+      console.error('teamchat.pc_file_relay.client_closed',{
+        requestId,stage,sentBytes,expectedBytes
+      });
+  });
   try{
     const upstream=await fetch(url,{method:req.method,redirect:'error',headers:{
       'X-Olli-Session-Token':String(req.headers['x-olli-session-token']||''),
@@ -31,13 +37,16 @@ export default async function handler(req,res){
         }
       }finally{reader.releaseLock();}
       if(expectedBytes>0&&sentBytes!==expectedBytes)throw new Error('Incomplete file stream');
+      completed=true;
       return res.end();
     }
     const bytes=Buffer.from(await upstream.arrayBuffer());
     sentBytes=bytes.length;
     if(expectedBytes>0&&sentBytes!==expectedBytes)throw new Error('Incomplete file stream');
+    completed=true;
     return res.end(bytes);
   }catch(error){
+    failed=true;
     console.error('teamchat.pc_file_relay.failure',{
       requestId,stage,sentBytes,expectedBytes,headersSent:!!res.headersSent,
       code:stage==='stream'?'INCOMPLETE_TRANSFER':'UPSTREAM_UNAVAILABLE'
