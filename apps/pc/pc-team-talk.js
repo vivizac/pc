@@ -4930,8 +4930,10 @@
         composerFile.value = '';
         if (file) {
           try {
-            const sharedUpload=await global.OlliSharedTeamChat?.uploadUnified?.(file);
-            if (sharedUpload?.joined) await loadMessages({showLoading:false,followBottom:true});
+            if(typeof global.OlliSharedTeamChat?.uploadUnified!=='function')
+              throw new Error('통합 팀챗 상태를 확인할 수 없어 파일을 올리지 않았습니다.');
+            const sharedUpload=await global.OlliSharedTeamChat.uploadUnified(file);
+            if(sharedUpload.joined)await loadMessages({showLoading:false,followBottom:true});
             else await uploadFile(file);
           } catch(error) { alert(error.message || '공동 첨부파일을 올리지 못했습니다.'); }
         }
