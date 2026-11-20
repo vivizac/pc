@@ -14,6 +14,8 @@
   let olliTalkChatGestureSettleTimer = null;
   let olliTalkArchiveTab = 'materials';
   let olliTalkArchivePayload = null;
+  // In-memory authorization scope only; never persist shared attachments in academy cache.
+  let olliTalkArchiveViewScope = '';
   let olliTalkArchiveLoadSequence = 0;
   let olliTalkCurrentPayload = null;
   // In-memory display snapshot only; shared messages never enter academy localStorage.
@@ -5603,7 +5605,14 @@
   function setOlliTalkArchiveTab(tab){
     if(!['media','files','materials'].includes(tab))return;
     olliTalkArchiveTab=tab;
-    renderOlliTalkArchive();
+    const ctx=getOlliTalkBetaContext();
+    const scope=[ctx.academyId,ctx.memberId,ctx.sessionToken].join(':');
+    const verified=olliTalkArchiveViewScope===scope&&!!olliTalkArchivePayload;
+    if(tab==='materials'||verified)renderOlliTalkArchive();
+    else{
+      const body=document.getElementById('olliTalkArchiveBody');
+      if(body)body.replaceChildren(createOlliTalkArchiveEmpty('통합 자료실을 확인하는 중이에요.'));
+    }
     if(tab!=='materials')loadOlliTalkArchive({renderLocal:false}).catch(()=>{});
     const archive=document.getElementById('olliTalkArchiveScreen');
     if(tab==='materials'&&archive&&archive.style.display!=='none'){
@@ -5612,15 +5621,19 @@
   }
   async function loadOlliTalkArchive(options={}){
     const sequence=++olliTalkArchiveLoadSequence,context=getOlliTalkBetaContext(),body=document.getElementById('olliTalkArchiveBody'),meta=document.getElementById('olliTalkArchiveMeta');
+    const scope=[context.academyId,context.memberId,context.sessionToken].join(':');
+    const stillCurrent=()=>{
+      const ctx=getOlliTalkBetaContext();
+      return [ctx.academyId,ctx.memberId,ctx.sessionToken].join(':')===scope;
+    };
     const cachedPayload=readOlliTalkArchiveCache(context);
-    const renderedLocal=!!cachedPayload;
-    if(cachedPayload&&options.renderLocal!==false){
-      olliTalkArchivePayload=cachedPayload;
-      renderOlliTalkArchive();
-    }else if(!cachedPayload&&options.renderLocal!==false){
+    const verified=olliTalkArchiveViewScope===scope&&!!olliTalkArchivePayload;
+    if(!verified)olliTalkArchivePayload=null;
+    if(options.renderLocal!==false){
       if(olliTalkArchiveTab==='materials')renderOlliTalkArchive();
+      else if(verified)renderOlliTalkArchive();
       else{
-        if(body)body.replaceChildren(createOlliTalkArchiveEmpty('자료를 불러오는 중이에요.'));
+        if(body)body.replaceChildren(createOlliTalkArchiveEmpty('통합 자료실을 확인하는 중이에요.'));
         if(meta)meta.textContent='';
       }
     }
@@ -5633,29 +5646,34 @@
           loadOlliTalkArchive({...options,renderLocal:false,contextRetry:retryCount+1}).catch(()=>{});
         },220);
       }
-      return renderedLocal||olliTalkArchiveTab==='materials';
+      if(retryCount>=10&&!verified&&olliTalkArchiveTab!=='materials'&&body)
+        body.replaceChildren(createOlliTalkArchiveEmpty('통합 자료실 연결을 확인하지 못했어요.'));
+      return verified||olliTalkArchiveTab==='materials';
     }
     try{
       const payload=await callOlliTalkRpc('olli_team_chat_archive',{p_session_token:context.sessionToken,p_academy_id:context.academyId,p_limit:1000});
-      if(sequence!==olliTalkArchiveLoadSequence)return false;
+      if(sequence!==olliTalkArchiveLoadSequence||!stillCurrent())return false;
       if(!payload?.ok)throw new Error(payload?.message||'자료실을 불러오지 못했습니다.');
-      let joined={joined:false,messages:[]};
-      try{joined=await window.OlliSharedTeamChat?.archiveUnified?.({limit:1000})||joined;}
-      catch(error){console.warn('Work Hub 통합 자료 조회 실패:',error?.message||error);}
-      if(sequence!==olliTalkArchiveLoadSequence)return false;
+      if(typeof window.OlliSharedTeamChat?.archiveUnified!=='function')
+        throw new Error('통합 자료실 모듈을 불러오지 못했습니다.');
+      const joined=await window.OlliSharedTeamChat.archiveUnified({limit:1000});
+      if(sequence!==olliTalkArchiveLoadSequence||!stillCurrent())return false;
       const combined=joined.joined
         ? {...payload,messages:[...(payload.messages||[]),...joined.messages]
           .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))}
         : payload;
       const changed=!areOlliTalkArchivePayloadsEquivalent(olliTalkArchivePayload||cachedPayload,combined);
       olliTalkArchivePayload=combined;
+      olliTalkArchiveViewScope=scope;
       // Shared room data never becomes academy-local persisted cache.
       writeOlliTalkArchiveCache(context,payload);
-      if(olliTalkArchiveTab!=='materials'&&changed)renderOlliTalkArchive();
+      if(olliTalkArchiveTab!=='materials'&&(!verified||changed))renderOlliTalkArchive();
       return true;
     }catch(error){
-      if(!renderedLocal&&olliTalkArchiveTab!=='materials'&&body)body.replaceChildren(createOlliTalkArchiveEmpty('자료실을 불러오지 못했어요.'));
-      console.warn('팀톡 자료실 조회 실패:',error);
+      if(sequence!==olliTalkArchiveLoadSequence||!stillCurrent())return false;
+      if(!verified&&olliTalkArchiveTab!=='materials'&&body)
+        body.replaceChildren(createOlliTalkArchiveEmpty('통합 자료실 연결을 확인하지 못했어요.'));
+      console.warn('팀톡 통합 자료실 조회 실패:',error?.message||error);
       return false;
     }
   }
@@ -5667,18 +5685,17 @@
     const requestedTab=String(options?.tab||'').trim();
     if(['media','files','materials'].includes(requestedTab))olliTalkArchiveTab=requestedTab;
 
-    // 현재 탭의 로컬 내용을 먼저 완성한 뒤 Work Hub를 공개합니다.
+    // Do not reveal an academy-only archive before unified membership is verified.
     const context=getOlliTalkBetaContext();
+    const scope=[context.academyId,context.memberId,context.sessionToken].join(':');
     const body=document.getElementById('olliTalkArchiveBody'),meta=document.getElementById('olliTalkArchiveMeta');
-    const cachedArchive=readOlliTalkArchiveCache(context);
-    olliTalkArchivePayload=cachedArchive||null;
-
+    if(olliTalkArchiveViewScope!==scope)olliTalkArchivePayload=null;
     if(olliTalkArchiveTab==='materials'){
       renderOlliTalkArchive({localOnly:true,deferHydration:true});
-    }else if(cachedArchive){
-      renderOlliTalkArchive({localOnly:true,deferHydration:true});
+    }else if(olliTalkArchivePayload){
+      renderOlliTalkArchive({deferHydration:true});
     }else{
-      if(body)body.replaceChildren(createOlliTalkArchiveEmpty('자료를 불러오는 중이에요.'));
+      if(body)body.replaceChildren(createOlliTalkArchiveEmpty('통합 자료실을 확인하는 중이에요.'));
       if(meta)meta.textContent='';
     }
 
