@@ -31,27 +31,29 @@ test('Team Chat waits for a combined snapshot before its first message paint', (
   assert.doesNotMatch(body, /renderOlliTalkServerMessages\(openCachedPayload/, 'never paint academy-only cache on entry');
 });
 
-test('initial local render is bounded to 100 messages while the full cache stays available for history', () => {
+test('combined first render is bounded and the full academy cache remains for history', () => {
   assert.match(talk, /const OLLI_TALK_INITIAL_RENDER_LIMIT = 100;/);
-  assert.match(talk, /renderOlliTalkServerMessages\(basePayload,[\s\S]*?messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT/, 'cache fallback stays bounded after load failure');
-  assert.match(talk, /function renderOlliTalkCachedMessages[\s\S]*?messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT/);
+  assert.match(talk, /const activeRenderLimit=Math\.max/);
+  assert.match(talk, /messageLimit:activeRenderLimit/);
+  assert.doesNotMatch(talk, /renderOlliTalkServerMessages\(basePayload/);
   assert.match(talk, /const current=olliTalkCurrentPayload\|\|readOlliTalkMessageCache\(context\)/);
   assert.match(talk, /nextLimit=Math\.min\(messages\.length,renderedLimit\+OLLI_TALK_LOCAL_HISTORY_STEP\)/);
 });
 
 
-test('initial combined paint only falls back to academy cache on load failure', () => {
+test('unknown unified status never paints an academy-only fallback', () => {
   const loadStart = talk.indexOf('async function loadOlliTalkBetaMessages');
   const loadEnd = talk.indexOf('async function loadOlderOlliTalkMessages',loadStart);
   const body = talk.slice(loadStart,loadEnd);
   const privateFetch = body.indexOf("callOlliTalkRpc('olli_team_chat_list'");
-  const sharedFetch = body.indexOf('unifiedExtension?.({messages:true})',privateFetch);
-  const presentation = body.indexOf('const presentation=extension.joined',sharedFetch);
-  const paint = body.indexOf('renderOlliTalkServerMessages(presentation',presentation);
-  assert.ok(privateFetch >= 0 && sharedFetch > privateFetch && presentation > sharedFetch && paint > presentation);
-  assert.match(body, /options\.initialCombinedPaint===true && isOlliTalkBetaVisible\(\) && basePayload/);
-  assert.match(body, /renderOlliTalkServerMessages\(basePayload/);
-  assert.match(body, /writeOlliTalkMessageCache\(context,mergedPayload\)/, 'shared messages must not enter private cache');
+  const sharedFetch = body.indexOf('OlliSharedTeamChat.unifiedExtension({messages:true})',privateFetch);
+  const paint = body.indexOf('renderOlliTalkServerMessages(presentation',sharedFetch);
+  assert.ok(privateFetch>=0&&sharedFetch>privateFetch&&paint>sharedFetch);
+  assert.match(body,/const renderedLocal = !!olliTalkCurrentViewPayload/);
+  assert.match(body,/if\(!renderedLocal&&chatArea\)/);
+  assert.match(body,/if\(sequence!==olliTalkLoadSequence\|\|!sameSession\(\)\)return false/);
+  assert.doesNotMatch(body,/renderOlliTalkServerMessages\(basePayload/);
+  assert.match(body,/writeOlliTalkMessageCache\(context,mergedPayload\)/);
 });
 
 test('image and link hydration are deferred past the first local paint', () => {
