@@ -233,7 +233,13 @@ async function fileRequest(ctx,room,body,attachmentId,options={}){
   const res=await fetch('/api/shared-team-chat-file'+(attachmentId?'?attachmentId='+encodeURIComponent(attachmentId):''),{
     method:body?'POST':'GET',cache:'no-store',signal:options.signal,headers:{'X-Olli-Session-Token':ctx.sessionToken,'X-Olli-Academy-Id':ctx.academyId,'X-Olli-Room-Id':room.id,
       ...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})
-  });assertCurrent(ctx);if(!res.ok)throw new Error('첨부파일 권한 또는 연결을 확인해 주세요.');return res;
+  });assertCurrent(ctx);
+  if(!res.ok){
+    const result=await res.json().catch(()=>null);
+    // Only show the broker's sanitized errors; never expose the private object URL.
+    throw new Error(clean(result?.error)||'통합 첨부파일 서버에서 요청을 처리하지 못했습니다.');
+  }
+  return res;
 }
 async function uploadFile(event){
   const file=event.target.files?.[0];if(!file||state.busy||!state.ready)return;
