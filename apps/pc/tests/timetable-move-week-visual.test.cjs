@@ -59,10 +59,12 @@ test('ghost is separate from attendance, drag and capacity; destination has blue
 test('source cards show student name and blue 수업이동 guidance without changing live-card behavior', () => {
   const sourceRegular = js.slice(js.indexOf('const movedSourceHtml = movedSources.map('), js.indexOf('const waitHtml = waits.map('));
   const sourcePickup = js.slice(js.indexOf('const movedSourceHtml = sourceGhosts.map('), js.indexOf('return `<div class="olliTtPickupCell', js.indexOf('const movedSourceHtml = sourceGhosts.map(')));
-  assert.match(sourceRegular, /\\$\\{esc\\(item\\.student_name\\)\\}<span class="olliTtMoveGuide">수업이동<\\/span>/);
-  assert.match(sourcePickup, /\\$\\{esc\\(item\\.student_name\\)\\}<\\/span>\\$\\{dropoffMark\\}<span class="olliTtMoveGuide">수업이동<\\/span>/);
-  assert.match(css, /\\.olliTtMovedSource \\.olliTtMoveGuide[\\s\\S]*?color: #1979c8/);
-  assert.match(css, /\\.olliTtMoveGuide[\\s\\S]*?white-space: nowrap/);
+  assert.ok(sourceRegular.includes('${esc(item.student_name)}<span class="olliTtMoveGuide">수업이동</span>'));
+  assert.ok(sourcePickup.includes('${esc(item.student_name)}</span>${dropoffMark}<span class="olliTtMoveGuide">수업이동</span>'));
+  const rule = css.slice(css.indexOf('/* 이동 전 카드의'), css.indexOf('/* 이동된 카드의'));
+  assert.ok(rule.includes('.olliTtMovedSource .olliTtMoveGuide'));
+  assert.ok(rule.includes('color: #1979c8;'));
+  assert.ok(rule.includes('white-space: nowrap;'));
   assert.match(sourceRegular, /data-tt-move-source-ghost="1"/);
   assert.match(sourcePickup, /data-tt-move-source-ghost="1"/);
 });
