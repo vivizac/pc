@@ -17,6 +17,10 @@ function makeHandler({fetchImpl=globalThis.fetch,base=process.env.OLLI_SHARED_CH
     const session=clean(req.headers['x-olli-session-token']),academy=clean(req.headers['x-olli-academy-id']),room=clean(req.headers['x-olli-room-id']);
     if(!session||session.length>4096||!UUID.test(academy)||!UUID.test(room))return res.status(400).json({error:'로그인 및 학원 정보가 필요합니다.'});
     const base={p_session_token:session,p_academy_id:academy,p_room_id:room};
+    // Never log credentials, object paths or file names. Correlate only with
+    // the platform request ID and transfer sizes.
+    const requestId=clean(req.headers['x-vercel-id']||req.headers['x-request-id']).slice(0,120);
+    let stage='request',sentBytes=0,expectedBytes=0;
     const headers=credentials(serverKey);
     async function rpc(name,params){
       const response=await fetchImpl(`${BASE}/rest/v1/rpc/olli_shared_chat_${name}`,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify(params),redirect:'error'});
@@ -25,10 +29,12 @@ function makeHandler({fetchImpl=globalThis.fetch,base=process.env.OLLI_SHARED_CH
     try{
       if(req.method==='GET'){
         const id=clean(req.query?.attachmentId);if(!UUID.test(id))return res.status(400).json({error:'첨부파일 ID가 필요합니다.'});
+        stage='file_access';
         const file=await rpc('file_access',{...base,p_attachment_id:id,p_upload:false});
         // Supabase sb_secret keys are not user Bearer JWTs. Mint a brief signed
         // private-object URL server-side; never expose it to the browser.
         const validated=objectUrl(file.storage_path,BASE);
+        stage='sign';
         const sign=await fetchImpl(validated.replace('/object/authenticated/','/object/sign/'),{
           method:'POST',headers:{...headers,'Content-Type':'application/json'},
           body:JSON.stringify({expiresIn:120}),redirect:'error'
@@ -41,22 +47,37 @@ function makeHandler({fetchImpl=globalThis.fetch,base=process.env.OLLI_SHARED_CH
         if(url.origin!==new URL(BASE).origin
           ||url.pathname!==('/storage/v1/object/sign/'+BUCKET+'/'+file.storage_path)
           ||!url.searchParams.get('token'))throw new Error('Untrusted storage signature');
+        stage='storage_fetch';
         const upstream=await fetchImpl(url.href,{redirect:'error',headers:{'Cache-Control':'no-store'}});
         if(!upstream.ok)throw new Error('Object unavailable');
         // Recheck after storage fetch; a leave/deletion may have happened in between.
+        stage='file_reauthorize';
         try{await rpc('file_access',{...base,p_attachment_id:id,p_upload:false});}
         catch(error){await upstream.body?.cancel?.();throw error;}
         res.setHeader('Content-Type','application/octet-stream');
-        if(Number.isSafeInteger(Number(file.file_size))&&Number(file.file_size)>0)
-          res.setHeader('Content-Length',String(file.file_size));
+        expectedBytes=Number(file.file_size);
+        if(Number.isSafeInteger(expectedBytes)&&expectedBytes>0)
+          res.setHeader('Content-Length',String(expectedBytes));
+        stage='stream';
         res.setHeader('Content-Disposition',"attachment; filename*=UTF-8''"+encodeURIComponent(file.file_name));
         if(upstream.body?.getReader){
           const reader=upstream.body.getReader();
-          try{while(true){const {value,done}=await reader.read();if(done)break;res.write(Buffer.from(value));}}
-          finally{reader.releaseLock();}
+          try{
+            while(true){
+              const {value,done}=await reader.read();
+              if(done)break;
+              sentBytes+=value.byteLength;
+              if(sentBytes>20971520)throw new Error('Transfer limit exceeded');
+              res.write(Buffer.from(value));
+            }
+          }finally{reader.releaseLock();}
+          if(expectedBytes>0&&sentBytes!==expectedBytes)throw new Error('Incomplete file stream');
           return res.end();
         }
-        return res.end(Buffer.from(await upstream.arrayBuffer()));
+        const bytes=Buffer.from(await upstream.arrayBuffer());
+        sentBytes=bytes.length;
+        if(expectedBytes>0&&sentBytes!==expectedBytes)throw new Error('Incomplete file stream');
+        return res.end(bytes);
       }
       const body=req.body;
       if(!body||typeof body!=='object'||Buffer.byteLength(JSON.stringify(body))>65536)return res.status(400).json({error:'요청 형식이 올바르지 않습니다.'});
@@ -87,7 +108,23 @@ function makeHandler({fetchImpl=globalThis.fetch,base=process.env.OLLI_SHARED_CH
         return res.status(200).json(result);
       }
       return res.status(400).json({error:'알 수 없는 요청입니다.'});
-    }catch(_){if(!res.headersSent)return res.status(403).json({error:'첨부파일 권한 또는 업로드 상태를 확인해 주세요.'});res.end();}
+    }catch(error){
+      const authorizationStage=stage==='file_access'||stage==='file_reauthorize';
+      const failure=authorizationStage?'ACCESS_DENIED'
+        :stage==='stream'?'INCOMPLETE_TRANSFER'
+        :stage==='sign'?'STORAGE_SIGN_FAILED'
+        :stage==='storage_fetch'?'STORAGE_FETCH_FAILED':'FILE_REQUEST_FAILED';
+      console.error('teamchat.shared_file.failure',{
+        requestId,stage,failure,sentBytes,expectedBytes,headersSent:!!res.headersSent
+      });
+      if(!res.headersSent)return res.status(authorizationStage?403:502).json({
+        error:authorizationStage?'첨부파일 접근 권한을 확인해 주세요.':'원본 파일 전송을 완료하지 못했습니다.',
+        code:failure
+      });
+      // Never present a partial file as a successful HTTP 200.
+      if(typeof res.destroy==='function')res.destroy(error);
+      else res.end();
+    }
   };
 }
 module.exports={makeHandler,credentials};
