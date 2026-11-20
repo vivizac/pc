@@ -8463,7 +8463,7 @@
       const activeRenderLimit=Math.max(0,Math.floor(Math.max(Number(options.messageLimit)||0,Number(olliTalkRenderedMessageLimit)||0)));
       // A render:false prefetch or an academy-only redraw must never convince
       // the phone that unchanged messages are already visible.
-      const renderChanged=sharedChanged||!basePayload
+      const renderChanged=sharedChanged||!basePayload||!olliTalkCurrentViewPayload
         ||!areOlliTalkMessagePayloadsRenderEquivalent(basePayload,mergedPayload)
         ||(options.render!==false&&!isOlliTalkMessageListInSync(presentation,activeRenderLimit));
       olliTalkHistoryExhausted=pageMessages.length<100;
