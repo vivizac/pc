@@ -1660,6 +1660,10 @@ async function confirmKinderChatFeedbackLiveEdit(id, btn) {
     return false;
   }
   const wasSaved = !!(savedItem.saved || savedItem.reviewed);
+  if (!wasSaved) {
+    try { showPushToast('서버에 저장된 피드백을 찾지 못했습니다. 서버 저장을 확인한 뒤 수정해 주세요.'); } catch(_) {}
+    return false;
+  }
   let patchedSavedRow = null;
   if (wasSaved) {
     if (typeof getTodayFeedbackSavedRowId !== 'function' || typeof patchSavedTodayFeedbackItem !== 'function') {
@@ -1715,8 +1719,20 @@ async function confirmKinderChatFeedbackLiveEdit(id, btn) {
   if (bubble) renderKinderChatFeedbackLiveResultText(bubble, nextText);
   row.classList.remove('editing');
   refreshKinderChatFeedbackLiveActions(item);
-  persistKinderChatFeedbackLiveSessionNow();
-  syncKinderChatFeedbackLiveItemToInbox(item);
+  // A confirmed server edit is not persisted into iPhone localStorage again.
+  // Keep a lightweight in-memory overlay so the inbox shows the verified update.
+  if (typeof window.rememberOlliPhoneQuickNoteVerifiedEdit === 'function') {
+    const existingInbox = typeof getTodayFeedbackItemById === 'function'
+      ? getTodayFeedbackItemById(id) : null;
+    window.rememberOlliPhoneQuickNoteVerifiedEdit({
+      ...(existingInbox || savedItem), id:String(item.id || ''),
+      resultText:nextText, status:item.status, updatedAt:item.updatedAt,
+      saved:true, reviewed:true, savedRowId:item.savedRowId,
+      savedSourceTable:item.savedSourceTable,
+      savedStudentId:item.savedStudentId,
+      savedAcademyId:item.savedAcademyId, savedRow:item.savedRow
+    });
+  }
   if (wasSaved) {
     try { showPushToast('수정 내용을 저장했어요.'); } catch(e) {}
   }
@@ -2612,6 +2628,12 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
     return;
   }
   const wasServerSaved = !!(originalItem && (originalItem.saved || originalItem.reviewed));
+  if (!wasServerSaved) {
+    const code = reportQuicknoteEditSaveFailure(originalItem,'server_record_id',
+      {code:'SERVER_RECORD_UNCONFIRMED'},'mobile');
+    setKinderChatFeedbackWarning('서버에 저장된 피드백을 확인하지 못했습니다. 저장 완료 후 수정해 주세요. ['+code+']');
+    return;
+  }
   const savedRecordId = getTodayFeedbackSavedRowId(originalItem || {});
   let patchedSavedRow = null;
   if (wasServerSaved) {
@@ -2661,22 +2683,10 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
     return updatedItem;
   });
   if (!changed) return;
-  try {
-    setTodayFeedbackItemsRaw(nextList);
-  } catch (err) {
-    console.error('퀵노트 피드백 수정 로컬 저장 오류:', err);
-    const code = reportQuicknoteEditSaveFailure(originalItem, 'local_queue_save', err, 'mobile');
-    if (!wasServerSaved || !patchedSavedRow) {
-      // Unsaved drafts must not be reported as saved if local storage also fails.
-      setKinderChatFeedbackWarning('수정한 피드백을 기기에 기록하지 못했습니다. [' + code + ']');
-      return;
-    }
-    // The server patch has already been verified. Keep the latest text in memory
-    // for this session instead of showing a false server save error.
-    if (typeof window.rememberOlliPhoneQuickNoteVerifiedEdit === 'function')
-      window.rememberOlliPhoneQuickNoteVerifiedEdit(updatedItem);
-    try { showPushToast('서버에 수정 내용이 저장됐어요. 휴대폰 임시 저장 공간이 부족해 서버 기록을 기준으로 표시합니다.'); } catch(_) {}
-  }
+  // Server patch has already been verified; never call setTodayFeedbackItemsRaw
+  // from a saved-feedback edit. This deliberately avoids all localStorage writes.
+  if (typeof window.rememberOlliPhoneQuickNoteVerifiedEdit === 'function')
+    window.rememberOlliPhoneQuickNoteVerifiedEdit(updatedItem);
   const liveItem = getKinderChatFeedbackLiveItem(id);
   if (liveItem) {
     liveItem.resultText = nextText;
@@ -2684,7 +2694,7 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
     liveItem.suspiciousSegments = segments;
     if (nextText !== originalItem?.resultText) liveItem.copiedAt = '';
     liveItem.updatedAt = now;
-    persistKinderChatFeedbackLiveSessionNow();
+    // Do not persist a verified server edit into local LIVE storage.
     const liveBubble = getKinderChatFeedbackLiveRow(id)?.querySelector('.kcfLiveBubble');
     if (liveBubble) renderKinderChatFeedbackLiveResultText(liveBubble, nextText);
   }
