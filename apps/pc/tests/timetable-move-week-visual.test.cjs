@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '../../..');
 const js = fs.readFileSync(path.join(root, 'apps/pc/pc-timetable.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'apps/pc/pc-timetable.css'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'apps/pc/index.html'), 'utf8');
-const sql = fs.readFileSync(path.join(root, 'supabase/migrations/20261119093000_pc_timetable_move_week_projection.sql'), 'utf8');
+const sql = fs.readFileSync(path.join(root, 'supabase/migrations/20261120062532_pc_timetable_move_week_projection.sql'), 'utf8');
 
 function extractFunction(name) {
   const start = js.indexOf('  function ' + name + '(');
