@@ -66,7 +66,7 @@ jobs:
         run: |
           grep -q 'olli-feedback-runtime.js?v=20261120-edit-server-first-1' apps/mobile/index.html
           grep -q 'olli-feedback-runtime.js?v=20261119-quicknote-save-1' apps/pc/index.html
-          grep -q 'kinder-feedback.js?v=20261120-reconcile-saved-1' apps/mobile/index.html
+          grep -q 'kinder-feedback.js?v=20261120-direct-server-edit-1' apps/mobile/index.html
           grep -q 'pc-kinder-feedback.js?v=20261118-quicknote-edit-error-1' apps/pc/index.html
           grep -q 'olli-student-core.js?v=20261119-quicknote-save-1' apps/mobile/index.html
           grep -q 'olli-data-feedback.js?v=20261119-quicknote-save-1' apps/pc/index.html
