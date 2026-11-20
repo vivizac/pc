@@ -119,6 +119,13 @@ function makeHandler({fetchImpl=globalThis.fetch,base=process.env.OLLI_SHARED_CH
     }catch(error){
       failed=true;
       const authorizationStage=stage==='file_access'||stage==='file_reauthorize';
+      // Preserve 403 for rejected metadata, unsafe signatures, and permissions.
+      // Only upstream transport failures become 502.
+      const rejectedRequest=req.method==='POST'
+        ||error?.message==='Untrusted storage signature'
+        ||error?.message==='Invalid storage signature'
+        ||error?.message==='Invalid object path';
+      const requestDenied=authorizationStage||rejectedRequest;
       const failure=authorizationStage?'ACCESS_DENIED'
         :stage==='stream'?'INCOMPLETE_TRANSFER'
         :stage==='sign'?'STORAGE_SIGN_FAILED'
@@ -126,8 +133,8 @@ function makeHandler({fetchImpl=globalThis.fetch,base=process.env.OLLI_SHARED_CH
       console.error('teamchat.shared_file.failure',{
         requestId,stage,failure,sentBytes,expectedBytes,headersSent:!!res.headersSent
       });
-      if(!res.headersSent)return res.status(authorizationStage?403:502).json({
-        error:authorizationStage?'첨부파일 접근 권한을 확인해 주세요.':'원본 파일 전송을 완료하지 못했습니다.',
+      if(!res.headersSent)return res.status(requestDenied?403:502).json({
+        error:requestDenied?'첨부파일 권한 또는 업로드 상태를 확인해 주세요.':'원본 파일 전송을 완료하지 못했습니다.',
         code:failure
       });
       // Never present a partial file as a successful HTTP 200.
