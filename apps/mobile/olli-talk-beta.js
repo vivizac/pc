@@ -42,6 +42,7 @@
   let olliTalkArchiveFileTransferSequence = 0;
   const OLLI_TALK_TRANSFER_RING_CIRCUMFERENCE = 2 * Math.PI * 31;
   let olliTalkMembers = [];
+  let olliTalkMemberViewScope = '';
   const OLLI_TALK_AI_MENTION_ID = '__olli_ai__';
   const OLLI_TALK_AI_MENTION = Object.freeze({
     member_id:OLLI_TALK_AI_MENTION_ID,
@@ -8070,6 +8071,11 @@
 
   async function loadOlliTalkMembers(){
     const context = getOlliTalkBetaContext();
+    const scope=[context.academyId,context.memberId,context.sessionToken].join(':');
+    const stillCurrent=()=>{
+      const now=getOlliTalkBetaContext();
+      return [now.academyId,now.memberId,now.sessionToken].join(':')===scope;
+    };
     const cached = readOlliTalkMessageCache(context);
     if (normalizeOlliTalkMemberCount(cached?.member_count)!==null) {
       renderOlliTalkCachedMemberCount(cached);
@@ -8083,15 +8089,18 @@
         p_session_token: context.sessionToken,
         p_academy_id: context.academyId
       });
-      olliTalkMembers = Array.isArray(payload?.members) ? payload.members : [];
-      try {
-        const extension=await window.OlliSharedTeamChat?.unifiedExtension?.({members:true});
-        if(extension?.joined){
-          const members=new Map(olliTalkMembers.map(member=>[String(member.member_id),member]));
-          extension.members.forEach(member=>members.set(String(member.member_id),member));
-          olliTalkMembers=[...members.values()];
-        }
-      }catch(error){console.warn('공동 팀챗 선생님 조회 실패:',error?.message||error);}
+      if(!stillCurrent())return olliTalkMembers;
+      if(typeof window.OlliSharedTeamChat?.unifiedExtension!=='function')
+        throw new Error('통합 팀챗 멤버 조회 기능을 불러오지 못했습니다.');
+      const extension=await window.OlliSharedTeamChat.unifiedExtension({members:true});
+      if(!stillCurrent())return olliTalkMembers;
+      const members=new Map((Array.isArray(payload?.members)?payload.members:[])
+        .map(member=>[String(member.member_id),member]));
+      if(extension.joined){
+        extension.members.forEach(member=>members.set(String(member.member_id),member));
+      }
+      olliTalkMembers=[...members.values()];
+      olliTalkMemberViewScope=scope;
       hydrateOlliTalkMemberAvatars();
       const memberCount=applyOlliTalkMemberCount(olliTalkMembers.length);
       const cacheBase = olliTalkCurrentPayload || cached || {
@@ -8106,9 +8115,9 @@
       writeOlliTalkMessageCache(context,nextCache);
       return olliTalkMembers;
     } catch(error) {
-      console.warn('올리톡 선생님 목록 조회 실패:', error);
-      olliTalkMembers = [];
-      return [];
+      console.warn('올리톡 통합 선생님 목록 조회 실패:',error?.message||error);
+      if(olliTalkMemberViewScope!==scope)olliTalkMembers=[];
+      return olliTalkMembers;
     }
   }
 
