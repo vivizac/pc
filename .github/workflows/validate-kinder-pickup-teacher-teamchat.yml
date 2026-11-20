@@ -1,0 +1,19 @@
+name: Validate kindergarten pickup teacher Team Chat notices
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261120050000_kinder_pickup_teacher_teamchat_notifications.sql'
+      - 'tests/kinder-pickup-teacher-teamchat-notifications.test.cjs'
+      - '.github/workflows/validate-kinder-pickup-teacher-teamchat.yml'
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify weekly/daily/move teacher mentions and push safeguards
+        run: node --test tests/kinder-pickup-teacher-teamchat-notifications.test.cjs
