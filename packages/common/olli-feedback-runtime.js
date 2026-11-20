@@ -339,6 +339,21 @@ function recordOlliFeedbackStorageCheck(kind, operation, result, details = {}) {
 window.getOlliFeedbackStorageChecks = () => olliFeedbackStorageChecks.map(entry => ({ ...entry }));
 window.recordOlliFeedbackStorageCheck = recordOlliFeedbackStorageCheck;
 
+// A server-verified edit can remain readable in this page session even when
+// iOS localStorage is full. The server remains authoritative across reloads.
+const olliPhoneQuickNoteVerifiedEditsInMemory = new Map();
+function rememberOlliPhoneQuickNoteVerifiedEdit(item) {
+  if (window.OLLI_MOBILE_FEEDBACK_24H_RETENTION !== true || !item?.id) return;
+  olliPhoneQuickNoteVerifiedEditsInMemory.set(
+    getFeedbackJobQueueStorageKey() + ':' + String(item.id), {...item});
+}
+window.rememberOlliPhoneQuickNoteVerifiedEdit = rememberOlliPhoneQuickNoteVerifiedEdit;
+function mergeOlliPhoneQuickNoteVerifiedEdits(list) {
+  if (window.OLLI_MOBILE_FEEDBACK_24H_RETENTION !== true || !Array.isArray(list)) return list;
+  const prefix = getFeedbackJobQueueStorageKey() + ':';
+  return list.map(item => olliPhoneQuickNoteVerifiedEditsInMemory.get(prefix + String(item?.id || '')) || item);
+}
+
 /* ── 내부 피드백 작업 보관함: 화면용 '오늘 피드백' 기능은 사용하지 않음 ── */
 const FEEDBACK_JOB_QUEUE_KEY = 'olli_feedback_jobs_v2';
 const TODAY_FEEDBACK_QUEUE_KEY = FEEDBACK_JOB_QUEUE_KEY;
@@ -438,10 +453,10 @@ function getTodayFeedbackItemsRaw() {
       if (kept.length !== list.length) {
         // Display only in-retention jobs even if the quota prevents rewriting the cache.
         cleanupOlliPhoneFeedbackJobQueue();
-        return kept;
+        return mergeOlliPhoneQuickNoteVerifiedEdits(kept);
       }
     }
-    return list;
+    return mergeOlliPhoneQuickNoteVerifiedEdits(list);
   } catch (error) {
     recordOlliFeedbackStorageCheck('inbox_queue', 'read', 'failed', {
       scope, phase, error, reason:getOlliFeedbackStorageErrorReason(error, phase)
@@ -794,6 +809,39 @@ async function patchSavedTodayFeedbackItem(item = {}, nextText = '') {
   if (!academyId || !studentId || !recordId) throw new Error('저장된 피드백의 서버 식별값을 찾지 못해 수정 저장을 할 수 없습니다.');
   if (typeof saveOlliData !== 'function') throw new Error('공통 저장 함수가 준비되지 않았습니다.');
   const patch = { content, updated_at: new Date().toISOString() };
+  // Mobile Quick Note edits are SERVER-ONLY. A full iPhone localStorage must
+  // not prevent a verified patch to an already stored feedback row.
+  // Preserve the existing common save/sync path for PC and observation records.
+  if (window.OLLI_MOBILE_FEEDBACK_24H_RETENTION === true) {
+    const core = window.OlliStorageCore;
+    if (!core?.FeatureRegistry?.require || !core?.ServerAdapter?.write
+        || !core?.ServerAdapter?.verifyReturnedRow || !core?.AcademyContext?.getCurrent) {
+      const error = new Error('모바일 피드백 수정용 서버 저장 기능이 준비되지 않았습니다.');
+      error.code = 'FEEDBACK_EDIT_SERVER_UNAVAILABLE';
+      throw error;
+    }
+    const currentAcademy = String(core.AcademyContext.getCurrent()?.academyId || '').trim();
+    if (currentAcademy !== academyId) {
+      const error = new Error('피드백 수정 중 현재 학원 정보가 바뀌었습니다.');
+      error.code = 'STALE_ACADEMY_RESPONSE';
+      throw error;
+    }
+    const spec = core.FeatureRegistry.require(feature);
+    const identity = {academyId,studentId,recordId};
+    const rows = await core.ServerAdapter.write(spec, identity, patch, {operation:'patch'});
+    if (String(core.AcademyContext.getCurrent()?.academyId || '').trim() !== academyId) {
+      const error = new Error('피드백 수정 중 학원이 변경되어 결과를 적용하지 않았습니다.');
+      error.code = 'STALE_ACADEMY_RESPONSE';
+      throw error;
+    }
+    const checked = core.ServerAdapter.verifyReturnedRow(spec, identity, patch, rows);
+    if (!checked?.verified || !checked.row) {
+      const error = new Error('수정된 피드백을 서버에서 확인하지 못했습니다.');
+      error.code = 'SERVER_VERIFY_FAILED';
+      throw error;
+    }
+    return checked.row;
+  }
   const result = await saveOlliData(feature, {
     academyId,
     studentId,
