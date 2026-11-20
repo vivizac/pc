@@ -812,7 +812,7 @@ async function patchSavedTodayFeedbackItem(item = {}, nextText = '') {
   // Mobile Quick Note edits are SERVER-ONLY. A full iPhone localStorage must
   // not prevent a verified patch to an already stored feedback row.
   // Preserve the existing common save/sync path for PC and observation records.
-  if (window.OLLI_MOBILE_FEEDBACK_24H_RETENTION === true) {
+  if (typeof window !== 'undefined' && window.OLLI_MOBILE_FEEDBACK_24H_RETENTION === true) {
     const core = window.OlliStorageCore;
     if (!core?.FeatureRegistry?.require || !core?.ServerAdapter?.write
         || !core?.ServerAdapter?.verifyReturnedRow || !core?.AcademyContext?.getCurrent) {
