@@ -1333,7 +1333,7 @@
         ? `<button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(targetId)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 이동된 수업 설정">☰</button>`
         : '<span class="olliTtStudentMore" aria-hidden="true">☰</span>';
       // Visual-only source: no drag, no attendance toggle, no capacity impact.
-      return `<div class="olliTtStudent regular ${division} olliTtMovedSource" data-tt-move-source-ghost="1" aria-label="${esc(item.student_name)} 이동 전 수업"><span class="olliTtAttendanceBtn">${esc(item.student_name)}</span>${menu}</div>`;
+      return `<div class="olliTtStudent regular ${division} olliTtMovedSource" data-tt-move-source-ghost="1" aria-label="${esc(item.student_name)} 수업이동"><span class="olliTtAttendanceBtn">${esc(item.student_name)}<span class="olliTtMoveGuide">수업이동</span></span>${menu}</div>`;
     }).join('');
     const waitHtml = waits.map((item) => {
       const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;
@@ -1430,7 +1430,7 @@
       const timeLabel = onlyDropoff ? pickupTimeLabel(item.dropoff_time) : pickupTimeLabel(item.pickup_time);
       const dropoffMark = item.is_dropoff === true || Boolean(clean(item.dropoff_label))
         ? '<span class="olliTtPickupDropoffMark" aria-label="하원">하</span>' : '';
-      return `<div class="olliTtPickupCard olliTtMovedSource" data-tt-move-source-ghost="1" aria-label="${esc(item.student_name)} 이동 전 픽업"><strong class="olliTtPickupStudentName"><span>${esc(item.student_name)}</span>${dropoffMark}</strong><span>${esc((onlyDropoff ? '하원 · ' : '') + place)} ${esc(timeLabel)}</span></div>`;
+      return `<div class="olliTtPickupCard olliTtMovedSource" data-tt-move-source-ghost="1" aria-label="${esc(item.student_name)} 수업이동"><strong class="olliTtPickupStudentName"><span>${esc(item.student_name)}</span>${dropoffMark}<span class="olliTtMoveGuide">수업이동</span></strong><span>${esc((onlyDropoff ? '하원 · ' : '') + place)} ${esc(timeLabel)}</span></div>`;
     }).join('');
     return `<div class="olliTtPickupCell${holiday ? ' holiday' : ''}" data-tt-pickup-cell="1" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-class-time="${classTime}"${holiday ? ' data-holiday="1" aria-disabled="true"' : ''}><div class="olliTtPickupEntries">${cards}${movedSourceHtml}</div></div>`;
   }

@@ -463,6 +463,17 @@ body.olliPcSidebarCollapsed #recordRoomScreen .olliTtSection { --olli-tt-student
 #recordRoomScreen .olliTtPickupCell .olliTtPickupCard.olliTtMovedSource span:not(.olliTtPickupDropoffMark) {
   color: #6aa9d6;
 }
+/* 이동 전 카드의 '수업이동' 안내만 선명한 파란색으로 표시합니다. */
+#recordRoomScreen .olliTtCell .olliTtStudent.regular.olliTtMovedSource .olliTtMoveGuide,
+#recordRoomScreen .olliTtPickupCell .olliTtPickupCard.olliTtMovedSource .olliTtMoveGuide {
+  display: inline-block;
+  flex-shrink: 0;
+  margin-left: 4px;
+  color: #1979c8;
+  font-size: calc(8px * var(--olli-text-scale));
+  font-weight: 780;
+  white-space: nowrap;
+}
 #recordRoomScreen .olliTtCell .olliTtStudent.regular.olliTtMovedSource .olliTtAttendanceBtn { cursor: default; }
 #recordRoomScreen .olliTtCell .olliTtStudent.regular.olliTtMovedSource:hover { transform: none; box-shadow: none; }
 /* 이동된 카드의 이름만 파랑, 이동 주가 지나면 기본 색상 */
