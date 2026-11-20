@@ -221,6 +221,23 @@
     return normalizeClassLayoutData(data);
   }
 
+  // Retry transient read-only metadata failures once. Never persist empty
+  // badges as if the server had confirmed they were not new.
+  async function loadRecentCardBadges() {
+    const payload = contextPayload();
+    try {
+      return await rpc('olli_schedule_recent_card_badges', payload);
+    } catch (firstError) {
+      console.warn('시간표 신규 카드 첫 조회 실패, 재시도합니다:', firstError);
+      try {
+        return await rpc('olli_schedule_recent_card_badges', payload);
+      } catch (retryError) {
+        console.warn('시간표 신규 카드 재조회 실패:', retryError);
+        return { enrollments: [], pickups: [], load_failed: true };
+      }
+    }
+  }
+
   async function loadWeek(weekStart) {
     const requestedAcademyId = currentAcademyId();
     const requestedSession = currentSessionToken();
@@ -253,10 +270,7 @@
         console.warn('픽업 하원 표시 조회 실패:', error);
         return { flags: [] };
       }),
-      rpc('olli_schedule_recent_card_badges', contextPayload()).catch((error) => {
-        console.warn('시간표 신규 카드 표시 조회 실패:', error);
-        return { enrollments: [], pickups: [] };
-      })
+      loadRecentCardBadges()
     ]);
     assertCurrentContext();
     normalizeClassLayoutData(data);
@@ -283,6 +297,7 @@
       enrollments: Array.isArray(recentCardBadges?.enrollments) ? recentCardBadges.enrollments : [],
       pickups: Array.isArray(recentCardBadges?.pickups) ? recentCardBadges.pickups : []
     };
+    data.recent_card_badges_unavailable = recentCardBadges?.load_failed === true;
     data.pickups = (Array.isArray(data.pickups) ? data.pickups : []).map((item) => {
       const dropoff = pickupDropoffMap.get(clean(item && item.id)) || {};
       return {
@@ -296,7 +311,8 @@
     const attendanceOverrides = await attendanceOverridesPromise;
     assertCurrentContext();
     data.attendance_overrides = Array.isArray(attendanceOverrides) ? attendanceOverrides : [];
-    cacheWeek(weekStart, data);
+    // A failed badge read must not replace the last verified week cache.
+    if (!data.recent_card_badges_unavailable) cacheWeek(weekStart, data);
     return data;
   }
 

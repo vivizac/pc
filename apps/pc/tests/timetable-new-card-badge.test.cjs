@@ -60,12 +60,15 @@ test('pickup N keeps its original 14-day clock; the student date check does not 
   const data = { recent_card_badges: { pickups: [
     { id: 'recent', created_at: new Date(now - 1000).toISOString() },
     { id: 'boundary', created_at: new Date(now - 14 * 86400000).toISOString() },
-    { id: 'future', created_at: new Date(now + 1000).toISOString() },
+    { id: 'minor-clock-skew', created_at: new Date(now + 1000).toISOString() },
+    { id: 'future', created_at: new Date(now + 3 * 60 * 1000).toISOString() },
     { id: 'invalid', created_at: 'bad timestamp' }
   ] } };
   assert.equal(badge(data, 'pickups', 'recent', undefined, now), true);
   assert.equal(badge(data, 'pickups', 'recent', '2027-01-01', now), true);
   assert.equal(badge(data, 'pickups', 'boundary', undefined, now), false);
+  assert.equal(badge(data, 'pickups', 'minor-clock-skew', undefined, now), true,
+    'server-created pickup N is allowed for a two-minute device-clock offset');
   assert.equal(badge(data, 'pickups', 'future', undefined, now), false);
   assert.equal(badge(data, 'pickups', 'invalid', undefined, now), false);
   assert.equal(badge(data, 'enrollments', 'recent', '2026-11-04', now), false);
@@ -122,7 +125,9 @@ test('both kinder and elementary NEW borders share uploaded #74AAF6; normal bord
 });
 
 test('week service fetches authenticated badge metadata, retaining existing schedule writes and cached week', () => {
-  assert.match(service, /rpc\('olli_schedule_recent_card_badges', contextPayload\(\)\)/);
+  assert.match(service, /rpc\('olli_schedule_recent_card_badges', payload\)/);
+  assert.match(service, /async function loadRecentCardBadges\(\)/);
+  assert.match(service, /if \(!data\.recent_card_badges_unavailable\) cacheWeek\(weekStart, data\)/);
   assert.match(service, /data\.recent_card_badges = \{/);
   assert.match(service, /cacheWeek\(weekStart, data\)/);
   assert.match(service, /savePickup\(/);
@@ -205,9 +210,9 @@ test('read-only NEW correction preserves registration, 14-day clock, pickup N an
 
 test('PC timetable assets cache-bust safely without modifying the unrelated service', () => {
   for (const asset of ['pc-timetable.js', 'pc-timetable.css']) {
-    assert.ok(html.includes(asset + '?v=20261119-move-week-1'), asset);
+    assert.ok(html.includes(asset + '?v=' + (asset === 'pc-timetable.js' ? '20261120-new-card-sync-1' : '20261119-move-week-1')), asset);
   }
-  assert.ok(html.includes('pc-timetable-service.js?v=20261119-card-drag-1'), 'RPC service is unchanged');
+  assert.ok(html.includes('pc-timetable-service.js?v=20261120-new-card-sync-1'), 'RPC badge-read service is versioned');
 });
 
 test('new calendar metadata RPC preserves authorization and move guards without filtering student N by the current day', () => {

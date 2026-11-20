@@ -766,13 +766,15 @@
     });
   }
 
-  async function loadWeek(realtimeContext) {
+  async function loadWeek(realtimeContext, options = {}) {
     if (!state.active || state.view !== 'schedule' || state.pane !== 'schedule') return false;
     const requestedWeek = dateKey(state.weekStart);
     const requestedAcademyId = typeof service.currentAcademyId === 'function' ? service.currentAcademyId() : '';
     const requestedSession = localStorage.getItem('olli_account_session_token_v1');
     const wasShowingRequestedWeek = state.dataWeek === requestedWeek && state.dataAcademyId === requestedAcademyId;
-    if (state.loading && state.loadingWeek === requestedWeek && state.dataAcademyId === requestedAcademyId) return false;
+    // A committed save wins over any pre-save Realtime read. The existing
+    // loadToken guard will discard the superseded in-flight response.
+    if (!options.force && state.loading && state.loadingWeek === requestedWeek && state.dataAcademyId === requestedAcademyId) return false;
     if ((!state.data || state.dataWeek !== requestedWeek || state.dataAcademyId !== requestedAcademyId) && typeof service.getCachedWeek === 'function') {
       const cached = service.getCachedWeek(requestedWeek);
       if (cached) {
@@ -1275,7 +1277,10 @@
     return rows.some((row) => {
       if (clean(row?.id) !== clean(cardId)) return false;
       const createdMs = Date.parse(clean(row?.created_at));
-      if (!Number.isFinite(createdMs) || createdMs > nowMs) return false;
+      // A newly committed server timestamp can lead the device clock slightly.
+      // Do not hide an authoritative NEW result for a harmless clock offset.
+      const clockSkewMs = 2 * 60 * 1000;
+      if (!Number.isFinite(createdMs) || createdMs > nowMs + clockSkewMs) return false;
       if (kind === 'enrollments') {
         const sessionKey = sessionDate instanceof Date ? dateKey(sessionDate) : clean(sessionDate).slice(0, 10);
         const weekday = Number(row?.weekday);
@@ -1290,7 +1295,7 @@
         return sessionKey >= dateKey(firstLesson) && sessionKey < dateKey(addDays(firstLesson, 14));
       }
       const ageMs = nowMs - createdMs;
-      return ageMs >= 0 && ageMs < 14 * 24 * 60 * 60 * 1000;
+      return ageMs >= -clockSkewMs && ageMs < 14 * 24 * 60 * 60 * 1000;
     });
   }
 
@@ -3548,15 +3553,9 @@
   }
 
   async function refreshWeekAfterMutation() {
-    const loaded = await loadWeek();
-    if (loaded || state.data) return;
-    const requestedWeek = dateKey(mondayOf(new Date()));
-    const requestedAcademyId = typeof service.currentAcademyId === 'function' ? service.currentAcademyId() : '';
-    const data = await service.loadWeek(requestedWeek);
-    state.data = data;
-    state.dataWeek = requestedWeek;
-    state.dataAcademyId = requestedAcademyId;
-    refreshOpenStudentInfoPanel();
+    // After the server commit, refresh the selected week even if an older read
+    // is already running. loadWeek owns context checks, render and cache.
+    return loadWeek(null, { force: true });
   }
 
   async function withSaving(task) {
