@@ -346,6 +346,40 @@ function getFeedbackJobQueueStorageKey() {
   const academyId = (typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '') || 'unscoped';
   return `${FEEDBACK_JOB_QUEUE_KEY}_${academyId}`;
 }
+// Phone-only local retention policy. This never reads or deletes Supabase rows,
+// observation drafts, attendance notes, or other local-storage keys.
+const OLLI_PHONE_FEEDBACK_LOCAL_RETENTION_MS = 24 * 60 * 60 * 1000;
+function isExpiredOlliPhoneLocalFeedback(item, nowMs = Date.now()) {
+  if (window.OLLI_MOBILE_FEEDBACK_24H_RETENTION !== true || !item || typeof item !== 'object') return false;
+  const created = Date.parse(String(item.createdAt || item.created_at || ''));
+  // Missing/invalid timestamps are preserved; deleting unknown-age data is unsafe.
+  return Number.isFinite(created) && created > 0 && nowMs - created >= OLLI_PHONE_FEEDBACK_LOCAL_RETENTION_MS;
+}
+function cleanupOlliPhoneFeedbackJobQueue() {
+  if (window.OLLI_MOBILE_FEEDBACK_24H_RETENTION !== true) return { removed:0 };
+  const key = getFeedbackJobQueueStorageKey();
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return { removed:0 };
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list)) return { removed:0 };
+    const now = Date.now();
+    const kept = list.filter(item => !isExpiredOlliPhoneLocalFeedback(item,now));
+    if (kept.length === list.length) return { removed:0 };
+    // Replace only this academy's queue, never clear the browser's entire storage.
+    if (kept.length) localStorage.setItem(key,JSON.stringify(kept));
+    else localStorage.removeItem(key);
+    recordOlliFeedbackStorageCheck('inbox_queue','retention','ok',{count:list.length-kept.length});
+    return {removed:list.length-kept.length};
+  } catch(error) {
+    recordOlliFeedbackStorageCheck('inbox_queue','retention','failed',{
+      error,reason:getOlliFeedbackStorageErrorReason(error,'write')
+    });
+    return {removed:0,error};
+  }
+}
+window.cleanupOlliPhoneFeedbackJobQueue = cleanupOlliPhoneFeedbackJobQueue;
+
 try { localStorage.removeItem('olli_today_feedback_queue_v1'); } catch(e) {}
 
 function getTodayFeedbackDateKey(dateValue) {
@@ -373,6 +407,15 @@ function getTodayFeedbackItemsRaw() {
       recordOlliFeedbackStorageCheck('inbox_queue', 'read', 'failed', { scope, phase, reason:'invalid_payload' });
       return [];
     }
+    if (window.OLLI_MOBILE_FEEDBACK_24H_RETENTION === true) {
+      const now = Date.now();
+      const kept = list.filter(item => !isExpiredOlliPhoneLocalFeedback(item,now));
+      if (kept.length !== list.length) {
+        // Display only in-retention jobs even if the quota prevents rewriting the cache.
+        cleanupOlliPhoneFeedbackJobQueue();
+        return kept;
+      }
+    }
     return list;
   } catch (error) {
     recordOlliFeedbackStorageCheck('inbox_queue', 'read', 'failed', {
@@ -391,7 +434,8 @@ function setTodayFeedbackItemsRaw(list) {
     const filtered = window.KcfAutoMode && typeof window.KcfAutoMode.filterFeedbackItems === 'function'
       ? window.KcfAutoMode.filterFeedbackItems(list)
       : list;
-    const items = Array.isArray(filtered) ? filtered.slice(0, 300) : [];
+    const items = (Array.isArray(filtered) ? filtered : [])
+      .filter(item => !isExpiredOlliPhoneLocalFeedback(item)).slice(0, 300);
     count = items.length;
     const serialized = JSON.stringify(items);
     phase = 'write';
