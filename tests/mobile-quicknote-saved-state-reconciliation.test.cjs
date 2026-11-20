@@ -85,5 +85,29 @@ test('both inbox and LIVE edit paths reconcile before deciding to skip server pa
  assert.match(phone,/await patchSavedTodayFeedbackItem\(originalItem, nextText\)/);
  assert.match(phone,/await patchSavedTodayFeedbackItem\(savedItem, nextText\)/);
  const html=fs.readFileSync(path.join(__dirname,'..','apps/mobile/index.html'),'utf8');
- assert.match(html,/kinder-feedback\.js\?v=20261120-reconcile-saved-1/);
+ assert.match(html,/kinder-feedback\.js\?v=20261120-direct-server-edit-1/);
+});
+
+test('inbox edit sends server patch first and NEVER writes local feedback queue',()=>{
+  const a=phone.indexOf('async function confirmKinderChatFeedbackInboxEdit(');
+  const b=phone.indexOf('let kcfPendingSaveStudentPicker',a);
+  assert.ok(a>=0&&b>a);
+  const handler=phone.slice(a,b);
+  assert.match(handler,/await patchSavedTodayFeedbackItem\(originalItem, nextText\)/);
+  assert.match(handler,/window\.rememberOlliPhoneQuickNoteVerifiedEdit\(updatedItem\)/);
+  assert.doesNotMatch(handler,/setTodayFeedbackItemsRaw\s*\(/);
+  assert.doesNotMatch(handler,/localStorage\.setItem\s*\(/);
+  assert.match(handler,/if \(!wasServerSaved\) \{/);
+});
+test('LIVE edit sends server patch first and does not persist a saved edit to localStorage',()=>{
+  const a=phone.indexOf('async function confirmKinderChatFeedbackLiveEdit(');
+  const b=phone.indexOf('async function saveKcfTrialFeedbackOnServer(',a);
+  assert.ok(a>=0&&b>a);
+  const handler=phone.slice(a,b);
+  assert.match(handler,/await patchSavedTodayFeedbackItem\(savedItem, nextText\)/);
+  assert.match(handler,/window\.rememberOlliPhoneQuickNoteVerifiedEdit/);
+  assert.doesNotMatch(handler,/persistKinderChatFeedbackLiveSessionNow\s*\(/);
+  assert.doesNotMatch(handler,/syncKinderChatFeedbackLiveItemToInbox\s*\(/);
+  assert.doesNotMatch(handler,/localStorage\.setItem\s*\(/);
+  assert.match(handler,/if \(!wasSaved\) \{/);
 });
