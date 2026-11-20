@@ -8367,6 +8367,13 @@
             contextRetry:retryCount+1
           }).catch(()=>{});
         },220);
+      }else if(options.initialCombinedPaint===true&&basePayload&&isOlliTalkBetaVisible()){
+        // Session unavailable after bounded retries: do not strand the user on a spinner.
+        renderOlliTalkServerMessages(basePayload,{
+          scrollMode:'initial-latest',
+          messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
+          deferHydration:true
+        });
       }
       return renderedLocal;
     }
