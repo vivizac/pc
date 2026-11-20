@@ -5921,8 +5921,10 @@
     const list=Array.from(files||[]).filter(Boolean);
     if(!list.length)return false;
     try{
-      const extension=await window.OlliSharedTeamChat?.unifiedExtension?.();
-      if(extension?.joined){
+      if(typeof window.OlliSharedTeamChat?.unifiedExtension!=='function')
+        throw new Error('통합 팀챗 상태를 확인할 수 없어 파일을 올리지 않았습니다.');
+      const extension=await window.OlliSharedTeamChat.unifiedExtension();
+      if(extension.joined){
         for(const file of list)await window.OlliSharedTeamChat.uploadUnified(file);
         await loadOlliTalkBetaMessages({showLoading:false,localFirst:false,scrollMode:'bottom'});
         return true;
@@ -8346,9 +8348,17 @@
   async function loadOlliTalkBetaMessages(options = {}){
     const sequence = ++olliTalkLoadSequence;
     const context = getOlliTalkBetaContext();
-    const cachedPayload = options.cachedPayload || (options.localFirst === false ? readOlliTalkMessageCache(context) : renderOlliTalkCachedMessages(context));
+    // Academy-only cache is input for a verified combined render, never a visible fallback
+    // for an unknown unified-room status.
+    const cachedPayload = options.cachedPayload || readOlliTalkMessageCache(context);
     const basePayload = olliTalkCurrentPayload || cachedPayload;
-    const renderedLocal = !!basePayload;
+    const renderedLocal = !!olliTalkCurrentViewPayload;
+    const sameSession = () => {
+      const now=getOlliTalkBetaContext();
+      return now.academyId===context.academyId
+        && now.memberId===context.memberId
+        && now.sessionToken===context.sessionToken;
+    };
 
     if (!context.sessionToken || !context.academyId) {
       if(!renderedLocal){
@@ -8367,13 +8377,13 @@
             contextRetry:retryCount+1
           }).catch(()=>{});
         },220);
-      }else if(options.initialCombinedPaint===true&&basePayload&&isOlliTalkBetaVisible()){
-        // Session unavailable after bounded retries: do not strand the user on a spinner.
-        renderOlliTalkServerMessages(basePayload,{
-          scrollMode:'initial-latest',
-          messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
-          deferHydration:true
-        });
+      }else if(options.initialCombinedPaint===true&&isOlliTalkBetaVisible()){
+        const chatArea=document.getElementById('olliTalkBetaChatArea');
+        if(chatArea&&!olliTalkCurrentViewPayload){
+          chatArea.replaceChildren(createOlliTalkEmptyState(
+            '통합 팀챗 연결을 확인하지 못했어요','계정 연결을 확인하고 다시 열어 주세요.'
+          ));
+        }
       }
       return renderedLocal;
     }
@@ -8388,7 +8398,7 @@
         p_limit: 100
       });
 
-      if (sequence !== olliTalkLoadSequence) return false;
+      if (sequence !== olliTalkLoadSequence || !sameSession()) return false;
 
       if (!payload || payload.ok !== true) {
         throw new Error(payload?.message || '대화를 불러오지 못했습니다.');
@@ -8403,10 +8413,13 @@
       const pageMessages=scopedPayload.messages;
       const mergedPayload=scopedBase?mergeOlliTalkMessagePayloads(scopedBase,scopedPayload):scopedPayload;
       const changed=!basePayload||!areOlliTalkMessagePayloadsEquivalent(basePayload,mergedPayload);
-      let extension={joined:false,messages:[]};
-      try { extension=await window.OlliSharedTeamChat?.unifiedExtension?.({messages:true})||extension; }
-      catch(error){console.warn('공동 팀챗 조회 실패:',error?.message||error);}
-      if(sequence!==olliTalkLoadSequence)return false;
+      // Unknown is NOT the same as a server-confirmed non-member. Do not erase
+      // a verified combined view because the status/list request failed.
+      if(typeof window.OlliSharedTeamChat?.unifiedExtension!=='function'){
+        throw new Error('통합 팀챗 모듈을 불러오지 못했습니다.');
+      }
+      const extension=await window.OlliSharedTeamChat.unifiedExtension({messages:true});
+      if(sequence!==olliTalkLoadSequence||!sameSession())return false;
       const nextSharedSignature=extension.joined
         ? extension.room.id+':'+extension.room.participation_id+':'+JSON.stringify(extension.messages.map(item=>[item.id,item.edited_at,item.unread_count]))
         : '';
@@ -8451,18 +8464,15 @@
     } catch(error) {
       if (sequence !== olliTalkLoadSequence) return false;
       const chatArea = document.getElementById('olliTalkBetaChatArea');
-      if (options.initialCombinedPaint===true && isOlliTalkBetaVisible() && basePayload) {
-        // Network failure: reveal the authorized academy cache rather than
-        // leaving the initial spinner indefinitely. Never alter persisted data.
-        renderOlliTalkServerMessages(basePayload,{
-          scrollMode:'initial-latest',
-          messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
-          deferHydration:true
-        });
-      } else if (!renderedLocal && chatArea) {
-        chatArea.replaceChildren(createOlliTalkEmptyState('대화를 불러오지 못했어요', '잠시 후 다시 열어 주세요.'));
+      // Preserve an already-authorized view on refresh failure. On first entry
+      // show an explicit error, never misrepresent academy-only data as unified.
+      if(!sameSession())return false;
+      if(!renderedLocal&&chatArea){
+        chatArea.replaceChildren(createOlliTalkEmptyState(
+          '팀챗 연결을 확인하지 못했어요','통합 상태를 확인할 수 없습니다. 다시 열어 주세요.'
+        ));
       }
-      console.warn('올리톡 메시지 조회 실패:', error);
+      console.warn('올리톡 통합 상태/메시지 조회 실패:',error?.message||error);
       return false;
     }
   }
@@ -8598,7 +8608,9 @@
       // A pending Olli workflow reply must remain in the original academy's private chat route.
       const pendingPrivateWorkflow=hasOlliTalkPendingCommand()
         || !!olliTalkPendingActionReason || !!olliTalkPendingMakeupDialogue;
-      if(!olliRequested && !pendingPrivateWorkflow && window.OlliSharedTeamChat?.sendUnified){
+      if(!olliRequested && !pendingPrivateWorkflow){
+        if(typeof window.OlliSharedTeamChat?.sendUnified!=='function')
+          throw new Error('통합 팀챗 상태를 확인할 수 없어 전송하지 않았습니다.');
         const sharedSent=await window.OlliSharedTeamChat.sendUnified(body,clientMessageId);
         if(sharedSent.joined){
           input.value='';
