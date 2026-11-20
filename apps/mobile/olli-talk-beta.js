@@ -4663,7 +4663,16 @@
 
   async function downloadOlliTalkAttachment(attachment){
     try{
-      const url=await getOlliTalkAttachmentBlobUrl(attachment);
+      let url;
+      try{
+        url=await getOlliTalkAttachmentBlobUrl(attachment);
+      }catch(error){
+        const message=String(error?.message||'').toLowerCase();
+        // A download GET is safe to retry once after Safari's "Load failed".
+        // Authorization and file-not-found responses must not be retried.
+        if(error?.name!=='TypeError'&&!['load failed','failed to fetch'].includes(message))throw error;
+        url=await getOlliTalkAttachmentBlobUrl(attachment);
+      }
       return triggerOlliTalkAttachmentDownload(url,attachment);
     }catch(error){
       alert(error?.message||'파일을 내려받지 못했습니다.');
