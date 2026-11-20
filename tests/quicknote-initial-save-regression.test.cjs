@@ -106,7 +106,7 @@ test('new versions are used for both PC and mobile scripts',()=>{
   for(const file of ['olli-student-core.js'])
     assert.ok(read('apps/mobile/index.html').includes(file+'?v=20261119-quicknote-save-1'));
   assert.ok(read('apps/mobile/index.html').includes('olli-feedback-runtime.js?v=20261120-edit-server-first-1'));
-  assert.ok(read('apps/mobile/index.html').includes('kinder-feedback.js?v=20261120-reconcile-saved-1'));
+  assert.ok(read('apps/mobile/index.html').includes('kinder-feedback.js?v=20261120-direct-server-edit-1'));
   for(const file of ['olli-data-feedback.js','olli-feedback-runtime.js'])
     assert.ok(read('apps/pc/index.html').includes(file+'?v=20261119-quicknote-save-1'));
 });
