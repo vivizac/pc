@@ -73,7 +73,7 @@ test('shared attachments and branch labels use current membership',()=>{
 test('verified unified room survives a temporary status failure on PC and phone',()=>{
   assert.match(pc,/const hasVerifiedView=state\.messageViewContextKey===contextKey/);
   assert.match(pc,/const extension=await global\.OlliSharedTeamChat\.unifiedExtension\(\{messages:true\}\)/);
-  assert.match(pc,/if\(body&&!hasVerifiedView\)body\.replaceChildren/);
+  assert.match(pc,/if\(body&&!hasVerifiedView&&!renderedCachedCombined\)body\.replaceChildren/);
   assert.match(mobile,/const renderedLocal = !!olliTalkCurrentViewPayload/);
   assert.match(mobile,/const extension=await window\.OlliSharedTeamChat\.unifiedExtension\(\{messages:true\}\)/);
   assert.match(mobile,/if\(!renderedLocal&&chatArea\)/);
