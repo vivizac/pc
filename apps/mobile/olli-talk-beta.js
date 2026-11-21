@@ -8424,12 +8424,21 @@
     if (options.showLoading !== false && !renderedLocal) setOlliTalkLoadingState();
 
     try {
-      const payload = await callOlliTalkRpc('olli_team_chat_list', {
-        p_session_token: context.sessionToken,
-        p_academy_id: context.academyId,
-        p_before_message_id: null,
-        p_limit: 100
-      });
+      if(typeof window.OlliSharedTeamChat?.unifiedExtension!=='function'){
+        throw new Error('통합 팀챗 모듈을 불러오지 못했습니다.');
+      }
+      // Latest academy and shared snapshots arrive together. A stale local
+      // IndexedDB view must not be painted before the server's latest messages
+      // on first entry, otherwise the entire conversation visibly jumps.
+      const [payload,extension]=await Promise.all([
+        callOlliTalkRpc('olli_team_chat_list', {
+          p_session_token: context.sessionToken,
+          p_academy_id: context.academyId,
+          p_before_message_id: null,
+          p_limit: 100
+        }),
+        window.OlliSharedTeamChat.unifiedExtension({messages:true})
+      ]);
 
       if (sequence !== olliTalkLoadSequence || !sameSession()) return false;
 
@@ -8448,10 +8457,6 @@
       const changed=!basePayload||!areOlliTalkMessagePayloadsEquivalent(basePayload,mergedPayload);
       // Unknown is NOT the same as a server-confirmed non-member. Do not erase
       // a verified combined view because the status/list request failed.
-      if(typeof window.OlliSharedTeamChat?.unifiedExtension!=='function'){
-        throw new Error('통합 팀챗 모듈을 불러오지 못했습니다.');
-      }
-      const extension=await window.OlliSharedTeamChat.unifiedExtension({messages:true});
       if(sequence!==olliTalkLoadSequence||!sameSession())return false;
       const nextSharedSignature=extension.joined
         ? extension.room.id+':'+extension.room.participation_id+':'+JSON.stringify(extension.messages.map(item=>[item.id,item.edited_at,item.unread_count]))
@@ -8987,50 +8992,21 @@
         if (typeof window.OlliRealtime?.ensureConnected === 'function') {
           window.OlliRealtime.ensureConnected({ force:false, reason:'olli_talk_open' }).catch(() => {});
         }
-        // First hydrate a locally persisted shared-room snapshot after the
-        // server confirms THIS academy/member's current room participation.
-        // The academy-only cache is never painted by itself on entry.
+        // The first visible chat must already contain the latest server
+        // messages. The verified IndexedDB snapshot is still stored separately
+        // for subsequent use, but painting it before network refresh caused a
+        // stale conversation to flash and jump to recent messages.
+        // Fetch academy and unified lists concurrently; paint only once.
         const openGeneration=olliTalkOpenGeneration;
-        (async()=>{
-          try{
-            const cachedUnified=await window.OlliSharedTeamChat?.readCachedUnified?.();
-            const now=getOlliTalkBetaContext();
-            if(openGeneration!==olliTalkOpenGeneration||!isOlliTalkBetaVisible()
-              ||now.academyId!==openContext.academyId
-              ||now.memberId!==openContext.memberId
-              ||now.sessionToken!==openContext.sessionToken)return;
-            if(cachedUnified?.joined){
-              const privatePayload=openCachedPayload||{
-                ok:true,academy_id:openContext.academyId,
-                current_member_id:openContext.memberId,
-                current_member_name:openContext.memberName,messages:[]
-              };
-              const combined={
-                ...privatePayload,__academyLocal:privatePayload,
-                messages:[...(privatePayload.messages||[]),...cachedUnified.messages]
-                  .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))
-              };
-              olliTalkInitialCombinedPaintPending=false;
-              renderOlliTalkServerMessages(combined,{
-                scrollMode:'initial-latest',messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT
-              });
-              olliTalkSharedViewSignature=cachedUnified.room.id+':'
-                +cachedUnified.room.participation_id+':'
-                +JSON.stringify(cachedUnified.messages.map(item=>[item.id,item.edited_at,item.unread_count]));
-            }
-          }catch(error){
-            console.warn('통합 팀챗 로컬 첫 화면 확인 실패:',error?.message||error);
-          }finally{
-            if(openGeneration===olliTalkOpenGeneration&&isOlliTalkBetaVisible()){
-              loadOlliTalkBetaMessages({
-                showLoading:false,localFirst:false,
-                cachedPayload:openCachedPayload,
-                messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
-                initialCombinedPaint:true,scrollMode:'initial-latest'
-              }).catch(error=>console.warn('통합 팀챗 서버 갱신 실패:',error?.message||error));
-            }
-          }
-        })();
+        loadOlliTalkBetaMessages({
+          showLoading:false,localFirst:false,
+          cachedPayload:openCachedPayload,
+          messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
+          initialCombinedPaint:true,scrollMode:'initial-latest'
+        }).catch(error=>{
+          if(openGeneration===olliTalkOpenGeneration)
+            console.warn('통합 팀챗 첫 화면 갱신 실패:',error?.message||error);
+        });
       },0);
     });
   }
