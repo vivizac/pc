@@ -8518,6 +8518,12 @@
           const nearBottom=isOlliTalkChatNearBottom(document.getElementById('olliTalkBetaChatArea'));
           added.forEach(item=>appendOlliTalkPersistedMessage(item,
             String(presentation.current_member_id||context.memberId),{anchor:nearBottom}));
+          // Follow the exact bottom when the user was already there; the
+          // composer-aware anchor alone can leave a trailing padding gap.
+          if(nearBottom){
+            const area=document.getElementById('olliTalkBetaChatArea');
+            if(area)area.scrollTop=area.scrollHeight;
+          }
           olliTalkCurrentPayload=mergedPayload;
           olliTalkCurrentViewPayload=presentation;
           olliTalkRenderedMessageLimit=(presentation.messages||[]).length;
