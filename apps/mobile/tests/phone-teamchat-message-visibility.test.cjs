@@ -105,5 +105,5 @@ test('mobile gallery, history and single-message failures preserve shared messag
   assert.match(source,/renderOlliTalkServerMessages\(getOlliTalkCurrentPresentation\(merged\)/);
   assert.match(source,/const visibleAfterDeletion=currentView===nextChat/);
   assert.match(source,/catch\(error\)\{\s*\/\/ One bad attachment\/action must not hide ordinary chat/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261121-unified-indexeddb-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261121-first-scroll-anchor-1/);
 });

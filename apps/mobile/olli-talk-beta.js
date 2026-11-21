@@ -7647,6 +7647,22 @@
     return true;
   }
 
+  // Reveal the first local chat snapshot only after its newest message has
+  // been positioned. The DOM is laid out while hidden to avoid the observed
+  // flash of older messages at scrollTop=0 on iOS.
+  function settleOlliTalkInitialLatestPaint(chatArea,list){
+    chatArea.scrollTop=chatArea.scrollHeight;
+    scheduleOlliTalkLatestMessageAnchor();
+    requestAnimationFrame(()=>{
+      if(!list.isConnected||chatArea.querySelector('.olliTalkBetaMessageList')!==list)return;
+      // Re-measure after WebKit applies chat-area padding and fixed composer
+      // geometry; reveal in this same pre-paint frame, not a later animation.
+      chatArea.scrollTop=chatArea.scrollHeight;
+      scheduleOlliTalkLatestMessageAnchor();
+      list.style.visibility='';
+    });
+  }
+
   function renderOlliTalkServerMessages(payload,options={}){
     const chatArea=document.getElementById('olliTalkBetaChatArea');
     if(!chatArea) return;
@@ -7679,6 +7695,7 @@
 
     const list=document.createElement('div');
     list.className='olliTalkBetaMessageList';
+    if(scrollMode==='initial-latest')list.style.visibility='hidden';
 
     let lastDateKey='';
     let activeGroup=null;
@@ -7773,7 +7790,7 @@
     // 다음 frame으로 하단 보정을 미루지 않아 첫 paint 뒤에 채팅이 내려가는 현상을 막습니다.
     if(scrollMode==='initial-latest'){
       syncOlliTalkChatToComposer();
-      if (isOlliTalkBetaVisible()) scheduleOlliTalkLatestMessageAnchor();
+      settleOlliTalkInitialLatestPaint(chatArea,list);
       return;
     }
 
@@ -8464,8 +8481,11 @@
       const activeRenderLimit=Math.max(0,Math.floor(Math.max(Number(options.messageLimit)||0,Number(olliTalkRenderedMessageLimit)||0)));
       // A render:false prefetch or an academy-only redraw must never convince
       // the phone that unchanged messages are already visible.
-      const renderChanged=sharedChanged||!basePayload||!olliTalkCurrentViewPayload
-        ||!areOlliTalkMessagePayloadsRenderEquivalent(basePayload,mergedPayload)
+      // Compare the actual combined visual snapshot, not the academy cache.
+      // A changed unread counter or signature alone must not rebuild and
+      // re-anchor the whole chat when the visible messages are unchanged.
+      const renderChanged=!olliTalkCurrentViewPayload
+        ||!areOlliTalkMessagePayloadsRenderEquivalent(olliTalkCurrentViewPayload,presentation)
         ||(options.render!==false&&!isOlliTalkMessageListInSync(presentation,activeRenderLimit));
       olliTalkHistoryExhausted=pageMessages.length<100;
       writeOlliTalkMessageCache(context,mergedPayload);
@@ -8481,7 +8501,8 @@
         if(options.render!==false){
           olliTalkInitialCombinedPaintPending=false;
           olliTalkSharedViewSignature=nextSharedSignature;
-          if(changed)syncOlliTalkRenderedUnreadCounts(presentation);
+          olliTalkCurrentViewPayload=presentation;
+          if(changed||sharedChanged)syncOlliTalkRenderedUnreadCounts(presentation);
         }
       }
       if(extension.joined&&isOlliTalkBetaVisible()&&extension.latestSeq){
