@@ -374,3 +374,77 @@ test('shared messages persist in a separate IndexedDB cache and stay scoped to a
   assert.equal(await refreshed.readCachedUnified(),null,'rejoining has a new participation scope');
   assert.equal(saved.size,1,'old snapshots are retained rather than destructively clearing data');
 });
+
+test('out-of-order shared list responses cannot replace newer persisted room snapshots',async()=>{
+  const academy='00000000-0000-0000-0000-000000000001';
+  const room='00000000-0000-0000-0000-000000000002';
+  const snapshots=new Map(),names=new Set(),deferred=[];
+  const indexedDB={open(){
+    const request={result:null};
+    queueMicrotask(()=>{
+      const db={
+        objectStoreNames:{contains:key=>names.has(key)},
+        createObjectStore:name=>names.add(name),
+        transaction(){
+          const tx={oncomplete:null,onerror:null,onabort:null};
+          tx.objectStore=()=>({
+            put:value=>queueMicrotask(()=>{snapshots.set(value.scope,value);tx.oncomplete?.();}),
+            get:key=>{
+              const q={result:null};
+              queueMicrotask(()=>{q.result=snapshots.get(key)||null;q.onsuccess?.();});
+              return q;
+            }
+          });
+          return tx;
+        }
+      };
+      request.result=db;
+      request.onupgradeneeded?.();
+      request.onsuccess?.();
+    });
+    return request;
+  }};
+  const localStorage={getItem:key=>({
+    olli_account_session_token_v1:'test-session',
+    olli_current_academy_id:academy,olli_current_member_id:'teacher'
+  })[key]||null};
+  const doc={readyState:'loading',addEventListener(){}};
+  const global={SUPABASE_URL:'https://test.supabase.co',SUPABASE_KEY:'public',
+    indexedDB,localStorage,document:doc,addEventListener(){},
+    OlliStorageCore:{AcademyContext:{getCurrent:()=>({
+      academyId:academy,memberId:'teacher',contextVersion:1
+    })}}
+  };
+  function payload(seq){
+    return new Response(JSON.stringify({
+      ok:true,room_id:room,participation_id:'participation-one',
+      messages:[{id:seq,seq,message_type:'text',body:'message-'+seq,
+        created_at:'2026-11-21T08:00:00Z'}]
+    }));
+  }
+  const fetch=async url=>{
+    if(String(url).endsWith('olli_shared_chat_status'))
+      return new Response(JSON.stringify({ok:true,enabled:true,room:{
+        id:room,participation_id:'participation-one'
+      }}));
+    if(String(url).endsWith('olli_shared_chat_list'))
+      return new Promise(resolve=>deferred.push(resolve));
+    throw new Error('Unexpected request '+url);
+  };
+  vm.runInNewContext(shared,{window:global,document:doc,localStorage,
+    fetch,Blob,Response,URL,setTimeout,clearTimeout,queueMicrotask});
+  const older=global.OlliSharedTeamChat.unifiedExtension({messages:true});
+  const newer=global.OlliSharedTeamChat.unifiedExtension({messages:true});
+  for(let step=0;step<12&&deferred.length!==2;step++)await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(deferred.length,2,'both room reads have reached the list RPC');
+  deferred[1](payload(102));
+  assert.equal((await newer).messages[0].body,'message-102');
+  deferred[0](payload(101));
+  assert.equal((await older).messages[0].body,'message-101');
+  for(let step=0;step<12&&!snapshots.size;step++)await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(snapshots.size,1);
+  const disk=[...snapshots.values()][0];
+  assert.equal(disk.latestSeq,102,'old response cannot lower the room cursor');
+  assert.equal(disk.messages[0].body,'message-102');
+  assert.equal((await global.OlliSharedTeamChat.readCachedUnified()).messages[0].body,'message-102');
+});
