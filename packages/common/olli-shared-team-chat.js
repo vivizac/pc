@@ -445,6 +445,11 @@ const SHARED_CACHE_STORE='room-snapshots';
 const SHARED_CACHE_MAX_AGE=6*60*60*1000;
 const SHARED_CACHE_LIMIT=100;
 const sharedCacheMemory=new Map();
+// Serialize writes by authorized room scope. Only the newest started read is
+// allowed to commit, so a slow older request cannot restore stale messages.
+const sharedCacheWrites=new Map();
+const sharedCacheReadOrder=new Map();
+let sharedCacheReadSerial=0;
 let sharedCacheDbPromise=null;
 function sharedCacheIdentity(ctx,room){
   const account=clean(localStorage.getItem('olli_account_id_v1'))||ctx.memberId;
@@ -487,6 +492,9 @@ async function readSharedSnapshot(ctx,room){
       })||saved;
     }catch(error){console.warn('통합 팀챗 캐시 읽기 실패:',error?.message||error);}
   }
+  // A concurrent IndexedDB write may lag the freshest in-memory snapshot.
+  const live=sharedCacheMemory.get(scope);
+  if(live&&(!saved||Number(live.savedAt)>Number(saved.savedAt)))saved=live;
   assertCurrent(ctx);
   if(!saved||saved.scope!==scope||saved.roomId!==room.id||
     saved.participationId!==room.participation_id||
@@ -495,32 +503,49 @@ async function readSharedSnapshot(ctx,room){
     Date.now()<saved.savedAt||!Array.isArray(saved.messages))return null;
   return saved;
 }
-async function writeSharedSnapshot(ctx,room,messages,latestSeq){
+async function writeSharedSnapshot(ctx,room,messages,latestSeq,readOrder){
   const scope=sharedCacheIdentity(ctx,room);
   if(!scope)return false;
-  assertCurrent(ctx);
-  const record={
-    scope,roomId:room.id,participationId:room.participation_id,
-    messages:messages.filter(item=>item?.is_shared===true)
-      .slice(-SHARED_CACHE_LIMIT).map(item=>({...item})),
-    latestSeq:Number(latestSeq)||0,savedAt:Date.now()
-  };
-  sharedCacheMemory.set(scope,record);
-  const db=await sharedCacheDb();
-  if(!db)return false; // still reusable during this page session
-  try{
-    await new Promise((resolve,reject)=>{
-      const tx=db.transaction(SHARED_CACHE_STORE,'readwrite');
-      tx.oncomplete=()=>resolve();
-      tx.onerror=()=>reject(tx.error);
-      tx.onabort=()=>reject(tx.error||new Error('Shared cache transaction aborted'));
-      tx.objectStore(SHARED_CACHE_STORE).put(record);
-    });
+  const previous=sharedCacheWrites.get(scope)||Promise.resolve();
+  const job=previous.catch(()=>{}).then(async()=>{
+    // Latest requested list wins. An earlier response must not overwrite it
+    // after another read already returned or persisted a newer room snapshot.
+    if(readOrder<Number(sharedCacheReadOrder.get(scope)||0))return false;
+    assertCurrent(ctx);
+    const record={
+      scope,roomId:room.id,participationId:room.participation_id,
+      messages:messages.filter(item=>item?.is_shared===true)
+        .slice(-SHARED_CACHE_LIMIT).map(item=>({...item})),
+      latestSeq:Number(latestSeq)||0,savedAt:Date.now()
+    };
+    const db=await sharedCacheDb();
+    if(readOrder<Number(sharedCacheReadOrder.get(scope)||0))return false;
+    assertCurrent(ctx);
+    if(db){
+      try{
+        await new Promise((resolve,reject)=>{
+          const tx=db.transaction(SHARED_CACHE_STORE,'readwrite');
+          tx.oncomplete=()=>resolve();
+          tx.onerror=()=>reject(tx.error);
+          tx.onabort=()=>reject(tx.error||new Error('Shared cache transaction aborted'));
+          tx.objectStore(SHARED_CACHE_STORE).put(record);
+        });
+      }catch(error){
+        console.warn('통합 팀챗 전용 캐시 저장 실패:',error?.message||error);
+      }
+    }
+    // The in-memory record stays available even when browser storage fails.
+    // No existing messages or user data are ever cleared as a workaround.
+    if(readOrder===Number(sharedCacheReadOrder.get(scope)||0)){
+      sharedCacheMemory.set(scope,record);
+    }
     return true;
-  }catch(error){
-    console.warn('통합 팀챗 전용 캐시 저장 실패:',error?.message||error);
-    return false; // server message remains authoritative; never delete user data
-  }
+  });
+  sharedCacheWrites.set(scope,job);
+  job.finally(()=>{
+    if(sharedCacheWrites.get(scope)===job)sharedCacheWrites.delete(scope);
+  }).catch(()=>{});
+  return job;
 }
 // Always verify the current room and participation against Supabase before
 // exposing cached cross-academy messages. No optimistic offline access.
@@ -538,11 +563,15 @@ async function readCachedUnified(options={}){
 }
 async function unifiedExtension(options={}){
   const ctx=context();
+  const readOrder=++sharedCacheReadSerial;
   if(!ctx.academyId||!ctx.sessionToken)
     throw new Error('통합 팀챗 세션 연결을 확인하는 중입니다. 다시 확인해 주세요.');
   const status=await readUnifiedStatus(ctx);
   if(!status.enabled||!status.room)return {joined:false,messages:[],members:[],status};
   const room=status.room,epoch=key(ctx);
+  const snapshotScope=options.messages?sharedCacheIdentity(ctx,room):'';
+  if(snapshotScope)sharedCacheReadOrder.set(snapshotScope,
+    Math.max(readOrder,Number(sharedCacheReadOrder.get(snapshotScope)||0)));
   const requests=[];
   if(options.messages)requests.push(rpc('list',{...params(ctx,room),p_limit:100},ctx));
   if(options.members)requests.push(rpc('members',params(ctx,room),ctx));
@@ -554,10 +583,10 @@ async function unifiedExtension(options={}){
   if(list&&(list.room_id!==room.id||list.participation_id!==room.participation_id))throw new Error('팀챗 참여 상태가 변경되었습니다.');
   // Shared storage is for ordinary conversation and files, never Olli work actions.
   const messages=(list?.messages||[]).filter(unifiedVisibleMessage).map(msg=>unifiedMessage(msg,ctx));
-  const latestSeq=(list?.messages||[]).at(-1)?.seq||0;
+  const latestSeq=Math.max(0,...(list?.messages||[]).map(item=>Number(item?.seq)||0));
   if(options.messages){
     // Do not block successful server rendering on a local disk/cache error.
-    void writeSharedSnapshot(ctx,room,messages,latestSeq).catch(error=>
+    void writeSharedSnapshot(ctx,room,messages,latestSeq,readOrder).catch(error=>
       console.warn('통합 팀챗 캐시 갱신 실패:',error?.message||error)
     );
   }

@@ -58,3 +58,37 @@ test('unchanged combined messages do not force redraw just because unread counts
  assert.equal(same(original,refreshed),true,'unread updates do not replace the chat DOM');
  assert.equal(same(original,{...refreshed,messages:[{...refreshed.messages[0],body:'새 메시지'}]}),false);
 });
+
+test('repeat entry after read stays in place; only actual new messages are appended',()=>{
+ const sourceFn=extract('  function getOlliTalkRenderableMessageSnapshot(item){',
+   '  // Reuse authorized shared messages');
+ const append=new Function(sourceFn+';return getOlliTalkAppendOnlyMessages;')();
+ const same=new Function(sourceFn+';return areOlliTalkMessagePayloadsRenderEquivalent;')();
+ const a={current_member_id:'teacher',messages:[
+   {id:'shared:8',body:'사진',seq:8,shared_seq:8,unread_count:1,
+     created_at:'2026-11-20T11:00:00Z'},
+   {id:'shared:9',body:'마지막 메시지',seq:9,shared_seq:9,unread_count:0,
+     created_at:'2026-11-20T12:00:00Z'}
+ ]};
+ const b={current_member_id:'teacher',messages:[
+   {...a.messages[0],seq:8,unread_count:0},
+   {...a.messages[1],seq:9,unread_count:0}
+ ]};
+ assert.equal(same(a,b),true,'read-only metadata cannot rebuild same chat DOM');
+ assert.equal(append(a,b),null,'no new messages means no append and no scroll jump');
+ const c={...b,messages:[...b.messages,{
+   id:'shared:10',body:'새 메시지',created_at:'2026-11-21T12:00:00Z'
+ }]};
+ assert.deepEqual(Array.from(append(a,c),item=>item.id),['shared:10']);
+ const edit={...c,messages:[{...c.messages[0],body:'사진 수정'},...c.messages.slice(1)]};
+ assert.equal(append(a,edit),null,'real edits use correct full reconciliation');
+});
+test('phone append path honors reader scroll position and retains DOM',()=>{
+ const body=extract('  async function loadOlliTalkBetaMessages(options = {}){',
+   '  async function loadOlderOlliTalkMessages()');
+ assert.match(body,/const canAppend=!!added\?\.length/);
+ assert.match(body,/appendOlliTalkPersistedMessage\(item,[\s\S]*\{anchor:nearBottom\}\)/);
+ const appendSource=extract('  function appendOlliTalkPersistedMessage(', '  // Reveal the first local chat snapshot');
+ assert.match(appendSource,/if\(options\.anchor!==false&&!isOlliTalkPendingReasonInputActive\(\)\)/);
+ assert.match(body,/olliTalkCurrentViewPayload=presentation/);
+});

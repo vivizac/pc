@@ -57,6 +57,7 @@ async function runPhone({verified=false,joined=true,fail=false}={}){
     areOlliTalkMessagePayloadsEquivalent:()=>false,
     areOlliTalkMessagePayloadsRenderEquivalent:()=>false,
     isOlliTalkMessageListInSync:()=>false,
+    getOlliTalkAppendOnlyMessages:()=>null,
     writeOlliTalkMessageCache:()=>{},
     renderOlliTalkServerMessages:payload=>rendered.push(payload.messages),
     syncOlliTalkRenderedUnreadCounts:()=>{},

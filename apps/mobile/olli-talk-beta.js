@@ -3987,7 +3987,9 @@
 
   function getOlliTalkRenderableMessageSnapshot(item){
     if(!item||typeof item!=='object')return item;
-    const { unread_count, ...renderable }=item;
+    // Read receipts / room sequence numbers are not painted content. Keep
+    // body, edits, sender, timestamps and attachments in the comparison.
+    const { unread_count, shared_seq, seq, ...renderable }=item;
     return renderable;
   }
 
@@ -4005,6 +4007,22 @@
     }catch(_){return false}
   }
 
+
+  // A refresh that only adds newer messages should never replace all the
+  // existing bubbles (or reset their scroll position). Older edits/deletions
+  // still take the full, correct reconciliation path.
+  function getOlliTalkAppendOnlyMessages(previous,next){
+    const old=Array.isArray(previous?.messages)?previous.messages:[];
+    const fresh=Array.isArray(next?.messages)?next.messages:[];
+    if(!previous||!next||String(previous.current_member_id||'')
+      !==String(next.current_member_id||'')||!old.length||fresh.length<=old.length)return null;
+    for(let i=0;i<old.length;i++){
+      if(String(old[i]?.id||'')!==String(fresh[i]?.id||'')
+        ||JSON.stringify(getOlliTalkRenderableMessageSnapshot(old[i]))
+        !==JSON.stringify(getOlliTalkRenderableMessageSnapshot(fresh[i])))return null;
+    }
+    return fresh.slice(old.length);
+  }
 
   // Reuse authorized shared messages for a gallery/history repaint without
   // persisting them to the academy-local message cache.
@@ -7593,7 +7611,7 @@
     return true;
   }
 
-  function appendOlliTalkPersistedMessage(item,currentMemberId){
+  function appendOlliTalkPersistedMessage(item,currentMemberId,options={}){
     const chatArea=document.getElementById('olliTalkBetaChatArea');
     if(!chatArea || !item) return false;
     const messageId=String(item?.id || '').trim();
@@ -7641,7 +7659,7 @@
       removeOlliTalkReplySuggestion(String(Number(item.reply_to_message_id)));
     }
     chatArea.dataset.previewReady='';
-    if(!isOlliTalkPendingReasonInputActive()){
+    if(options.anchor!==false&&!isOlliTalkPendingReasonInputActive()){
       scheduleOlliTalkMessageAboveComposer(next);
     }
     return true;
@@ -8491,10 +8509,31 @@
       writeOlliTalkMessageCache(context,mergedPayload);
       if(options.render!==false&&renderChanged){
         olliTalkInitialCombinedPaintPending=false;
-        renderOlliTalkServerMessages(presentation,{
-          scrollMode:options.scrollMode||'bottom',
-          ...(activeRenderLimit>0?{messageLimit:activeRenderLimit}:{})
-        });
+        const added=getOlliTalkAppendOnlyMessages(olliTalkCurrentViewPayload,presentation);
+        const canAppend=!!added?.length
+          &&isOlliTalkMessageListInSync(olliTalkCurrentViewPayload,activeRenderLimit)
+          &&!!document.getElementById('olliTalkBetaChatArea')
+            ?.querySelector('.olliTalkBetaMessageList');
+        if(canAppend){
+          const nearBottom=isOlliTalkChatNearBottom(document.getElementById('olliTalkBetaChatArea'));
+          added.forEach(item=>appendOlliTalkPersistedMessage(item,
+            String(presentation.current_member_id||context.memberId),{anchor:nearBottom}));
+          // Follow the exact bottom when the user was already there; the
+          // composer-aware anchor alone can leave a trailing padding gap.
+          if(nearBottom){
+            const area=document.getElementById('olliTalkBetaChatArea');
+            if(area)area.scrollTop=area.scrollHeight;
+          }
+          olliTalkCurrentPayload=mergedPayload;
+          olliTalkCurrentViewPayload=presentation;
+          olliTalkRenderedMessageLimit=(presentation.messages||[]).length;
+          syncOlliTalkRenderedUnreadCounts(presentation);
+        }else{
+          renderOlliTalkServerMessages(presentation,{
+            scrollMode:options.scrollMode||'bottom',
+            ...(activeRenderLimit>0?{messageLimit:activeRenderLimit}:{})
+          });
+        }
         olliTalkSharedViewSignature=nextSharedSignature;
       }else{
         olliTalkCurrentPayload=mergedPayload;

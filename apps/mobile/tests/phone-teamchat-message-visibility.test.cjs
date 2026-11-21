@@ -39,6 +39,7 @@ function scenario({shared=true}={}){
     areOlliTalkMessagePayloadsEquivalent:(a,b)=>JSON.stringify(a?.messages)===JSON.stringify(b?.messages),
     areOlliTalkMessagePayloadsRenderEquivalent:(a,b)=>JSON.stringify(a?.messages)===JSON.stringify(b?.messages),
     isOlliTalkMessageListInSync:(payload)=>visibleIds.join(',')===payload.messages.map(m=>String(m.id)).join(','),
+    getOlliTalkAppendOnlyMessages:()=>null,
     writeOlliTalkMessageCache:(_ctx,payload)=>cached.push(payload),
     renderOlliTalkServerMessages:payload=>{
       rendered.push(payload);
@@ -105,5 +106,5 @@ test('mobile gallery, history and single-message failures preserve shared messag
   assert.match(source,/renderOlliTalkServerMessages\(getOlliTalkCurrentPresentation\(merged\)/);
   assert.match(source,/const visibleAfterDeletion=currentView===nextChat/);
   assert.match(source,/catch\(error\)\{\s*\/\/ One bad attachment\/action must not hide ordinary chat/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261121-first-scroll-anchor-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261121-stable-reentry-v2/);
 });
