@@ -24,6 +24,7 @@
   // Guard the entire first paint, including older-history, gallery and realtime
   // render paths. Only a verified unified status can release this gate.
   let olliTalkInitialCombinedPaintPending = false;
+  let olliTalkOpenGeneration = 0;
   let olliTalkHistoryLoading = false;
   let olliTalkHistoryExhausted = false;
   let olliTalkHistoryScrollRaf = 0;
@@ -8928,6 +8929,7 @@
     olliTalkSharedViewSignature='';
     olliTalkRenderedMessageLimit=OLLI_TALK_INITIAL_RENDER_LIMIT;
     olliTalkInitialCombinedPaintPending=true;
+    olliTalkOpenGeneration++;
 
     // The academy cache remains intact, but must not become a visible chat
     // before an authorized unified-room snapshot has been merged with it.
@@ -8985,19 +8987,56 @@
         if (typeof window.OlliRealtime?.ensureConnected === 'function') {
           window.OlliRealtime.ensureConnected({ force:false, reason:'olli_talk_open' }).catch(() => {});
         }
-        loadOlliTalkBetaMessages({
-          showLoading:!openCachedPayload,
-          localFirst:false,
-          cachedPayload:openCachedPayload,
-          messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
-          initialCombinedPaint:true,
-          scrollMode:'initial-latest'
-        });
+        // First hydrate a locally persisted shared-room snapshot after the
+        // server confirms THIS academy/member's current room participation.
+        // The academy-only cache is never painted by itself on entry.
+        const openGeneration=olliTalkOpenGeneration;
+        (async()=>{
+          try{
+            const cachedUnified=await window.OlliSharedTeamChat?.readCachedUnified?.();
+            const now=getOlliTalkBetaContext();
+            if(openGeneration!==olliTalkOpenGeneration||!isOlliTalkBetaVisible()
+              ||now.academyId!==openContext.academyId
+              ||now.memberId!==openContext.memberId
+              ||now.sessionToken!==openContext.sessionToken)return;
+            if(cachedUnified?.joined){
+              const privatePayload=openCachedPayload||{
+                ok:true,academy_id:openContext.academyId,
+                current_member_id:openContext.memberId,
+                current_member_name:openContext.memberName,messages:[]
+              };
+              const combined={
+                ...privatePayload,__academyLocal:privatePayload,
+                messages:[...(privatePayload.messages||[]),...cachedUnified.messages]
+                  .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))
+              };
+              olliTalkInitialCombinedPaintPending=false;
+              renderOlliTalkServerMessages(combined,{
+                scrollMode:'initial-latest',messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT
+              });
+              olliTalkSharedViewSignature=cachedUnified.room.id+':'
+                +cachedUnified.room.participation_id+':'
+                +JSON.stringify(cachedUnified.messages.map(item=>[item.id,item.edited_at,item.unread_count]));
+            }
+          }catch(error){
+            console.warn('통합 팀챗 로컬 첫 화면 확인 실패:',error?.message||error);
+          }finally{
+            if(openGeneration===olliTalkOpenGeneration&&isOlliTalkBetaVisible()){
+              loadOlliTalkBetaMessages({
+                showLoading:false,localFirst:false,
+                cachedPayload:openCachedPayload,
+                messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
+                initialCombinedPaint:true,scrollMode:'initial-latest'
+              }).catch(error=>console.warn('통합 팀챗 서버 갱신 실패:',error?.message||error));
+            }
+          }
+        })();
       },0);
     });
   }
 
   async function closeOlliTalkBetaPage(event){
+    olliTalkOpenGeneration++;
     if (event) {
       event.preventDefault();
       event.stopPropagation();

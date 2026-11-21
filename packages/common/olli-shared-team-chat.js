@@ -438,6 +438,104 @@ async function archiveUnified(options={}){
   assertCurrent(ctx);
   return {joined:true,room,messages};
 }
+// Dedicated persistent cache for shared-room messages. The legacy academy chat
+// cache remains untouched. Never store credentials, media bytes or private tasks.
+const SHARED_CACHE_DB='olli-shared-teamchat-v1';
+const SHARED_CACHE_STORE='room-snapshots';
+const SHARED_CACHE_MAX_AGE=6*60*60*1000;
+const SHARED_CACHE_LIMIT=100;
+const sharedCacheMemory=new Map();
+let sharedCacheDbPromise=null;
+function sharedCacheIdentity(ctx,room){
+  const account=clean(localStorage.getItem('olli_account_id_v1'))||ctx.memberId;
+  if(!account||!ctx.memberId||!ctx.academyId||!ctx.sessionToken
+    ||!room?.id||!room?.participation_id)return '';
+  return JSON.stringify([account,ctx.academyId,ctx.memberId,room.id,room.participation_id]);
+}
+function sharedCacheDb(){
+  if(!global.indexedDB)return Promise.resolve(null);
+  if(!sharedCacheDbPromise){
+    sharedCacheDbPromise=new Promise((resolve,reject)=>{
+      const request=global.indexedDB.open(SHARED_CACHE_DB,1);
+      request.onupgradeneeded=()=>{
+        if(!request.result.objectStoreNames.contains(SHARED_CACHE_STORE))
+          request.result.createObjectStore(SHARED_CACHE_STORE,{keyPath:'scope'});
+      };
+      request.onsuccess=()=>resolve(request.result);
+      request.onerror=()=>reject(request.error||new Error('Shared cache unavailable'));
+    }).catch(error=>{
+      sharedCacheDbPromise=null;
+      console.warn('통합 팀챗 전용 캐시 열기 실패:',error?.message||error);
+      return null;
+    });
+  }
+  return sharedCacheDbPromise;
+}
+async function readSharedSnapshot(ctx,room){
+  const scope=sharedCacheIdentity(ctx,room);
+  if(!scope)return null;
+  const db=await sharedCacheDb();
+  assertCurrent(ctx);
+  let saved=sharedCacheMemory.get(scope)||null;
+  if(db){
+    try{
+      saved=await new Promise((resolve,reject)=>{
+        const tx=db.transaction(SHARED_CACHE_STORE,'readonly');
+        const request=tx.objectStore(SHARED_CACHE_STORE).get(scope);
+        request.onsuccess=()=>resolve(request.result||null);
+        request.onerror=()=>reject(request.error);
+      })||saved;
+    }catch(error){console.warn('통합 팀챗 캐시 읽기 실패:',error?.message||error);}
+  }
+  assertCurrent(ctx);
+  if(!saved||saved.scope!==scope||saved.roomId!==room.id||
+    saved.participationId!==room.participation_id||
+    !Number.isFinite(saved.savedAt)||
+    Date.now()-saved.savedAt>SHARED_CACHE_MAX_AGE||
+    Date.now()<saved.savedAt||!Array.isArray(saved.messages))return null;
+  return saved;
+}
+async function writeSharedSnapshot(ctx,room,messages,latestSeq){
+  const scope=sharedCacheIdentity(ctx,room);
+  if(!scope)return false;
+  assertCurrent(ctx);
+  const record={
+    scope,roomId:room.id,participationId:room.participation_id,
+    messages:messages.filter(item=>item?.is_shared===true)
+      .slice(-SHARED_CACHE_LIMIT).map(item=>({...item})),
+    latestSeq:Number(latestSeq)||0,savedAt:Date.now()
+  };
+  sharedCacheMemory.set(scope,record);
+  const db=await sharedCacheDb();
+  if(!db)return false; // still reusable during this page session
+  try{
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction(SHARED_CACHE_STORE,'readwrite');
+      tx.oncomplete=()=>resolve();
+      tx.onerror=()=>reject(tx.error);
+      tx.onabort=()=>reject(tx.error||new Error('Shared cache transaction aborted'));
+      tx.objectStore(SHARED_CACHE_STORE).put(record);
+    });
+    return true;
+  }catch(error){
+    console.warn('통합 팀챗 전용 캐시 저장 실패:',error?.message||error);
+    return false; // server message remains authoritative; never delete user data
+  }
+}
+// Always verify the current room and participation against Supabase before
+// exposing cached cross-academy messages. No optimistic offline access.
+async function readCachedUnified(options={}){
+  const ctx=context();
+  if(!ctx.sessionToken||!ctx.academyId||!ctx.memberId)return null;
+  const status=await readUnifiedStatus(ctx);
+  if(!status.enabled||!status.room)return null;
+  const record=await readSharedSnapshot(ctx,status.room);
+  if(!record)return null;
+  return {
+    joined:true,fromCache:true,room:status.room,status,
+    messages:record.messages,latestSeq:record.latestSeq
+  };
+}
 async function unifiedExtension(options={}){
   const ctx=context();
   if(!ctx.academyId||!ctx.sessionToken)
@@ -456,7 +554,14 @@ async function unifiedExtension(options={}){
   if(list&&(list.room_id!==room.id||list.participation_id!==room.participation_id))throw new Error('팀챗 참여 상태가 변경되었습니다.');
   // Shared storage is for ordinary conversation and files, never Olli work actions.
   const messages=(list?.messages||[]).filter(unifiedVisibleMessage).map(msg=>unifiedMessage(msg,ctx));
-  return {joined:true,room,status,epoch,messages,members:memberPayload?.members||[],latestSeq:(list?.messages||[]).at(-1)?.seq||0};
+  const latestSeq=(list?.messages||[]).at(-1)?.seq||0;
+  if(options.messages){
+    // Do not block successful server rendering on a local disk/cache error.
+    void writeSharedSnapshot(ctx,room,messages,latestSeq).catch(error=>
+      console.warn('통합 팀챗 캐시 갱신 실패:',error?.message||error)
+    );
+  }
+  return {joined:true,room,status,epoch,messages,members:memberPayload?.members||[],latestSeq};
 }
 async function sendUnified(body,clientId){
   const ctx=context(),status=await readUnifiedStatus(ctx);
@@ -742,6 +847,6 @@ function renderInlineSettings(root,status,ctx,message){
   controls.append(save);root.append(controls);
 }
 
-global.OlliSharedTeamChat=Object.freeze({version:'2.0.0',open,manage,close,refreshEntry,reset,context,unifiedExtension,archiveUnified,sendUnified,markUnifiedRead,uploadUnified,downloadUnified,fetchUnifiedBlob,mountUnifiedThumbnail,mountSettings});
+global.OlliSharedTeamChat=Object.freeze({version:'2.0.0',open,manage,close,refreshEntry,reset,context,unifiedExtension,readCachedUnified,archiveUnified,sendUnified,markUnifiedRead,uploadUnified,downloadUnified,fetchUnifiedBlob,mountUnifiedThumbnail,mountSettings});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })(window);

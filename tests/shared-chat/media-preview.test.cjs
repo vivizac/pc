@@ -276,3 +276,101 @@ test('PC and phone never reveal academy messages before a new entry status check
   assert.match(pc,/async function open\(\)\s*\{[\s\S]*?state\.messageViewContextKey='';[\s\S]*?screen\.style\.display = 'flex';/);
   assert.match(shared,/if\(!ctx\.academyId\|\|!ctx\.sessionToken\)\s*throw new Error\('통합 팀챗 세션 연결/);
 });
+
+test('shared messages persist in a separate IndexedDB cache and stay scoped to authorized room membership',async()=>{
+  const academy='00000000-0000-0000-0000-000000000001';
+  const otherAcademy='00000000-0000-0000-0000-000000000009';
+  const room='00000000-0000-0000-0000-000000000002';
+  const saved=new Map(),keys=new Set(),persistedKeys=[];
+  const indexedDB={
+    open(){
+      const request={result:null};
+      queueMicrotask(()=>{
+        const db={
+          objectStoreNames:{contains:name=>keys.has(name)},
+          createObjectStore(name){keys.add(name);},
+          transaction(_name,mode){
+            const tx={oncomplete:null,onerror:null,onabort:null};
+            tx.objectStore=()=>({
+              get(key){
+                const req={result:null};
+                queueMicrotask(()=>{req.result=saved.get(key)||null;req.onsuccess?.();});
+                return req;
+              },
+              put(record){
+                persistedKeys.push(record.scope);
+                queueMicrotask(()=>{saved.set(record.scope,record);tx.oncomplete?.();});
+              }
+            });
+            return tx;
+          }
+        };
+        request.result=db;
+        request.onupgradeneeded?.();
+        request.onsuccess?.();
+      });
+      return request;
+    }
+  };
+  const account='account-one',store={
+    olli_current_academy_id:academy,olli_current_member_id:'member-one',
+    olli_account_session_token_v1:'live-session',olli_account_id_v1:account
+  };
+  const localStorage={
+    getItem:key=>store[key]||null,
+    setItem:()=>{throw new Error('shared messages must not write localStorage');}
+  };
+  let currentAcademy=academy,memberId='member-one',joined=true,roomPart='participation-one',seq=21;
+  const doc={readyState:'loading',addEventListener(){}};
+  const sharedGlobal={
+    SUPABASE_URL:'https://test.supabase.co',SUPABASE_KEY:'anon',
+    OlliStorageCore:{AcademyContext:{getCurrent:()=>({
+      academyId:currentAcademy,memberId,contextVersion:1
+    })}},
+    indexedDB,localStorage,document:doc,addEventListener(){}
+  };
+  async function mockFetch(url){
+    if(String(url).endsWith('olli_shared_chat_status'))
+      return new Response(JSON.stringify({ok:true,enabled:true,room:joined?{
+        id:room,participation_id:roomPart
+      }:null}));
+    if(String(url).endsWith('olli_shared_chat_list'))
+      return new Response(JSON.stringify({
+        ok:true,room_id:room,participation_id:roomPart,
+        messages:[{id:21,seq,message_type:'text',body:'통합 메시지',sender_member_id:'member-two',
+          created_at:'2026-11-20T11:00:00Z'}]
+      }));
+    throw new Error('Unexpected shared RPC '+url);
+  }
+  const boot=()=>{
+    const target={...sharedGlobal};
+    vm.runInNewContext(shared,{window:target,document:doc,localStorage,fetch:mockFetch,
+      Blob,Response,URL,setTimeout,clearTimeout,queueMicrotask});
+    return target.OlliSharedTeamChat;
+  };
+  const api=boot();
+  const first=await api.unifiedExtension({messages:true});
+  assert.equal(first.joined,true);
+  assert.equal(first.messages[0].body,'통합 메시지');
+  // The original authenticated fetch commits a bounded, separate snapshot.
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(saved.size,1,'one room-scoped record is stored on disk');
+  const stored=Array.from(saved.values())[0];
+  assert.equal(stored.messages[0].body,'통합 메시지');
+  assert.equal(JSON.stringify(stored).includes('live-session'),false,'never persist session token');
+  assert.equal(stored.messages.some(item=>item?.academy_id===otherAcademy),false);
+  assert.ok(Array.from(keys).includes('room-snapshots'));
+  const refreshed=boot();
+  const cached=await refreshed.readCachedUnified();
+  assert.equal(cached.fromCache,true);
+  assert.equal(cached.messages[0].body,'통합 메시지');
+  memberId='member-three';
+  assert.equal(await refreshed.readCachedUnified(),null,'another member never receives prior room cache');
+  memberId='member-one';currentAcademy=otherAcademy;
+  assert.equal(await refreshed.readCachedUnified(),null,'another academy never receives prior room cache');
+  currentAcademy=academy;joined=false;
+  assert.equal(await refreshed.readCachedUnified(),null,'a confirmed room leave blocks cached messages');
+  joined=true;roomPart='participation-two';
+  assert.equal(await refreshed.readCachedUnified(),null,'rejoining has a new participation scope');
+  assert.equal(saved.size,1,'old snapshots are retained rather than destructively clearing data');
+});

@@ -1667,6 +1667,7 @@
     const current = context();
     const contextKey=teamTalkContextKey(current);
     const hasVerifiedView=state.messageViewContextKey===contextKey;
+    let renderedCachedCombined=false;
     const body = byId('olliPcTeamTalkMessages');
     if(body&&!hasVerifiedView){
       state.messages=[];
@@ -1690,6 +1691,27 @@
       if (!payload?.ok) throw new Error(payload?.message || '대화를 불러오지 못했습니다.');
       if(typeof global.OlliSharedTeamChat?.unifiedExtension!=='function')
         throw new Error('통합 팀챗 모듈을 불러오지 못했습니다.');
+      // The shared-room IndexedDB cache is verified against today's current
+      // room/participation before being combined with the live academy list.
+      // No academy-only view is ever drawn before membership verification.
+      if(options.render!==false&&typeof global.OlliSharedTeamChat.readCachedUnified==='function'){
+        try{
+          const cached=await global.OlliSharedTeamChat.readCachedUnified();
+          if(sequence!==state.messageLoadSequence||teamTalkContextKey(context())!==contextKey)return false;
+          if(cached?.joined){
+            const base=(Array.isArray(payload.messages)?payload.messages:[])
+              .filter(item=>!item?.academy_id||String(item.academy_id)===String(current.academyId));
+            renderMessages({...payload,messages:[...base,...cached.messages]
+              .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))},{
+              followBottom:options.followBottom
+            });
+            state.messageViewContextKey=contextKey;
+            renderedCachedCombined=true;
+          }
+        }catch(error){
+          console.warn('PC 통합 팀챗 로컬 캐시 확인 실패:',error?.message||error);
+        }
+      }
       // A failed status/list is not evidence that this academy left the room.
       const extension=await global.OlliSharedTeamChat.unifiedExtension({messages:true});
       if(sequence!==state.messageLoadSequence||teamTalkContextKey(context())!==contextKey)return false;
@@ -1721,7 +1743,7 @@
       return true;
     } catch (error) {
       if(sequence!==state.messageLoadSequence||teamTalkContextKey(context())!==contextKey)return false;
-      if(body&&!hasVerifiedView)body.replaceChildren(emptyState(
+      if(body&&!hasVerifiedView&&!renderedCachedCombined)body.replaceChildren(emptyState(
         '팀챗 연결을 확인하지 못했어요','통합 상태를 확인할 수 없습니다. 다시 열어 주세요.'
       ));
       // Do not erase a previously verified combined view on a refresh failure.

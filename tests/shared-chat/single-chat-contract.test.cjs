@@ -15,7 +15,7 @@ test('one visible Team Chat: no second room entry or independent shared dialog',
   for(const html of [pcHtml,mobileHtml]){
     assert.doesNotMatch(html,/data-shared-chat-entry/);
     assert.match(html,/Team Chat/);
-    assert.match(html,/olli-shared-team-chat\.js\?v=20261120-session-first-paint-2/);
+    assert.match(html,/olli-shared-team-chat\.js\?v=20261121-unified-indexeddb-1/);
   }
   assert.doesNotMatch(service,/createDialog\('공동 팀챗'\)/);
   assert.match(service,/async function open\(\)\{[\s\S]*OlliPcTeamTalk\?\.open/);
@@ -73,7 +73,7 @@ test('shared attachments and branch labels use current membership',()=>{
 test('verified unified room survives a temporary status failure on PC and phone',()=>{
   assert.match(pc,/const hasVerifiedView=state\.messageViewContextKey===contextKey/);
   assert.match(pc,/const extension=await global\.OlliSharedTeamChat\.unifiedExtension\(\{messages:true\}\)/);
-  assert.match(pc,/if\(body&&!hasVerifiedView\)body\.replaceChildren/);
+  assert.match(pc,/if\(body&&!hasVerifiedView&&!renderedCachedCombined\)body\.replaceChildren/);
   assert.match(mobile,/const renderedLocal = !!olliTalkCurrentViewPayload/);
   assert.match(mobile,/const extension=await window\.OlliSharedTeamChat\.unifiedExtension\(\{messages:true\}\)/);
   assert.match(mobile,/if\(!renderedLocal&&chatArea\)/);
