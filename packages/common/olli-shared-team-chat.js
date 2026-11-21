@@ -570,7 +570,8 @@ async function unifiedExtension(options={}){
   if(!status.enabled||!status.room)return {joined:false,messages:[],members:[],status};
   const room=status.room,epoch=key(ctx);
   const snapshotScope=options.messages?sharedCacheIdentity(ctx,room):'';
-  if(snapshotScope)sharedCacheReadOrder.set(snapshotScope,readOrder);
+  if(snapshotScope)sharedCacheReadOrder.set(snapshotScope,
+    Math.max(readOrder,Number(sharedCacheReadOrder.get(snapshotScope)||0)));
   const requests=[];
   if(options.messages)requests.push(rpc('list',{...params(ctx,room),p_limit:100},ctx));
   if(options.members)requests.push(rpc('members',params(ctx,room),ctx));
