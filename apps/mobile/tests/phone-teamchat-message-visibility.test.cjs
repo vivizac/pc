@@ -39,6 +39,7 @@ function scenario({shared=true}={}){
     areOlliTalkMessagePayloadsEquivalent:(a,b)=>JSON.stringify(a?.messages)===JSON.stringify(b?.messages),
     areOlliTalkMessagePayloadsRenderEquivalent:(a,b)=>JSON.stringify(a?.messages)===JSON.stringify(b?.messages),
     isOlliTalkMessageListInSync:(payload)=>visibleIds.join(',')===payload.messages.map(m=>String(m.id)).join(','),
+    getOlliTalkAppendOnlyMessages:()=>null,
     writeOlliTalkMessageCache:(_ctx,payload)=>cached.push(payload),
     renderOlliTalkServerMessages:payload=>{
       rendered.push(payload);
