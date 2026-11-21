@@ -112,3 +112,79 @@ test('Phone: combined and confirmed-unjoined modes render after status verificat
   assert.deepEqual((await runPhone()).rendered[0].map(x=>x.id),[1,'shared:2']);
   assert.deepEqual((await runPhone({joined:false})).rendered[0].map(x=>x.id),[1]);
 });
+
+test('phone first entry never paints a stale shared cache before latest server snapshot',()=>{
+  const openStart=phone.indexOf('  async function openOlliTalkBetaPage(event){');
+  const openEnd=phone.indexOf('  async function closeOlliTalkBetaPage(',openStart);
+  assert.ok(openStart>0&&openEnd>openStart);
+  const opening=phone.slice(openStart,openEnd);
+  assert.match(opening,/const openCachedPayload = readOlliTalkMessageCache\(openContext\)/);
+  assert.match(opening,/setOlliTalkLoadingState\(\)/);
+  assert.match(opening,/loadOlliTalkBetaMessages\(\{/);
+  assert.doesNotMatch(opening,/readCachedUnified\(\)/);
+  assert.doesNotMatch(opening,/renderOlliTalkServerMessages\(combined/);
+  assert.match(phoneLoader,/const \[payload,extension\]=await Promise\.all\(\[/);
+});
+test('PC first entry paints only the latest verified combined server snapshot',()=>{
+  const source=pc.slice(pc.indexOf('  async function open() {'),pc.indexOf('  function start() {'));
+  assert.match(source,/state\.messageViewContextKey='';/);
+  assert.match(source,/emptyState\('통합 대화를 확인하는 중이에요'/);
+  assert.match(pcLoader,/const \[payload,extension\]=await Promise\.all\(\[/);
+  assert.doesNotMatch(pcLoader,/readCachedUnified\(\)/);
+  assert.doesNotMatch(pcLoader,/renderedCachedCombined/);
+});
+test('latest-message fetch is concurrent on both clients, not sequential after cached rendering',async()=>{
+  const sharedResolvers=[];
+  for(const client of ['PC','phone']){
+    const privateMsg={id:1,academy_id:'academy',created_at:'2026-11-20T00:00:00Z'};
+    const latest={id:'shared:newest',created_at:'2026-11-21T12:00:00Z'};
+    let resolveShared;
+    const sharedGate=new Promise(resolve=>{resolveShared=resolve;});
+    const renders=[];
+    const global={OlliSharedTeamChat:{unifiedExtension:()=>sharedGate}};
+    let fn;
+    if(client==='PC'){
+      const state={messageLoadSequence:0,messageViewContextKey:'',messages:[]};
+      const el={replaceChildren(){}};
+      const args={
+        state,context:()=>ctx,teamTalkContextKey:scope,byId:()=>el,
+        emptyState:title=>({title}),
+        rpc:async()=>({ok:true,messages:[privateMsg]}),
+        global,renderMessages:p=>renders.push(p.messages),
+        isVisible:()=>false,markRead:async()=>true,refreshBadge:async()=>true,
+        console:{warn(){}}
+      };
+      fn=new Function(...Object.keys(args),pcLoader+';return loadMessages')(...Object.values(args));
+    }else{
+      const cache={ok:true,academy_id:'academy',messages:[privateMsg]};
+      const args={
+        getOlliTalkBetaContext:()=>ctx,
+        readOlliTalkMessageCache:()=>cache,
+        document:{getElementById:()=>({replaceChildren(){}})},
+        isOlliTalkBetaVisible:()=>false,setOlliTalkLoadingState:()=>{},
+        createOlliTalkEmptyState:title=>({title}),
+        callOlliTalkRpc:async()=>({ok:true,academy_id:'academy',messages:[privateMsg]}),
+        mergeOlliTalkMessagePayloads:(_old,next)=>next,
+        areOlliTalkMessagePayloadsEquivalent:()=>false,
+        areOlliTalkMessagePayloadsRenderEquivalent:()=>false,
+        isOlliTalkMessageListInSync:()=>false,
+        writeOlliTalkMessageCache:()=>{},
+        renderOlliTalkServerMessages:p=>renders.push(p.messages),
+        syncOlliTalkRenderedUnreadCounts:()=>{},
+        markOlliTalkMessagesRead:async()=>true,
+        refreshOlliTalkMentionBadge:async()=>true,
+        console:{warn(){}},
+        window:global
+      };
+      const init="let olliTalkLoadSequence=0;let olliTalkCurrentPayload=null;let olliTalkCurrentViewPayload=null;let olliTalkSharedViewSignature='';let olliTalkRenderedMessageLimit=100;let olliTalkHistoryExhausted=false;let olliTalkInitialCombinedPaintPending=false;";
+      fn=new Function(...Object.keys(args),init+phoneLoader+';return loadOlliTalkBetaMessages')(...Object.values(args));
+    }
+    const pending=fn({showLoading:false,initialCombinedPaint:true});
+    await Promise.resolve();
+    assert.equal(renders.length,0,client+' must not paint before the shared latest response');
+    resolveShared({joined:true,room:{id:'room',participation_id:'part'},messages:[latest],latestSeq:0});
+    assert.equal(await pending,true);
+    assert.equal(renders.length,1,client+' should paint exactly once');
+    assert.deepEqual(Array.from(renders[0],item=>item.id),[1,'shared:newest']);
+  }
+});
