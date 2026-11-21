@@ -7611,7 +7611,7 @@
     return true;
   }
 
-  function appendOlliTalkPersistedMessage(item,currentMemberId){
+  function appendOlliTalkPersistedMessage(item,currentMemberId,options={}){
     const chatArea=document.getElementById('olliTalkBetaChatArea');
     if(!chatArea || !item) return false;
     const messageId=String(item?.id || '').trim();
@@ -7659,7 +7659,7 @@
       removeOlliTalkReplySuggestion(String(Number(item.reply_to_message_id)));
     }
     chatArea.dataset.previewReady='';
-    if(!isOlliTalkPendingReasonInputActive()){
+    if(options.anchor!==false&&!isOlliTalkPendingReasonInputActive()){
       scheduleOlliTalkMessageAboveComposer(next);
     }
     return true;
@@ -8517,15 +8517,10 @@
         if(canAppend){
           const nearBottom=isOlliTalkChatNearBottom(document.getElementById('olliTalkBetaChatArea'));
           added.forEach(item=>appendOlliTalkPersistedMessage(item,
-            String(presentation.current_member_id||context.memberId)));
-          // If the user is reading old messages, don't hijack their scroll.
-          if(!nearBottom){
-            // Appends remain in the DOM; the list is not replaced.
-          }
+            String(presentation.current_member_id||context.memberId),{anchor:nearBottom}));
           olliTalkCurrentPayload=mergedPayload;
           olliTalkCurrentViewPayload=presentation;
-          olliTalkRenderedMessageLimit=Math.min(activeRenderLimit||100,
-            (presentation.messages||[]).length);
+          olliTalkRenderedMessageLimit=(presentation.messages||[]).length;
           syncOlliTalkRenderedUnreadCounts(presentation);
         }else{
           renderOlliTalkServerMessages(presentation,{
