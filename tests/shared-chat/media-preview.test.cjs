@@ -271,7 +271,7 @@ test('PC and phone never reveal academy messages before a new entry status check
   const pc=load('apps/pc/pc-team-talk.js');
   assert.match(phone,/olliTalkInitialCombinedPaintPending=true;/);
   assert.match(phone,/function renderOlliTalkServerMessages\(payload,options=\{\}\)\{[\s\S]*?if\(olliTalkInitialCombinedPaintPending\)return;/);
-  assert.match(phone,/const extension=await window\.OlliSharedTeamChat\.unifiedExtension\(\{messages:true\}\)/);
+  assert.match(phone,/const \[payload,extension\]=await Promise\.all\(\[/);
   assert.match(phone,/if\(options\.render!==false&&renderChanged\)\{\s*olliTalkInitialCombinedPaintPending=false;/);
   assert.match(pc,/async function open\(\)\s*\{[\s\S]*?state\.messageViewContextKey='';[\s\S]*?screen\.style\.display = 'flex';/);
   assert.match(shared,/if\(!ctx\.academyId\|\|!ctx\.sessionToken\)\s*throw new Error\('통합 팀챗 세션 연결/);
