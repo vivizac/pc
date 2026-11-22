@@ -460,3 +460,77 @@ test('Mobile chat opens Work Hub and releases material orders when switching to 
   assert.deepEqual(await page.evaluate(() => fixture.archiveActions.slice(0, 3)), [['mount', true], ['activate'], ['destroy']]);
   assert.equal(await page.locator('#olliTalkBetaScreen').getAttribute('aria-hidden'), 'true');
 });
+
+test('Mobile reentry never flashes a stale cached room before the latest already-read message', {timeout:120000}, async t => {
+  const page = await openChat(t, [
+    message(1,'이전 재료 주문'),
+    message(2,'기존 사진 확인')
+  ]);
+  await page.evaluate(async () => {
+    const screen=document.getElementById('olliTalkBetaScreen');
+    screen.style.display='none';
+    screen.setAttribute('aria-hidden','true');
+    fixture.cachedUnifiedReadCalls=0;
+    fixture.sharedLatestRequestCalls=0;
+    fixture.reentryVisibleLastIds=[];
+    fixture.frameObservations=0;
+    // This stale IndexedDB snapshot is authorized, but no longer the latest
+    // conversation. Both server records have already been read (unread=0).
+    window.OlliSharedTeamChat.readCachedUnified=async()=>{
+      fixture.cachedUnifiedReadCalls++;
+      return {
+        joined:true,room:{id:'room',participation_id:'participation'},
+        messages:[{
+          id:'shared:old',is_shared:true,body:'어제 사진',
+          message_type:'text',sender_member_id:'teacher',sender_name:'김선생',
+          unread_count:0,created_at:'2026-11-20T09:00:00Z'
+        }]
+      };
+    };
+    window.OlliSharedTeamChat.unifiedExtension=async()=>{
+      fixture.sharedLatestRequestCalls++;
+      await new Promise(resolve=>setTimeout(resolve,220));
+      return {
+        joined:true,room:{id:'room',participation_id:'participation'},
+        messages:[{
+          id:'shared:newest',is_shared:true,body:'오늘 마지막 확인',
+          message_type:'text',sender_member_id:'teacher',sender_name:'김선생',
+          unread_count:0,created_at:'2026-11-21T09:00:00Z'
+        }],latestSeq:0
+      };
+    };
+    const observe=()=>{
+      const area=document.getElementById('olliTalkBetaChatArea');
+      const list=area?.querySelector('.olliTalkBetaMessageList');
+      const rows=Array.from(area?.querySelectorAll('.olliTalkBetaMessage[data-message-id]')||[]);
+      if(list&&getComputedStyle(list).visibility!=='hidden'&&rows.length){
+        fixture.reentryVisibleLastIds.push(rows.at(-1).dataset.messageId);
+      }
+      fixture.frameObservations++;
+      if(fixture.frameObservations<42)requestAnimationFrame(observe);
+    };
+    requestAnimationFrame(observe);
+    await window.openOlliTalkBetaPage();
+  });
+  await page.locator('[data-message-id="shared:newest"]').waitFor();
+  await page.waitForFunction(() => fixture.frameObservations >= 42);
+  const output=await page.evaluate(()=>{
+    const chat=document.getElementById('olliTalkBetaChatArea');
+    const rows=Array.from(chat.querySelectorAll('.olliTalkBetaMessage[data-message-id]'));
+    return{
+      visibleIds:fixture.reentryVisibleLastIds,
+      cachedUnifiedReadCalls:fixture.cachedUnifiedReadCalls,
+      sharedLatestRequestCalls:fixture.sharedLatestRequestCalls,
+      newest:rows.at(-1)?.dataset.messageId,
+      distance:Math.max(0,chat.scrollHeight-chat.clientHeight-chat.scrollTop)
+    };
+  });
+  assert.ok(output.visibleIds.length>0,JSON.stringify(output));
+  assert.equal(output.cachedUnifiedReadCalls,0,
+    'stale IndexedDB must not be mounted as a visible intermediate frame');
+  assert.equal(output.sharedLatestRequestCalls,1,'shared list fetched once per entry');
+  assert.deepEqual([...new Set(output.visibleIds)],['shared:newest'],
+    'each visible chat frame must contain the latest already-read message');
+  assert.equal(output.newest,'shared:newest');
+  assert.ok(output.distance<12,'first combined paint must start at the newest message');
+});
