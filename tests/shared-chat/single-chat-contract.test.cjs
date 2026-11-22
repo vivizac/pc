@@ -15,7 +15,7 @@ test('one visible Team Chat: no second room entry or independent shared dialog',
   for(const html of [pcHtml,mobileHtml]){
     assert.doesNotMatch(html,/data-shared-chat-entry/);
     assert.match(html,/Team Chat/);
-    assert.match(html,/olli-shared-team-chat\.js\?v=20261121-cache-order-v2/);
+    assert.match(html,/olli-shared-team-chat\.js\?v=20261122-persistent-conversation-1/);
   }
   assert.doesNotMatch(service,/createDialog\('공동 팀챗'\)/);
   assert.match(service,/async function open\(\)\{[\s\S]*OlliPcTeamTalk\?\.open/);
@@ -73,7 +73,7 @@ test('shared attachments and branch labels use current membership',()=>{
 test('verified unified room survives a temporary status failure on PC and phone',()=>{
   assert.match(pc,/const hasVerifiedView=state\.messageViewContextKey===contextKey/);
   assert.match(pc,/const extension=await global\.OlliSharedTeamChat\.unifiedExtension\(\{messages:true\}\)/);
-  assert.match(pc,/if\(body&&!hasVerifiedView&&!renderedCachedCombined\)body\.replaceChildren/);
+  assert.match(pc,/if\(body&&!hasVerifiedView\)body\.replaceChildren/);
   assert.match(mobile,/const renderedLocal = !!olliTalkCurrentViewPayload/);
   assert.match(mobile,/const extension=initialShared\|\|await window\.OlliSharedTeamChat\.unifiedExtension\(\{messages:true\}\)/);
   assert.match(mobile,/if\(!renderedLocal&&chatArea\)/);
@@ -85,11 +85,34 @@ test('verified unified room survives a temporary status failure on PC and phone'
 
 
 test('original PC and phone renderers retain same-session DOM without caching overrides',()=>{
-  assert.match(pc,/const hasLocalView=!!current\.sessionToken&&!!current\.academyId/);
+  assert.match(pc,/let hasLocalView=!!current\.sessionToken&&!!current\.academyId/);
   assert.match(pc,/state\.renderedMessageSignature===signature/);
-  assert.match(pc,/if\(options\.render!==false&&!hasVerifiedView&&typeof global\.OlliSharedTeamChat\.readCachedUnified/);
+  assert.match(pc,/const cached=await global\.OlliSharedTeamChat\?\.readCachedConversation\?\.\(\)/);
+  assert.match(pc,/writeCachedConversation\?\.\(combined,extension\)/);
   assert.match(mobile,/olliTalkCurrentViewContextKey===openViewKey/);
   assert.match(mobile,/scrollMode:hasLocalView\?'follow-if-near-bottom':'initial-latest'/);
   assert.doesNotMatch(mobile,/localFirst:/);
   assert.doesNotMatch(mobile,/function renderOlliTalkCachedMessages/);
+});
+
+
+test('cold-start local-first uses one shared persistent cache in both original renderers',()=>{
+  for(const src of [pc,mobile]){
+    assert.match(src,/readCachedConversation\?\.\(\)/);
+    assert.match(src,/writeCachedConversation\?\.\(/);
+  }
+  assert.match(service,/const CONVERSATION_CACHE_STORE='conversation-snapshots'/);
+  assert.match(service,/global\.indexedDB\.open\(SHARED_CACHE_DB,1\)/);
+  assert.match(service,/global\.indexedDB\.open\(CONVERSATION_CACHE_DB,1\)/);
+  assert.match(service,/async function readCachedConversation\(\)/);
+  assert.match(service,/function writeCachedConversation\(payload,verifiedExtension\)/);
+  const pcStart=pc.indexOf('  async function open()');
+  const pcBody=pc.slice(pcStart,pc.indexOf('  function start()',pcStart));
+  assert.ok(pcBody.indexOf('readCachedConversation?.()')<pcBody.indexOf('loadMessages({'),
+    'PC must paint disk cache before starting network list');
+  const phoneStart=mobile.indexOf('  async function openOlliTalkBetaPage(event)');
+  const phoneBody=mobile.slice(phoneStart,mobile.indexOf('  async function closeOlliTalkBetaPage(event)',phoneStart));
+  assert.ok(phoneBody.indexOf('readCachedConversation?.()')<phoneBody.indexOf('loadOlliTalkBetaMessages({'),
+    'phone must paint disk cache before starting network list');
+  assert.match(phoneBody,/renderOlliTalkServerMessages\(presentation,\{/);
 });
