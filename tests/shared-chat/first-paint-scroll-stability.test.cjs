@@ -100,7 +100,7 @@ test('phone first entry has exactly one authorized message-list render path',()=
     '  async function loadOlderOlliTalkMessages()');
   assert.match(open,/if\(!hasLocalView\)\{[\s\S]*?setOlliTalkLoadingState\(\)/);
   assert.match(open,/olliTalkCurrentViewContextKey===openViewKey/);
-  assert.match(open,/const cached=await window.OlliSharedTeamChat\?\.readCachedConversation\?\.\(\)/);
+  assert.match(open,/cached=await window\.OlliSharedTeamChat\?\.readCachedConversation\?\.\(\)/);
   assert.ok(open.indexOf('readCachedConversation?.()')<open.indexOf('loadOlliTalkBetaMessages({'),
     'cold-start cache must be read before network');
   assert.match(open,/scrollMode:hasLocalView\?'follow-if-near-bottom':'initial-latest'/);

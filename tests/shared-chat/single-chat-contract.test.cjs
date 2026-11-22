@@ -85,7 +85,7 @@ test('verified unified room survives a temporary status failure on PC and phone'
 
 
 test('original PC and phone renderers retain same-session DOM without caching overrides',()=>{
-  assert.match(pc,/const hasLocalView=!!current\.sessionToken&&!!current\.academyId/);
+  assert.match(pc,/let hasLocalView=!!current\.sessionToken&&!!current\.academyId/);
   assert.match(pc,/state\.renderedMessageSignature===signature/);
   assert.match(pc,/const cached=await global\.OlliSharedTeamChat\?\.readCachedConversation\?\.\(\)/);
   assert.match(pc,/writeCachedConversation\?\.\(combined,extension\)/);
