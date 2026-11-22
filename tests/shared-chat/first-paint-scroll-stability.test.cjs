@@ -98,7 +98,9 @@ test('phone first entry has exactly one authorized message-list render path',()=
     '  async function closeOlliTalkBetaPage(event){');
   const loader=extract('  async function loadOlliTalkBetaMessages(options = {}){',
     '  async function loadOlderOlliTalkMessages()');
-  assert.match(open,/setOlliTalkLoadingState\(\)/);
+  assert.match(open,/if\(!hasLocalView\)\{[\s\S]*?setOlliTalkLoadingState\(\)/);
+  assert.match(open,/olliTalkCurrentViewContextKey===openViewKey/);
+  assert.match(open,/scrollMode:hasLocalView\?'follow-if-near-bottom':'initial-latest'/);
   assert.match(open,/loadOlliTalkBetaMessages\(\{[\s\S]*?initialCombinedPaint:true/);
   assert.doesNotMatch(open,/readCachedUnified\(/,
     'opening must not paint a known-stale persisted room before the latest server response');

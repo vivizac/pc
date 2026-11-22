@@ -15,6 +15,7 @@
     sharedJoined: false,
     // The last render is valid only for this exact academy/member/session.
     messageViewContextKey: '',
+    renderedMessageSignature: '',
     memberViewContextKey: '',
     archiveViewContextKey: '',
     archivePayload: null,
@@ -1624,8 +1625,40 @@
     const body = byId('olliPcTeamTalkMessages');
     if (!body) return;
     const messages = Array.isArray(payload?.messages) ? payload.messages : [];
-    state.messages = messages;
     const currentMemberId = clean(payload?.current_member_id || context().memberId);
+    // Compare the rendered message data rather than unread metadata or cache age.
+    const signature=JSON.stringify([currentMemberId,messages.map(item=>[
+      item?.id,item?.message_type,item?.body,item?.sender_member_id,
+      item?.sender_name,item?.branch_name,item?.created_at,item?.edited_at,
+      item?.attachment,item?.action,item?.reply_to_message_id,
+      item?.material_request_id,item?.material_event_id
+    ])]);
+    const paintedRows=Array.from(body.querySelectorAll('.olliPcTeamTalkMessage[data-message-id]'));
+    const unchanged=state.renderedMessageSignature===signature
+      &&paintedRows.length===messages.length
+      &&paintedRows.every((row,index)=>clean(row.dataset.messageId)===clean(messages[index]?.id));
+    state.messages=messages;
+    if(unchanged){
+      const byMessageId=new Map(messages.map(item=>[clean(item?.id),item]));
+      paintedRows.forEach(row=>{
+        const item=byMessageId.get(clean(row.dataset.messageId));
+        const meta=row.querySelector('.olliPcTeamTalkMessageMeta');
+        if(!item||!meta)return;
+        const unread=Math.max(0,Number(item.unread_count||0));
+        let badge=meta.querySelector('.olliPcTeamTalkUnreadCount');
+        if(unread&&!badge){
+          badge=create('span','olliPcTeamTalkUnreadCount',String(unread));
+          meta.insertBefore(badge,meta.firstChild);
+        }else if(badge){
+          badge.textContent=String(unread);
+          badge.style.visibility=unread?'':'hidden';
+          badge.setAttribute('aria-hidden',unread?'false':'true');
+        }
+      });
+      if(options.followBottom!==false)body.scrollTop=body.scrollHeight;
+      return;
+    }
+    state.renderedMessageSignature=signature;
 
     if (!messages.length) {
       body.replaceChildren(emptyState('아직 대화가 없어요', '첫 메시지를 보내 팀톡을 시작해 보세요.'));
@@ -1655,11 +1688,14 @@
     const previousTop = body.scrollTop;
     body.replaceChildren(list);
     if (state.assistantReplyPending) syncAssistantTypingIndicator();
-    requestAnimationFrame(() => {
+    // Set the correct scroll position before the next paint, not after a jump.
+    const settleScroll=()=>{
       if (!body.isConnected) return;
       if (options.followBottom !== false || wasNearBottom) body.scrollTop = body.scrollHeight;
       else body.scrollTop = previousTop;
-    });
+    };
+    settleScroll();
+    requestAnimationFrame(settleScroll);
   }
 
   async function loadMessages(options = {}) {
@@ -1694,7 +1730,7 @@
       // The shared-room IndexedDB cache is verified against today's current
       // room/participation before being combined with the live academy list.
       // No academy-only view is ever drawn before membership verification.
-      if(options.render!==false&&typeof global.OlliSharedTeamChat.readCachedUnified==='function'){
+      if(options.render!==false&&!hasVerifiedView&&typeof global.OlliSharedTeamChat.readCachedUnified==='function'){
         try{
           const cached=await global.OlliSharedTeamChat.readCachedUnified();
           if(sequence!==state.messageLoadSequence||teamTalkContextKey(context())!==contextKey)return false;
@@ -5044,16 +5080,23 @@
     global.OlliPcCore?.hideMainScreensExcept?.('olliPcTeamTalkScreen');
     const screen = byId('olliPcTeamTalkScreen');
     if (!screen) return false;
-    // A previous visit may have displayed a confirmed academy-only room.
-    // Never show that old DOM again while this visit's unified status is unknown.
-    state.messageLoadSequence++;
-    state.messageViewContextKey='';
-    state.messages=[];
-    byId('olliPcTeamTalkMessages')?.replaceChildren(
-      emptyState('통합 대화를 확인하는 중이에요','잠시만 기다려 주세요.')
-    );
+    const current=context();
+    const body=byId('olliPcTeamTalkMessages');
+    const hasLocalView=!!current.sessionToken&&!!current.academyId
+      &&state.messageViewContextKey===teamTalkContextKey(current)
+      &&!!body?.querySelector(state.messages.length
+        ? '.olliPcTeamTalkMessageList' : '.olliPcTeamTalkEmpty');
+    // Retain the authorized local DOM on reentry. Reset only on context change.
+    if(!hasLocalView){
+      state.messageLoadSequence++;
+      state.messageViewContextKey='';
+      state.renderedMessageSignature='';
+      state.messages=[];
+      body?.replaceChildren(emptyState('통합 대화를 확인하는 중이에요','잠시만 기다려 주세요.'));
+    }
     screen.style.display = 'flex';
     screen.setAttribute('aria-hidden', 'false');
+    if(hasLocalView&&body)body.scrollTop=body.scrollHeight;
     bindEvents();
     bindRealtime();
     resizeComposer();
@@ -5063,7 +5106,7 @@
 
     await Promise.all([
       loadMembers(),
-      loadMessages({ showLoading: true, followBottom: true }),
+      loadMessages({ showLoading: !hasLocalView, followBottom: true }),
       loadArchive({ showLoading: true })
     ]);
     return true;

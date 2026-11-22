@@ -461,7 +461,7 @@ test('Mobile chat opens Work Hub and releases material orders when switching to 
   assert.equal(await page.locator('#olliTalkBetaScreen').getAttribute('aria-hidden'), 'true');
 });
 
-test('Mobile reentry never flashes a stale cached room before the latest already-read message', {timeout:120000}, async t => {
+test('Mobile reentry paints local messages immediately and adds only the latest server messages', {timeout:120000}, async t => {
   const page = await openChat(t, [
     message(1,'이전 재료 주문'),
     message(2,'기존 사진 확인')
@@ -474,6 +474,7 @@ test('Mobile reentry never flashes a stale cached room before the latest already
     fixture.sharedLatestRequestCalls=0;
     fixture.reentryVisibleLastIds=[];
     fixture.frameObservations=0;
+    fixture.loadingFrames=0;
     // This stale IndexedDB snapshot is authorized, but no longer the latest
     // conversation. Both server records have already been read (unread=0).
     window.OlliSharedTeamChat.readCachedUnified=async()=>{
@@ -503,6 +504,7 @@ test('Mobile reentry never flashes a stale cached room before the latest already
       const area=document.getElementById('olliTalkBetaChatArea');
       const list=area?.querySelector('.olliTalkBetaMessageList');
       const rows=Array.from(area?.querySelectorAll('.olliTalkBetaMessage[data-message-id]')||[]);
+      if(area?.querySelector('.olliTalkBetaEmpty')&&getComputedStyle(screen).display!=='none')fixture.loadingFrames++;
       if(list&&getComputedStyle(list).visibility!=='hidden'&&rows.length){
         fixture.reentryVisibleLastIds.push(rows.at(-1).dataset.messageId);
       }
@@ -519,6 +521,7 @@ test('Mobile reentry never flashes a stale cached room before the latest already
     const rows=Array.from(chat.querySelectorAll('.olliTalkBetaMessage[data-message-id]'));
     return{
       visibleIds:fixture.reentryVisibleLastIds,
+      loadingFrames:fixture.loadingFrames,
       cachedUnifiedReadCalls:fixture.cachedUnifiedReadCalls,
       sharedLatestRequestCalls:fixture.sharedLatestRequestCalls,
       newest:rows.at(-1)?.dataset.messageId,
@@ -530,8 +533,31 @@ test('Mobile reentry never flashes a stale cached room before the latest already
     'stale IndexedDB must not be mounted as a visible intermediate frame');
   assert.ok(output.sharedLatestRequestCalls>=1,
     'at least one authoritative shared list fetch is required; realtime may also refresh');
-  assert.deepEqual([...new Set(output.visibleIds)],['shared:newest'],
-    'each visible chat frame must contain the latest already-read message');
+  assert.equal(output.visibleIds[0],'2','the previous local message must appear first');
+  assert.equal(output.visibleIds.at(-1),'shared:newest');
+  assert.ok([...new Set(output.visibleIds)].every(id=>id==='2'||id==='shared:newest'),
+    'no stale shared-cache snapshot should be displayed');
+  assert.equal(output.loadingFrames,0,'local reentry must not show a loading placeholder');
   assert.equal(output.newest,'shared:newest');
-  assert.ok(output.distance<12,'first combined paint must start at the newest message');
+  assert.ok(output.distance<12,'the combined chat remains at the newest message');
+});
+
+
+test('Mobile unchanged repeat entry reuses its exact message DOM and never flashes loading', async t => {
+  const page=await openChat(t,[message(1,'어제 대화'),message(2,'마지막 대화')]);
+  const report=await page.evaluate(async()=>{
+    const screen=document.getElementById('olliTalkBetaScreen');
+    const area=document.getElementById('olliTalkBetaChatArea');
+    const previous=area.querySelector('.olliTalkBetaMessageList');
+    screen.style.display='none';
+    screen.setAttribute('aria-hidden','true');
+    await window.openOlliTalkBetaPage();
+    const immediateSame=area.querySelector('.olliTalkBetaMessageList')===previous;
+    const immediateLoading=!!area.querySelector('.olliTalkBetaEmpty');
+    await new Promise(resolve=>setTimeout(resolve,180));
+    return {immediateSame,immediateLoading,afterSame:area.querySelector('.olliTalkBetaMessageList')===previous};
+  });
+  assert.equal(report.immediateSame,true);
+  assert.equal(report.immediateLoading,false);
+  assert.equal(report.afterSame,true);
 });
