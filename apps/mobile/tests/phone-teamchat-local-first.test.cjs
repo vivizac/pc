@@ -15,20 +15,21 @@ test('Team Chat keeps one academy-scoped message cache and validates account sco
   assert.doesNotMatch(talk, /olli_team_chat_first_paint/);
 });
 
-test('Team Chat waits for a combined snapshot before its first message paint', () => {
-  const openStart = talk.indexOf('async function openOlliTalkBetaPage');
-  const openEnd = talk.indexOf('async function closeOlliTalkBetaPage', openStart);
-  const body = talk.slice(openStart, openEnd);
-  const readLocal = body.indexOf('const openCachedPayload = readOlliTalkMessageCache(openContext)');
-  const loading = body.indexOf('setOlliTalkLoadingState()', readLocal);
-  const showScreen = body.indexOf("screen.style.display = 'flex'", loading);
-  const refresh = body.indexOf('loadOlliTalkBetaMessages({', showScreen);
-  assert.ok(readLocal >= 0, 'existing academy cache must still be read');
-  assert.ok(loading > readLocal, 'show a loading state before the chat is exposed');
-  assert.ok(showScreen > loading, 'screen becomes visible with loading state, not academy-only messages');
-  assert.ok(refresh > showScreen, 'fetch messages after showing loading state');
-  assert.ok(body.includes('initialCombinedPaint:true'), 'first render waits for authorized combined messages');
-  assert.doesNotMatch(body, /renderOlliTalkServerMessages\(openCachedPayload/, 'never paint academy-only cache on entry');
+test('Team Chat reuses an authorized local conversation and verifies the first combined paint', () => {
+  const openStart=talk.indexOf('async function openOlliTalkBetaPage');
+  const openEnd=talk.indexOf('async function closeOlliTalkBetaPage',openStart);
+  const body=talk.slice(openStart,openEnd);
+  const identity=body.indexOf('olliTalkCurrentViewContextKey===openViewKey');
+  const loading=body.indexOf('setOlliTalkLoadingState()',identity);
+  const readLocal=body.indexOf('const openCachedPayload=readOlliTalkMessageCache(openContext)',loading);
+  const shown=body.indexOf("screen.style.display = 'flex'",readLocal);
+  const refresh=body.indexOf('loadOlliTalkBetaMessages({',shown);
+  assert.ok(identity>=0,'reuse must validate account/member/session identity');
+  assert.ok(loading>identity&&readLocal>loading,'only an unverified first entry shows loading');
+  assert.ok(shown>readLocal&&refresh>shown,'local state is available before the server refresh');
+  assert.ok(body.includes('initialCombinedPaint:!hasLocalView'));
+  assert.ok(body.includes("scrollMode:hasLocalView?'follow-if-near-bottom':'initial-latest'"));
+  assert.doesNotMatch(body,/renderOlliTalkServerMessages\(openCachedPayload/,'never paint academy-only cache for an unknown shared room');
 });
 
 test('combined first render is bounded and the full academy cache remains for history', () => {

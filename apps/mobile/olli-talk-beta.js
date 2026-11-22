@@ -20,6 +20,8 @@
   let olliTalkCurrentPayload = null;
   // In-memory display snapshot only; shared messages never enter academy localStorage.
   let olliTalkCurrentViewPayload = null;
+  // Identity of the last actually painted, authorized combined conversation.
+  let olliTalkCurrentViewContextKey = '';
   let olliTalkSharedViewSignature = '';
   // Guard the entire first paint, including older-history, gallery and realtime
   // render paths. Only a verified unified status can release this gate.
@@ -1278,7 +1280,6 @@
 
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
       return true;
@@ -1287,7 +1288,6 @@
       alert(error?.message || '취소 사유를 처리하지 못했습니다.');
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       }).catch(()=>{});
       return false;
@@ -4118,17 +4118,6 @@
     };
   }
 
-  function renderOlliTalkCachedMessages(context = getOlliTalkBetaContext()){
-    const cached = readOlliTalkMessageCache(context);
-    if (!cached) return null;
-    olliTalkCurrentPayload=cached;
-    renderOlliTalkServerMessages(cached, {
-      scrollMode:'bottom',
-      messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT
-    });
-    return cached;
-  }
-
   function createOlliTalkClientMessageId(){
     if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
     const bytes = new Uint8Array(16);
@@ -5939,7 +5928,7 @@
       if(refresh){
         await Promise.all([
           loadOlliTalkArchive(),
-          loadOlliTalkBetaMessages({showLoading:false,localFirst:false,scrollMode:'bottom'})
+          loadOlliTalkBetaMessages({showLoading:false,scrollMode:'bottom'})
         ]);
       }
       return true;
@@ -5966,7 +5955,7 @@
       const extension=await window.OlliSharedTeamChat.unifiedExtension();
       if(extension.joined){
         for(const file of list)await window.OlliSharedTeamChat.uploadUnified(file);
-        await loadOlliTalkBetaMessages({showLoading:false,localFirst:false,scrollMode:'bottom'});
+        await loadOlliTalkBetaMessages({showLoading:false,scrollMode:'bottom'});
         return true;
       }
     }catch(error){alert(error.message||'공동 첨부파일 업로드에 실패했습니다.');return false;}
@@ -5978,7 +5967,7 @@
     if(changed){
       await Promise.all([
         loadOlliTalkArchive(),
-        loadOlliTalkBetaMessages({showLoading:false,localFirst:false,scrollMode:'bottom'})
+        loadOlliTalkBetaMessages({showLoading:false,scrollMode:'bottom'})
       ]);
     }
     return changed;
@@ -6351,7 +6340,6 @@
 
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
 
@@ -6363,7 +6351,6 @@
       alert(error?.message || '작업을 처리하지 못했습니다.');
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
     }finally{
@@ -6397,7 +6384,6 @@
       await refreshOlliTalkMentionBadge();
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
       return true;
@@ -6459,7 +6445,6 @@
       }
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
     }catch(error){
@@ -6467,7 +6452,6 @@
       alert(error?.message || '반을 선택하지 못했습니다.');
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
     }finally{
@@ -6576,7 +6560,6 @@
       }
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
     }catch(error){
@@ -6584,7 +6567,6 @@
       alert(error?.message || '날짜를 선택하지 못했습니다.');
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
     }finally{
@@ -6756,7 +6738,6 @@
       }
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
     }catch(error){
@@ -6764,7 +6745,6 @@
       alert(error?.message || '대상을 선택하지 못했습니다.');
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
     }finally{
@@ -6841,7 +6821,6 @@
       await continueOlliTalkStructuredWriteDraft(payload.draft,context);
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
     }catch(error){
@@ -6849,7 +6828,6 @@
       alert(error?.message || '학생을 선택하지 못했습니다.');
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
     }finally{
@@ -6926,7 +6904,6 @@
       await continueOlliTalkStructuredWriteDraft(payload.draft,context);
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
     }catch(error){
@@ -6934,7 +6911,6 @@
       alert(error?.message || '수업 구분을 선택하지 못했습니다.');
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
     }finally{
@@ -6986,7 +6962,6 @@
       await continueOlliTalkStructuredWriteDraft(payload.draft,context);
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
     }catch(error){
@@ -6994,7 +6969,6 @@
       alert(error?.message || '시간을 선택하지 못했습니다.');
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
     }finally{
@@ -7208,7 +7182,6 @@
       removeOlliTalkReplySuggestion(messageId);
       await loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'bottom',
         render:false
       });
@@ -7696,6 +7669,13 @@
 
     olliTalkCurrentPayload=payload?.__academyLocal || payload || null;
     olliTalkCurrentViewPayload=payload || null;
+    // Renderer fixtures may run without browser storage; never let context
+    // inspection block an otherwise valid message paint.
+    let renderedContext=null;
+    try{renderedContext=getOlliTalkBetaContext();}catch(_){}
+    olliTalkCurrentViewContextKey=renderedContext?.sessionToken&&renderedContext?.academyId
+      ? [renderedContext.academyId,renderedContext.memberId,renderedContext.sessionToken].join(':')
+      : '';
     const allMessages=Array.isArray(payload?.messages) ? payload.messages : [];
     const requestedMessageLimit=Math.max(0,Math.floor(Number(options.messageLimit) || 0));
     const messages=requestedMessageLimit>0 && allMessages.length>requestedMessageLimit
@@ -8426,8 +8406,7 @@
       return now.academyId===context.academyId
         && now.memberId===context.memberId
         && now.sessionToken===context.sessionToken
-        && (options.initialCombinedPaint!==true
-          || options.openGeneration==null
+        && (options.openGeneration==null
           || (options.openGeneration===olliTalkOpenGeneration&&isOlliTalkBetaVisible()));
     };
 
@@ -8443,7 +8422,6 @@
           loadOlliTalkBetaMessages({
             ...options,
             showLoading:false,
-            localFirst:false,
             cachedPayload:basePayload||undefined,
             contextRetry:retryCount+1
           }).catch(()=>{});
@@ -8724,7 +8702,7 @@
           if(!persistentMentionPrefix){olliTalkMentionSelections.clear();olliTalkMentionModeActive=false;resetOlliTalkAiConversation();}
           syncOlliTalkSelectedMentionPrefix();
           hideOlliTalkMentionMenu();resizeInput();updateOlliTalkBetaComposerState();
-          await loadOlliTalkBetaMessages({showLoading:false,localFirst:false,scrollMode:'bottom'});
+          await loadOlliTalkBetaMessages({showLoading:false,scrollMode:'bottom'});
           window.OlliMobileKeyboardActivation?.focus(input);
           return;
         }
@@ -8820,7 +8798,7 @@
         }
       }
 
-      await loadOlliTalkBetaMessages({ showLoading:false, localFirst:false, scrollMode:'bottom', render:false });
+      await loadOlliTalkBetaMessages({ showLoading:false, scrollMode:'bottom', render:false });
 
       if (followupErrors.length) {
         alert('메시지는 전송됐지만 ' + followupErrors.join(', ') + '에 실패했습니다.');
@@ -8996,25 +8974,34 @@
     closeOlliTalkSearch({ blur:false });
     olliTalkHistoryExhausted=false;
     olliTalkHistoryLoading=false;
-    olliTalkCurrentPayload=null;
-    olliTalkCurrentViewPayload=null;
-    olliTalkSharedViewSignature='';
-    olliTalkRenderedMessageLimit=OLLI_TALK_INITIAL_RENDER_LIMIT;
-    olliTalkInitialCombinedPaintPending=true;
     olliTalkOpenGeneration++;
-
-    // The academy cache remains intact, but must not become a visible chat
-    // before an authorized unified-room snapshot has been merged with it.
-    // A single loading state prevents the initial academy-only -> unified flash.
-    const openContext = getOlliTalkBetaContext();
-    const openCachedPayload = readOlliTalkMessageCache(openContext);
-    if(openCachedPayload){
-      olliTalkCurrentPayload=openCachedPayload;
-      renderOlliTalkCachedMemberCount(openCachedPayload);
+    const openContext=getOlliTalkBetaContext();
+    const openViewKey=[openContext.academyId,openContext.memberId,openContext.sessionToken].join(':');
+    const chatArea=document.getElementById('olliTalkBetaChatArea');
+    const hasLocalView=!!openContext.sessionToken&&!!openContext.academyId
+      &&olliTalkCurrentViewContextKey===openViewKey
+      &&!!olliTalkCurrentViewPayload
+      &&isOlliTalkMessageListInSync(olliTalkCurrentViewPayload,olliTalkRenderedMessageLimit);
+    // Preserve the verified local message DOM on a same-session reentry.
+    // A changed account or academy cannot reuse that visible conversation.
+    if(!hasLocalView){
+      olliTalkCurrentPayload=null;
+      olliTalkCurrentViewPayload=null;
+      olliTalkCurrentViewContextKey='';
+      olliTalkSharedViewSignature='';
+      olliTalkRenderedMessageLimit=OLLI_TALK_INITIAL_RENDER_LIMIT;
+      olliTalkInitialCombinedPaintPending=true;
+      setOlliTalkLoadingState();
     }else{
+      olliTalkInitialCombinedPaintPending=false;
+    }
+    const openCachedPayload=readOlliTalkMessageCache(openContext);
+    if(openCachedPayload){
+      if(!hasLocalView)olliTalkCurrentPayload=openCachedPayload;
+      renderOlliTalkCachedMemberCount(openCachedPayload);
+    }else if(!hasLocalView){
       applyOlliTalkMemberCount(null);
     }
-    setOlliTalkLoadingState();
 
     screen.style.display = 'flex';
     screen.setAttribute('aria-hidden', 'false');
@@ -9040,6 +9027,11 @@
     resizeInput();
     syncViewport();
     updateOlliTalkBetaComposerState();
+    if(hasLocalView&&chatArea){
+      // Anchor before paint so an old scroll offset cannot flash on reentry.
+      syncOlliTalkChatToComposer();
+      chatArea.scrollTop=chatArea.scrollHeight;
+    }
 
     requestAnimationFrame(() => {
       // rAF 뒤의 macrotask에서 시작해 로컬 DOM의 첫 paint를 먼저 보장합니다.
@@ -9059,18 +9051,16 @@
         if (typeof window.OlliRealtime?.ensureConnected === 'function') {
           window.OlliRealtime.ensureConnected({ force:false, reason:'olli_talk_open' }).catch(() => {});
         }
-        // The three-step flash was caused here: loading -> cached shared
-        // messages -> a second full render from the server. Keep both caches
-        // intact but commit one visible, server-verified combined first frame.
+        // The previously verified local view is already painted on reentry.
+        // Fetch the latest combined server snapshot without resetting it.
         const openGeneration=olliTalkOpenGeneration;
         loadOlliTalkBetaMessages({
           showLoading:false,
-          localFirst:false,
           cachedPayload:openCachedPayload,
           messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
-          initialCombinedPaint:true,
+          initialCombinedPaint:!hasLocalView,
           openGeneration,
-          scrollMode:'initial-latest'
+          scrollMode:hasLocalView?'follow-if-near-bottom':'initial-latest'
         }).catch(error=>{
           if(openGeneration===olliTalkOpenGeneration)
             console.warn('통합 팀챗 첫 화면 조회 실패:',error?.message||error);
@@ -9294,7 +9284,6 @@
 
       return loadOlliTalkBetaMessages({
         showLoading:false,
-        localFirst:false,
         scrollMode:'follow-if-near-bottom'
       });
     });

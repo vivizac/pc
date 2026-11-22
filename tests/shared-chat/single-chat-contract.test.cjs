@@ -82,3 +82,14 @@ test('verified unified room survives a temporary status failure on PC and phone'
   assert.match(mobile,/const joined=await window\.OlliSharedTeamChat\.archiveUnified\(\{limit:1000\}\)/);
   assert.match(service,/const sharedStatusInflight=new Map\(\)/);
 });
+
+
+test('original PC and phone renderers retain same-session DOM without caching overrides',()=>{
+  assert.match(pc,/const hasLocalView=!!current\.sessionToken&&!!current\.academyId/);
+  assert.match(pc,/state\.renderedMessageSignature===signature/);
+  assert.match(pc,/if\(options\.render!==false&&!hasVerifiedView&&typeof global\.OlliSharedTeamChat\.readCachedUnified/);
+  assert.match(mobile,/olliTalkCurrentViewContextKey===openViewKey/);
+  assert.match(mobile,/scrollMode:hasLocalView\?'follow-if-near-bottom':'initial-latest'/);
+  assert.doesNotMatch(mobile,/localFirst:/);
+  assert.doesNotMatch(mobile,/function renderOlliTalkCachedMessages/);
+});
