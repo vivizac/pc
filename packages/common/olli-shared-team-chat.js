@@ -442,6 +442,7 @@ async function archiveUnified(options={}){
 // cache remains untouched. Never store credentials, media bytes or private tasks.
 const SHARED_CACHE_DB='olli-shared-teamchat-v1';
 const SHARED_CACHE_STORE='room-snapshots';
+const CONVERSATION_CACHE_DB='olli-teamchat-conversation-v1';
 const CONVERSATION_CACHE_STORE='conversation-snapshots';
 const SHARED_CACHE_MAX_AGE=6*60*60*1000;
 const SHARED_CACHE_LIMIT=100;
@@ -451,6 +452,7 @@ const conversationCacheMemory=new Map();
 const conversationCacheWrites=new Map();
 const conversationCacheReadOrders=new Map();
 let conversationCacheSerial=0;
+let conversationCacheDbPromise=null;
 const sharedCacheMemory=new Map();
 // Serialize writes by authorized room scope. Only the newest started read is
 // allowed to commit, so a slow older request cannot restore stale messages.
@@ -468,12 +470,10 @@ function sharedCacheDb(){
   if(!global.indexedDB)return Promise.resolve(null);
   if(!sharedCacheDbPromise){
     sharedCacheDbPromise=new Promise((resolve,reject)=>{
-      const request=global.indexedDB.open(SHARED_CACHE_DB,2);
+      const request=global.indexedDB.open(SHARED_CACHE_DB,1);
       request.onupgradeneeded=()=>{
         if(!request.result.objectStoreNames.contains(SHARED_CACHE_STORE))
           request.result.createObjectStore(SHARED_CACHE_STORE,{keyPath:'scope'});
-        if(!request.result.objectStoreNames.contains(CONVERSATION_CACHE_STORE))
-          request.result.createObjectStore(CONVERSATION_CACHE_STORE,{keyPath:'scope'});
       };
       request.onsuccess=()=>resolve(request.result);
       request.onerror=()=>reject(request.error||new Error('Shared cache unavailable'));
@@ -557,6 +557,27 @@ async function writeSharedSnapshot(ctx,room,messages,latestSeq,readOrder){
   return job;
 }
 
+function conversationCacheDb(){
+  if(!global.indexedDB)return Promise.resolve(null);
+  if(!conversationCacheDbPromise){
+    conversationCacheDbPromise=new Promise((resolve,reject)=>{
+      const request=global.indexedDB.open(CONVERSATION_CACHE_DB,1);
+      request.onupgradeneeded=()=>{
+        if(!request.result.objectStoreNames.contains(CONVERSATION_CACHE_STORE))
+          request.result.createObjectStore(CONVERSATION_CACHE_STORE,{keyPath:'scope'});
+      };
+      request.onsuccess=()=>resolve(request.result);
+      request.onerror=()=>reject(request.error||new Error('Conversation cache unavailable'));
+      request.onblocked=()=>reject(new Error('Conversation cache is blocked by another tab'));
+    }).catch(error=>{
+      conversationCacheDbPromise=null;
+      console.warn('팀챗 전체 대화 저장소 열기 실패:',error?.message||error);
+      return null;
+    });
+  }
+  return conversationCacheDbPromise;
+}
+
 /* One persisted, server-verified conversation snapshot for both PC and phone.
  * This is the only cold-start first-paint source. The legacy academy localStorage
  * and shared room-snapshots remain intact, and no server request blocks reading it. */
@@ -579,13 +600,13 @@ function validConversationRecord(record,scope,ctx){
 async function readCachedConversation(){
   const ctx=context(),scope=conversationCacheIdentity(ctx);
   if(!scope)return null;
-  const db=await sharedCacheDb();
+  const conversationDb=await conversationCacheDb();
   assertCurrent(ctx);
   let record=conversationCacheMemory.get(scope)||null;
-  if(db&&db.objectStoreNames.contains(CONVERSATION_CACHE_STORE)){
+  if(conversationDb&&conversationDb.objectStoreNames.contains(CONVERSATION_CACHE_STORE)){
     try{
       const persisted=await new Promise((resolve,reject)=>{
-        const request=db.transaction(CONVERSATION_CACHE_STORE,'readonly')
+        const request=conversationDb.transaction(CONVERSATION_CACHE_STORE,'readonly')
           .objectStore(CONVERSATION_CACHE_STORE).get(scope);
         request.onsuccess=()=>resolve(request.result||null);
         request.onerror=()=>reject(request.error);
@@ -600,6 +621,8 @@ async function readCachedConversation(){
       payload:record.payload};
   }
   if(record)return null; // An invalidated/current-format snapshot must not fall back to stale room data.
+  const db=await sharedCacheDb();
+  assertCurrent(ctx);
   // One-time reuse of the existing verified shared-room IndexedDB snapshot.
   // Previous app builds wrote this cache, but never displayed it before network.
   if(!db||!db.objectStoreNames.contains(SHARED_CACHE_STORE))return null;
@@ -660,7 +683,7 @@ function writeCachedConversation(payload,verifiedExtension){
   const job=previous.catch(()=>{}).then(async()=>{
     if(conversationCacheReadOrders.get(scope)!==order)return false;
     assertCurrent(ctx);
-    const db=await sharedCacheDb();
+    const db=await conversationCacheDb();
     assertCurrent(ctx);
     if(conversationCacheReadOrders.get(scope)!==order)return false;
     if(db&&db.objectStoreNames.contains(CONVERSATION_CACHE_STORE)){
@@ -687,7 +710,7 @@ function writeCachedConversation(payload,verifiedExtension){
 async function invalidateCachedConversation(){
   const ctx=context(),scope=conversationCacheIdentity(ctx);
   if(!scope)return false;
-  const db=await sharedCacheDb();
+  const db=await conversationCacheDb();
   assertCurrent(ctx);
   const order=++conversationCacheSerial;
   conversationCacheReadOrders.set(scope,order);

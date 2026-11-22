@@ -102,7 +102,8 @@ test('cold-start local-first uses one shared persistent cache in both original r
     assert.match(src,/writeCachedConversation\?\.\(/);
   }
   assert.match(service,/const CONVERSATION_CACHE_STORE='conversation-snapshots'/);
-  assert.match(service,/global\.indexedDB\.open\(SHARED_CACHE_DB,2\)/);
+  assert.match(service,/global\.indexedDB\.open\(SHARED_CACHE_DB,1\)/);
+  assert.match(service,/global\.indexedDB\.open\(CONVERSATION_CACHE_DB,1\)/);
   assert.match(service,/async function readCachedConversation\(\)/);
   assert.match(service,/function writeCachedConversation\(payload,verifiedExtension\)/);
   const pcStart=pc.indexOf('  async function open()');
