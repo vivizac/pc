@@ -101,7 +101,7 @@ test('phone first entry has exactly one authorized message-list render path',()=
   assert.match(open,/if\(!hasLocalView\)\{[\s\S]*?setOlliTalkLoadingState\(\)/);
   assert.match(open,/olliTalkCurrentViewContextKey===openViewKey/);
   assert.match(open,/scrollMode:hasLocalView\?'follow-if-near-bottom':'initial-latest'/);
-  assert.match(open,/loadOlliTalkBetaMessages\(\{[\s\S]*?initialCombinedPaint:true/);
+  assert.match(open,/loadOlliTalkBetaMessages\(\{[\s\S]*?initialCombinedPaint:!hasLocalView/);
   assert.doesNotMatch(open,/readCachedUnified\(/,
     'opening must not paint a known-stale persisted room before the latest server response');
   assert.doesNotMatch(open,/renderOlliTalkServerMessages\(combined/,

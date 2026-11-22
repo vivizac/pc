@@ -7669,8 +7669,13 @@
 
     olliTalkCurrentPayload=payload?.__academyLocal || payload || null;
     olliTalkCurrentViewPayload=payload || null;
-    const renderedContext=getOlliTalkBetaContext();
-    olliTalkCurrentViewContextKey=[renderedContext.academyId,renderedContext.memberId,renderedContext.sessionToken].join(':');
+    // Renderer fixtures may run without browser storage; never let context
+    // inspection block an otherwise valid message paint.
+    let renderedContext=null;
+    try{renderedContext=getOlliTalkBetaContext();}catch(_){}
+    olliTalkCurrentViewContextKey=renderedContext?.sessionToken&&renderedContext?.academyId
+      ? [renderedContext.academyId,renderedContext.memberId,renderedContext.sessionToken].join(':')
+      : '';
     const allMessages=Array.isArray(payload?.messages) ? payload.messages : [];
     const requestedMessageLimit=Math.max(0,Math.floor(Number(options.messageLimit) || 0));
     const messages=requestedMessageLimit>0 && allMessages.length>requestedMessageLimit
