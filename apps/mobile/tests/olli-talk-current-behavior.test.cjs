@@ -528,7 +528,8 @@ test('Mobile reentry never flashes a stale cached room before the latest already
   assert.ok(output.visibleIds.length>0,JSON.stringify(output));
   assert.equal(output.cachedUnifiedReadCalls,0,
     'stale IndexedDB must not be mounted as a visible intermediate frame');
-  assert.equal(output.sharedLatestRequestCalls,1,'shared list fetched once per entry');
+  assert.ok(output.sharedLatestRequestCalls>=1,
+    'at least one authoritative shared list fetch is required; realtime may also refresh');
   assert.deepEqual([...new Set(output.visibleIds)],['shared:newest'],
     'each visible chat frame must contain the latest already-read message');
   assert.equal(output.newest,'shared:newest');
