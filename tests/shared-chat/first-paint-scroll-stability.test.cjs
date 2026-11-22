@@ -92,3 +92,20 @@ test('phone append path honors reader scroll position and retains DOM',()=>{
  assert.match(appendSource,/if\(options\.anchor!==false&&!isOlliTalkPendingReasonInputActive\(\)\)/);
  assert.match(body,/olliTalkCurrentViewPayload=presentation/);
 });
+
+test('phone first entry has exactly one authorized message-list render path',()=>{
+  const open=extract('  async function openOlliTalkBetaPage(event){',
+    '  async function closeOlliTalkBetaPage(event){');
+  const loader=extract('  async function loadOlliTalkBetaMessages(options = {}){',
+    '  async function loadOlderOlliTalkMessages()');
+  assert.match(open,/setOlliTalkLoadingState\(\)/);
+  assert.match(open,/loadOlliTalkBetaMessages\(\{[\s\S]*?initialCombinedPaint:true/);
+  assert.doesNotMatch(open,/readCachedUnified\(/,
+    'opening must not paint a known-stale persisted room before the latest server response');
+  assert.doesNotMatch(open,/renderOlliTalkServerMessages\(combined/,
+    'there cannot be an intermediate cached-message DOM commit');
+  assert.match(loader,/const \[payload,initialShared\]=options\.initialCombinedPaint===true\s*\? await Promise\.all\(\[/);
+  assert.match(loader,/const extension=initialShared\|\|await window\.OlliSharedTeamChat\.unifiedExtension/);
+  assert.match(loader,/options\.openGeneration===olliTalkOpenGeneration&&isOlliTalkBetaVisible\(\)/,
+    'closing the chat invalidates a pending first entry');
+});
