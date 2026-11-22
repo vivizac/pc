@@ -442,8 +442,15 @@ async function archiveUnified(options={}){
 // cache remains untouched. Never store credentials, media bytes or private tasks.
 const SHARED_CACHE_DB='olli-shared-teamchat-v1';
 const SHARED_CACHE_STORE='room-snapshots';
+const CONVERSATION_CACHE_STORE='conversation-snapshots';
 const SHARED_CACHE_MAX_AGE=6*60*60*1000;
 const SHARED_CACHE_LIMIT=100;
+const CONVERSATION_CACHE_MAX_AGE=30*24*60*60*1000;
+const CONVERSATION_CACHE_LIMIT=200;
+const conversationCacheMemory=new Map();
+const conversationCacheWrites=new Map();
+const conversationCacheReadOrders=new Map();
+let conversationCacheSerial=0;
 const sharedCacheMemory=new Map();
 // Serialize writes by authorized room scope. Only the newest started read is
 // allowed to commit, so a slow older request cannot restore stale messages.
@@ -461,10 +468,12 @@ function sharedCacheDb(){
   if(!global.indexedDB)return Promise.resolve(null);
   if(!sharedCacheDbPromise){
     sharedCacheDbPromise=new Promise((resolve,reject)=>{
-      const request=global.indexedDB.open(SHARED_CACHE_DB,1);
+      const request=global.indexedDB.open(SHARED_CACHE_DB,2);
       request.onupgradeneeded=()=>{
         if(!request.result.objectStoreNames.contains(SHARED_CACHE_STORE))
           request.result.createObjectStore(SHARED_CACHE_STORE,{keyPath:'scope'});
+        if(!request.result.objectStoreNames.contains(CONVERSATION_CACHE_STORE))
+          request.result.createObjectStore(CONVERSATION_CACHE_STORE,{keyPath:'scope'});
       };
       request.onsuccess=()=>resolve(request.result);
       request.onerror=()=>reject(request.error||new Error('Shared cache unavailable'));
@@ -547,8 +556,155 @@ async function writeSharedSnapshot(ctx,room,messages,latestSeq,readOrder){
   }).catch(()=>{});
   return job;
 }
-// Always verify the current room and participation against Supabase before
-// exposing cached cross-academy messages. No optimistic offline access.
+
+/* One persisted, server-verified conversation snapshot for both PC and phone.
+ * This is the only cold-start first-paint source. The legacy academy localStorage
+ * and shared room-snapshots remain intact, and no server request blocks reading it. */
+function conversationCacheIdentity(ctx){
+  let account='';
+  try{account=clean(localStorage.getItem('olli_account_id_v1'));}catch(_){}
+  account=account||ctx.memberId;
+  if(!account||!ctx.academyId||!ctx.memberId||!ctx.sessionToken)return '';
+  return JSON.stringify([account,ctx.academyId,ctx.memberId]);
+}
+function validConversationRecord(record,scope,ctx){
+  return !!record&&record.scope===scope&&!record.invalidated
+    &&Number.isFinite(record.savedAt)
+    &&Date.now()>=record.savedAt&&Date.now()-record.savedAt<=CONVERSATION_CACHE_MAX_AGE
+    &&record.payload?.academy_id===ctx.academyId
+    &&record.payload?.current_member_id===ctx.memberId
+    &&Array.isArray(record.payload.messages)
+    &&(!record.joined||(!!record.roomId&&!!record.participationId));
+}
+async function readCachedConversation(){
+  const ctx=context(),scope=conversationCacheIdentity(ctx);
+  if(!scope)return null;
+  const db=await sharedCacheDb();
+  assertCurrent(ctx);
+  let record=conversationCacheMemory.get(scope)||null;
+  if(db&&db.objectStoreNames.contains(CONVERSATION_CACHE_STORE)){
+    try{
+      const persisted=await new Promise((resolve,reject)=>{
+        const request=db.transaction(CONVERSATION_CACHE_STORE,'readonly')
+          .objectStore(CONVERSATION_CACHE_STORE).get(scope);
+        request.onsuccess=()=>resolve(request.result||null);
+        request.onerror=()=>reject(request.error);
+      });
+      if(persisted&&(!record||Number(persisted.savedAt)>Number(record.savedAt)))record=persisted;
+    }catch(error){console.warn('팀챗 로컬 대화 읽기 실패:',error?.message||error);}
+  }
+  assertCurrent(ctx);
+  if(validConversationRecord(record,scope,ctx)){
+    return {joined:!!record.joined,fromCache:true,
+      room:record.joined?{id:record.roomId,participation_id:record.participationId}:null,
+      payload:record.payload};
+  }
+  if(record)return null; // An invalidated/current-format snapshot must not fall back to stale room data.
+  // One-time reuse of the existing verified shared-room IndexedDB snapshot.
+  // Previous app builds wrote this cache, but never displayed it before network.
+  if(!db||!db.objectStoreNames.contains(SHARED_CACHE_STORE))return null;
+  try{
+    const records=await new Promise((resolve,reject)=>{
+      const request=db.transaction(SHARED_CACHE_STORE,'readonly')
+        .objectStore(SHARED_CACHE_STORE).getAll();
+      request.onsuccess=()=>resolve(request.result||[]);
+      request.onerror=()=>reject(request.error);
+    });
+    assertCurrent(ctx);
+    const [account,academyId,memberId]=JSON.parse(scope);
+    const matching=records.filter(item=>{
+      let parts=[];
+      try{parts=JSON.parse(item.scope);}catch(_){}
+      return parts.length===5
+        &&parts[0]===account&&parts[1]===academyId&&parts[2]===memberId
+        &&parts[3]===item.roomId&&parts[4]===item.participationId
+        &&Number.isFinite(item.savedAt)&&Date.now()>=item.savedAt
+        &&Date.now()-item.savedAt<=CONVERSATION_CACHE_MAX_AGE
+        &&Array.isArray(item.messages);
+    }).sort((a,b)=>b.savedAt-a.savedAt);
+    const latest=matching[0];
+    if(!latest)return null;
+    return {joined:true,fromCache:true,fromLegacyShared:true,
+      room:{id:latest.roomId,participation_id:latest.participationId},
+      payload:{ok:true,academy_id:ctx.academyId,current_member_id:ctx.memberId,
+        messages:latest.messages.filter(item=>item?.is_shared===true).slice(-CONVERSATION_CACHE_LIMIT)}};
+  }catch(error){
+    console.warn('팀챗 이전 통합 캐시 읽기 실패:',error?.message||error);
+    return null;
+  }
+}
+function writeCachedConversation(payload,verifiedExtension){
+  const ctx=context(),scope=conversationCacheIdentity(ctx);
+  const joined=verifiedExtension?.joined===true;
+  const room=verifiedExtension?.room;
+  if(!scope||!payload||!Array.isArray(payload.messages)
+    ||String(payload.academy_id||'')!==ctx.academyId
+    ||String(payload.current_member_id||ctx.memberId)!==ctx.memberId
+    ||(joined&&(!room?.id||!room?.participation_id)))return Promise.resolve(false);
+  const privateSource=payload.__academyLocal||payload;
+  const isPrivate=item=>!item?.academy_id||String(item.academy_id)===ctx.academyId;
+  const privateMessages=(Array.isArray(privateSource.messages)?privateSource.messages:[])
+    .filter(item=>!item?.is_shared&&isPrivate(item)).slice(-CONVERSATION_CACHE_LIMIT);
+  const messages=payload.messages.filter(item=>item?.is_shared===true?joined:isPrivate(item))
+    .slice(-CONVERSATION_CACHE_LIMIT);
+  const record={scope,joined,roomId:joined?room.id:'',participationId:joined?room.participation_id:'',
+    savedAt:Date.now(),payload:{ok:true,academy_id:ctx.academyId,
+      current_member_id:ctx.memberId,current_member_name:clean(payload.current_member_name),
+      member_count:payload.member_count,messages,
+      ...(joined?{__academyLocal:{ok:true,academy_id:ctx.academyId,
+        current_member_id:ctx.memberId,current_member_name:clean(privateSource.current_member_name),
+        member_count:privateSource.member_count,messages:privateMessages}}:{})}};
+  const order=++conversationCacheSerial;
+  conversationCacheReadOrders.set(scope,order);
+  const previous=conversationCacheWrites.get(scope)||Promise.resolve();
+  const job=previous.catch(()=>{}).then(async()=>{
+    if(conversationCacheReadOrders.get(scope)!==order)return false;
+    assertCurrent(ctx);
+    const db=await sharedCacheDb();
+    assertCurrent(ctx);
+    if(conversationCacheReadOrders.get(scope)!==order)return false;
+    if(db&&db.objectStoreNames.contains(CONVERSATION_CACHE_STORE)){
+      try{
+        await new Promise((resolve,reject)=>{
+          const tx=db.transaction(CONVERSATION_CACHE_STORE,'readwrite');
+          tx.oncomplete=resolve;
+          tx.onerror=()=>reject(tx.error);
+          tx.onabort=()=>reject(tx.error);
+          tx.objectStore(CONVERSATION_CACHE_STORE).put(record);
+        });
+      }catch(error){console.warn('팀챗 로컬 대화 저장 실패:',error?.message||error);}
+    }
+    if(conversationCacheReadOrders.get(scope)===order)
+      conversationCacheMemory.set(scope,record);
+    return true;
+  });
+  conversationCacheWrites.set(scope,job);
+  job.finally(()=>{
+    if(conversationCacheWrites.get(scope)===job)conversationCacheWrites.delete(scope);
+  }).catch(()=>{});
+  return job;
+}
+async function invalidateCachedConversation(){
+  const ctx=context(),scope=conversationCacheIdentity(ctx);
+  if(!scope)return false;
+  const db=await sharedCacheDb();
+  assertCurrent(ctx);
+  const order=++conversationCacheSerial;
+  conversationCacheReadOrders.set(scope,order);
+  const record={scope,invalidated:true,savedAt:Date.now(),payload:null};
+  conversationCacheMemory.set(scope,record);
+  if(db&&db.objectStoreNames.contains(CONVERSATION_CACHE_STORE)){
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction(CONVERSATION_CACHE_STORE,'readwrite');
+      tx.oncomplete=resolve;
+      tx.onerror=()=>reject(tx.error);
+      tx.objectStore(CONVERSATION_CACHE_STORE).put(record);
+    }).catch(error=>console.warn('팀챗 통합 해제 캐시 표시 실패:',error?.message||error));
+  }
+  return true;
+}
+
+// This legacy API still verifies current membership before using a room snapshot.
 async function readCachedUnified(options={}){
   const ctx=context();
   if(!ctx.sessionToken||!ctx.academyId||!ctx.memberId)return null;
@@ -867,6 +1023,7 @@ function renderInlineSettings(root,status,ctx,message){
       message.textContent='통합을 해제하는 중…';
       try{
         await rpc('leave',{...params(ctx,status.room),p_expected_revision:status.room.revision},ctx);
+        await invalidateCachedConversation();
         if(!root.isConnected||key(ctx)!==key(context()))return;
         mountSettings(root);global.dispatchEvent(new CustomEvent('olli:shared-team-chat-changed'));
       }catch(error){message.textContent=error.message||'통합 해제에 실패했습니다.';controls.querySelectorAll('button').forEach(btn=>{btn.disabled=false;});}
@@ -876,6 +1033,6 @@ function renderInlineSettings(root,status,ctx,message){
   controls.append(save);root.append(controls);
 }
 
-global.OlliSharedTeamChat=Object.freeze({version:'2.0.0',open,manage,close,refreshEntry,reset,context,unifiedExtension,readCachedUnified,archiveUnified,sendUnified,markUnifiedRead,uploadUnified,downloadUnified,fetchUnifiedBlob,mountUnifiedThumbnail,mountSettings});
+global.OlliSharedTeamChat=Object.freeze({version:'2.0.0',open,manage,close,refreshEntry,reset,context,unifiedExtension,readCachedUnified,readCachedConversation,writeCachedConversation,archiveUnified,sendUnified,markUnifiedRead,uploadUnified,downloadUnified,fetchUnifiedBlob,mountUnifiedThumbnail,mountSettings});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })(window);

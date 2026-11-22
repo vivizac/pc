@@ -8497,6 +8497,8 @@
         ||(options.render!==false&&!isOlliTalkMessageListInSync(presentation,activeRenderLimit));
       olliTalkHistoryExhausted=pageMessages.length<100;
       writeOlliTalkMessageCache(context,mergedPayload);
+      void window.OlliSharedTeamChat?.writeCachedConversation?.(presentation,extension)
+        ?.catch(error=>console.warn('폰 팀챗 로컬 대화 저장 실패:',error?.message||error));
       if(options.render!==false&&renderChanged){
         olliTalkInitialCombinedPaintPending=false;
         const added=getOlliTalkAppendOnlyMessages(olliTalkCurrentViewPayload,presentation);
@@ -8975,15 +8977,15 @@
     olliTalkHistoryExhausted=false;
     olliTalkHistoryLoading=false;
     olliTalkOpenGeneration++;
+    const openGeneration=olliTalkOpenGeneration;
     const openContext=getOlliTalkBetaContext();
     const openViewKey=[openContext.academyId,openContext.memberId,openContext.sessionToken].join(':');
     const chatArea=document.getElementById('olliTalkBetaChatArea');
-    const hasLocalView=!!openContext.sessionToken&&!!openContext.academyId
+    let hasLocalView=!!openContext.sessionToken&&!!openContext.academyId
       &&olliTalkCurrentViewContextKey===openViewKey
       &&!!olliTalkCurrentViewPayload
       &&isOlliTalkMessageListInSync(olliTalkCurrentViewPayload,olliTalkRenderedMessageLimit);
-    // Preserve the verified local message DOM on a same-session reentry.
-    // A changed account or academy cannot reuse that visible conversation.
+    const openCachedPayload=readOlliTalkMessageCache(openContext);
     if(!hasLocalView){
       olliTalkCurrentPayload=null;
       olliTalkCurrentViewPayload=null;
@@ -8991,11 +8993,37 @@
       olliTalkSharedViewSignature='';
       olliTalkRenderedMessageLimit=OLLI_TALK_INITIAL_RENDER_LIMIT;
       olliTalkInitialCombinedPaintPending=true;
-      setOlliTalkLoadingState();
+      // Read the actual persistent combined chat first, without awaiting Supabase.
+      // The legacy shared-room snapshot can be paired with the existing
+      // academy-private cache during the one-time format migration.
+      let cached=null;
+      try{cached=await window.OlliSharedTeamChat?.readCachedConversation?.();}
+      catch(error){console.warn('폰 팀챗 저장된 대화 복원 실패:',error?.message||error);}
+      const now=getOlliTalkBetaContext();
+      if(olliTalkOpenGeneration!==openGeneration||now.academyId!==openContext.academyId
+        ||now.memberId!==openContext.memberId||now.sessionToken!==openContext.sessionToken)return;
+      if(cached?.payload){
+        let presentation=cached.payload;
+        if(cached.fromLegacyShared){
+          const privatePayload=openCachedPayload||{ok:true,academy_id:openContext.academyId,
+            current_member_id:openContext.memberId,current_member_name:openContext.memberName,messages:[]};
+          const privateMessages=(privatePayload.messages||[]).filter(item=>
+            !item?.academy_id||String(item.academy_id)===String(openContext.academyId));
+          presentation={...privatePayload,__academyLocal:privatePayload,
+            messages:[...privateMessages,...cached.payload.messages]
+              .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))};
+        }
+        olliTalkInitialCombinedPaintPending=false;
+        renderOlliTalkServerMessages(presentation,{
+          scrollMode:'initial-latest',messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT
+        });
+        hasLocalView=true;
+      }else{
+        setOlliTalkLoadingState();
+      }
     }else{
       olliTalkInitialCombinedPaintPending=false;
     }
-    const openCachedPayload=readOlliTalkMessageCache(openContext);
     if(openCachedPayload){
       if(!hasLocalView)olliTalkCurrentPayload=openCachedPayload;
       renderOlliTalkCachedMemberCount(openCachedPayload);
@@ -9053,7 +9081,6 @@
         }
         // The previously verified local view is already painted on reentry.
         // Fetch the latest combined server snapshot without resetting it.
-        const openGeneration=olliTalkOpenGeneration;
         loadOlliTalkBetaMessages({
           showLoading:false,
           cachedPayload:openCachedPayload,
