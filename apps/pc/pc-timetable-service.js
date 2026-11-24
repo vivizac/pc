@@ -433,6 +433,24 @@
     });
   }
 
+  async function temporaryMove(options) {
+    const result = await rpc('olli_schedule_temporary_move_v1', contextPayload({
+      p_student_id: options.studentId,
+      p_source_enrollment_id: options.sourceEnrollmentId,
+      p_source_date: options.sourceDate,
+      p_source_time: Number(options.sourceTime),
+      p_source_group: options.sourceGroup || 'A',
+      p_target_date: options.targetDate,
+      p_target_time: Number(options.targetTime),
+      p_target_group: options.targetGroup || 'A'
+    }));
+    invalidateAttendanceMonth(options.sourceDate);
+    if (clean(options.targetDate).slice(0,7) !== clean(options.sourceDate).slice(0,7)) {
+      invalidateAttendanceMonth(options.targetDate);
+    }
+    return result;
+  }
+
   async function addWaitlist(options) {
     return executeScheduleAction('add_waitlist', {
       student_id: options.studentId,
@@ -702,6 +720,7 @@
     previewTrialFeedback,
     resolveWaitlist,
     addMakeup,
+    temporaryMove,
     addWaitlist,
     addGuestEntry,
     updateOneTimeSession,
