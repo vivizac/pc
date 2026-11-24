@@ -673,6 +673,20 @@
     });
   }
 
+  async function changePickup(options) {
+    return rpc('olli_schedule_change_pickup_v2', contextPayload({
+      p_pickup_id: options.pickupId,
+      p_expected_from: options.expectedFrom,
+      p_expected_to: options.expectedTo || null,
+      p_target_date: options.targetDate,
+      p_arrival_label: options.pickupLabel || null,
+      p_pickup_time: options.pickupTime || null,
+      p_dropoff_label: options.dropoffLabel || null,
+      p_dropoff_time: options.dropoffTime || null,
+      p_mode: options.mode
+    }));
+  }
+
   async function movePickup(pickupId, sourceDate, targetDate, targetClassTime) {
     return rpc('olli_schedule_move_pickup_v1', contextPayload({
       p_pickup_id: pickupId,
@@ -744,6 +758,7 @@
     removePickupArrival,
     removePickupDropoff,
     updatePickup,
+    changePickup,
     movePickup,
     removePickup,
     loadHistory,
