@@ -1077,6 +1077,12 @@ body.olliPcSidebarCollapsed #recordRoomScreen .olliTtSection { --olli-tt-student
 
 .olliTtStatusNotice { margin-top: 16px; padding: 11px 13px; border-radius: 13px; color: #6d5ab0; background: #f1edff; font-size: calc(11px * var(--olli-text-scale)); font-weight: 680; line-height: 1.5; }
 .olliTtEnrollmentRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; align-items: stretch; }
+.olliTtMoveReservationRow { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto; align-items:center; gap:7px; padding:6px 0; }
+.olliTtMoveReservationSlot { display:flex; flex-direction:column; gap:3px; min-width:0; white-space:nowrap; }
+.olliTtMoveReservationSlot small { color:#7c8591; font-size:calc(10px * var(--olli-text-scale)); }
+.olliTtMoveReservationSlot strong { color:#323944; font-size:calc(12px * var(--olli-text-scale)); font-weight:720; }
+.olliTtMoveReservationRow > .olliTtEnrollmentDelete { justify-self:end; white-space:nowrap; padding:0 9px; }
+.olliTtMoveReservationRow > span[aria-hidden] { color:#7c8591; }
 .olliTtEnrollmentRow.hasSessionOrder { grid-template-columns: minmax(0, 1fr) auto auto; }
 .olliTtEnrollmentRow .olliTtEnrollmentChoice { min-width: 0; }
 .olliTtSessionOrder { height: 50px; padding: 3px; border: 1px solid #d9e2ec; border-radius: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; align-items: stretch; background: #f2f5f8; box-sizing: border-box; }
