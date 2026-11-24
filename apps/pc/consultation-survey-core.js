@@ -26,6 +26,33 @@ const detailTabById=new Map();
 let activePageTab='booking';
 const consultationScriptBase=(document.currentScript&&document.currentScript.src)?document.currentScript.src:location.href;
 const ROWS_CACHE_PREFIX='olli_consultation_rows_cache_v1';
+let accessScope='', accessAllowed=false, accessRequest=0;
+function currentAccessScope(){return academyId()+'|'+sessionToken();}
+function ownerAccess(){return Boolean(window.OlliConsultationMessages?.isOwner?.() || ['owner','super_admin'].includes(typeof window.getOlliCurrentRole==='function'?window.getOlliCurrentRole():localStorage.getItem('olli_current_member_role')));}
+function canManage(){return ownerAccess() || (Boolean(academyId()&&sessionToken()) && accessScope===currentAccessScope() && accessAllowed);}
+function paintAccess(){
+  const allowed=canManage();
+  document.querySelectorAll('[data-pc-nav="consultation"]').forEach(button=>{button.style.display=allowed?'':'none';});
+  const screen=document.getElementById('consultationSurveyScreen');
+  if(!allowed && screen && screen.style.display==='flex'){
+    screen.style.display='none';rows=[];rowsAcademyId='';selectedId='';window.__olliConsultationRows=[];
+    render();void window.pcOpenSection?.('academy');
+  }
+}
+async function refreshAccess(){
+  const scope=currentAccessScope(), request=++accessRequest;
+  if(accessScope!==scope){accessScope=scope;accessAllowed=false;paintAccess();}
+  if(ownerAccess()){paintAccess();return true;}
+  if(!academyId()||!sessionToken()){accessAllowed=false;paintAccess();return false;}
+  try{
+    const result=await rpc('olli_consultation_record_access',{p_session_token:sessionToken(),p_academy_id:academyId()});
+    if(request!==accessRequest||scope!==currentAccessScope())return canManage();
+    accessAllowed=result?.ok===true&&result.allowed===true;
+  }catch(_){if(request===accessRequest&&scope===currentAccessScope())accessAllowed=false;}
+  paintAccess();return canManage();
+}
+window.OlliPcConsultationRecordAccess=Object.freeze({canManage,refresh:refreshAccess});
+window.refreshPcConsultationRecordAccess=refreshAccess;
 
 function esc(value){
   if(typeof window.escapeHtml==='function')return window.escapeHtml(String(value??''));
@@ -167,7 +194,7 @@ function renderDetail(id){
   window.syncConsultationDetailTabs();
 }
 window.openConsultationSurveyDetail=function(id){selectedId=String(id||'');render();};
-window.refreshConsultationSurveyManager=async function(){const activeAcademyId=academyId();const loaded=await loadRows();if(!Array.isArray(loaded))return rows.slice();loaded.sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));const changed=rowsAcademyId!==activeAcademyId||rowsSignature(rows)!==rowsSignature(loaded);rows=loaded;rowsAcademyId=activeAcademyId;writeRowsCache(rows);window.__olliConsultationRows=rows.slice();if(changed)render();else renderContext();return rows;};
+window.refreshConsultationSurveyManager=async function(){const activeAcademyId=academyId();const scope=currentAccessScope();if(!canManage())return [];const loaded=await loadRows();if(!canManage()||scope!==currentAccessScope())return [];if(!Array.isArray(loaded))return rows.slice();loaded.sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));const changed=rowsAcademyId!==activeAcademyId||rowsSignature(rows)!==rowsSignature(loaded);rows=loaded;rowsAcademyId=activeAcademyId;writeRowsCache(rows);window.__olliConsultationRows=rows.slice();if(changed)render();else renderContext();return rows;};
 window.getConsultationSurveyRows=function(){return rows.slice();};
 window.copyConsultationSurveyLink=async function(){
   const aid=academyId();if(!aid){alert('현재 학원 ID를 찾지 못했습니다. 로그인 상태를 확인해주세요.');return;}
@@ -180,6 +207,7 @@ window.copyConsultationSurveyLink=async function(){
 };
 
 function setPageTab(tab){
+  if(!canManage())return;
   ensureScreen();
   activePageTab=tab==='survey'?'survey':'booking';
   const booking=document.getElementById('olliConsultationBookingPanel');
@@ -223,6 +251,7 @@ function installPcHook(){
   const original=window.pcOpenSection;
   const wrapped=async function(section){
     if(section==='consultation'||section==='booking'){
+      if(!await refreshAccess()){if(typeof window.showPushToast==='function')window.showPushToast('상담 기록 관리 권한이 필요합니다.');return;}
       await original.call(this,'consultation');
       showConsultationScreen(section==='booking'?'booking':activePageTab);
       return;
@@ -232,10 +261,11 @@ function installPcHook(){
   };
   wrapped.__consultationHook=true;window.pcOpenSection=wrapped;
 }
-function startPolling(){clearInterval(pollTimer);pollTimer=setInterval(()=>{
+function startPolling(){clearInterval(pollTimer);pollTimer=setInterval(async()=>{
+  if(!await refreshAccess())return;
   const screen=document.getElementById('consultationSurveyScreen');
   if(screen&&getComputedStyle(screen).display!=='none'&&activePageTab==='survey')window.refreshConsultationSurveyManager();
 },20000);}
-function init(){ensureScreen();installPcHook();startPolling();loadAnalysisEngine().catch(()=>{});}
+function init(){ensureScreen();installPcHook();paintAccess();void refreshAccess();startPolling();window.addEventListener('focus',refreshAccess);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void refreshAccess();});loadAnalysisEngine().catch(()=>{});}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();

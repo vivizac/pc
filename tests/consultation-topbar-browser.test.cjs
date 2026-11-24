@@ -49,6 +49,7 @@ test('consultation tabs replace the white PC topbar title, not the page body',as
   // test mock only the card content, so visibility can be checked without API calls.
   await page.evaluate(()=>{
     localStorage.setItem('olli_current_academy_name','별빛미술학원');
+    localStorage.setItem('olli_current_member_role','owner');
     window.getOlliCurrentAcademyName=()=>localStorage.getItem('olli_current_academy_name');
     window.OlliBookingDashboard={open:()=>{
       document.getElementById('olliConsultationBookingPanel').textContent='예약 목록';

@@ -34,6 +34,11 @@ function getSettingsMemberRole(member) {
   return value === 'owner' ? 'owner' : (value === 'manager' ? 'manager' : 'teacher');
 }
 
+function getSettingsRoleChoice(member) {
+  const role = getSettingsMemberRole(member);
+  return role === 'teacher' && member?.consultation_record_access === true ? 'teacher_consultation' : role;
+}
+
 function getSettingsMemberDeviceLabel(member) {
   if (getSettingsMemberStatus(member) === 'disabled') return '사용 중지';
   if (isSettingsAccountMembershipMember(member)) return '연결됨';
@@ -72,12 +77,13 @@ function renderSettingsMembers() {
     const name = member.display_name || member.member_name || member.teacher_name || member.account_name || member.name || '선생님';
     const busy = olliTeacherMutationIds.has(id);
     const accountMembership = isSettingsAccountMembershipMember(member);
-    const roleLabel = getOlliRoleLabel(role);
+    const roleChoice = getSettingsRoleChoice(member);
+    const roleLabel = roleChoice === 'teacher_consultation' ? '선생님 + 상담 기록' : getOlliRoleLabel(role);
     const roleHtml = role === 'owner'
       ? '<span class="settingsOwnerRoleBadge">원장</span>'
       : '<button class="settingsRoleSelectBtn" type="button" '
         + (busy ? 'disabled ' : '')
-        + 'onclick="openSettingsRoleTogglePopup(\'' + settingsEscapeAttr(id) + '\', \'' + settingsEscapeAttr(role) + '\')">'
+        + 'onclick="openSettingsRoleTogglePopup(\'' + settingsEscapeAttr(id) + '\', \'' + settingsEscapeAttr(roleChoice) + '\')">'
         + settingsEscapeHtml(roleLabel) + ' ▾</button>';
 
     const canAssignOtherAcademy = !accountMembership
@@ -292,6 +298,7 @@ function ensureSettingsRoleTogglePopup() {
     + '<div class="settingsRoleToggleGrid">'
     + '<button id="settingsRoleManagerOption" class="settingsRoleToggleOption" type="button" onclick="selectSettingsRoleToggle(\'manager\')">관리자</button>'
     + '<button id="settingsRoleTeacherOption" class="settingsRoleToggleOption" type="button" onclick="selectSettingsRoleToggle(\'teacher\')">선생님</button>'
+    + '<button id="settingsRoleConsultationOption" class="settingsRoleToggleOption" style="grid-column:1/-1" type="button" onclick="selectSettingsRoleToggle(\'teacher_consultation\')">선생님 + 상담 기록</button>'
     + '</div><div class="settingsRoleToggleActions">'
     + '<button class="settingsRoleToggleBtn" type="button" onclick="closeSettingsRoleTogglePopup()">취소</button>'
     + '<button class="settingsRoleToggleBtn primary" type="button" onclick="saveSettingsRoleTogglePopup()">저장</button>'
@@ -308,17 +315,21 @@ function paintSettingsRoleTogglePopup() {
   const teacher = document.getElementById('settingsRoleTeacherOption');
   if (manager) manager.classList.toggle('active', settingsRolePopupSelectedRole === 'manager');
   if (teacher) teacher.classList.toggle('active', settingsRolePopupSelectedRole === 'teacher');
+  const consultation = document.getElementById('settingsRoleConsultationOption');
+  if (consultation) consultation.classList.toggle('active', settingsRolePopupSelectedRole === 'teacher_consultation');
 }
 
 function openSettingsRoleTogglePopup(memberId, currentRole) {
   settingsRolePopupMemberId = String(memberId || '').trim();
-  settingsRolePopupSelectedRole = currentRole === 'manager' ? 'manager' : 'teacher';
+  const member = findSettingsMember(settingsRolePopupMemberId);
+  if (!member || member.consultation_record_access === undefined) { alert('상담 권한을 확인하지 못했습니다. 선생님 목록을 다시 불러와 주세요.'); return; }
+  settingsRolePopupSelectedRole = getSettingsRoleChoice(member);
   ensureSettingsRoleTogglePopup().classList.add('show');
   paintSettingsRoleTogglePopup();
 }
 
 function selectSettingsRoleToggle(role) {
-  settingsRolePopupSelectedRole = role === 'manager' ? 'manager' : 'teacher';
+  settingsRolePopupSelectedRole = ['manager','teacher','teacher_consultation'].includes(role) ? role : 'teacher';
   paintSettingsRoleTogglePopup();
 }
 
@@ -330,7 +341,7 @@ function closeSettingsRoleTogglePopup() {
 async function saveSettingsRoleTogglePopup() {
   const id = settingsRolePopupMemberId;
   const member = findSettingsMember(id);
-  const role = settingsRolePopupSelectedRole === 'manager' ? 'manager' : 'teacher';
+  const role = settingsRolePopupSelectedRole;
   if (!id || !member || getSettingsMemberRole(member) === 'owner' || olliTeacherMutationIds.has(id)) return;
 
   closeSettingsRoleTogglePopup();
@@ -349,7 +360,7 @@ async function saveSettingsRoleTogglePopup() {
     }
     await settingsLoadTeacherManagementMembers();
     const loaded = findSettingsMember(id);
-    if (!loaded || getSettingsMemberRole(loaded) !== role) {
+    if (!loaded || getSettingsRoleChoice(loaded) !== role) {
       throw new Error('서버에 저장된 선생님 권한이 요청한 값과 다릅니다.');
     }
   } catch (err) {

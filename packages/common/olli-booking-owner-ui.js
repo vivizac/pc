@@ -16,8 +16,8 @@
  const dateLabel=d=>{const [y,m,day]=d.split('-').map(Number);return new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',month:'long',day:'numeric',weekday:'short'}).format(new Date(Date.UTC(y,m-1,day,3)));};
  function plusMonth(ym,offset){const [y,m]=ym.split('-').map(Number);return new Date(Date.UTC(y,m-1+offset,1)).toISOString().slice(0,7);}
  function ctx(){return {academyId:String(localStorage.getItem('olli_current_academy_id')||''),sessionToken:String(localStorage.getItem('olli_account_session_token_v1')||'')};}
- function isOwner(){return Boolean(global.OlliConsultationMessages?.isOwner?.());}
- function auth(){const c=ctx();if(!isOwner()||!c.academyId||!c.sessionToken)throw new Error('상담 예약 관리는 원장 계정에서만 사용할 수 있습니다.');return c;}
+ function isOwner(){return Boolean(global.OlliConsultationMessages?.isOwner?.() || global.OlliPcConsultationRecordAccess?.canManage?.());}
+ function auth(){const c=ctx();if(!isOwner()||!c.academyId||!c.sessionToken)throw new Error('상담 예약 관리 권한이 필요합니다.');return c;}
  async function rpc(functionName,params){
    if(typeof global.callOlliRpc!=='function')throw new Error('올리 상담 예약 서버에 연결할 수 없습니다.');
    return global.callOlliRpc(functionName,params);

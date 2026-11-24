@@ -170,6 +170,7 @@ function applySettingsPermissionUI() {
 
 
 function refreshOlliRoleBasedVisibilityUI() {
+  if (typeof window.refreshPcConsultationRecordAccess === 'function') void window.refreshPcConsultationRecordAccess();
   const role = (typeof getOlliCurrentRole === 'function')
     ? getOlliCurrentRole()
     : String(localStorage.getItem('olli_current_member_role') || '').trim();
@@ -403,6 +404,21 @@ async function settingsLoadTeacherManagementMembers() {
     : (olliSettingsState.academyAccountMemberships || []);
 
   olliSettingsState.members = mergeSettingsTeacherManagementRows(legacyRows, accountRows);
+  // Permission is read from the server, never inferred from a local role override.
+  if (getOlliCurrentRole() === 'owner') {
+    const academyId = settingsGetAcademyId();
+    const token = String(localStorage.getItem('olli_account_session_token_v1') || '');
+    try {
+      const result = await callOlliRpc('olli_consultation_record_access', {p_session_token:token,p_academy_id:academyId});
+      if (academyId !== settingsGetAcademyId() || token !== String(localStorage.getItem('olli_account_session_token_v1') || '')) return olliSettingsState.members;
+      if (!result?.ok || !Array.isArray(result.member_ids)) throw new Error('상담 권한 조회 실패');
+      const ids = new Set(result.member_ids.map(String));
+      olliSettingsState.members = olliSettingsState.members.map(member => ({...member, consultation_record_access:ids.has(String(getSettingsMemberId(member)))}));
+    } catch (error) {
+      olliSettingsState.members = olliSettingsState.members.map(member => ({...member, consultation_record_access:undefined}));
+      errors.push(error.message || String(error));
+    }
+  }
   if (olliSettingsState.members.length) {
     olliSettingsState.lastError = '';
   } else if (errors.length) {
