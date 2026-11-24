@@ -10,6 +10,9 @@ on:
       - 'apps/pc/tests/timetable-same-week-immediate-move.test.cjs'
       - 'apps/pc/tests/timetable-move-week-visual.test.cjs'
       - 'apps/pc/tests/timetable-move-reservation-cancel.test.cjs'
+      - 'apps/pc/tests/timetable-same-week-return.test.cjs'
+      - 'apps/pc/tests/timetable-same-week-return-db.test.sql'
+      - 'supabase/migrations/*pc_same_week_move_return.sql'
       - 'apps/pc/tests/timetable-temporary-move.test.cjs'
       - 'apps/pc/tests/timetable-temporary-move-db.test.sql'
       - 'apps/pc/tests/timetable-pickup-change-scope.test.cjs'
@@ -43,6 +46,7 @@ jobs:
           node --test tests/timetable-same-week-immediate-move.test.cjs
           node --test tests/timetable-move-week-visual.test.cjs
           node --test tests/timetable-move-reservation-cancel.test.cjs
+          node --test tests/timetable-same-week-return.test.cjs
           node --test tests/timetable-temporary-move.test.cjs
           node --test tests/timetable-pickup-change-scope.test.cjs
           node --test tests/timetable-new-card-badge.test.cjs
@@ -74,3 +78,6 @@ jobs:
           docker cp apps/pc/tests/timetable-pickup-change-scope-db.test.sql "$DB_CONTAINER:/tmp/olli/apps/pc/tests/"
           docker cp "$(find supabase/migrations -name '*_pc_pickup_change_scope.sql' -print -quit)" "$DB_CONTAINER:/tmp/olli/supabase/migrations/pc_pickup_change_scope.sql"
           docker exec "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/olli/apps/pc/tests/timetable-pickup-change-scope-db.test.sql
+          docker cp apps/pc/tests/timetable-same-week-return-db.test.sql "$DB_CONTAINER:/tmp/olli/apps/pc/tests/"
+          docker cp "$(find supabase/migrations -name '*_pc_same_week_move_return.sql' -print -quit)" "$DB_CONTAINER:/tmp/olli/supabase/migrations/pc_same_week_move_return.sql"
+          docker exec "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/olli/apps/pc/tests/timetable-same-week-return-db.test.sql
