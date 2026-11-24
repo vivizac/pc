@@ -11,7 +11,7 @@ const sql=read('supabase/migrations/20261102152500_olli_booking_staff_manual_cre
 test('Manual appointment UI is shared by PC and mobile with one server mutation',()=>{
   for(const p of ['apps/pc/index.html','apps/mobile/index.html']){
     const html=read(p);
-    assert.match(html,new RegExp('olli-booking-owner-ui\\.js\\?v='+(p.startsWith('apps/mobile/')?'20261103-local-first-realtime-1':'20261106-intake-trial-1')));
+    assert.match(html,new RegExp('olli-booking-owner-ui\\.js\\?v='+(p.startsWith('apps/mobile/')?'20261125-consultation-access-1':'20261125-consultation-access-1')));
     assert.match(html,new RegExp('olli-booking-owner-ui\\.css\\?v='+(p.startsWith('apps/mobile/')?'20261103-local-first-realtime-1':'20261106-intake-trial-1')));
   }
   assert.match(ui,/data-action="add-manual"/);
