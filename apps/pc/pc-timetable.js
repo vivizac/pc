@@ -2599,9 +2599,13 @@
     if (!item) return;
     const currentDayKey = todayKey();
     const requestedDate = clean(clickedDate);
-    const initialEffectiveDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate >= currentDayKey
-      ? requestedDate
-      : currentDayKey;
+    const start = clean(item.effective_from);
+    // A future-start card defaults to its actual first pickup, even when
+    // opened from a later week. An active card defaults to its own weekday.
+    const dateBase = start > currentDayKey ? start
+      : (/^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate >= currentDayKey ? requestedDate : currentDayKey);
+    const baseDate = parseDate(dateBase);
+    const initialEffectiveDate = dateKey(addDays(baseDate, (Number(item.weekday) - baseDate.getDay() + 7) % 7));
     const initialPickupLabel = item.is_dropoff === true ? '' : clean(item.pickup_label);
     const initialPickupTime = item.is_dropoff === true ? '' : pickupTimeInputValue(item.pickup_time);
     const initialDropoffLabel = clean(item.dropoff_label) || (item.is_dropoff === true ? clean(item.pickup_label) : '');
@@ -2617,6 +2621,8 @@
       originalPickupLabel: initialPickupLabel,
       originalPickupTime: initialPickupTime,
       originalDropoffLabel: initialDropoffLabel,
+      originalEffectiveFrom: start,
+      originalEffectiveTo: clean(item.effective_to),
       effectiveDate: initialEffectiveDate
     };
     openOverlay();
@@ -3110,6 +3116,18 @@
     const dropoffButton = root.querySelector('[data-tt-register-dropoff]');
     if (arrivalButton) arrivalButton.disabled = !dirty.arrivalChanged;
     if (dropoffButton) dropoffButton.disabled = !dirty.dropoffChanged;
+    const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
+    const valid = Boolean(item && (!clean(item.effective_to) || clean(item.effective_to) >= todayKey())
+      && (clean(dialog.pickupLabel) || clean(dialog.dropoffLabel))
+      && (!clean(dialog.pickupLabel) === !clean(dialog.pickupTime))
+      && (!clean(dialog.dropoffTime) || clean(dialog.dropoffLabel))
+      && /^\d{4}-\d{2}-\d{2}$/.test(clean(dialog.effectiveDate))
+      && dialog.effectiveDate >= todayKey() && parseDate(dialog.effectiveDate).getDay() !== 0);
+    const immediate = root.querySelector('[data-tt-update-pickup]');
+    const scheduled = root.querySelector('[data-tt-schedule-pickup]');
+    if (immediate) immediate.disabled = !valid;
+    if (scheduled) scheduled.disabled = !valid || pickupScope(item) === 'daily'
+      || !isReservedMoveDate(dialog.effectiveDate);
   }
 
   function pickupManageDialogHtml(dialog) {
@@ -3156,10 +3174,11 @@
       + '</div></section>'
       + '<section class="olliTtPickupManageSection effective">'
       + '<div class="olliTtPickupManageSectionHead"><strong>변경·삭제 적용일</strong></div>'
-      + '<div class="olliTtPickupEffectiveGuide">등원 시간 변경 예약은 내일부터, 전체 픽업 삭제는 오늘부터 적용할 수 있습니다.</div>'
+      + '<div class="olliTtPickupEffectiveGuide">즉시변경은 지금부터, 변경예약은 선택한 날짜가 포함된 주부터 적용됩니다. 아직 시작하지 않은 픽업은 즉시변경으로 시작일을 수정할 수 있습니다.</div>'
       + '<div class="olliTtPickupManageFieldRow effectiveRow">'
-      + `<label><span>적용일</span><input type="date" class="olliTtDateInput" data-tt-pickup-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></label>`
-      + '<button type="button" class="olliTtDialogPrimary" data-tt-schedule-pickup' + (hasArrival ? '' : ' disabled') + '>변경 예약</button>'
+      + `<label><span>적용일 / 변경 요일</span><input type="date" class="olliTtDateInput" data-tt-pickup-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></label>`
+      + '<button type="button" class="olliTtDialogPrimary secondary" data-tt-update-pickup>즉시변경</button>'
+      + '<button type="button" class="olliTtDialogPrimary" data-tt-schedule-pickup' + (pickupScope(item) === 'daily' ? ' disabled' : '') + '>변경예약</button>'
       + '</div></section>'
       + '<div class="olliTtDialogActions olliTtPickupDeleteActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-remove-pickup>픽업 삭제</button></div>'
       + '</div>';
@@ -3461,7 +3480,13 @@
       }
     });
     const pickupEffectiveDate = dialog.querySelector('[data-tt-pickup-effective-date]');
-    if (pickupEffectiveDate) pickupEffectiveDate.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.effectiveDate = pickupEffectiveDate.value || todayKey(); });
+    if (pickupEffectiveDate) pickupEffectiveDate.addEventListener('change', () => {
+      if (state.dialog && state.dialog.kind === 'pickupManage') {
+        state.dialog.effectiveDate = pickupEffectiveDate.value;
+        refreshPickupManageActionState(dialog);
+      }
+    });
+    if (state.dialog.kind === 'pickupManage') refreshPickupManageActionState(dialog);
     const waitDate = dialog.querySelector('[data-tt-wait-date]');
     if (waitDate) waitDate.addEventListener('change', () => { state.dialog.effectiveDate = waitDate.value || todayKey(); renderDialog(); });
     const managedDate = dialog.querySelector('[data-tt-managed-date]');
@@ -4169,25 +4194,43 @@ ${combined.memoError}`);
     if (result) notify(`${item.student_name} 학생의 하원 설정을 삭제했어요.`);
   }
 
-  async function updatePickupNow() {
+  async function applyPickupChange(mode) {
     const dialog = state.dialog;
-    if (!dialog || dialog.kind !== 'pickupManage') return;
+    if (!dialog || dialog.kind !== 'pickupManage' || state.saving) return;
     const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
     if (!item) return;
-    if (!clean(dialog.pickupTime)) { alert('수정할 픽업 시간을 입력해 주세요.'); return; }
-    const result = await withSaving(() => service.updatePickup(dialog.pickupId, dialog.pickupTime, todayKey(), 'edit'));
-    if (result) notify(`${item.student_name} 학생의 픽업 시간을 수정했어요.`);
+    const date = clean(dialog.effectiveDate);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < todayKey() || parseDate(date).getDay() === 0) {
+      alert('오늘 이후 월요일부터 토요일까지의 날짜를 선택해 주세요.');
+      return;
+    }
+    if (mode === 'schedule' && (pickupScope(item) === 'daily' || !isReservedMoveDate(date))) {
+      alert('이번 주 및 당일 픽업은 즉시변경을 이용해 주세요.');
+      return;
+    }
+    const arrival = clean(dialog.pickupLabel), arrivalTime = clean(dialog.pickupTime);
+    const dropoff = clean(dialog.dropoffLabel), dropoffTime = clean(dialog.dropoffTime);
+    if ((!arrival && !dropoff) || Boolean(arrival) !== Boolean(arrivalTime) || (dropoffTime && !dropoff)) {
+      alert('등원 장소·시간 또는 하원 장소를 올바르게 입력해 주세요.');
+      return;
+    }
+    const result = await withSaving(() => service.changePickup({
+      pickupId:dialog.pickupId, expectedFrom:dialog.originalEffectiveFrom,
+      expectedTo:dialog.originalEffectiveTo, targetDate:date,
+      pickupLabel:arrival,pickupTime:arrivalTime,dropoffLabel:dropoff,dropoffTime,
+      mode
+    }));
+    if (result) notify(mode === 'schedule'
+      ? `${item.student_name} 학생의 픽업 변경을 ${shortDate(result.week_start || date)} 주부터 예약했어요.`
+      : `${item.student_name} 학생의 픽업 일정을 즉시 수정했어요.`);
+  }
+
+  async function updatePickupNow() {
+    return applyPickupChange('immediate');
   }
 
   async function schedulePickupChange() {
-    const dialog = state.dialog;
-    if (!dialog || dialog.kind !== 'pickupManage') return;
-    const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
-    if (!item) return;
-    if (!clean(dialog.pickupTime)) { alert('변경할 픽업 시간을 입력해 주세요.'); return; }
-    if (!clean(dialog.effectiveDate) || dialog.effectiveDate <= todayKey()) { alert('변경 예약은 내일부터 설정할 수 있습니다.'); return; }
-    const result = await withSaving(() => service.updatePickup(dialog.pickupId, dialog.pickupTime, dialog.effectiveDate, 'schedule'));
-    if (result) notify(`${item.student_name} 학생의 픽업 시간 변경을 ${koreanDate(dialog.effectiveDate, true)}부터 예약했어요.`);
+    return applyPickupChange('schedule');
   }
 
   async function removePickup() {
