@@ -210,7 +210,7 @@ test('read-only NEW correction preserves registration, 14-day clock, pickup N an
 
 test('PC timetable assets cache-bust safely without modifying the unrelated service', () => {
   for (const asset of ['pc-timetable.js', 'pc-timetable.css']) {
-    assert.ok(html.includes(asset + '?v=' + (asset === 'pc-timetable.js' ? '20261120-new-card-sync-1' : '20261119-move-week-1')), asset);
+    assert.ok(html.includes(asset + '?v=' + '20261124-move-cancel-1'), asset);
   }
   assert.ok(html.includes('pc-timetable-service.js?v=20261120-new-card-sync-1'), 'RPC badge-read service is versioned');
 });
