@@ -110,3 +110,11 @@ test('both app build manifests stage the SAME common JS and CSS',()=>{
  assert.match(workflow,/consultation-booking-stage3\.integration\.sql/);
  assert.match(workflow,/consultation-booking-stage3-ui\.test\.cjs/);
 });
+
+test('PC delegated teacher can load booking records without owner role',async()=>{
+ const {window,calls}=setup(false);
+ window.OlliPcConsultationRecordAccess={canManage:()=>true};
+ assert.equal(window.OlliBookingDashboard.open('pc'),true);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(calls[0].name,'olli_booking_staff_manage');
+});

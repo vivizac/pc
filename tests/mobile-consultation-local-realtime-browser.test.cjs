@@ -149,6 +149,6 @@ test('isolated realtime signal carries no booking PII and existing domains remai
  assert.match(migration,/'domain','booking'/);
  assert.match(migration,/private\.olli_realtime_topic_for_academy/);
  assert.doesNotMatch(migration,/to_jsonb\(new\)|to_jsonb\(old\)|new\.name|new\.student_name/);
- assert.match(html,/olli-booking-owner-ui\.js\?v=20261103-local-first-realtime-1/);
+ assert.match(html,/olli-booking-owner-ui\.js\?v=20261103-local-first-realtime-1-consultation-access-20261125/);
  assert.match(html,/olli-booking-owner-ui\.css\?v=20261103-local-first-realtime-1/);
 });
