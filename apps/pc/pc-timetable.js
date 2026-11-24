@@ -1016,7 +1016,8 @@
       return !!original && clean(original.division) === target.division
         && Number(original.weekday) === target.weekday
         && timeSlotMatches(target.division, parseDate(target.date), target.time, original.time_slot)
-        && (isHalfHourMode() || classGroupOf(original) === target.classGroup);
+        && (isHalfHourMode() || !isClassSplit(target.division, target.weekday, target.time, target.date)
+          || classGroupOf(original) === target.classGroup);
     }) || null;
   }
   function moveReservationSlotText(change, row, division) {
