@@ -7,7 +7,7 @@ const path = require('node:path');
 const ui = fs.readFileSync(path.join(__dirname,'../pc-timetable.js'),'utf8');
 const service = fs.readFileSync(path.join(__dirname,'../pc-timetable-service.js'),'utf8');
 const css = fs.readFileSync(path.join(__dirname,'../pc-timetable.css'),'utf8');
-const migration = fs.readFileSync(path.join(__dirname,'../../../supabase/migrations/20261124065715_pc_timetable_temporary_move.sql'),'utf8');
+const migration = fs.readFileSync(path.join(__dirname,'../../../supabase/migrations/20261124071708_pc_timetable_temporary_move.sql'),'utf8');
 const slice = (a,b) => ui.slice(ui.indexOf(a),ui.indexOf(b));
 const drag = slice('  async function saveDraggedTimetableMove(', '  function onTimetableDrop(');
 const temporary = slice('  function isTemporaryMoveSession(', '  function cellContentsHtml(');
