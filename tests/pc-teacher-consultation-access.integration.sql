@@ -1,0 +1,38 @@
+do $$
+declare aid uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'; bid uuid:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+mid uuid:='20000000-0000-4000-8000-000000000002'; m text:=to_char(now() at time zone 'Asia/Seoul','YYYY-MM'); r jsonb;
+begin
+ if not (public.olli_consultation_record_access('fixture-owner',aid)->>'allowed')::boolean then raise exception 'owner denied';end if;
+ if (public.olli_consultation_record_access('fixture-teacher',aid)->>'allowed')::boolean then raise exception 'teacher allowed before grant';end if;
+ begin perform public.olli_booking_staff_manage('fixture-teacher',aid,'list',m);raise exception 'ordinary teacher booking allowed';exception when insufficient_privilege then null;end;
+ r:=public.olli_set_account_membership_role('fixture-teacher',aid,mid,'teacher_consultation');
+ if (r->>'ok')::boolean then raise exception 'self-grant allowed';end if;
+ r:=public.olli_set_account_membership_role('fixture-owner',aid,mid,'teacher_consultation');
+ if r->>'role'<>'teacher_consultation' or not (r->>'ok')::boolean then raise exception 'grant failed: %',r;end if;
+ if (select role from public.academy_members where id=mid)<>'teacher' then raise exception 'base role changed';end if;
+ if not (public.olli_consultation_record_access('fixture-teacher',aid)->>'allowed')::boolean then raise exception 'granted teacher denied';end if;
+ if not (public.olli_consultation_record_access('fixture-owner',aid)->'member_ids' @> jsonb_build_array(mid)) then raise exception 'owner list missing grant';end if;
+ if (public.olli_consultation_record_access('fixture-other',aid)->>'allowed')::boolean then raise exception 'other teacher allowed';end if;
+ if (public.olli_consultation_record_access('fixture-teacher',bid)->>'allowed')::boolean then raise exception 'cross-academy permission';end if;
+ begin perform public.olli_booking_staff_manage('fixture-teacher',bid,'list',m);raise exception 'cross-academy booking allowed';exception when insufficient_privilege then null;end;
+ r:=public.olli_booking_staff_manage('fixture-teacher',aid,'list',m);
+ if not (r->>'ok')::boolean then raise exception 'booking list failed';end if;
+ r:=public.olli_booking_settings_manage('fixture-teacher',aid);
+ if not (r->>'ok')::boolean then raise exception 'booking settings failed';end if;
+ r:=public.olli_booking_settings_manage('fixture-teacher',aid,'save',jsonb_build_object('expected_revision',r->'settings'->>'revision'));
+ if not (r->>'ok')::boolean then raise exception 'booking settings save failed';end if;
+ r:=public.olli_get_consultation_survey_link_token('fixture-teacher',aid);
+ if not (r->>'ok')::boolean then raise exception 'survey link failed';end if;
+ begin perform olli_consultation_private.require_owner('fixture-teacher',aid);raise exception 'owner-only access expanded';exception when insufficient_privilege then null;end;
+ r:=public.olli_set_account_membership_role('fixture-owner',aid,mid,'teacher');
+ if r->>'role'<>'teacher' or (public.olli_consultation_record_access('fixture-teacher',aid)->>'allowed')::boolean then raise exception 'revoke failed';end if;
+ begin perform public.olli_booking_staff_manage('fixture-teacher',aid,'list',m);raise exception 'revoked booking allowed';exception when insufficient_privilege then null;end;
+ r:=public.olli_set_member_role('fixture-owner',aid,mid,'teacher_consultation');
+ if r->>'role'<>'teacher_consultation' then raise exception 'legacy role setter failed';end if;
+ update public.academy_members set status='disabled' where id=mid;
+ if (public.olli_consultation_record_access('fixture-teacher',aid)->>'allowed')::boolean then raise exception 'disabled account allowed';end if;
+ update public.academy_members set status='active' where id=mid;
+ if (public.olli_consultation_record_access('fixture-teacher',aid)->>'allowed')::boolean then raise exception 'old grant restored';end if;
+ if not (public.olli_booking_staff_manage('fixture-owner',aid,'list',m)->>'ok')::boolean then raise exception 'existing owner booking broken';end if;
+ raise notice 'PASS grant, revoke, self-grant, tenant, disable, booking list/settings, survey link, owner regression';
+end $$;
