@@ -50,4 +50,10 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261025150000_olli_booking_core_stage1.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261025183000_olli_booking_parent_stage2.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026103000_olli_booking_staff_stage3.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102152500_olli_booking_staff_manual_create.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102174500_olli_booking_owner_manual_slots_search.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102180000_olli_booking_owner_manual_evening_slots.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261103150000_olli_booking_staff_reschedule_owner_slots.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261106081947_olli_booking_staff_intake_trial.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026140000_olli_booking_public_academy_stage4.sql
           psql -v ON_ERROR_STOP=1 -f tests/pc-teacher-consultation-access.bootstrap.sql -f "$(find supabase/migrations -name '*_pc_teacher_consultation_record_access.sql')" -f tests/pc-teacher-consultation-access.integration.sql

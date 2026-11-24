@@ -21,6 +21,10 @@ begin
  if not (r->>'ok')::boolean then raise exception 'booking settings failed';end if;
  r:=public.olli_booking_settings_manage('fixture-teacher',aid,'save',jsonb_build_object('expected_revision',r->'settings'->>'revision'));
  if not (r->>'ok')::boolean then raise exception 'booking settings save failed';end if;
+ r:=public.olli_booking_public_link_manage('fixture-teacher',aid);
+ if not (r->>'ok')::boolean or r->>'slug' is null then raise exception 'unified booking link failed';end if;
+ r:=public.olli_booking_staff_manual_manage('fixture-teacher',aid,'students');
+ if not (r->>'ok')::boolean then raise exception 'manual booking student lookup failed';end if;
  r:=public.olli_get_consultation_survey_link_token('fixture-teacher',aid);
  if not (r->>'ok')::boolean then raise exception 'survey link failed';end if;
  begin perform olli_consultation_private.require_owner('fixture-teacher',aid);raise exception 'owner-only access expanded';exception when insufficient_privilege then null;end;
