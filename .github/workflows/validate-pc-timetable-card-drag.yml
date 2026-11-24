@@ -9,6 +9,13 @@ on:
       - 'apps/pc/tests/timetable-drag-drop.test.cjs'
       - 'apps/pc/tests/timetable-same-week-immediate-move.test.cjs'
       - 'apps/pc/tests/timetable-move-week-visual.test.cjs'
+      - 'apps/pc/tests/timetable-move-reservation-cancel.test.cjs'
+      - 'apps/pc/tests/timetable-temporary-move.test.cjs'
+      - 'apps/pc/tests/timetable-temporary-move-db.test.sql'
+      - 'apps/pc/tests/timetable-pickup-change-scope.test.cjs'
+      - 'apps/pc/tests/timetable-pickup-change-scope-db.test.sql'
+      - 'supabase/migrations/*pc_pickup_change_scope.sql'
+      - 'supabase/migrations/*pc_timetable_temporary_move.sql'
       - 'supabase/migrations/*pc_timetable_move_week_projection.sql'
       - 'supabase/migrations/*pc_timetable_same_week_immediate_moves.sql'
       - 'supabase/migrations/*pc_timetable_drag_pickup.sql'
@@ -35,5 +42,35 @@ jobs:
           node --test tests/timetable-drag-drop.test.cjs
           node --test tests/timetable-same-week-immediate-move.test.cjs
           node --test tests/timetable-move-week-visual.test.cjs
+          node --test tests/timetable-move-reservation-cancel.test.cjs
+          node --test tests/timetable-temporary-move.test.cjs
+          node --test tests/timetable-pickup-change-scope.test.cjs
           node --test tests/timetable-new-card-badge.test.cjs
           node --test tests/timetable-one-time-wait-manage.test.cjs
+  temporary-move-db:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: fixture-only
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Test actual migration against isolated RPC fixtures
+        env:
+          DB_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$DB_CONTAINER" mkdir -p /tmp/olli/apps/pc/tests /tmp/olli/supabase/migrations
+          docker cp apps/pc/tests/timetable-temporary-move-db.test.sql "$DB_CONTAINER:/tmp/olli/apps/pc/tests/"
+          docker cp supabase/migrations/20261124071708_pc_timetable_temporary_move.sql "$DB_CONTAINER:/tmp/olli/supabase/migrations/"
+          docker exec "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/olli/apps/pc/tests/timetable-temporary-move-db.test.sql
+          docker cp apps/pc/tests/timetable-pickup-change-scope-db.test.sql "$DB_CONTAINER:/tmp/olli/apps/pc/tests/"
+          docker cp "$(find supabase/migrations -name '*_pc_pickup_change_scope.sql' -print -quit)" "$DB_CONTAINER:/tmp/olli/supabase/migrations/pc_pickup_change_scope.sql"
+          docker exec "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/olli/apps/pc/tests/timetable-pickup-change-scope-db.test.sql

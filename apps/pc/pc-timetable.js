@@ -991,6 +991,43 @@
       && clean(change[key]) === id
       && isMoveTransitionWeek(change.effective_date, sessionDate));
   }
+  function scheduledMoveRows(studentId) {
+    return changes().filter((change) => clean(change.student_id) === clean(studentId)
+      && clean(change.change_type) === 'move' && change.status === 'scheduled'
+      && clean(change.effective_date) > todayKey());
+  }
+  function moveReservationEnrollment(change, side) {
+    const id = clean(change[side === 'source' ? 'source_enrollment_id' : 'target_enrollment_id']);
+    if (!id) return null;
+    const week = capacityWeekData(parseDate(change.effective_date));
+    const candidates = [week, state.data].flatMap((data) =>
+      (Array.isArray(data?.move_source_enrollments) ? data.move_source_enrollments : [])
+        .concat(Array.isArray(data?.enrollments) ? data.enrollments : []));
+    return candidates.find((row) => clean(row.id) === id
+      && clean(row.student_id) === clean(change.student_id)) || null;
+  }
+  function scheduledMoveForReturn(source, target) {
+    if (source.kind !== 'regular') return null;
+    return scheduledMoveRows(source.row.student_id).find((change) => {
+      if (clean(change.target_enrollment_id) !== source.id
+        || !isMoveTransitionWeek(change.effective_date, source.date)
+        || !isMoveTransitionWeek(change.effective_date, target.date)) return false;
+      const original = moveReservationEnrollment(change, 'source');
+      return !!original && clean(original.division) === target.division
+        && Number(original.weekday) === target.weekday
+        && timeSlotMatches(target.division, parseDate(target.date), target.time, original.time_slot)
+        && (isHalfHourMode() || !isClassSplit(target.division, target.weekday, target.time, target.date)
+          || classGroupOf(original) === target.classGroup);
+    }) || null;
+  }
+  function moveReservationSlotText(change, row, division) {
+    if (!row) return '일정 확인 중';
+    const date = addDays(mondayOf(change.effective_date), Number(row.weekday) - 1);
+    const time = storedTimeForCell(division, date, row.time_slot);
+    const group = !isHalfHourMode() && isClassSplit(division, Number(row.weekday), time, date)
+      ? ' ' + classGroupOf(row) + '반' : '';
+    return shortDate(date) + ' ' + weekdayLabel(row.weekday) + ' ' + scheduleSlotLabel(division, time, row.class_group, row.weekday) + group;
+  }
   function movedSourceEnrollments(division, date, time, classGroup) {
     const sources = (Array.isArray(state.data?.move_source_enrollments) ? state.data.move_source_enrollments : []).concat(enrollments());
     const seen = new Set();
@@ -1202,7 +1239,8 @@
       if (currentSyncAcademyId() !== academyId || capacityAcademyId !== academyId) return;
       capacityWeeks.set(week, data);
       if (state.dialog && state.dialog.kind === 'move'
-        && dateKey(mondayOf(state.dialog.effectiveDate)) === week) renderDialog();
+        && (dateKey(mondayOf(state.dialog.effectiveDate)) === week
+          || scheduledMoveRows(state.dialog.studentId).some((change) => dateKey(mondayOf(change.effective_date)) === week))) renderDialog();
     }).catch((error) => {
       console.warn('미래 수업 정원 확인 실패:', error);
     }).finally(() => {
@@ -1299,6 +1337,11 @@
     });
   }
 
+  function isTemporaryMoveSession(item) {
+    return clean(item?.session_type) === 'makeup'
+      && /^일시변경 \[olli:temporary-move-v1:[0-9a-f-]{36}:\d{4}-\d{2}-\d{2}\]$/i.test(clean(item.note));
+  }
+
   function cellContentsHtml(division, date, time, classGroup, memoText) {
     const regular = slotRegulars(division, date, time, classGroup);
     const movedSources = movedSourceEnrollments(division, date, time, classGroup);
@@ -1353,7 +1396,8 @@
         return `<div draggable="true" data-tt-drag-kind="trial" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${dateKey(date)}" class="olliTtStudent trial"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">체험</button></div>`;
       }
       const attended = isToday(date) && attendanceMarked(item.student_id, date, attendanceTime, entryClassGroup, 'makeup');
-      return `<div draggable="true" data-tt-drag-kind="makeup" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${dateKey(date)}" class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">보강</button></div>`;
+      const temporary = isTemporaryMoveSession(item);
+      return `<div draggable="true" data-tt-drag-kind="makeup" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${dateKey(date)}" class="olliTtStudent makeup${temporary ? ' olliTtTemporaryMove' : ''}${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">${temporary ? '일시변경' : '보강'}</button></div>`;
     }).join('');
     const memoGroup = classGroup ? classGroupOf({ class_group: classGroup }) : '';
     const memoHtml = cellMemos().filter((item) => clean(item.division) === clean(division)
@@ -1772,7 +1816,13 @@
     }
   }
 
-  async function saveDraggedTimetableMove(source, target) {
+  async function saveDraggedTimetableMove(source, target, mode) {
+    if (state.saving) return;
+    const reservation = scheduledMoveForReturn(source, target);
+    if (reservation) {
+      await cancelScheduledChange(reservation.id, { source, target });
+      return;
+    }
     const sameGroup = source.classGroup === target.classGroup;
     const sameDayTime = source.weekday === target.weekday && source.time === target.time;
     const recurring = source.kind === 'regular' || (source.kind === 'pickup' && pickupScope(source.row) === 'weekly');
@@ -1787,14 +1837,34 @@
       + (source.kind !== 'pickup' && isClassSplit(source.division, source.weekday, source.time, source.date) ? ' ' + source.classGroup + '반' : '');
     const toLabel = shortDate(target.date) + ' ' + scheduleSlotLabel(target.division, target.time, target.classGroup, target.weekday)
       + (source.kind !== 'pickup' && isClassSplit(target.division, target.weekday, target.time, target.date) ? ' ' + target.classGroup + '반' : '');
-    const repeatingGuide = recurring ? '\n정규수업/매주 픽업의 변경은 적용 날짜부터 이후 일정에도 반영됩니다.' : '';
-    if (!global.confirm(source.name + ' 학생의 ' + kindLabel + '을(를) 이동할까요?\n'
-      + fromLabel + ' → ' + toLabel + repeatingGuide)) return;
+    if (source.kind === 'regular') {
+      if (!mode) {
+        state.dialog = { kind:'dragMoveChoice', source, target, fromLabel, toLabel };
+        openOverlay();
+        return;
+      }
+      if (mode !== 'temporary' && mode !== 'permanent') return;
+    } else {
+      const repeatingGuide = recurring ? '\n정규수업/매주 픽업의 변경은 적용 날짜부터 이후 일정에도 반영됩니다.' : '';
+      if (!global.confirm(source.name + ' 학생의 ' + kindLabel + '을(를) 이동할까요?\n'
+        + fromLabel + ' → ' + toLabel + repeatingGuide)) return;
+    }
 
     // withSaving refreshes server state before mutation and again after a commit.
     const result = await withSaving(async () => {
       if (source.academyId !== currentSyncAcademyId()) throw new Error('학원이 변경되었습니다. 다시 시도해 주세요.');
       if (source.kind === 'regular') {
+        if (mode === 'temporary') {
+          if (!isMoveTransitionWeek(source.date, target.date) || target.date < todayKey()
+            || source.date < dateKey(mondayOf(todayKey()))) {
+            throw new Error('한 주만 이동은 같은 주의 오늘 이후 수업으로만 할 수 있습니다.');
+          }
+          return service.temporaryMove({
+            studentId:source.row.student_id, sourceEnrollmentId:source.id,
+            sourceDate:source.date, sourceTime:source.time, sourceGroup:source.classGroup,
+            targetDate:target.date, targetTime:target.time, targetGroup:target.classGroup
+          });
+        }
         const response = await service.changeSchedule({
           studentId:source.row.student_id, sourceEnrollmentId:source.id,
           targetWeekday:target.weekday, targetTimeSlot:target.time,
@@ -1823,6 +1893,10 @@
       throw new Error('이동할 카드 종류를 확인해 주세요.');
     });
     if (result) {
+      if (source.kind === 'regular' && mode === 'temporary') {
+        notify(source.name + ' 학생의 수업을 해당 주만 일시변경했어요.');
+        return;
+      }
       const storedEffectiveDate = clean(result.effective_date) || target.date;
       const reserved = (source.kind === 'regular' && result.result === 'scheduled')
         || (source.kind === 'pickup' && pickupScope(source.row) === 'weekly'
@@ -2408,6 +2482,7 @@
     syncMoveAbsenceState(state.dialog);
     openOverlay();
     fetchCapacityWeek(state.dialog.effectiveDate);
+    scheduledMoveRows(studentId).forEach((change) => fetchCapacityWeek(change.effective_date));
   }
 
   function openAdd(dataset) {
@@ -2524,9 +2599,13 @@
     if (!item) return;
     const currentDayKey = todayKey();
     const requestedDate = clean(clickedDate);
-    const initialEffectiveDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate >= currentDayKey
-      ? requestedDate
-      : currentDayKey;
+    const start = clean(item.effective_from);
+    // A future-start card defaults to its actual first pickup, even when
+    // opened from a later week. An active card defaults to its own weekday.
+    const dateBase = start > currentDayKey ? start
+      : (/^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate >= currentDayKey ? requestedDate : currentDayKey);
+    const baseDate = parseDate(dateBase);
+    const initialEffectiveDate = dateKey(addDays(baseDate, (Number(item.weekday) - baseDate.getDay() + 7) % 7));
     const initialPickupLabel = item.is_dropoff === true ? '' : clean(item.pickup_label);
     const initialPickupTime = item.is_dropoff === true ? '' : pickupTimeInputValue(item.pickup_time);
     const initialDropoffLabel = clean(item.dropoff_label) || (item.is_dropoff === true ? clean(item.pickup_label) : '');
@@ -2542,6 +2621,8 @@
       originalPickupLabel: initialPickupLabel,
       originalPickupTime: initialPickupTime,
       originalDropoffLabel: initialDropoffLabel,
+      originalEffectiveFrom: start,
+      originalEffectiveTo: clean(item.effective_to),
       effectiveDate: initialEffectiveDate
     };
     openOverlay();
@@ -2641,7 +2722,7 @@
     const student = studentById(dialog.studentId);
     const rows = currentStudentEnrollments(dialog.studentId).sort((a, b) => Number(a.weekday) - Number(b.weekday) || Number(a.time_slot) - Number(b.time_slot));
     const scheduledRows = changes().filter((item) => clean(item.student_id) === clean(dialog.studentId) && item.status === 'scheduled');
-    const moveRows = scheduledRows.filter((item) => clean(item.change_type) === 'move');
+    const moveRows = scheduledMoveRows(dialog.studentId);
     const legacyDeleteRows = scheduledRows.filter((item) => clean(item.change_type) === 'remove'
       && rows.some((row) => clean(row.id) === clean(item.source_enrollment_id)));
     const division = divisionOf(student);
@@ -2694,10 +2775,12 @@
           const full = capacity && count !== null && count >= capacity;
           return `<button type="button" class="olliTtChoice ${dialog.targetTime === time ? 'active' : ''} ${full ? 'full' : ''}" data-tt-target-time="${time}">${scheduleSlotLabel(division, time, dialog.targetClassGroup, dialog.targetWeekday)}${capacity ? `<small>${count === null ? '확인 중' : count}/${capacity}${full ? ' · 대기' : ''}</small>` : ''}</button>`;
         }).join(''));
-    const moveStatusHtml = moveRows.length ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>수업 이동 취소</span></div><div class="olliTtEnrollmentList">${moveRows.map((item) => {
-      const target = rows.find((row) => clean(row.id) === clean(item.target_enrollment_id));
-      const targetText = target ? `${weekdayLabel(target.weekday)}요일 ${scheduleSlotLabel(division, target.time_slot, target.class_group, target.weekday)}` : '이동할 수업';
-      return `<button type="button" class="olliTtEnrollmentChoice" data-tt-cancel-change="${esc(item.id)}"><strong>${shortDate(item.effective_date)} · ${esc(targetText)}</strong><span>이동 취소</span></button>`;
+    const moveStatusHtml = moveRows.length ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>수업 이동 예약</span></div><div class="olliTtEnrollmentList">${moveRows.map((item) => {
+      const source = moveReservationEnrollment(item, 'source');
+      const target = moveReservationEnrollment(item, 'target');
+      const sourceText = moveReservationSlotText(item, source, division);
+      const targetText = moveReservationSlotText(item, target, division);
+      return `<div class="olliTtMoveReservationRow"><span class="olliTtMoveReservationSlot"><small>이동 전</small><strong>${esc(sourceText)}</strong></span><span aria-hidden="true">→</span><span class="olliTtMoveReservationSlot"><small>이동 후</small><strong>${esc(targetText)}</strong></span><button type="button" class="olliTtEnrollmentDelete" data-tt-cancel-change="${esc(item.id)}">이동 예약 취소</button></div>`;
     }).join('')}</div></div>` : '';
     const legacyDeleteHtml = legacyDeleteRows.length ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>기존 삭제 예약</span><small>이전 방식으로 저장된 예약입니다. 새 삭제는 즉시 처리됩니다.</small></div><div class="olliTtEnrollmentList">${legacyDeleteRows.map((item) => {
       const scheduledSource = rows.find((row) => clean(row.id) === clean(item.source_enrollment_id));
@@ -2947,7 +3030,7 @@
     const date = parseDate(item.session_date);
     const trial = clean(item.session_type) === 'trial';
     const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;
-    const typeLabel = trial ? '체험' : '보강';
+    const typeLabel = trial ? '체험' : (isTemporaryMoveSession(item) ? '일시변경' : '보강');
     const division = clean(item.division);
     const targetDate = clean(dialog.makeupDate) || clean(item.session_date);
     const targetWeekday = Number(dialog.targetWeekday) || parseDate(targetDate).getDay();
@@ -3033,6 +3116,18 @@
     const dropoffButton = root.querySelector('[data-tt-register-dropoff]');
     if (arrivalButton) arrivalButton.disabled = !dirty.arrivalChanged;
     if (dropoffButton) dropoffButton.disabled = !dirty.dropoffChanged;
+    const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
+    const valid = Boolean(item && (!clean(item.effective_to) || clean(item.effective_to) >= todayKey())
+      && (clean(dialog.pickupLabel) || clean(dialog.dropoffLabel))
+      && (!clean(dialog.pickupLabel) === !clean(dialog.pickupTime))
+      && (!clean(dialog.dropoffTime) || clean(dialog.dropoffLabel))
+      && /^\d{4}-\d{2}-\d{2}$/.test(clean(dialog.effectiveDate))
+      && dialog.effectiveDate >= todayKey() && parseDate(dialog.effectiveDate).getDay() !== 0);
+    const immediate = root.querySelector('[data-tt-update-pickup]');
+    const scheduled = root.querySelector('[data-tt-schedule-pickup]');
+    if (immediate) immediate.disabled = !valid;
+    if (scheduled) scheduled.disabled = !valid || pickupScope(item) === 'daily'
+      || !isReservedMoveDate(dialog.effectiveDate);
   }
 
   function pickupManageDialogHtml(dialog) {
@@ -3079,10 +3174,11 @@
       + '</div></section>'
       + '<section class="olliTtPickupManageSection effective">'
       + '<div class="olliTtPickupManageSectionHead"><strong>변경·삭제 적용일</strong></div>'
-      + '<div class="olliTtPickupEffectiveGuide">등원 시간 변경 예약은 내일부터, 전체 픽업 삭제는 오늘부터 적용할 수 있습니다.</div>'
+      + '<div class="olliTtPickupEffectiveGuide">즉시변경은 지금부터, 변경예약은 선택한 날짜가 포함된 주부터 적용됩니다. 아직 시작하지 않은 픽업은 즉시변경으로 시작일을 수정할 수 있습니다.</div>'
       + '<div class="olliTtPickupManageFieldRow effectiveRow">'
-      + `<label><span>적용일</span><input type="date" class="olliTtDateInput" data-tt-pickup-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></label>`
-      + '<button type="button" class="olliTtDialogPrimary" data-tt-schedule-pickup' + (hasArrival ? '' : ' disabled') + '>변경 예약</button>'
+      + `<label><span>적용일 / 변경 요일</span><input type="date" class="olliTtDateInput" data-tt-pickup-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></label>`
+      + '<button type="button" class="olliTtDialogPrimary secondary" data-tt-update-pickup>즉시변경</button>'
+      + '<button type="button" class="olliTtDialogPrimary" data-tt-schedule-pickup' + (pickupScope(item) === 'daily' ? ' disabled' : '') + '>변경예약</button>'
       + '</div></section>'
       + '<div class="olliTtDialogActions olliTtPickupDeleteActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-remove-pickup>픽업 삭제</button></div>'
       + '</div>';
@@ -3115,6 +3211,18 @@
   function backToHistory() { return timetableHistoryRuntimeApi().backToHistory(); }
   async function restoreHistoryAction() { return timetableHistoryRuntimeApi().restoreHistoryAction(); }
 
+  function dragMoveChoiceHtml(dialog) {
+    const { source, target } = dialog;
+    const oneWeek = isMoveTransitionWeek(source.date, target.date)
+      && source.date >= dateKey(mondayOf(todayKey())) && target.date >= todayKey();
+    return dialogHead('↗', source.name + ' 수업 이동', dialog.fromLabel + ' → ' + dialog.toLabel)
+      + '<div class="olliTtDialogBody"><div class="olliTtField"><div class="olliTtFieldHead"><span>이동 방식 선택</span></div>'
+      + '<div class="olliTtDragMoveChoices">'
+      + '<button type="button" class="olliTtChoice" data-tt-drag-move-mode="temporary"' + (oneWeek ? '' : ' disabled') + '><strong>한 주만 이동</strong><small>기존 수업은 결석, 옮긴 수업은 일시변경으로 표시됩니다.</small></button>'
+      + '<button type="button" class="olliTtChoice" data-tt-drag-move-mode="permanent"><strong>완전 이동</strong><small>기존처럼 정규수업 요일·시간을 변경합니다.</small></button></div></div>'
+      + '<div class="olliTtDialogActions olliTtDragMoveCancel"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button></div></div>';
+  }
+
   function renderDialog() {
     const dialog = document.getElementById('olliTtDialog');
     if (!dialog || !state.dialog) return;
@@ -3126,7 +3234,8 @@
     dialog.classList.toggle('olliTtMemoManageDialog', state.dialog.kind === 'memoManage');
     dialog.classList.toggle('olliTtAddDialog', state.dialog.kind === 'add');
     dialog.classList.toggle('olliTtPickupDialog', state.dialog.kind === 'pickupAdd' || state.dialog.kind === 'pickupManage');
-    if (state.dialog.kind === 'move') dialog.innerHTML = moveDialogHtml(state.dialog);
+    if (state.dialog.kind === 'dragMoveChoice') dialog.innerHTML = dragMoveChoiceHtml(state.dialog);
+    else if (state.dialog.kind === 'move') dialog.innerHTML = moveDialogHtml(state.dialog);
     else if (state.dialog.kind === 'add') dialog.innerHTML = addDialogHtml(state.dialog);
     else if (state.dialog.kind === 'memoManage') dialog.innerHTML = memoManageDialogHtml(state.dialog);
     else if (state.dialog.kind === 'wait') dialog.innerHTML = waitDialogHtml(state.dialog);
@@ -3142,6 +3251,11 @@
     const dialog = document.getElementById('olliTtDialog');
     if (!dialog || !state.dialog) return;
     dialog.querySelectorAll('[data-tt-dialog-close]').forEach((button) => button.addEventListener('click', closeDialog));
+    dialog.querySelectorAll('[data-tt-drag-move-mode]').forEach((button) => button.addEventListener('click', () => {
+      const choice = state.dialog;
+      if (!choice || choice.kind !== 'dragMoveChoice' || state.saving || button.disabled) return;
+      void saveDraggedTimetableMove(choice.source, choice.target, button.dataset.ttDragMoveMode);
+    }));
     if (!dialog.__olliStudentSearchKeyboardBound) {
       dialog.__olliStudentSearchKeyboardBound = true;
       dialog.addEventListener('keydown', handleDialogStudentSearchKeydown);
@@ -3366,7 +3480,13 @@
       }
     });
     const pickupEffectiveDate = dialog.querySelector('[data-tt-pickup-effective-date]');
-    if (pickupEffectiveDate) pickupEffectiveDate.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.effectiveDate = pickupEffectiveDate.value || todayKey(); });
+    if (pickupEffectiveDate) pickupEffectiveDate.addEventListener('change', () => {
+      if (state.dialog && state.dialog.kind === 'pickupManage') {
+        state.dialog.effectiveDate = pickupEffectiveDate.value;
+        refreshPickupManageActionState(dialog);
+      }
+    });
+    if (state.dialog.kind === 'pickupManage') refreshPickupManageActionState(dialog);
     const waitDate = dialog.querySelector('[data-tt-wait-date]');
     if (waitDate) waitDate.addEventListener('change', () => { state.dialog.effectiveDate = waitDate.value || todayKey(); renderDialog(); });
     const managedDate = dialog.querySelector('[data-tt-managed-date]');
@@ -4074,25 +4194,43 @@ ${combined.memoError}`);
     if (result) notify(`${item.student_name} 학생의 하원 설정을 삭제했어요.`);
   }
 
-  async function updatePickupNow() {
+  async function applyPickupChange(mode) {
     const dialog = state.dialog;
-    if (!dialog || dialog.kind !== 'pickupManage') return;
+    if (!dialog || dialog.kind !== 'pickupManage' || state.saving) return;
     const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
     if (!item) return;
-    if (!clean(dialog.pickupTime)) { alert('수정할 픽업 시간을 입력해 주세요.'); return; }
-    const result = await withSaving(() => service.updatePickup(dialog.pickupId, dialog.pickupTime, todayKey(), 'edit'));
-    if (result) notify(`${item.student_name} 학생의 픽업 시간을 수정했어요.`);
+    const date = clean(dialog.effectiveDate);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < todayKey() || parseDate(date).getDay() === 0) {
+      alert('오늘 이후 월요일부터 토요일까지의 날짜를 선택해 주세요.');
+      return;
+    }
+    if (mode === 'schedule' && (pickupScope(item) === 'daily' || !isReservedMoveDate(date))) {
+      alert('이번 주 및 당일 픽업은 즉시변경을 이용해 주세요.');
+      return;
+    }
+    const arrival = clean(dialog.pickupLabel), arrivalTime = clean(dialog.pickupTime);
+    const dropoff = clean(dialog.dropoffLabel), dropoffTime = clean(dialog.dropoffTime);
+    if ((!arrival && !dropoff) || Boolean(arrival) !== Boolean(arrivalTime) || (dropoffTime && !dropoff)) {
+      alert('등원 장소·시간 또는 하원 장소를 올바르게 입력해 주세요.');
+      return;
+    }
+    const result = await withSaving(() => service.changePickup({
+      pickupId:dialog.pickupId, expectedFrom:dialog.originalEffectiveFrom,
+      expectedTo:dialog.originalEffectiveTo, targetDate:date,
+      pickupLabel:arrival,pickupTime:arrivalTime,dropoffLabel:dropoff,dropoffTime,
+      mode
+    }));
+    if (result) notify(mode === 'schedule'
+      ? `${item.student_name} 학생의 픽업 변경을 ${shortDate(result.week_start || date)} 주부터 예약했어요.`
+      : `${item.student_name} 학생의 픽업 일정을 즉시 수정했어요.`);
+  }
+
+  async function updatePickupNow() {
+    return applyPickupChange('immediate');
   }
 
   async function schedulePickupChange() {
-    const dialog = state.dialog;
-    if (!dialog || dialog.kind !== 'pickupManage') return;
-    const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
-    if (!item) return;
-    if (!clean(dialog.pickupTime)) { alert('변경할 픽업 시간을 입력해 주세요.'); return; }
-    if (!clean(dialog.effectiveDate) || dialog.effectiveDate <= todayKey()) { alert('변경 예약은 내일부터 설정할 수 있습니다.'); return; }
-    const result = await withSaving(() => service.updatePickup(dialog.pickupId, dialog.pickupTime, dialog.effectiveDate, 'schedule'));
-    if (result) notify(`${item.student_name} 학생의 픽업 시간 변경을 ${koreanDate(dialog.effectiveDate, true)}부터 예약했어요.`);
+    return applyPickupChange('schedule');
   }
 
   async function removePickup() {
@@ -4190,7 +4328,7 @@ ${combined.memoError}`);
     const item = oneTimeSessions().find((row) => clean(row.id) === clean(dialog.makeupId));
     if (!item) return;
     const trial = clean(item.session_type) === 'trial';
-    const typeLabel = trial ? '체험' : '보강';
+    const typeLabel = trial ? '체험' : (isTemporaryMoveSession(item) ? '일시변경' : '보강');
     const targetDate = clean(dialog.makeupDate);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate) || targetDate < todayKey()) {
       alert(`변경할 ${typeLabel} 날짜를 확인해 주세요.`);
@@ -4249,17 +4387,33 @@ ${combined.memoError}`);
       return { actionResult, memoError };
     });
     if (!combined || !combined.actionResult) return;
-    notify(`${item.student_name}${item.is_guest === true ? ' (비)' : ''} 학생의 ${clean(item.session_type) === 'trial' ? '체험수업' : '보강'}을 취소했어요.`);
+    notify(`${item.student_name}${item.is_guest === true ? ' (비)' : ''} 학생의 ${clean(item.session_type) === 'trial' ? '체험수업' : (isTemporaryMoveSession(item) ? '일시변경' : '보강')}을 취소했어요.`);
     if (combined.memoError) {
       alert(`수업 취소는 완료됐지만 취소 사유 메모는 저장하지 못했습니다.
 ${combined.memoError}`);
     }
   }
 
-  async function cancelScheduledChange(changeId) {
+  async function cancelScheduledChange(changeId, dragContext) {
     const item = changes().find((row) => clean(row.id) === clean(changeId));
-    if (!item) return;
-    const result = await withSaving(() => service.cancelChange(changeId));
+    if (!item || item.status !== 'scheduled' || clean(item.effective_date) <= todayKey()) return;
+    const academyId = currentSyncAcademyId();
+    const result = await withSaving(async () => {
+      if (academyId !== currentSyncAcademyId()) throw new Error('학원이 변경되었습니다. 다시 시도해 주세요.');
+      const fresh = changes().find((row) => clean(row.id) === clean(changeId)
+        && row.status === 'scheduled' && clean(row.effective_date) > todayKey());
+      if (!fresh) throw new Error('이동 예약이 변경되었거나 이미 처리되었습니다.');
+      if (dragContext && clean(scheduledMoveForReturn(dragContext.source, dragContext.target)?.id) !== clean(changeId)) {
+        throw new Error('원래 수업 일정이 변경되었습니다. 다시 확인해 주세요.');
+      }
+      // Do not cancel an enrollment that another still-pending move depends on.
+      if (clean(fresh.change_type) === 'move' && scheduledMoveRows(fresh.student_id).some((other) =>
+        clean(other.id) !== clean(fresh.id) && (clean(other.source_enrollment_id) === clean(fresh.target_enrollment_id)
+          || clean(other.source_enrollment_id) === clean(fresh.source_enrollment_id)))) {
+        throw new Error('연결된 다른 이동 예약을 먼저 취소해 주세요.');
+      }
+      return service.cancelChange(changeId);
+    });
     if (result) notify(`${item.student_name} 학생의 시간표 변경 예약을 취소했어요.`);
   }
 

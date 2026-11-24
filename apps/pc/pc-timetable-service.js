@@ -433,6 +433,24 @@
     });
   }
 
+  async function temporaryMove(options) {
+    const result = await rpc('olli_schedule_temporary_move_v1', contextPayload({
+      p_student_id: options.studentId,
+      p_source_enrollment_id: options.sourceEnrollmentId,
+      p_source_date: options.sourceDate,
+      p_source_time: Number(options.sourceTime),
+      p_source_group: options.sourceGroup || 'A',
+      p_target_date: options.targetDate,
+      p_target_time: Number(options.targetTime),
+      p_target_group: options.targetGroup || 'A'
+    }));
+    invalidateAttendanceMonth(options.sourceDate);
+    if (clean(options.targetDate).slice(0,7) !== clean(options.sourceDate).slice(0,7)) {
+      invalidateAttendanceMonth(options.targetDate);
+    }
+    return result;
+  }
+
   async function addWaitlist(options) {
     return executeScheduleAction('add_waitlist', {
       student_id: options.studentId,
@@ -655,6 +673,20 @@
     });
   }
 
+  async function changePickup(options) {
+    return rpc('olli_schedule_change_pickup_v2', contextPayload({
+      p_pickup_id: options.pickupId,
+      p_expected_from: options.expectedFrom,
+      p_expected_to: options.expectedTo || null,
+      p_target_date: options.targetDate,
+      p_arrival_label: options.pickupLabel || null,
+      p_pickup_time: options.pickupTime || null,
+      p_dropoff_label: options.dropoffLabel || null,
+      p_dropoff_time: options.dropoffTime || null,
+      p_mode: options.mode
+    }));
+  }
+
   async function movePickup(pickupId, sourceDate, targetDate, targetClassTime) {
     return rpc('olli_schedule_move_pickup_v1', contextPayload({
       p_pickup_id: pickupId,
@@ -702,6 +734,7 @@
     previewTrialFeedback,
     resolveWaitlist,
     addMakeup,
+    temporaryMove,
     addWaitlist,
     addGuestEntry,
     updateOneTimeSession,
@@ -725,6 +758,7 @@
     removePickupArrival,
     removePickupDropoff,
     updatePickup,
+    changePickup,
     movePickup,
     removePickup,
     loadHistory,
