@@ -53,7 +53,7 @@ begin
     returning id into v_id;
   return jsonb_build_object('ok',true,'result','scheduled','unchanged',false,'one_time_session_id',v_id);
 end $$;
-\ir ../../../supabase/migrations/20261124065715_pc_timetable_temporary_move.sql
+\ir ../../../supabase/migrations/20261124071708_pc_timetable_temporary_move.sql
 
 do $test$
 declare
