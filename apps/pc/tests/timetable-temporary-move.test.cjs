@@ -17,7 +17,7 @@ function fixture() {
   const calls = [];
   const state = {saving:false,dialog:null};
   const ctx = vm.createContext({
-    state, clean:v=>String(v??'').trim(), scheduledMoveForReturn:()=>null,
+    state, clean:v=>String(v??'').trim(), scheduledMoveForReturn:()=>null, appliedMoveForReturn:()=>null,
     currentSyncAcademyId:()=> 'academy', todayKey:()=> '2026-11-24',
     dateKey:v=>v, mondayOf:()=> '2026-11-23',
     isMoveTransitionWeek:(a,b)=>a.slice(0,7)===b.slice(0,7),
