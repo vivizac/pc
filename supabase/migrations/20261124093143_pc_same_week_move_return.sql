@@ -155,8 +155,7 @@ begin
     select * into v_source from public.olli_schedule_enrollments e
       where e.id=p_source_enrollment_id and e.academy_id=p_academy_id
         and e.student_id=p_student_id and e.status='active' for update;
-    if not found or v_source.effective_from>current_date
-       or (v_source.effective_to is not null and v_source.effective_to<current_date) then
+    if not found then
       return jsonb_build_object('ok',false,'message','이동할 수업이 변경되었습니다. 시간표를 새로고침해 주세요.');
     end if;
     v_return_cursor := v_source.id;
@@ -199,6 +198,10 @@ begin
     end loop;
 
     if v_return_found then
+      if v_source.effective_from>current_date
+         or (v_source.effective_to is not null and v_source.effective_to<current_date) then
+        return jsonb_build_object('ok',false,'message','이동할 수업의 적용 기간이 변경되었습니다.');
+      end if;
       -- Do not undo history that already has attendance, or invalidate a
       -- later scheduled change / independently active enrollment.
       if exists(select 1 from public.olli_schedule_attendance a
