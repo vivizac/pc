@@ -1399,9 +1399,29 @@
     });
   }
 
+  function temporaryMoveOrigin(item) {
+    if (clean(item?.session_type) !== 'makeup') return null;
+    const m = clean(item.note).match(/^일시변경 \[olli:temporary-move-v([12]):([0-9a-f-]{36}):(\d{4}-\d{2}-\d{2})(?::(blank|keep))?\]$/i);
+    if (!m || (m[1] === '1' && m[4]) || (m[1] === '2' && !m[4])) return null;
+    return { enrollmentId:m[2], date:m[3] };
+  }
   function isTemporaryMoveSession(item) {
-    return clean(item?.session_type) === 'makeup'
-      && /^일시변경 \[olli:temporary-move-v1:[0-9a-f-]{36}:\d{4}-\d{2}-\d{2}\]$/i.test(clean(item.note));
+    return Boolean(temporaryMoveOrigin(item));
+  }
+  function temporaryMoveForReturn(source, target) {
+    if (source.kind !== 'makeup') return null;
+    const origin = temporaryMoveOrigin(source.row);
+    if (!origin || origin.date !== target.date || origin.date < todayKey()
+      || !isMoveTransitionWeek(source.date, target.date)) return null;
+    const original = enrollments().find(row => clean(row.id) === origin.enrollmentId
+      && clean(row.student_id) === clean(source.row.student_id));
+    if (!original || clean(original.division) !== target.division
+      || !enrollmentActiveOn(original, parseDate(target.date))
+      || Number(original.weekday) !== target.weekday
+      || !timeSlotMatches(target.division, parseDate(target.date), target.time, original.time_slot)
+      || (!isHalfHourMode() && isClassSplit(target.division, target.weekday, target.time, target.date)
+        && classGroupOf(original) !== target.classGroup)) return null;
+    return { origin, original };
   }
 
   function cellContentsHtml(division, date, time, classGroup, memoText) {
@@ -1878,6 +1898,27 @@
 
   async function saveDraggedTimetableMove(source, target, mode) {
     if (state.saving) return;
+    const temporaryReturn = temporaryMoveForReturn(source, target);
+    if (temporaryReturn) {
+      const result = await withSaving(async () => {
+        if (source.academyId !== currentSyncAcademyId()) throw new Error('학원이 변경되었습니다. 다시 시도해 주세요.');
+        const fresh = oneTimeSessions().find(row => clean(row.id) === source.id);
+        const verified = fresh && temporaryMoveForReturn({ ...source, row:fresh, date:clean(fresh.session_date) }, target);
+        if (!verified || clean(fresh.session_date) !== source.date
+          || Number(fresh.time_slot) !== Number(source.time) || classGroupOf(fresh) !== source.classGroup) {
+          throw new Error('일시변경 일정이 변경되었습니다. 다시 확인해 주세요.');
+        }
+        return service.cancelTemporaryMove({
+          sessionId:source.id, sourceDate:verified.origin.date,
+          sourceTime:verified.original.time_slot, sourceGroup:classGroupOf(verified.original),
+          targetDate:source.date
+        });
+      });
+      if (result) notify(source.name + (result.absence_preserved
+        ? ' 학생의 일시변경을 취소했어요. 별도로 등록된 결석은 유지했어요.'
+        : ' 학생의 일시변경을 취소하고 원래 수업으로 복원했어요.'));
+      return;
+    }
     const reservation = scheduledMoveForReturn(source, target);
     if (reservation) {
       await cancelScheduledChange(reservation.id, { source, target });

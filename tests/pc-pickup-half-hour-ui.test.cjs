@@ -92,8 +92,8 @@ test('PC half-hour timetable keeps scrolling but hides the scrollbar UI', () => 
   assert.match(css, /\.olliTtSection:has\(\.olliTtHalfHourGrid\) \.olliTtScroll \{[\s\S]*?scrollbar-width: none;[\s\S]*?-ms-overflow-style: none;/);
   assert.match(css, /\.olliTtSection:has\(\.olliTtHalfHourGrid\) \.olliTtScroll::\-webkit-scrollbar \{[\s\S]*?width: 0;[\s\S]*?display: none;/);
   assert.doesNotMatch(css, /olliTtHalfHourExternalScroll|olliTtHalfHourShell/);
-  assert.match(index, /pc-timetable\.css\?v=20261124-move-return-2/);
-  assert.match(index, /pc-timetable\.js\?v=20261124-move-return-2/);
+  assert.match(index, /pc-timetable\.css\?v=20261124-temporary-return-3/);
+  assert.match(index, /pc-timetable\.js\?v=20261124-temporary-return-3/);
 });
 
 

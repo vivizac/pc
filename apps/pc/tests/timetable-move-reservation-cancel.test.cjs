@@ -25,7 +25,7 @@ function fixture() {
   const parseDate = value => new Date(value + 'T00:00:00Z');
   const mondayOf = value => { const d = parseDate(value); d.setUTCDate(d.getUTCDate() - (d.getUTCDay()+6)%7); return d.toISOString().slice(0,10); };
   const ctx = vm.createContext({
-    state:{data:weekData}, changes:()=>rows, clean:v=>String(v??'').trim(), todayKey:()=> '2026-11-24',
+    temporaryMoveForReturn:()=>null, state:{data:weekData}, changes:()=>rows, clean:v=>String(v??'').trim(), todayKey:()=> '2026-11-24',
     parseDate, capacityWeekData:()=>weekData, isMoveTransitionWeek:(a,b)=>mondayOf(a)===mondayOf(b),
     timeSlotMatches:(_d,_date,a,b)=>Number(a)===Number(b),
     isHalfHourMode:()=>halfHour, isClassSplit:()=>split, classGroupOf:r=>r.class_group==='B'?'B':'A',

@@ -210,9 +210,9 @@ test('read-only NEW correction preserves registration, 14-day clock, pickup N an
 
 test('PC timetable and service assets cache-bust together', () => {
   for (const asset of ['pc-timetable.js', 'pc-timetable.css']) {
-    assert.ok(html.includes(asset + '?v=' + '20261124-move-return-2'), asset);
+    assert.ok(html.includes(asset + '?v=' + '20261124-temporary-return-3'), asset);
   }
-  assert.ok(html.includes('pc-timetable-service.js?v=20261124-move-return-2'), 'RPC badge-read service is versioned');
+  assert.ok(html.includes('pc-timetable-service.js?v=20261124-temporary-return-3'), 'RPC badge-read service is versioned');
 });
 
 test('new calendar metadata RPC preserves authorization and move guards without filtering student N by the current day', () => {

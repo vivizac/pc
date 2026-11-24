@@ -10,7 +10,7 @@ const css = fs.readFileSync(path.join(__dirname,'../pc-timetable.css'),'utf8');
 const migration = fs.readFileSync(path.join(__dirname,'../../../supabase/migrations/20261124071708_pc_timetable_temporary_move.sql'),'utf8');
 const slice = (a,b) => ui.slice(ui.indexOf(a),ui.indexOf(b));
 const drag = slice('  async function saveDraggedTimetableMove(', '  function onTimetableDrop(');
-const temporary = slice('  function isTemporaryMoveSession(', '  function cellContentsHtml(');
+const temporary = slice('  function temporaryMoveOrigin(', '  function cellContentsHtml(');
 const popup = slice('  function dragMoveChoiceHtml(', '  function renderDialog(');
 
 function fixture() {
