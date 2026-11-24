@@ -451,6 +451,20 @@
     return result;
   }
 
+  async function cancelTemporaryMove(options) {
+    const result = await rpc('olli_schedule_cancel_temporary_move_v1', contextPayload({
+      p_one_time_session_id: options.sessionId,
+      p_return_date: options.sourceDate,
+      p_return_time: Number(options.sourceTime),
+      p_return_group: options.sourceGroup || 'A'
+    }));
+    invalidateAttendanceMonth(options.sourceDate);
+    if (clean(options.targetDate).slice(0,7) !== clean(options.sourceDate).slice(0,7)) {
+      invalidateAttendanceMonth(options.targetDate);
+    }
+    return result;
+  }
+
   async function addWaitlist(options) {
     return executeScheduleAction('add_waitlist', {
       student_id: options.studentId,
@@ -735,6 +749,7 @@
     resolveWaitlist,
     addMakeup,
     temporaryMove,
+    cancelTemporaryMove,
     addWaitlist,
     addGuestEntry,
     updateOneTimeSession,
