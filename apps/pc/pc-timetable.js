@@ -1772,7 +1772,32 @@
     }
   }
 
+  function reservedMoveReturn(source, target) {
+    if (source.kind !== 'regular') return null;
+    const candidates = changes().filter(change => change.status === 'scheduled'
+      && clean(change.change_type) === 'move' && clean(change.effective_date) > todayKey()
+      && clean(change.student_id) === clean(source.row.student_id)
+      && clean(change.target_enrollment_id) === source.id
+      && isMoveTransitionWeek(change.effective_date, source.date)
+      && isMoveTransitionWeek(change.effective_date, target.date));
+    if (candidates.length !== 1) return null;
+    const original = moveReservationEnrollment(candidates[0].source_enrollment_id);
+    return original && clean(original.student_id) === clean(source.row.student_id)
+      && Number(original.weekday) === target.weekday && Number(original.time_slot) === target.time
+      && classGroupOf(original) === target.classGroup ? candidates[0] : null;
+  }
+
+  function moveReservationEnrollment(id) {
+    return enrollments().concat(Array.isArray(state.data?.move_source_enrollments) ? state.data.move_source_enrollments : [])
+      .find(row => clean(row.id) === clean(id));
+  }
+
   async function saveDraggedTimetableMove(source, target) {
+    const undo = reservedMoveReturn(source, target);
+    if (undo) {
+      await cancelScheduledChange(undo.id, { source, target });
+      return;
+    }
     const sameGroup = source.classGroup === target.classGroup;
     const sameDayTime = source.weekday === target.weekday && source.time === target.time;
     const recurring = source.kind === 'regular' || (source.kind === 'pickup' && pickupScope(source.row) === 'weekly');
@@ -2641,7 +2666,7 @@
     const student = studentById(dialog.studentId);
     const rows = currentStudentEnrollments(dialog.studentId).sort((a, b) => Number(a.weekday) - Number(b.weekday) || Number(a.time_slot) - Number(b.time_slot));
     const scheduledRows = changes().filter((item) => clean(item.student_id) === clean(dialog.studentId) && item.status === 'scheduled');
-    const moveRows = scheduledRows.filter((item) => clean(item.change_type) === 'move');
+    const moveRows = scheduledRows.filter((item) => clean(item.change_type) === 'move' && clean(item.effective_date) > todayKey());
     const legacyDeleteRows = scheduledRows.filter((item) => clean(item.change_type) === 'remove'
       && rows.some((row) => clean(row.id) === clean(item.source_enrollment_id)));
     const division = divisionOf(student);
@@ -2695,9 +2720,12 @@
           return `<button type="button" class="olliTtChoice ${dialog.targetTime === time ? 'active' : ''} ${full ? 'full' : ''}" data-tt-target-time="${time}">${scheduleSlotLabel(division, time, dialog.targetClassGroup, dialog.targetWeekday)}${capacity ? `<small>${count === null ? '확인 중' : count}/${capacity}${full ? ' · 대기' : ''}</small>` : ''}</button>`;
         }).join(''));
     const moveStatusHtml = moveRows.length ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>수업 이동 취소</span></div><div class="olliTtEnrollmentList">${moveRows.map((item) => {
-      const target = rows.find((row) => clean(row.id) === clean(item.target_enrollment_id));
-      const targetText = target ? `${weekdayLabel(target.weekday)}요일 ${scheduleSlotLabel(division, target.time_slot, target.class_group, target.weekday)}` : '이동할 수업';
-      return `<button type="button" class="olliTtEnrollmentChoice" data-tt-cancel-change="${esc(item.id)}"><strong>${shortDate(item.effective_date)} · ${esc(targetText)}</strong><span>이동 취소</span></button>`;
+      const label = row => {
+        if (!row) return '수업 정보 확인 필요';
+        const date = dateKey(addDays(mondayOf(item.effective_date), Number(row.weekday) - 1));
+        return shortDate(date) + ' ' + weekdayLabel(row.weekday) + '요일 ' + scheduleSlotLabel(division, row.time_slot, row.class_group, row.weekday);
+      };
+      return `<div class="olliTtMoveCancelRow"><span>${esc(label(moveReservationEnrollment(item.source_enrollment_id)))}</span><span aria-hidden="true">→</span><span>${esc(label(moveReservationEnrollment(item.target_enrollment_id)))}</span><button type="button" class="olliTtEnrollmentDelete" data-tt-cancel-change="${esc(item.id)}">이동 취소</button></div>`;
     }).join('')}</div></div>` : '';
     const legacyDeleteHtml = legacyDeleteRows.length ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>기존 삭제 예약</span><small>이전 방식으로 저장된 예약입니다. 새 삭제는 즉시 처리됩니다.</small></div><div class="olliTtEnrollmentList">${legacyDeleteRows.map((item) => {
       const scheduledSource = rows.find((row) => clean(row.id) === clean(item.source_enrollment_id));
@@ -3082,6 +3110,7 @@
       + '<div class="olliTtPickupEffectiveGuide">등원 시간 변경 예약은 내일부터, 전체 픽업 삭제는 오늘부터 적용할 수 있습니다.</div>'
       + '<div class="olliTtPickupManageFieldRow effectiveRow">'
       + `<label><span>적용일</span><input type="date" class="olliTtDateInput" data-tt-pickup-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></label>`
+      + '<button type="button" class="olliTtDialogPrimary secondary" data-tt-update-pickup' + (hasArrival ? '' : ' disabled') + '>즉시 변경</button>'
       + '<button type="button" class="olliTtDialogPrimary" data-tt-schedule-pickup' + (hasArrival ? '' : ' disabled') + '>변경 예약</button>'
       + '</div></section>'
       + '<div class="olliTtDialogActions olliTtPickupDeleteActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-remove-pickup>픽업 삭제</button></div>'
@@ -4256,10 +4285,14 @@ ${combined.memoError}`);
     }
   }
 
-  async function cancelScheduledChange(changeId) {
-    const item = changes().find((row) => clean(row.id) === clean(changeId));
+  async function cancelScheduledChange(changeId, drag) {
+    const item = changes().find(row => clean(row.id) === clean(changeId) && row.status === 'scheduled' && clean(row.effective_date) > todayKey());
     if (!item) return;
-    const result = await withSaving(() => service.cancelChange(changeId));
+    if (!drag && !global.confirm('변경 예약을 취소하고 기존 수업을 복원할까요?')) return;
+    const result = await withSaving(() => {
+      if (drag && (drag.source.academyId !== currentSyncAcademyId() || clean(reservedMoveReturn(drag.source, drag.target)?.id) !== clean(changeId))) throw new Error('이동 예약이 변경되었습니다. 다시 확인해 주세요.');
+      return service.cancelChange(changeId);
+    });
     if (result) notify(`${item.student_name} 학생의 시간표 변경 예약을 취소했어요.`);
   }
 
