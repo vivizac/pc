@@ -69,7 +69,7 @@ jobs:
         run: |
           docker exec "$DB_CONTAINER" mkdir -p /tmp/olli/apps/pc/tests /tmp/olli/supabase/migrations
           docker cp apps/pc/tests/timetable-temporary-move-db.test.sql "$DB_CONTAINER:/tmp/olli/apps/pc/tests/"
-          docker cp supabase/migrations/20261124065715_pc_timetable_temporary_move.sql "$DB_CONTAINER:/tmp/olli/supabase/migrations/"
+          docker cp supabase/migrations/20261124071708_pc_timetable_temporary_move.sql "$DB_CONTAINER:/tmp/olli/supabase/migrations/"
           docker exec "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/olli/apps/pc/tests/timetable-temporary-move-db.test.sql
           docker cp apps/pc/tests/timetable-pickup-change-scope-db.test.sql "$DB_CONTAINER:/tmp/olli/apps/pc/tests/"
           docker cp "$(find supabase/migrations -name '*_pc_pickup_change_scope.sql' -print -quit)" "$DB_CONTAINER:/tmp/olli/supabase/migrations/pc_pickup_change_scope.sql"
