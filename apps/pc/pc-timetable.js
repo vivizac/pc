@@ -1028,6 +1028,68 @@
       ? ' ' + classGroupOf(row) + '반' : '';
     return shortDate(date) + ' ' + weekdayLabel(row.weekday) + ' ' + scheduleSlotLabel(division, time, row.class_group, row.weekday) + group;
   }
+  // Resolve the actual net move of a single enrollment lineage for this week.
+  // Intermediate moves are audit history, not additional source cards.
+  function netRegularMoveFor(enrollmentId, date, side) {
+    const id = clean(enrollmentId);
+    const rows = changes().filter((c) => clean(c.change_type) === 'move'
+      && (c.status === 'scheduled' || c.status === 'applied')
+      && isMoveTransitionWeek(c.effective_date, date));
+    const bySource = (key) => rows.filter(c => clean(c.source_enrollment_id) === key);
+    const byTarget = (key) => rows.filter(c => clean(c.target_enrollment_id) === key);
+    const first = side === 'source' ? bySource(id) : byTarget(id);
+    if (first.length !== 1) return null;
+    if (side === 'source' && byTarget(id).length) return null;
+    if (side === 'target' && bySource(id).length) return null;
+    let root = first[0], leaf = first[0];
+    const seen = new Set([clean(first[0].id)]);
+    for (;;) {
+      const previous = byTarget(clean(root.source_enrollment_id));
+      if (!previous.length) break;
+      if (previous.length !== 1 || seen.has(clean(previous[0].id))
+        || clean(previous[0].student_id) !== clean(root.student_id)) return null;
+      root = previous[0]; seen.add(clean(root.id));
+    }
+    for (;;) {
+      const next = bySource(clean(leaf.target_enrollment_id));
+      if (!next.length) break;
+      if (next.length !== 1 || seen.has(clean(next[0].id))
+        || clean(next[0].student_id) !== clean(leaf.student_id)) return null;
+      leaf = next[0]; seen.add(clean(leaf.id));
+    }
+    const original = moveReservationEnrollment(root, 'source');
+    const final = moveReservationEnrollment(leaf, 'target');
+    if (!original || !final) return { ...root, target_enrollment_id:leaf.target_enrollment_id };
+    if (Number(original.weekday) === Number(final.weekday)
+      && Number(original.time_slot) === Number(final.time_slot)
+      && clean(original.division) === clean(final.division)
+      && (isHalfHourMode() || classGroupOf(original) === classGroupOf(final))) return null;
+    return { ...root, target_enrollment_id:leaf.target_enrollment_id };
+  }
+
+  function appliedMoveForReturn(source, target) {
+    if (source.kind !== 'regular' || !isMoveTransitionWeek(todayKey(), source.date)
+      || !isMoveTransitionWeek(todayKey(), target.date)) return null;
+    const rows = changes().filter((c) => clean(c.student_id) === clean(source.row.student_id)
+      && clean(c.change_type) === 'move' && c.status === 'applied'
+      && isMoveTransitionWeek(c.effective_date, target.date));
+    let cursor = source.id;
+    const seen = new Set();
+    for (;;) {
+      const links = rows.filter(c => clean(c.target_enrollment_id) === cursor);
+      if (links.length !== 1 || seen.has(clean(links[0].id))) return null;
+      const change = links[0];
+      seen.add(clean(change.id));
+      const original = moveReservationEnrollment(change, 'source');
+      if (!original) return null;
+      if (clean(original.division) === target.division && Number(original.weekday) === target.weekday
+        && timeSlotMatches(target.division, parseDate(target.date), target.time, original.time_slot)
+        && (isHalfHourMode() || !isClassSplit(target.division, target.weekday, target.time, target.date)
+          || classGroupOf(original) === target.classGroup)) return change;
+      cursor = clean(change.source_enrollment_id);
+    }
+  }
+
   function movedSourceEnrollments(division, date, time, classGroup) {
     const sources = (Array.isArray(state.data?.move_source_enrollments) ? state.data.move_source_enrollments : []).concat(enrollments());
     const seen = new Set();
@@ -1037,7 +1099,7 @@
         || Number(item.weekday) !== date.getDay()
         || !timeSlotMatches(division, date, time, item.time_slot)
         || (classGroup && classGroupOf(item) !== classGroupOf({class_group:classGroup}))
-        || !regularMoveInWeek(id, date, 'source')) return false;
+        || !netRegularMoveFor(id, date, 'source')) return false;
       seen.add(id);
       return true;
     });
@@ -1348,7 +1410,7 @@
     const waits = slotWaitlist(division, date, time, classGroup);
     const makeups = slotMakeups(division, date, time, classGroup);
     const regularHtml = regular.map((item) => {
-      const movedTarget = regularMoveInWeek(item.id, date, 'target');
+      const movedTarget = Boolean(netRegularMoveFor(item.id, date, 'target'));
       const attendanceTime = Number(item.time_slot);
       const entryClassGroup = classGroup ? classGroupOf({ class_group: classGroup }) : classGroupOf(item);
       const attendanceStatus = timetableAttendanceSessionStatus(item.student_id, date, attendanceTime, entryClassGroup, 'regular');
@@ -1369,9 +1431,7 @@
     }).join('');
     const movedSourceHtml = movedSources.map((item) => {
       const sessionKey = dateKey(date);
-      const linkedMove = changes().find((change) =>
-        clean(change.source_enrollment_id) === clean(item.id)
-        && regularMoveInWeek(item.id, date, 'source', [change]));
+      const linkedMove = netRegularMoveFor(item.id, date, 'source');
       const targetId = clean(linkedMove && linkedMove.target_enrollment_id);
       // Never fall back to an arbitrary other weekly enrollment (e.g. for
       // a student enrolled twice). Link only to the actual moved destination.
@@ -1823,6 +1883,10 @@
       await cancelScheduledChange(reservation.id, { source, target });
       return;
     }
+    // Applied moves within this week are also reversible. The server
+    // revalidates and atomically cancels the exact lineage before writing.
+    const appliedReturn = appliedMoveForReturn(source, target);
+    if (appliedReturn) mode = 'permanent';
     const sameGroup = source.classGroup === target.classGroup;
     const sameDayTime = source.weekday === target.weekday && source.time === target.time;
     const recurring = source.kind === 'regular' || (source.kind === 'pickup' && pickupScope(source.row) === 'weekly');
@@ -1865,6 +1929,9 @@
             targetDate:target.date, targetTime:target.time, targetGroup:target.classGroup
           });
         }
+        if (appliedReturn && clean(appliedMoveForReturn(source, target)?.id) !== clean(appliedReturn.id)) {
+          throw new Error('원래 수업 일정이 변경되었습니다. 다시 확인해 주세요.');
+        }
         const response = await service.changeSchedule({
           studentId:source.row.student_id, sourceEnrollmentId:source.id,
           targetWeekday:target.weekday, targetTimeSlot:target.time,
@@ -1895,6 +1962,10 @@
     if (result) {
       if (source.kind === 'regular' && mode === 'temporary') {
         notify(source.name + ' 학생의 수업을 해당 주만 일시변경했어요.');
+        return;
+      }
+      if (source.kind === 'regular' && result.result === 'cancelled') {
+        notify(source.name + ' 학생의 수업 이동을 취소하고 기존 수업으로 복원했어요.');
         return;
       }
       const storedEffectiveDate = clean(result.effective_date) || target.date;
