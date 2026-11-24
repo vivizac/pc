@@ -1026,7 +1026,10 @@ body.olliPcSidebarCollapsed #recordRoomScreen .olliTtSection { --olli-tt-student
 .olliTtPickupManageBody [data-tt-register-dropoff]:hover:not(:disabled) { background:#0878e8; }
 .olliTtPickupManageBody [data-tt-schedule-pickup]:hover:not(:disabled) { background:#e8ebee; }
 .olliTtPickupCurrentLine.empty strong { color:#9aa2ac; }
-.olliTtPickupManageSection.effective .olliTtPickupManageFieldRow { margin-top:0; grid-template-columns:minmax(0,1fr) 112px; }
+.olliTtPickupManageSection.effective .olliTtPickupManageFieldRow { margin-top:0; grid-template-columns:minmax(0,1fr) 100px 100px; gap:8px; }
+.olliTtPickupManageSection.effective .olliTtPickupManageFieldRow > button { width:100%; min-width:0; white-space:nowrap; }
+.olliTtPickupManageSection.effective .olliTtPickupManageFieldRow > button.secondary { background:#eaf4ff; color:#0877df; }
+.olliTtPickupManageSection.effective .olliTtPickupManageFieldRow > button:disabled { opacity:.45; cursor:not-allowed; }
 .olliTtPickupDeleteActions { margin-top:16px; padding-top:14px; border-top:1px solid #eceff2; }
 .olliTtPickupAddBody > .olliTtDialogActions,
 .olliTtPickupManageBody > .olliTtDialogActions { display:flex; grid-template-columns:none; justify-content:flex-end; align-items:center; }
