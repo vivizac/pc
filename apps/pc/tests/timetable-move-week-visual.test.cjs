@@ -51,6 +51,7 @@ test('ghost is separate from attendance, drag and capacity; destination has blue
   assert.match(js, /'<span class="olliTtStudentMore" aria-hidden="true">☰<\/span>'/);
   assert.match(js, /if \(ghost && !event\.target\.closest\('\[data-tt-entry="regular"\]'\)\)/);
   assert.match(js, /const studentNameHtml = movedTarget/);
+  assert.match(js, /const linkedMove = netRegularMoveFor\(item\.id, date, 'source'\)/);
   assert.match(js, /movedSourcePickups\(date, classTime\)/);
   assert.match(js, /const rows = slotPickups\(date, classTime\)\.filter\(\(item\) => !ghostIds\.has\(clean\(item\.id\)\)\)/);
   assert.doesNotMatch(js, /scheduledChangeForSource/);
@@ -72,8 +73,8 @@ test('moved source and target styling is scoped to week-specific classes', () =>
   assert.match(css, /\.olliTtMovedSource[\s\S]*?border: 1px dashed #6aa9d6/);
   assert.match(css, /background: #eff9ff/);
   assert.match(css, /\.olliTtMovedTarget \.olliTtMovedTargetName[\s\S]*?color: #1979c8/);
-  assert.match(html, /pc-timetable\.css\?v=20261124-move-cancel-1/);
-  assert.match(html, /pc-timetable\.js\?v=20261124-move-cancel-1/);
+  assert.match(html, /pc-timetable\.css\?v=20261124-move-return-2/);
+  assert.match(html, /pc-timetable\.js\?v=20261124-move-return-2/);
   assert.doesNotMatch(js, /예약 이동' : '지금 바로 이동'/);
   assert.doesNotMatch(js, /<strong>예약 이동<\/strong>/);
   assert.match(js, /data-tt-cancel-change=/);
