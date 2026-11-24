@@ -1337,6 +1337,11 @@
     });
   }
 
+  function isTemporaryMoveSession(item) {
+    return clean(item?.session_type) === 'makeup'
+      && /^일시변경 \[olli:temporary-move-v1:[0-9a-f-]{36}:\d{4}-\d{2}-\d{2}\]$/i.test(clean(item.note));
+  }
+
   function cellContentsHtml(division, date, time, classGroup, memoText) {
     const regular = slotRegulars(division, date, time, classGroup);
     const movedSources = movedSourceEnrollments(division, date, time, classGroup);
@@ -1391,7 +1396,8 @@
         return `<div draggable="true" data-tt-drag-kind="trial" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${dateKey(date)}" class="olliTtStudent trial"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">체험</button></div>`;
       }
       const attended = isToday(date) && attendanceMarked(item.student_id, date, attendanceTime, entryClassGroup, 'makeup');
-      return `<div draggable="true" data-tt-drag-kind="makeup" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${dateKey(date)}" class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">보강</button></div>`;
+      const temporary = isTemporaryMoveSession(item);
+      return `<div draggable="true" data-tt-drag-kind="makeup" data-tt-drag-id="${esc(item.id)}" data-tt-drag-date="${dateKey(date)}" class="olliTtStudent makeup${temporary ? ' olliTtTemporaryMove' : ''}${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">${temporary ? '일시변경' : '보강'}</button></div>`;
     }).join('');
     const memoGroup = classGroup ? classGroupOf({ class_group: classGroup }) : '';
     const memoHtml = cellMemos().filter((item) => clean(item.division) === clean(division)
@@ -1810,7 +1816,8 @@
     }
   }
 
-  async function saveDraggedTimetableMove(source, target) {
+  async function saveDraggedTimetableMove(source, target, mode) {
+    if (state.saving) return;
     const reservation = scheduledMoveForReturn(source, target);
     if (reservation) {
       await cancelScheduledChange(reservation.id, { source, target });
@@ -1830,14 +1837,34 @@
       + (source.kind !== 'pickup' && isClassSplit(source.division, source.weekday, source.time, source.date) ? ' ' + source.classGroup + '반' : '');
     const toLabel = shortDate(target.date) + ' ' + scheduleSlotLabel(target.division, target.time, target.classGroup, target.weekday)
       + (source.kind !== 'pickup' && isClassSplit(target.division, target.weekday, target.time, target.date) ? ' ' + target.classGroup + '반' : '');
-    const repeatingGuide = recurring ? '\n정규수업/매주 픽업의 변경은 적용 날짜부터 이후 일정에도 반영됩니다.' : '';
-    if (!global.confirm(source.name + ' 학생의 ' + kindLabel + '을(를) 이동할까요?\n'
-      + fromLabel + ' → ' + toLabel + repeatingGuide)) return;
+    if (source.kind === 'regular') {
+      if (!mode) {
+        state.dialog = { kind:'dragMoveChoice', source, target, fromLabel, toLabel };
+        openOverlay();
+        return;
+      }
+      if (mode !== 'temporary' && mode !== 'permanent') return;
+    } else {
+      const repeatingGuide = recurring ? '\n정규수업/매주 픽업의 변경은 적용 날짜부터 이후 일정에도 반영됩니다.' : '';
+      if (!global.confirm(source.name + ' 학생의 ' + kindLabel + '을(를) 이동할까요?\n'
+        + fromLabel + ' → ' + toLabel + repeatingGuide)) return;
+    }
 
     // withSaving refreshes server state before mutation and again after a commit.
     const result = await withSaving(async () => {
       if (source.academyId !== currentSyncAcademyId()) throw new Error('학원이 변경되었습니다. 다시 시도해 주세요.');
       if (source.kind === 'regular') {
+        if (mode === 'temporary') {
+          if (!isMoveTransitionWeek(source.date, target.date) || target.date < todayKey()
+            || source.date < dateKey(mondayOf(todayKey()))) {
+            throw new Error('한 주만 이동은 같은 주의 오늘 이후 수업으로만 할 수 있습니다.');
+          }
+          return service.temporaryMove({
+            studentId:source.row.student_id, sourceEnrollmentId:source.id,
+            sourceDate:source.date, sourceTime:source.time, sourceGroup:source.classGroup,
+            targetDate:target.date, targetTime:target.time, targetGroup:target.classGroup
+          });
+        }
         const response = await service.changeSchedule({
           studentId:source.row.student_id, sourceEnrollmentId:source.id,
           targetWeekday:target.weekday, targetTimeSlot:target.time,
@@ -1866,6 +1893,10 @@
       throw new Error('이동할 카드 종류를 확인해 주세요.');
     });
     if (result) {
+      if (source.kind === 'regular' && mode === 'temporary') {
+        notify(source.name + ' 학생의 수업을 해당 주만 일시변경했어요.');
+        return;
+      }
       const storedEffectiveDate = clean(result.effective_date) || target.date;
       const reserved = (source.kind === 'regular' && result.result === 'scheduled')
         || (source.kind === 'pickup' && pickupScope(source.row) === 'weekly'
@@ -2993,7 +3024,7 @@
     const date = parseDate(item.session_date);
     const trial = clean(item.session_type) === 'trial';
     const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;
-    const typeLabel = trial ? '체험' : '보강';
+    const typeLabel = trial ? '체험' : (isTemporaryMoveSession(item) ? '일시변경' : '보강');
     const division = clean(item.division);
     const targetDate = clean(dialog.makeupDate) || clean(item.session_date);
     const targetWeekday = Number(dialog.targetWeekday) || parseDate(targetDate).getDay();
@@ -3161,6 +3192,18 @@
   function backToHistory() { return timetableHistoryRuntimeApi().backToHistory(); }
   async function restoreHistoryAction() { return timetableHistoryRuntimeApi().restoreHistoryAction(); }
 
+  function dragMoveChoiceHtml(dialog) {
+    const { source, target } = dialog;
+    const oneWeek = isMoveTransitionWeek(source.date, target.date)
+      && source.date >= dateKey(mondayOf(todayKey())) && target.date >= todayKey();
+    return dialogHead('↗', source.name + ' 수업 이동', dialog.fromLabel + ' → ' + dialog.toLabel)
+      + '<div class="olliTtDialogBody"><div class="olliTtField"><div class="olliTtFieldHead"><span>이동 방식 선택</span></div>'
+      + '<div class="olliTtDragMoveChoices">'
+      + '<button type="button" class="olliTtChoice" data-tt-drag-move-mode="temporary"' + (oneWeek ? '' : ' disabled') + '><strong>한 주만 이동</strong><small>기존 수업은 결석, 옮긴 수업은 일시변경으로 표시됩니다.</small></button>'
+      + '<button type="button" class="olliTtChoice" data-tt-drag-move-mode="permanent"><strong>완전 이동</strong><small>기존처럼 정규수업 요일·시간을 변경합니다.</small></button></div></div>'
+      + '<div class="olliTtDialogActions olliTtDragMoveCancel"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button></div></div>';
+  }
+
   function renderDialog() {
     const dialog = document.getElementById('olliTtDialog');
     if (!dialog || !state.dialog) return;
@@ -3172,7 +3215,8 @@
     dialog.classList.toggle('olliTtMemoManageDialog', state.dialog.kind === 'memoManage');
     dialog.classList.toggle('olliTtAddDialog', state.dialog.kind === 'add');
     dialog.classList.toggle('olliTtPickupDialog', state.dialog.kind === 'pickupAdd' || state.dialog.kind === 'pickupManage');
-    if (state.dialog.kind === 'move') dialog.innerHTML = moveDialogHtml(state.dialog);
+    if (state.dialog.kind === 'dragMoveChoice') dialog.innerHTML = dragMoveChoiceHtml(state.dialog);
+    else if (state.dialog.kind === 'move') dialog.innerHTML = moveDialogHtml(state.dialog);
     else if (state.dialog.kind === 'add') dialog.innerHTML = addDialogHtml(state.dialog);
     else if (state.dialog.kind === 'memoManage') dialog.innerHTML = memoManageDialogHtml(state.dialog);
     else if (state.dialog.kind === 'wait') dialog.innerHTML = waitDialogHtml(state.dialog);
@@ -3188,6 +3232,11 @@
     const dialog = document.getElementById('olliTtDialog');
     if (!dialog || !state.dialog) return;
     dialog.querySelectorAll('[data-tt-dialog-close]').forEach((button) => button.addEventListener('click', closeDialog));
+    dialog.querySelectorAll('[data-tt-drag-move-mode]').forEach((button) => button.addEventListener('click', () => {
+      const choice = state.dialog;
+      if (!choice || choice.kind !== 'dragMoveChoice' || state.saving || button.disabled) return;
+      void saveDraggedTimetableMove(choice.source, choice.target, button.dataset.ttDragMoveMode);
+    }));
     if (!dialog.__olliStudentSearchKeyboardBound) {
       dialog.__olliStudentSearchKeyboardBound = true;
       dialog.addEventListener('keydown', handleDialogStudentSearchKeydown);
@@ -4236,7 +4285,7 @@ ${combined.memoError}`);
     const item = oneTimeSessions().find((row) => clean(row.id) === clean(dialog.makeupId));
     if (!item) return;
     const trial = clean(item.session_type) === 'trial';
-    const typeLabel = trial ? '체험' : '보강';
+    const typeLabel = trial ? '체험' : (isTemporaryMoveSession(item) ? '일시변경' : '보강');
     const targetDate = clean(dialog.makeupDate);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate) || targetDate < todayKey()) {
       alert(`변경할 ${typeLabel} 날짜를 확인해 주세요.`);
@@ -4295,7 +4344,7 @@ ${combined.memoError}`);
       return { actionResult, memoError };
     });
     if (!combined || !combined.actionResult) return;
-    notify(`${item.student_name}${item.is_guest === true ? ' (비)' : ''} 학생의 ${clean(item.session_type) === 'trial' ? '체험수업' : '보강'}을 취소했어요.`);
+    notify(`${item.student_name}${item.is_guest === true ? ' (비)' : ''} 학생의 ${clean(item.session_type) === 'trial' ? '체험수업' : (isTemporaryMoveSession(item) ? '일시변경' : '보강')}을 취소했어요.`);
     if (combined.memoError) {
       alert(`수업 취소는 완료됐지만 취소 사유 메모는 저장하지 못했습니다.
 ${combined.memoError}`);
