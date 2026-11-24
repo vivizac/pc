@@ -12,7 +12,7 @@ function fixture(groups=['B','A','B']){
  const rows=enrollments.slice(1).map((e,i)=>({id:'c'+i,student_id:'s',status:'applied',change_type:'move',source_enrollment_id:'e'+i,target_enrollment_id:e.id,effective_date:i===0?'2026-11-23':'2026-11-24'}));
  const data={move_source_enrollments:enrollments.slice(0,-1),enrollments:enrollments.slice(-1)};
  const calls=[];
- const ctx=vm.createContext({state:{data},changes:()=>rows,clean:v=>String(v??'').trim(),todayKey:()=> '2026-11-24',
+ const ctx=vm.createContext({temporaryMoveForReturn:()=>null,state:{data},changes:()=>rows,clean:v=>String(v??'').trim(),todayKey:()=> '2026-11-24',
  parseDate:v=>new Date(v+'T12:00:00'),isMoveTransitionWeek:(a,b)=>[a,b].every(d=>String(d).slice(0,7)==='2026-11'),
  capacityWeekData:()=>data,isHalfHourMode:()=>false,classGroupOf:r=>r.class_group||'A',isClassSplit:()=>true,
  timeSlotMatches:(_d,_date,a,b)=>+a===+b,currentSyncAcademyId:()=> 'academy',shortDate:v=>v,scheduleSlotLabel:(_d,t)=>String(t),
