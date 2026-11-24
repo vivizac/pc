@@ -37,6 +37,11 @@ create function private.olli_schedule_is_closed_day(uuid,date) returns boolean l
 create function private.olli_schedule_timetable_mode(uuid) returns text language sql as $$ select 'half_hour'::text $$;
 create function private.olli_makeup_slot_label(uuid,text,date,integer) returns text language sql as $$ select case when $4=9 then '5시 30분' else $4::text||'시' end $$;
 \ir ../../../supabase/migrations/schedule_day_teacher_reminders.sql
+create trigger olli_team_talk_one_time_event after insert or update on public.olli_schedule_one_time_sessions
+  for each row execute function private.olli_team_talk_one_time_trigger();
+-- Fixture rows intentionally simulate lessons already booked before rollout.
+alter table public.olli_schedule_one_time_sessions disable trigger olli_team_talk_one_time_event;
+alter table public.olli_schedule_changes disable trigger olli_team_talk_move_insert;
 do $test$
 declare
  a uuid := gen_random_uuid(); s uuid := gen_random_uuid(); teacher uuid := gen_random_uuid(); substitute uuid := gen_random_uuid(); wrong uuid := gen_random_uuid();
@@ -95,9 +100,19 @@ begin
  update public.olli_schedule_teacher_overrides set teacher_member_id=teacher where academy_id=a and session_date=d;
  n:=private.olli_team_talk_dispatch_day_reminders((d+time '10:40') at time zone 'Asia/Seoul');
  if n<>2 then raise exception 'new effective teacher did not receive reminder';end if;
- -- Existing optional trial notification setting remains unchanged.
- r:=private.olli_team_talk_emit_schedule_event(a,'fixture:old','trial_add','olli_schedule_one_time_sessions',guest::text,'old',d,'kinder',3,5,'A');
+ -- Existing optional cancellation notification setting remains unchanged.
+ r:=private.olli_team_talk_emit_schedule_event(a,'fixture:old','trial_cancel','olli_schedule_one_time_sessions',guest::text,'old',d,'kinder',3,5,'A');
  if r is not null then raise exception 'existing bot setting changed';end if;
+ -- Newly booked lessons receive one initial targeted alert in addition to their day-of event.
+ alter table public.olli_schedule_one_time_sessions enable trigger olli_team_talk_one_time_event;
+ alter table public.olli_schedule_changes enable trigger olli_team_talk_move_insert;
+ insert into public.olli_schedule_one_time_sessions values
+ (gen_random_uuid(),a,s,d+7,4,'B','makeup','scheduled','',null,null),
+ (gen_random_uuid(),a,null,d+7,5,'A','trial','scheduled','','new guest','kinder'),
+ (gen_random_uuid(),a,s,d+7,9,'B','makeup','scheduled','일시변경 [olli:temporary-move-v1:'||root::text||':'||(d+7)::text||']',null,null);
+ insert into public.olli_schedule_changes values(gen_random_uuid(),a,s,root,leaf,d+5,'move','scheduled');
+ if (select count(*) from public.olli_team_chat_bot_events where event_type in ('makeup_add','trial_add','temporary_move_add','move_add'))<>4 then raise exception 'initial notice missing or repeated';end if;
+ if (select count(*) from public.olli_team_chat_mentions mt join public.olli_team_chat_bot_events e on e.message_id=mt.message_id where e.event_type in ('makeup_add','trial_add','temporary_move_add','move_add'))<>4 then raise exception 'initial notice mention missing';end if;
  raise notice 'day reminder SQL: four event types, effective substitute, deduplication, late changes, cancellation and optional setting passed';
 end $test$;
 rollback;
